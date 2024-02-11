@@ -397,7 +397,7 @@ class Move {
     constexpr std::uint16_t raw() const { return data; }
 
     struct MoveHash {
-        std::size_t operator()(const Move& m) const { return m.data; }
+        std::size_t operator()(const Move& m) const { return make_key(m.data); }
     };
 
    protected:
