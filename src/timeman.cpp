@@ -28,13 +28,12 @@
 
 namespace Stockfish {
 
-
 TimePoint TimeManagement::optimum() const { return optimumTime; }
 TimePoint TimeManagement::maximum() const { return maximumTime; }
 TimePoint TimeManagement::elapsed(size_t nodes) const {
     return useNodesTime ? TimePoint(nodes) : now() - startTime;
 }
-
+ 
 void TimeManagement::clear() {
     availableNodes = 0;  // When in 'nodes as time' mode
 }
@@ -63,7 +62,7 @@ void TimeManagement::init(Search::LimitsType& limits,
 
     // optScale is a percentage of available time to use for the current move.
     // maxScale is a multiplier applied to optimumTime.
-    double optScale, maxScale;
+    double optScale, maxScale; 
 
     // If we have to play in 'nodes as time' mode, then convert from time
     // to nodes, and use resulting values in time management formulas.
@@ -86,11 +85,9 @@ void TimeManagement::init(Search::LimitsType& limits,
     int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
+    // im not convinced this equation needs to be here. but its impact is probably quite low
     TimePoint timeLeft = std::max(TimePoint(1), limits.time[us] + limits.inc[us] * (mtg - 1)
                                                   - moveOverhead * (2 + mtg));
-
-    // Use extra time with larger increments
-    double optExtra = std::clamp(1.0 + 12.5 * limits.inc[us] / limits.time[us], 1.0, 1.11);
 
     // Calculate time constants based on current time left.
     double optConstant = std::min(0.00334 + 0.0003 * std::log10(limits.time[us] / 1000.0), 0.0049);
@@ -101,8 +98,11 @@ void TimeManagement::init(Search::LimitsType& limits,
     // game time for the current move, so also cap to 20% of available game time.
     if (limits.movestogo == 0)
     {
+        // Use extra time with larger increments
+        double optExtra = std::clamp(1.0 + 12.5 * limits.inc[us] / limits.time[us], 1.0, 1.11);
+
         optScale = std::min(0.0120 + std::pow(ply + 3.1, 0.44) * optConstant,
-                            0.10 * limits.time[us] / double(timeLeft))
+                            0.21 * limits.time[us] / double(timeLeft))
                  * optExtra;
         maxScale = std::min(6.9, maxConstant + ply / 12.2);
     }
@@ -121,6 +121,8 @@ void TimeManagement::init(Search::LimitsType& limits,
 
     if (options["Ponder"])
         optimumTime += optimumTime / 4;
+
+    
 }
 
 }  // namespace Stockfish
