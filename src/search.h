@@ -47,7 +47,6 @@ enum NodeType {
 class TranspositionTable;
 class ThreadPool;
 class OptionsMap;
-class UCI;
 
 namespace Search {
 
@@ -67,7 +66,7 @@ struct Stack {
     bool            inCheck;
     bool            ttPv;
     bool            ttHit;
-    int             doubleExtensions;
+    int             multipleExtensions;
     int             cutoffCnt;
 };
 
@@ -124,10 +123,12 @@ struct LimitsType {
 // The UCI stores the uci options, thread pool, and transposition table.
 // This struct is used to easily forward data to the Search::Worker class.
 struct SharedState {
-    SharedState(const OptionsMap& o, ThreadPool& tp, TranspositionTable& t) :
-        options(o),
-        threads(tp),
-        tt(t) {}
+    SharedState(const OptionsMap&   optionsMap,
+                ThreadPool&         threadPool,
+                TranspositionTable& transpositionTable) :
+        options(optionsMap),
+        threads(threadPool),
+        tt(transpositionTable) {}
 
     const OptionsMap&   options;
     ThreadPool&         threads;
@@ -136,9 +137,8 @@ struct SharedState {
 
 class Worker;
 
-// Null Object Pattern, implement a common interface
-// for the SearchManagers. A Null Object will be given to
-// non-mainthread workers.
+// Null Object Pattern, implement a common interface for the SearchManagers.
+// A Null Object will be given to non-mainthread workers.
 class ISearchManager {
    public:
     virtual ~ISearchManager() {}
@@ -185,8 +185,8 @@ class Worker {
     // Reset histories, usually before a new game
     void clear();
 
-    // Called when the program receives the UCI 'go'
-    // command. It searches from the root position and outputs the "bestmove".
+    // Called when the program receives the UCI 'go' command.
+    // It searches from the root position and outputs the "bestmove".
     void start_searching();
 
     bool is_mainthread() const { return thread_idx == 0; }
@@ -210,11 +210,7 @@ class Worker {
     template<NodeType nodeType>
     Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
 
-    Depth reduction(bool i, Depth d, int mn, int delta) {
-        int reductionScale = reductions[d] * reductions[mn];
-        return (reductionScale + 1177 - int(delta) * 776 / int(rootDelta)) / 1024
-             + (!i && reductionScale > 842);
-    }
+    Depth reduction(bool i, Depth d, int mn, int delta);
 
     // Get a pointer to the search manager, only allowed to be called by the
     // main thread.
@@ -252,7 +248,6 @@ class Worker {
     TranspositionTable& tt;
 
     friend class Stockfish::ThreadPool;
-    friend class Stockfish::UCI;
     friend class SearchManager;
 };
 
