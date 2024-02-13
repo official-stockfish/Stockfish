@@ -1111,7 +1111,7 @@ moves_loop:  // When in check, search starts here
             r++;
 
         // Decrease reduction for PvNodes (~3 Elo)
-        if (PvNode && tte->bound() != BOUND_UPPER)
+        if (PvNode)
             r--;
 
         // Increase reduction on repetition (~1 Elo)
