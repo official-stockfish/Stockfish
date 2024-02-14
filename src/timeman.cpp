@@ -85,7 +85,6 @@ void TimeManagement::init(Search::LimitsType& limits,
     int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
-    // im not convinced this equation needs to be here. but its impact is probably quite low
     TimePoint timeLeft = std::max(TimePoint(1), limits.time[us] + limits.inc[us] * (mtg - 1)
                                                   - moveOverhead * (2 + mtg));
 
@@ -93,7 +92,7 @@ void TimeManagement::init(Search::LimitsType& limits,
     // If there is a healthy increment, timeLeft can exceed actual available
     // game time for the current move, so also cap to 20% of available game time.
     if (limits.movestogo == 0)
-    {
+    { 
         // Use extra time with larger increments
         double optExtra = std::clamp(1.0 + 12.5 * limits.inc[us] / limits.time[us], 1.0, 1.11);
 
@@ -121,8 +120,6 @@ void TimeManagement::init(Search::LimitsType& limits,
 
     if (options["Ponder"])
         optimumTime += optimumTime / 4;
-
-    
 }
 
 }  // namespace Stockfish
