@@ -621,13 +621,6 @@ Value Search::Worker::search(
                     update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                                   -stat_malus(depth + 1));
             }
-            // Penalty for a quiet ttMove that fails low (~1 Elo)
-            else if (!ttCapture)
-            {
-                int penalty = -stat_malus(depth);
-                thisThread->mainHistory[us][ttMove.from_to()] << penalty;
-                update_continuation_histories(ss, pos.moved_piece(ttMove), ttMove.to_sq(), penalty);
-            }
         }
 
         // Partial workaround for the graph history interaction problem
@@ -1105,9 +1098,9 @@ moves_loop:  // When in check, search starts here
         thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
         pos.do_move(move, st, givesCheck);
 
-        // Decrease reduction if position is or has been on the PV (~5 Elo)
+        // Decrease reduction if position is or has been on the PV (~7 Elo)
         if (ss->ttPv)
-            r -= 1 + (ttValue > alpha) + (ttValue > beta && tte->depth() >= depth);
+            r -= 1 + (ttValue > alpha) + (tte->depth() >= depth);
 
         // Increase reduction for cut nodes (~4 Elo)
         if (cutNode)
@@ -1118,7 +1111,7 @@ moves_loop:  // When in check, search starts here
             r++;
 
         // Decrease reduction for PvNodes (~3 Elo)
-        if (PvNode && tte->bound() != BOUND_UPPER)
+        if (PvNode)
             r--;
 
         // Increase reduction on repetition (~1 Elo)
