@@ -81,15 +81,15 @@ void TimeManagement::init(Search::LimitsType& limits,
         limits.npmsec = npmsec;
     }
 
-    // Maximum move horizon of 50 moves
+    // Maximum and default move horizon of 50 moves
     int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
     // Make sure timeLeft is > 0 since we use it as a divisor
-    // If there is a healthy increment and low mtg, timeLeft can exceed actual available
     double timeLeft =
       std::max(limits.time[us], limits.time[us] + limits.inc[us] * (mtg - 1) - moveOverhead * mtg);
 
     // x basetime (+ z increment)
+    // If there is a healthy increment and low mtg, timeLeft can exceed actual available
     // game time for the current move, so also cap to 20% of available game time.
     if (limits.movestogo == 0)
     {
