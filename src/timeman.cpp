@@ -85,11 +85,11 @@ void TimeManagement::init(Search::LimitsType& limits,
     int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
-    TimePoint timeLeft = std::max(TimePoint(1), limits.time[us] + limits.inc[us] * (mtg - 1)
-                                                  - moveOverhead * (2 + mtg));
+    // If there is a healthy increment and low mtg, timeLeft can exceed actual available
+    TimePoint timeLeft = std::max(limits.time[us], limits.time[us] + limits.inc[us] * (mtg - 1)
+                                                     - moveOverhead * (2 + mtg));
 
     // x basetime (+ z increment)
-    // If there is a healthy increment, timeLeft can exceed actual available
     // game time for the current move, so also cap to 20% of available game time.
     if (limits.movestogo == 0)
     {
