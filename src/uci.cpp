@@ -137,7 +137,7 @@ void UCI::loop() {
             sync_cout << "readyok" << sync_endl;
 
         // Add custom non-UCI commands, mainly for debugging purposes.
-        // These commands must not be used during a search!
+        // These commands must NOT be used during a search.
         else if (token == "flip")
             pos.flip();
         else if (token == "bench")
@@ -332,7 +332,7 @@ std::string UCI::value(Value v) {
         ss << "cp " << to_cp(v);
     else if (std::abs(v) <= VALUE_TB)
     {
-        const int ply = VALUE_TB - std::abs(v);  // recompute ss->ply
+        const int ply = VALUE_TB - std::abs(v);  // Recompute ss->ply
         ss << "cp " << (v > 0 ? 20000 - ply : -20000 + ply);
     }
     else
@@ -374,9 +374,8 @@ int win_rate_model(Value v, int ply) {
     // The fitted model only uses data for moves in [8, 120], and is anchored at move 32.
     double m = std::clamp(ply / 2 + 1, 8, 120) / 32.0;
 
-    // The coefficients of a third-order polynomial fit is based on the fishtest data
-    // for two parameters that need to transform eval to the argument of a logistic
-    // function.
+    // The coefficients of a third-order polynomial fit is based on the fishtest data for
+    // two parameters that need to transform eval to the argument of a logistic function.
     constexpr double as[] = {-2.00568292, 10.45906746, 1.67438883, 334.45864705};
     constexpr double bs[] = {-4.97134419, 36.15096345, -82.25513499, 117.35186805};
 
