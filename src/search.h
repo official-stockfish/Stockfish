@@ -25,8 +25,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "misc.h"
 #include "movepick.h"
