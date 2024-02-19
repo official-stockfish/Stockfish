@@ -22,13 +22,13 @@
 #include <cassert>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <deque>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <vector>
-#include <cstdint>
 
 #include "benchmark.h"
 #include "evaluate.h"
