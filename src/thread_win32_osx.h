@@ -29,8 +29,8 @@
 
 #if defined(__APPLE__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(USE_PTHREADS)
 
-    #include <pthread.h>
     #include <functional>
+    #include <pthread.h>
 
 namespace Stockfish {
 
