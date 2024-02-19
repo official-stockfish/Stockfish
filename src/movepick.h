@@ -28,8 +28,8 @@
 #include <type_traits>  // IWYU pragma: keep
 
 #include "movegen.h"
-#include "types.h"
 #include "position.h"
+#include "types.h"
 
 namespace Stockfish {
 
