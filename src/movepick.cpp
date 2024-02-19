@@ -31,7 +31,7 @@ namespace Stockfish {
 namespace {
 
 enum Stages {
-    // generate main search moves
+    // Generate main search moves
     MAIN_TT,
     CAPTURE_INIT,
     GOOD_CAPTURE,
@@ -41,17 +41,17 @@ enum Stages {
     BAD_CAPTURE,
     BAD_QUIET,
 
-    // generate evasion moves
+    // Generate evasion moves
     EVASION_TT,
     EVASION_INIT,
     EVASION,
 
-    // generate probcut moves
+    // Generate probcut moves
     PROBCUT_TT,
     PROBCUT_INIT,
     PROBCUT,
 
-    // generate qsearch moves
+    // Generate qsearch moves
     QSEARCH_TT,
     QCAPTURE_INIT,
     QCAPTURE,
@@ -59,8 +59,8 @@ enum Stages {
     QCHECK
 };
 
-// Sort moves in descending order up to and including
-// a given limit. The order of moves smaller than the limit is left unspecified.
+// Sort moves in descending order up to and including a given limit.
+// The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 
     for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p)
@@ -139,9 +139,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
           + !(ttm && pos.capture_stage(ttm) && pos.pseudo_legal(ttm) && pos.see_ge(ttm, threshold));
 }
 
-// Assigns a numerical value to each move in a list, used
-// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
-// captures with a good history. Quiets moves are ordered using the history tables.
+// Assigns a numerical value to each move in a list, used for sorting.
+// Captures are ordered by Most Valuable Victim (MVV), preferring captures
+// with a good history. Quiets moves are ordered using the history tables.
 template<GenType Type>
 void MovePicker::score() {
 
@@ -177,7 +177,7 @@ void MovePicker::score() {
             Square    from = m.from_sq();
             Square    to   = m.to_sq();
 
-            // histories
+            // Histories
             m.value = 2 * (*mainHistory)[pos.side_to_move()][m.from_to()];
             m.value += 2 * (*pawnHistory)[pawn_structure_index(pos)][pc][to];
             m.value += 2 * (*continuationHistory[0])[pc][to];
@@ -186,17 +186,17 @@ void MovePicker::score() {
             m.value += (*continuationHistory[3])[pc][to];
             m.value += (*continuationHistory[5])[pc][to];
 
-            // bonus for checks
+            // Bonus for checks
             m.value += bool(pos.check_squares(pt) & to) * 16384;
 
-            // bonus for escaping from capture
+            // Bonus for escaping from capture
             m.value += threatenedPieces & from ? (pt == QUEEN && !(to & threatenedByRook)   ? 50000
                                                   : pt == ROOK && !(to & threatenedByMinor) ? 25000
                                                   : !(to & threatenedByPawn)                ? 15000
                                                                                             : 0)
                                                : 0;
 
-            // malus for putting piece en prise
+            // Malus for putting piece en prise
             m.value -= !(threatenedPieces & from)
                        ? (pt == QUEEN ? bool(to & threatenedByRook) * 50000
                                           + bool(to & threatenedByMinor) * 10000
