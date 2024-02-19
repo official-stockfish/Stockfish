@@ -19,12 +19,12 @@
 #include "thread.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include <utility>
-#include <array>
 
 #include "misc.h"
 #include "movegen.h"
