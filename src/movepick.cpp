@@ -173,7 +173,7 @@ void MovePicker::score() {
         else if constexpr (Type == QUIETS)
         {
             Piece     pc   = pos.moved_piece(m);
-            PieceType pt   = type_of(pos.moved_piece(m));
+            PieceType pt   = type_of(pc);
             Square    from = m.from_sq();
             Square    to   = m.to_sq();
 
