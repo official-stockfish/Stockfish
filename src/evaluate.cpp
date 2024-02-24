@@ -77,11 +77,7 @@ NNUE::EvalFiles NNUE::load_networks(const std::string& rootDirectory,
 
     for (auto& [netSize, evalFile] : evalFiles)
     {
-        // Replace with
-        // options[evalFile.optionName]
-        // once fishtest supports the uci option EvalFileSmall
-        std::string user_eval_file =
-          netSize == Small ? evalFile.defaultName : options[evalFile.optionName];
+        std::string user_eval_file = options[evalFile.optionName];
 
         if (user_eval_file.empty())
             user_eval_file = evalFile.defaultName;
@@ -149,11 +145,8 @@ void NNUE::verify(const OptionsMap&                                        optio
 
     for (const auto& [netSize, evalFile] : evalFiles)
     {
-        // Replace with
-        // options[evalFile.optionName]
-        // once fishtest supports the uci option EvalFileSmall
-        std::string user_eval_file =
-          netSize == Small ? evalFile.defaultName : options[evalFile.optionName];
+        std::string user_eval_file = options[evalFile.optionName];
+
         if (user_eval_file.empty())
             user_eval_file = evalFile.defaultName;
 
