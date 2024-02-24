@@ -83,6 +83,9 @@ UCI::UCI(int argc, char** argv) :
     options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option&) {
         evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
     });
+    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, [this](const Option&) {
+        evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
+    });
 
     threads.set({options, threads, tt});
 
