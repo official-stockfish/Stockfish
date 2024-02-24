@@ -65,6 +65,7 @@ jobs:
       - name: Create tar
         if: runner.os != 'Windows'
         run: |
+          chmod +x ./stockfish/stockfish-$NAME-$BINARY$EXT
           tar -cvf stockfish-$NAME-$BINARY.tar stockfish
 
       - name: Create zip
