@@ -34,6 +34,7 @@ struct alignas(CacheLineSize) Accumulator {
     std::int16_t accumulation[2][Size];
     std::int32_t psqtAccumulation[2][PSQTBuckets];
     bool         computed[2];
+    bool         computedPSQT[2];
 };
 
 }  // namespace Stockfish::Eval::NNUE
