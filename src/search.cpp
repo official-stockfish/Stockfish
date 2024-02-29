@@ -772,8 +772,6 @@ Value Search::Worker::search(
         && !excludedMove && pos.non_pawn_material(us) && ss->ply >= thisThread->nmpMinPly
         && beta > VALUE_TB_LOSS_IN_MAX_PLY)
     {
-        assert(eval - beta >= 0);
-
         // Null move dynamic reduction based on depth and eval
         Depth R = std::min(int(eval - beta) / 154, 6) + depth / 3 + 4;
 
