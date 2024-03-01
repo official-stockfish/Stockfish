@@ -3,17 +3,17 @@
 # executes no shell script nor runs make.
 # Read this before editing: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
 
-name: Stockfish
+name: Clang-Format
 on:
   pull_request_target:
     branches:
-      - 'master'
+      - "master"
     paths:
-      - '**.cpp'
-      - '**.h'
+      - "**.cpp"
+      - "**.h"
 jobs:
-  Stockfish:
-    name: clang-format check
+  Clang-Format:
+    name: Clang-Format
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
@@ -21,16 +21,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run clang-format style check
-        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e  # @v4.11.0
+        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e # @v4.11.0
         id: clang-format
         continue-on-error: true
         with:
-          clang-format-version: '17'
-          exclude-regex: 'incbin'
+          clang-format-version: "17"
+          exclude-regex: "incbin"
 
       - name: Comment on PR
         if: steps.clang-format.outcome == 'failure'
-        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308  # @v2.4.3
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308 # @v2.4.3
         with:
           message: |
             clang-format 17 needs to be run on this PR.
@@ -42,7 +42,7 @@ jobs:
 
       - name: Comment on PR
         if: steps.clang-format.outcome != 'failure'
-        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308  # @v2.4.3
+        uses: thollander/actions-comment-pull-request@1d3973dc4b8e1399c0620d3f2b1aa5e795465308 # @v2.4.3
         with:
           message: |
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
