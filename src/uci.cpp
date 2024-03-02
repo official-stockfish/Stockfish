@@ -45,7 +45,7 @@
 namespace Stockfish {
 
 constexpr auto StartFEN             = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr int  NormalizeToPawnValue = 345;
+constexpr int  NormalizeToPawnValue = 356;
 constexpr int  MaxHashMB            = Is64Bit ? 33554432 : 2048;
 
 UCI::UCI(int argc, char** argv) :
@@ -81,6 +81,9 @@ UCI::UCI(int argc, char** argv) :
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
     options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option&) {
+        evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
+    });
+    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, [this](const Option&) {
         evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
     });
 
@@ -377,8 +380,8 @@ int win_rate_model(Value v, int ply) {
     // The coefficients of a third-order polynomial fit is based on the fishtest data
     // for two parameters that need to transform eval to the argument of a logistic
     // function.
-    constexpr double as[] = {-2.00568292, 10.45906746, 1.67438883, 334.45864705};
-    constexpr double bs[] = {-4.97134419, 36.15096345, -82.25513499, 117.35186805};
+    constexpr double as[] = {-1.06249702, 7.42016937, 0.89425629, 348.60356174};
+    constexpr double bs[] = {-5.33122190, 39.57831533, -90.84473771, 123.40620748};
 
     // Enforce that NormalizeToPawnValue corresponds to a 50% win rate at move 32.
     static_assert(NormalizeToPawnValue == int(0.5 + as[0] + as[1] + as[2] + as[3]));
