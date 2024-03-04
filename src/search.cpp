@@ -607,20 +607,17 @@ Value Search::Worker::search(
         && (tte->bound() & (ttValue >= beta ? BOUND_LOWER : BOUND_UPPER)))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
-        if (ttMove)
+        if (ttMove && ttValue >= beta)
         {
-            if (ttValue >= beta)
-            {
-                // Bonus for a quiet ttMove that fails high (~2 Elo)
-                if (!ttCapture)
-                    update_quiet_stats(pos, ss, *this, ttMove, stat_bonus(depth));
+            // Bonus for a quiet ttMove that fails high (~2 Elo)
+            if (!ttCapture)
+                update_quiet_stats(pos, ss, *this, ttMove, stat_bonus(depth));
 
-                // Extra penalty for early quiet moves of
-                // the previous ply (~0 Elo on STC, ~2 Elo on LTC).
-                if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
-                    update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                                  -stat_malus(depth + 1));
-            }
+            // Extra penalty for early quiet moves of
+            // the previous ply (~0 Elo on STC, ~2 Elo on LTC).
+            if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
+                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
+                                              -stat_malus(depth + 1));
         }
 
         // Partial workaround for the graph history interaction problem
@@ -808,13 +805,11 @@ Value Search::Worker::search(
     }
 
     // Step 10. Internal iterative reductions (~9 Elo)
-    // For PV nodes without a ttMove, we decrease depth by 2,
-    // or by 4 if the current position is present in the TT and
-    // the stored depth is greater than or equal to the current depth.
-    // Use qsearch if depth <= 0.
+    // For PV nodes without a ttMove, we decrease depth by 3.
     if (PvNode && !ttMove)
-        depth -= 2 + 2 * (ss->ttHit && tte->depth() >= depth);
+        depth -= 3;
 
+    // Use qsearch if depth <= 0.
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
 
@@ -1061,7 +1056,7 @@ moves_loop:  // When in check, search starts here
 
                 // If the ttMove is assumed to fail high over current beta (~7 Elo)
                 else if (ttValue >= beta)
-                    extension = -2 - !PvNode;
+                    extension = -3;
 
                 // If we are on a cutNode but the ttMove is not assumed to fail high over current beta (~1 Elo)
                 else if (cutNode)
