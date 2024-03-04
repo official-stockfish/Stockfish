@@ -614,7 +614,7 @@ Value Search::Worker::search(
                 update_quiet_stats(pos, ss, *this, ttMove, stat_bonus(depth));
 
             // Extra penalty for early quiet moves of
-            // the previous ply (~0 Elo on STC, ~2 Elo on LTC).
+            // the previous ply (~1 Elo on STC, ~2 Elo on LTC)
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
                 update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                               -stat_malus(depth + 1));
@@ -1067,7 +1067,7 @@ moves_loop:  // When in check, search starts here
                     extension = -1;
             }
 
-            // Recapture extensions (~1 Elo)
+            // Recapture extensions (~0 Elo on STC, ~1 Elo on LTC)
             else if (PvNode && move == ttMove && move.to_sq() == prevSq
                      && thisThread->captureHistory[movedPiece][move.to_sq()]
                                                   [type_of(pos.piece_on(move.to_sq()))]
@@ -1105,7 +1105,7 @@ moves_loop:  // When in check, search starts here
         if (ttCapture)
             r++;
 
-        // Decrease reduction for PvNodes (~3 Elo)
+        // Decrease reduction for PvNodes (~0 Elo on STC, ~2 Elo on LTC)
         if (PvNode)
             r--;
 
@@ -1167,7 +1167,7 @@ moves_loop:  // When in check, search starts here
         // Step 18. Full-depth search when LMR is skipped
         else if (!PvNode || moveCount > 1)
         {
-            // Increase reduction if ttMove is not present (~1 Elo)
+            // Increase reduction if ttMove is not present (~6 Elo)
             if (!ttMove)
                 r += 2;
 

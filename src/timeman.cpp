@@ -89,8 +89,8 @@ void TimeManagement::init(Search::LimitsType& limits,
                                                   - moveOverhead * (2 + mtg));
 
     // x basetime (+ z increment)
-    // If there is a healthy increment, timeLeft can exceed actual available
-    // game time for the current move, so also cap to 20% of available game time.
+    // If there is a healthy increment, timeLeft can exceed the actual available
+    // game time for the current move, so also cap to a percentage of available game time.
     if (limits.movestogo == 0)
     {
         // Use extra time with larger increments
