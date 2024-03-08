@@ -1715,7 +1715,7 @@ void update_all_stats(const Position& pos,
     int quietMoveBonus = stat_bonus(depth + 1);
     int quietMoveMalus = stat_malus(depth);
 
-    if (!pos.capture_stage(bestMove)) 
+    if (!pos.capture_stage(bestMove))
     {
         int bestMoveBonus = bestValue > beta + 169 ? quietMoveBonus      // larger bonus
                                                    : stat_bonus(depth);  // smaller bonus
