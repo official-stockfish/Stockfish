@@ -206,11 +206,11 @@ Value Eval::evaluate(const Position& pos, int optimism) {
     nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32768;
 
     int npm = pos.non_pawn_material() / 64;
-    int v   = (nnue * (915 + npm + 9 * pos.count<PAWN>()) + optimism * (154 + npm)) / 1024;
+    int v   = (nnue * (936 + npm + 9 * pos.count<PAWN>()) + optimism * (154 + npm)) / 1024;
 
     // Damp down the evaluation linearly when shuffling
     int shuffling = pos.rule50_count();
-    v             = v * (200 - shuffling) / 214;
+    v             = v * (200 - shuffling) / 225;
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
