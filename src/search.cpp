@@ -53,11 +53,13 @@ using namespace Search;
 
 namespace {
 
-
 // Futility margin
-Value futility_margin(Depth d, bool noTtCutNode, bool improving) {
-    Value futilityMult = 117 - 44 * noTtCutNode;
-    return (futilityMult * d - 3 * futilityMult / 2 * improving);
+Value futility_margin(Depth d, bool noTtCutNode, bool improving, bool oppWorsening) {
+    Value futilityMult       = 117 - 44 * noTtCutNode;
+    Value improvingDeduction = 3 * improving * futilityMult / 2;
+    Value worseningDeduction = (331 + 45 * improving) * oppWorsening * futilityMult / 1024;
+
+    return futilityMult * d - improvingDeduction - worseningDeduction;
 }
 
 constexpr int futility_move_count(bool improving, Depth depth) {
@@ -185,7 +187,7 @@ void Search::Worker::start_searching() {
     Skill   skill =
       Skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
-    if (int(options["MultiPV"]) == 1 && !limits.depth && !skill.enabled()
+    if (int(options["MultiPV"]) == 1 && !limits.depth && !limits.mate && !skill.enabled()
         && rootMoves[0].pv[0] != Move::none())
         bestThread = threads.get_best_thread()->worker.get();
 
@@ -397,13 +399,17 @@ void Search::Worker::iterative_deepening() {
             lastBestMoveDepth = rootDepth;
         }
 
-        // Have we found a "mate in x"?
-        if (limits.mate && bestValue >= VALUE_MATE_IN_MAX_PLY
-            && VALUE_MATE - bestValue <= 2 * limits.mate)
-            threads.stop = true;
-
         if (!mainThread)
             continue;
+
+        // Have we found a "mate in x"?
+        if (limits.mate && rootMoves[0].score == rootMoves[0].uciScore
+            && ((rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY
+                 && VALUE_MATE - rootMoves[0].score <= 2 * limits.mate)
+                || (rootMoves[0].score != -VALUE_INFINITE
+                    && rootMoves[0].score <= VALUE_MATED_IN_MAX_PLY
+                    && VALUE_MATE + rootMoves[0].score <= 2 * limits.mate)))
+            threads.stop = true;
 
         // If the skill level is enabled and time is up, pick a sub-optimal best move
         if (skill.enabled() && skill.time_to_pick(rootDepth))
@@ -423,15 +429,15 @@ void Search::Worker::iterative_deepening() {
             int  nodesEffort = effort[bestmove.from_sq()][bestmove.to_sq()] * 100
                             / std::max(size_t(1), size_t(nodes));
 
-            double fallingEval = (66 + 14 * (mainThread->bestPreviousAverageScore - bestValue)
-                                  + 6 * (mainThread->iterValue[iterIdx] - bestValue))
-                               / 616.6;
-            fallingEval = std::clamp(fallingEval, 0.51, 1.51);
+            double fallingEval = (1067 + 223 * (mainThread->bestPreviousAverageScore - bestValue)
+                                  + 97 * (mainThread->iterValue[iterIdx] - bestValue))
+                               / 10000.0;
+            fallingEval = std::clamp(fallingEval, 0.580, 1.667);
 
             // If the bestMove is stable over several iterations, reduce time accordingly
-            timeReduction    = lastBestMoveDepth + 8 < completedDepth ? 1.56 : 0.69;
-            double reduction = (1.4 + mainThread->previousTimeReduction) / (2.17 * timeReduction);
-            double bestMoveInstability = 1 + 1.79 * totBestMoveChanges / threads.size();
+            timeReduction    = lastBestMoveDepth + 8 < completedDepth ? 1.495 : 0.687;
+            double reduction = (1.48 + mainThread->previousTimeReduction) / (2.17 * timeReduction);
+            double bestMoveInstability = 1 + 1.88 * totBestMoveChanges / threads.size();
 
             double totalTime =
               mainThread->tm.optimum() * fallingEval * reduction * bestMoveInstability;
@@ -440,8 +446,8 @@ void Search::Worker::iterative_deepening() {
             if (rootMoves.size() == 1)
                 totalTime = std::min(500.0, totalTime);
 
-            if (completedDepth >= 10 && nodesEffort >= 95
-                && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 3 / 4
+            if (completedDepth >= 10 && nodesEffort >= 97
+                && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 0.739
                 && !mainThread->ponder)
             {
                 threads.stop = true;
@@ -458,7 +464,7 @@ void Search::Worker::iterative_deepening() {
                     threads.stop = true;
             }
             else if (!mainThread->ponder
-                     && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 0.50)
+                     && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 0.506)
                 threads.increaseDepth = false;
             else
                 threads.increaseDepth = true;
@@ -533,7 +539,7 @@ Value Search::Worker::search(
     Move     ttMove, move, excludedMove, bestMove;
     Depth    extension, newDepth;
     Value    bestValue, value, ttValue, eval, maxValue, probCutBeta;
-    bool     givesCheck, improving, priorCapture;
+    bool     givesCheck, improving, priorCapture, opponentWorsening;
     bool     capture, moveCountPruning, ttCapture;
     Piece    movedPiece;
     int      moveCount, captureCount, quietCount;
@@ -614,7 +620,7 @@ Value Search::Worker::search(
                 update_quiet_stats(pos, ss, *this, ttMove, stat_bonus(depth));
 
             // Extra penalty for early quiet moves of
-            // the previous ply (~0 Elo on STC, ~2 Elo on LTC).
+            // the previous ply (~1 Elo on STC, ~2 Elo on LTC)
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
                 update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                               -stat_malus(depth + 1));
@@ -742,6 +748,8 @@ Value Search::Worker::search(
                 ? ss->staticEval > (ss - 2)->staticEval
                 : (ss - 4)->staticEval != VALUE_NONE && ss->staticEval > (ss - 4)->staticEval;
 
+    opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2 && (depth != 2 || !improving);
+
     // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
@@ -756,7 +764,7 @@ Value Search::Worker::search(
     // Step 8. Futility pruning: child node (~40 Elo)
     // The depth condition is important for mate finding.
     if (!ss->ttPv && depth < 11
-        && eval - futility_margin(depth, cutNode && !ss->ttHit, improving)
+        && eval - futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening)
                - (ss - 1)->statScore / 314
              >= beta
         && eval >= beta && eval < 30016  // smaller than TB wins
@@ -1038,6 +1046,9 @@ moves_loop:  // When in check, search starts here
                         extension = 2 + (value < singularBeta - 78 && !ttCapture);
                         depth += depth < 16;
                     }
+                    if (PvNode && !ttCapture && ss->multipleExtensions <= 5
+                        && value < singularBeta - 50)
+                        extension = 2;
                 }
 
                 // Multi-cut pruning
@@ -1067,7 +1078,7 @@ moves_loop:  // When in check, search starts here
                     extension = -1;
             }
 
-            // Recapture extensions (~1 Elo)
+            // Recapture extensions (~0 Elo on STC, ~1 Elo on LTC)
             else if (PvNode && move == ttMove && move.to_sq() == prevSq
                      && thisThread->captureHistory[movedPiece][move.to_sq()]
                                                   [type_of(pos.piece_on(move.to_sq()))]
@@ -1105,7 +1116,7 @@ moves_loop:  // When in check, search starts here
         if (ttCapture)
             r++;
 
-        // Decrease reduction for PvNodes (~3 Elo)
+        // Decrease reduction for PvNodes (~0 Elo on STC, ~2 Elo on LTC)
         if (PvNode)
             r--;
 
@@ -1167,7 +1178,7 @@ moves_loop:  // When in check, search starts here
         // Step 18. Full-depth search when LMR is skipped
         else if (!PvNode || moveCount > 1)
         {
-            // Increase reduction if ttMove is not present (~1 Elo)
+            // Increase reduction if ttMove is not present (~6 Elo)
             if (!ttMove)
                 r += 2;
 
