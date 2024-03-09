@@ -55,9 +55,8 @@ class UCI {
 
     const std::string& workingDirectory() const { return cli.workingDirectory; }
 
-    OptionsMap options;
-
-    std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile> evalFiles;
+    OptionsMap            options;
+    Eval::NNUE::EvalFiles evalFiles;
 
    private:
     TranspositionTable tt;

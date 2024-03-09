@@ -452,9 +452,9 @@ bool save_eval(std::ostream&      stream,
 }
 
 // Save eval, to a file given by its name
-bool save_eval(const std::optional<std::string>&                              filename,
-               NetSize                                                        netSize,
-               const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>& evalFiles) {
+bool save_eval(const std::optional<std::string>& filename,
+               NetSize                           netSize,
+               const EvalFiles&                  evalFiles) {
 
     std::string actualFilename;
     std::string msg;
