@@ -26,8 +26,8 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 
+#include "../evaluate.h"
 #include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
@@ -35,11 +35,6 @@
 
 namespace Stockfish {
 class Position;
-
-namespace Eval {
-struct EvalFile;
-}
-
 }
 
 namespace Stockfish::Eval::NNUE {
@@ -87,9 +82,7 @@ bool                       save_eval(std::ostream&      stream,
                                      NetSize            netSize,
                                      const std::string& name,
                                      const std::string& netDescription);
-bool                       save_eval(const std::optional<std::string>& filename,
-                                     NetSize                           netSize,
-                                     const std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile>&);
+bool save_eval(const std::optional<std::string>& filename, NetSize netSize, const EvalFiles&);
 
 }  // namespace Stockfish::Eval::NNUE
 

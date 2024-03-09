@@ -109,6 +109,7 @@ struct LimitsType {
         time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
         movestogo = depth = mate = perft = infinite = 0;
         nodes                                       = 0;
+        ponderMode                                  = false;
     }
 
     bool use_time_management() const { return time[WHITE] || time[BLACK]; }
@@ -117,6 +118,7 @@ struct LimitsType {
     TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
     int               movestogo, depth, mate, perft, infinite;
     uint64_t          nodes;
+    bool              ponderMode;
 };
 
 

@@ -163,13 +163,12 @@ void ThreadPool::clear() {
 void ThreadPool::start_thinking(const OptionsMap&  options,
                                 Position&          pos,
                                 StateListPtr&      states,
-                                Search::LimitsType limits,
-                                bool               ponderMode) {
+                                Search::LimitsType limits) {
 
     main_thread()->wait_for_search_finished();
 
     main_manager()->stopOnPonderhit = stop = abortedSearch = false;
-    main_manager()->ponder                                 = ponderMode;
+    main_manager()->ponder                                 = limits.ponderMode;
 
     increaseDepth = true;
 
