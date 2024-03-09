@@ -22,25 +22,25 @@
 #include <cassert>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <deque>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <vector>
-#include <cstdint>
 
 #include "benchmark.h"
 #include "evaluate.h"
 #include "movegen.h"
-#include "nnue/evaluate_nnue.h"
-#include "nnue/nnue_architecture.h"
+#include "nnue/network.h"
+#include "nnue/nnue_common.h"
+#include "perft.h"
 #include "position.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
 #include "types.h"
 #include "ucioption.h"
-#include "perft.h"
 
 namespace Stockfish {
 
@@ -48,17 +48,20 @@ constexpr auto StartFEN             = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
 constexpr int  NormalizeToPawnValue = 356;
 constexpr int  MaxHashMB            = Is64Bit ? 33554432 : 2048;
 
+
+namespace NN = Eval::NNUE;
+
+
 UCI::UCI(int argc, char** argv) :
+    networks(NN::Networks(
+      NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::embeddedNNUEBig),
+      NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::embeddedNNUESmall))),
     cli(argc, argv) {
-
-    evalFiles = {{Eval::NNUE::Big, {"EvalFile", EvalFileDefaultNameBig, "None", ""}},
-                 {Eval::NNUE::Small, {"EvalFileSmall", EvalFileDefaultNameSmall, "None", ""}}};
-
 
     options["Debug Log File"] << Option("", [](const Option& o) { start_logger(o); });
 
     options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
-        threads.set({options, threads, tt});
+        threads.set({options, threads, tt, networks});
     });
 
     options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) {
@@ -80,14 +83,17 @@ UCI::UCI(int argc, char** argv) :
     options["SyzygyProbeDepth"] << Option(1, 1, 100);
     options["Syzygy50MoveRule"] << Option(true);
     options["SyzygyProbeLimit"] << Option(7, 0, 7);
-    options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option&) {
-        evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
+    options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option& o) {
+        networks.big.load(cli.binaryDirectory, o);
     });
-    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, [this](const Option&) {
-        evalFiles = Eval::NNUE::load_networks(cli.binaryDirectory, options, evalFiles);
+    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, [this](const Option& o) {
+        networks.small.load(cli.binaryDirectory, o);
     });
 
-    threads.set({options, threads, tt});
+    networks.big.load(cli.binaryDirectory, options["EvalFile"]);
+    networks.small.load(cli.binaryDirectory, options["EvalFileSmall"]);
+
+    threads.set({options, threads, tt, networks});
 
     search_clear();  // After threads are up
 }
@@ -157,7 +163,7 @@ void UCI::loop() {
             std::string                f;
             if (is >> std::skipws >> f)
                 filename = f;
-            Eval::NNUE::save_eval(filename, Eval::NNUE::Big, evalFiles);
+            networks.big.save(filename);
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout
@@ -218,7 +224,8 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
 
     Search::LimitsType limits = parse_limits(pos, is);
 
-    Eval::NNUE::verify(options, evalFiles);
+    networks.big.verify(options["EvalFile"]);
+    networks.small.verify(options["EvalFileSmall"]);
 
     if (limits.perft)
     {
@@ -283,9 +290,11 @@ void UCI::trace_eval(Position& pos) {
     Position     p;
     p.set(pos.fen(), options["UCI_Chess960"], &states->back());
 
-    Eval::NNUE::verify(options, evalFiles);
+    networks.big.verify(options["EvalFile"]);
+    networks.small.verify(options["EvalFileSmall"]);
 
-    sync_cout << "\n" << Eval::trace(p) << sync_endl;
+
+    sync_cout << "\n" << Eval::trace(p, networks) << sync_endl;
 }
 
 void UCI::search_clear() {

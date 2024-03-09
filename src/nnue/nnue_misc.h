@@ -16,39 +16,47 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef EVALUATE_H_INCLUDED
-#define EVALUATE_H_INCLUDED
+#ifndef NNUE_MISC_H_INCLUDED
+#define NNUE_MISC_H_INCLUDED
 
+#include <cstddef>
 #include <string>
 
-#include "types.h"
+#include "../types.h"
+#include "nnue_architecture.h"
 
 namespace Stockfish {
 
 class Position;
 
-namespace Eval {
+namespace Eval::NNUE {
 
-constexpr inline int SmallNetThreshold = 1139, PsqtOnlyThreshold = 2500;
+struct EvalFile {
+    // Default net name, will use one of the macros above
+    std::string defaultName;
+    // Selected net name, either via uci option or default
+    std::string current;
+    // Net description extracted from the net file
+    std::string netDescription;
+};
 
-// The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
-// for the build process (profile-build and fishtest) to work. Do not change the
-// name of the macro, as it is used in the Makefile.
-#define EvalFileDefaultNameBig "nn-1ceb1ade0001.nnue"
-#define EvalFileDefaultNameSmall "nn-baff1ede1f90.nnue"
 
-namespace NNUE {
+struct NnueEvalTrace {
+    static_assert(LayerStacks == PSQTBuckets);
+
+    Value       psqt[LayerStacks];
+    Value       positional[LayerStacks];
+    std::size_t correctBucket;
+};
+
+
 struct Networks;
-}
-
-std::string trace(Position& pos, const Eval::NNUE::Networks& networks);
-
-int   simple_eval(const Position& pos, Color c);
-Value evaluate(const NNUE::Networks& networks, const Position& pos, int optimism);
 
 
-}  // namespace Eval
+std::string trace(Position& pos, const Networks& networks);
+void        hint_common_parent_position(const Position& pos, const Networks& networks);
 
+}  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
 
-#endif  // #ifndef EVALUATE_H_INCLUDED
+#endif  // #ifndef NNUE_MISC_H_INCLUDED
