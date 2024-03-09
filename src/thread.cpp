@@ -19,12 +19,12 @@
 #include "thread.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include <utility>
-#include <array>
 
 #include "misc.h"
 #include "movegen.h"
@@ -61,6 +61,7 @@ Thread::~Thread() {
     start_searching();
     stdThread.join();
 }
+
 
 // Wakes up the thread that will start the search
 void Thread::start_searching() {
@@ -108,6 +109,13 @@ void Thread::idle_loop() {
         worker->start_searching();
     }
 }
+
+Search::SearchManager* ThreadPool::main_manager() {
+    return static_cast<Search::SearchManager*>(main_thread()->worker.get()->manager.get());
+}
+
+uint64_t ThreadPool::nodes_searched() const { return accumulate(&Search::Worker::nodes); }
+uint64_t ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits); }
 
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
