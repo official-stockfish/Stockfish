@@ -79,8 +79,7 @@ class ThreadPool {
         }
     }
 
-    void
-    start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType, bool = false);
+    void start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType);
     void clear();
     void set(Search::SharedState);
 

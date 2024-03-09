@@ -26,7 +26,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 
 #include "../evaluate.h"
 #include "../misc.h"
@@ -36,11 +35,6 @@
 
 namespace Stockfish {
 class Position;
-
-namespace Eval {
-struct EvalFile;
-}
-
 }
 
 namespace Stockfish::Eval::NNUE {

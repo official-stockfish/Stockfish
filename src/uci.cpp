@@ -175,11 +175,9 @@ void UCI::loop() {
     } while (token != "quit" && cli.argc == 1);  // The command-line arguments are one-shot
 }
 
-void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
-
+Search::LimitsType UCI::parse_limits(const Position& pos, std::istream& is) {
     Search::LimitsType limits;
     std::string        token;
-    bool               ponderMode = false;
 
     limits.startTime = now();  // The search starts as early as possible
 
@@ -211,7 +209,14 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
         else if (token == "infinite")
             limits.infinite = 1;
         else if (token == "ponder")
-            ponderMode = true;
+            limits.ponderMode = true;
+
+    return limits;
+}
+
+void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
+
+    Search::LimitsType limits = parse_limits(pos, is);
 
     Eval::NNUE::verify(options, evalFiles);
 
@@ -221,7 +226,7 @@ void UCI::go(Position& pos, std::istringstream& is, StateListPtr& states) {
         return;
     }
 
-    threads.start_thinking(options, pos, states, limits, ponderMode);
+    threads.start_thinking(options, pos, states, limits);
 }
 
 void UCI::bench(Position& pos, std::istream& args, StateListPtr& states) {
