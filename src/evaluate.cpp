@@ -193,8 +193,8 @@ Value Eval::evaluate(const Position& pos, int optimism) {
     assert(!pos.checkers());
 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
-    bool smallNet   = std::abs(simpleEval) > 1139;
-    bool psqtOnly   = std::abs(simpleEval) > 2500;
+    bool smallNet   = std::abs(simpleEval) > NNUE::smallNetThreshold;
+    bool psqtOnly   = std::abs(simpleEval) > NNUE::psqtOnlyThreshold;
 
     int nnueComplexity;
 

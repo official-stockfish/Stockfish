@@ -59,6 +59,8 @@ enum NetSize : int;
 
 using EvalFiles = std::unordered_map<Eval::NNUE::NetSize, EvalFile>;
 
+constexpr inline int smallNetThreshold = 1139, psqtOnlyThreshold = 2500;
+
 EvalFiles load_networks(const std::string&, const OptionsMap&, EvalFiles);
 void      verify(const OptionsMap&, const EvalFiles&);
 
