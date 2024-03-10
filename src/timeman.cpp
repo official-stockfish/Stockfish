@@ -99,7 +99,7 @@ void TimeManagement::init(Search::LimitsType& limits,
         // Calculate time constants based on current time left.
         double optConstant = 0.004111 - 90.46 / (limits.time[us] + 76477.0);
         double maxConstant = std::max(3.39 + 3.01 * std::log10(limits.time[us] / 1000.0), 2.93);
-        sync_cout << "info optConstant " << optConstant << sync_endl;
+        //sync_cout << "info optConstant " << optConstant << sync_endl;
         //           stc 0.003399 ltc 0.00364723
         // 270/(+80)     0.0034       0.00374079
         // 278+307*      0.00290193   0.00327718
