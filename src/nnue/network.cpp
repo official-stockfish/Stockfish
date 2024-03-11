@@ -118,7 +118,7 @@ void Network<Arch, Transformer>::load(const std::string& rootDirectory, std::str
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
-    for (const std::string& directory : dirs)
+    for (const auto& directory : dirs)
     {
         if (evalFile.current != evalfilePath)
         {
@@ -145,7 +145,7 @@ bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename
         actualFilename = filename.value();
     else
     {
-        if (evalFile.current != (evalFile.defaultName))
+        if (evalFile.current != evalFile.defaultName)
         {
             msg = "Failed to export a net. "
                   "A non-embedded net can only be saved if the filename is specified";

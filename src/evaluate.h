@@ -33,7 +33,8 @@ constexpr inline int SmallNetThreshold = 1139, PsqtOnlyThreshold = 2500;
 
 // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
 // for the build process (profile-build and fishtest) to work. Do not change the
-// name of the macro, as it is used in the Makefile.
+// name of the macro or the location where this macro is defined, as it is used
+// in the Makefile/Fishtest.
 #define EvalFileDefaultNameBig "nn-1ceb1ade0001.nnue"
 #define EvalFileDefaultNameSmall "nn-baff1ede1f90.nnue"
 

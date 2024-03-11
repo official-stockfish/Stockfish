@@ -37,10 +37,8 @@
 
 namespace Stockfish {
 
-namespace Eval {
-namespace NNUE {
+namespace Eval::NNUE {
 struct Networks;
-}
 }
 
 // Different node types, used as a template parameter

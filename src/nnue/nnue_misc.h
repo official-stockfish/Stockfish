@@ -32,7 +32,8 @@ class Position;
 namespace Eval::NNUE {
 
 struct EvalFile {
-    // Default net name, will use one of the macros above
+    // Default net name, will use one of the EvalFileDefaultName* macros defined
+    // in evaluate.h
     std::string defaultName;
     // Selected net name, either via uci option or default
     std::string current;

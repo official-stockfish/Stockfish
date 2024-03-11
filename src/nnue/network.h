@@ -99,6 +99,7 @@ class Network {
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
 };
 
+// Definitions of the network types
 using SmallFeatureTransformer =
   FeatureTransformer<TransformedFeatureDimensionsSmall, &StateInfo::accumulatorSmall>;
 using SmallNetworkArchitecture =
@@ -108,8 +109,7 @@ using BigFeatureTransformer =
   FeatureTransformer<TransformedFeatureDimensionsBig, &StateInfo::accumulatorBig>;
 using BigNetworkArchitecture = NetworkArchitecture<TransformedFeatureDimensionsBig, L2Big, L3Big>;
 
-using NetworkBig = Network<BigNetworkArchitecture, BigFeatureTransformer>;
-
+using NetworkBig   = Network<BigNetworkArchitecture, BigFeatureTransformer>;
 using NetworkSmall = Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
 
 
