@@ -31,6 +31,8 @@ class OptionsMap;
 
 namespace Eval {
 
+constexpr inline int SmallNetThreshold = 1139, PsqtOnlyThreshold = 2500;
+
 std::string trace(Position& pos);
 
 int   simple_eval(const Position& pos, Color c);
