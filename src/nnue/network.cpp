@@ -55,14 +55,32 @@ const unsigned char        gEmbeddedNNUESmallData[1] = {0x0};
 const unsigned char* const gEmbeddedNNUESmallEnd     = &gEmbeddedNNUESmallData[1];
 const unsigned int         gEmbeddedNNUESmallSize    = 1;
 #endif
+
+struct EmbeddedNNUE {
+    EmbeddedNNUE(const unsigned char* embeddedData,
+                 const unsigned char* embeddedEnd,
+                 const unsigned int   embeddedSize) :
+        data(embeddedData),
+        end(embeddedEnd),
+        size(embeddedSize) {}
+    const unsigned char* data;
+    const unsigned char* end;
+    const unsigned int   size;
+};
+
+using namespace Stockfish::Eval::NNUE;
+
+EmbeddedNNUE get_embedded(EmbeddedNNUEType type) {
+    if (type == EmbeddedNNUEType::BIG)
+        return EmbeddedNNUE(gEmbeddedNNUEBigData, gEmbeddedNNUEBigEnd, gEmbeddedNNUEBigSize);
+    else
+        return EmbeddedNNUE(gEmbeddedNNUESmallData, gEmbeddedNNUESmallEnd, gEmbeddedNNUESmallSize);
+}
+
 }
 
 
 namespace Stockfish::Eval::NNUE {
-
-const EmbeddedNNUE embeddedNNUEBig(gEmbeddedNNUEBigData, gEmbeddedNNUEBigEnd, gEmbeddedNNUEBigSize);
-const EmbeddedNNUE
-  embeddedNNUESmall(gEmbeddedNNUESmallData, gEmbeddedNNUESmallEnd, gEmbeddedNNUESmallSize);
 
 
 namespace Detail {
@@ -301,6 +319,8 @@ void Network<Arch, Transformer>::load_internal() {
             setp(p, p + n);
         }
     };
+
+    const auto embedded = get_embedded(embeddedType);
 
     MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(embedded.data)),
                         size_t(embedded.size));

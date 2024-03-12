@@ -34,27 +34,19 @@
 
 namespace Stockfish::Eval::NNUE {
 
-struct EmbeddedNNUE {
-    EmbeddedNNUE(const unsigned char* embeddedData,
-                 const unsigned char* embeddedEnd,
-                 const unsigned int   embeddedSize) :
-        data(embeddedData),
-        end(embeddedEnd),
-        size(embeddedSize) {}
-    const unsigned char* data;
-    const unsigned char* end;
-    const unsigned int   size;
+
+enum class EmbeddedNNUEType {
+    BIG,
+    SMALL,
 };
 
-extern const EmbeddedNNUE embeddedNNUEBig;
-extern const EmbeddedNNUE embeddedNNUESmall;
 
 template<typename Arch, typename Transformer>
 class Network {
    public:
-    Network(EvalFile file, EmbeddedNNUE embeddedEval) :
+    Network(EvalFile file, EmbeddedNNUEType type) :
         evalFile(file),
-        embedded(embeddedEval) {}
+        embeddedType(type) {}
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
@@ -92,8 +84,8 @@ class Network {
     // Evaluation function
     AlignedPtr<Arch> network[LayerStacks];
 
-    EvalFile     evalFile;
-    EmbeddedNNUE embedded;
+    EvalFile         evalFile;
+    EmbeddedNNUEType embeddedType;
 
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();

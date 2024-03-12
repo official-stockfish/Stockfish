@@ -54,8 +54,8 @@ namespace NN = Eval::NNUE;
 
 UCI::UCI(int argc, char** argv) :
     networks(NN::Networks(
-      NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::embeddedNNUEBig),
-      NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::embeddedNNUESmall))),
+      NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
+      NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))),
     cli(argc, argv) {
 
     options["Debug Log File"] << Option("", [](const Option& o) { start_logger(o); });
