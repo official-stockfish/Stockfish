@@ -502,7 +502,7 @@ endif
 # In earlier NDK versions, you'll need to pass -fno-addrsig if using GNU binutils.
 # Currently we don't know how to make PGO builds with the NDK yet.
 ifeq ($(COMP),ndk)
-	CXXFLAGS += -stdlib=libc++ -fPIE -mcmodel=large
+	CXXFLAGS += -stdlib=libc++ -fPIE
 	comp=clang
 	ifeq ($(arch),armv7)
 		CXX=armv7a-linux-androideabi16-clang++
