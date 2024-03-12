@@ -190,18 +190,18 @@ void MovePicker::score() {
             m.value += bool(pos.check_squares(pt) & to) * 16384;
 
             // bonus for escaping from capture
-            m.value += threatenedPieces & from ? (pt == QUEEN && !(to & threatenedByRook)   ? 50000
-                                                  : pt == ROOK && !(to & threatenedByMinor) ? 25000
-                                                  : !(to & threatenedByPawn)                ? 15000
+            m.value += threatenedPieces & from ? (pt == QUEEN && !(to & threatenedByRook)   ? 51000
+                                                  : pt == ROOK && !(to & threatenedByMinor) ? 24950
+                                                  : !(to & threatenedByPawn)                ? 14450
                                                                                             : 0)
                                                : 0;
 
             // malus for putting piece en prise
             m.value -= !(threatenedPieces & from)
-                       ? (pt == QUEEN ? bool(to & threatenedByRook) * 50000
-                                          + bool(to & threatenedByMinor) * 10000
-                          : pt == ROOK ? bool(to & threatenedByMinor) * 25000
-                          : pt != PAWN ? bool(to & threatenedByPawn) * 15000
+                       ? (pt == QUEEN ? bool(to & threatenedByRook) * 48150
+                                          + bool(to & threatenedByMinor) * 10650
+                          : pt == ROOK ? bool(to & threatenedByMinor) * 24500
+                          : pt != PAWN ? bool(to & threatenedByPawn) * 14950
                                        : 0)
                        : 0;
         }
@@ -241,7 +241,7 @@ Move MovePicker::select(Pred filter) {
 // moves left, picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move(bool skipQuiets) {
 
-    auto quiet_threshold = [](Depth d) { return -3330 * d; };
+    auto quiet_threshold = [](Depth d) { return -3550 * d; };
 
 top:
     switch (stage)
