@@ -21,20 +21,16 @@
 
 #include <iostream>
 #include <string>
-#include <unordered_map>
 
-#include "evaluate.h"
 #include "misc.h"
+#include "nnue/network.h"
 #include "position.h"
+#include "search.h"
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
 
 namespace Stockfish {
-
-namespace Eval::NNUE {
-enum NetSize : int;
-}
 
 class Move;
 enum Square : int;
@@ -53,11 +49,12 @@ class UCI {
     static std::string wdl(Value v, int ply);
     static Move        to_move(const Position& pos, std::string& str);
 
-    const std::string& workingDirectory() const { return cli.workingDirectory; }
+    static Search::LimitsType parse_limits(const Position& pos, std::istream& is);
 
-    OptionsMap options;
+    const std::string& working_directory() const { return cli.workingDirectory; }
 
-    std::unordered_map<Eval::NNUE::NetSize, Eval::EvalFile> evalFiles;
+    OptionsMap           options;
+    Eval::NNUE::Networks networks;
 
    private:
     TranspositionTable tt;

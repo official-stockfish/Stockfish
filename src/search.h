@@ -25,8 +25,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "misc.h"
 #include "movepick.h"
@@ -36,6 +36,10 @@
 #include "types.h"
 
 namespace Stockfish {
+
+namespace Eval::NNUE {
+struct Networks;
+}
 
 // Different node types, used as a template parameter
 enum NodeType {
@@ -109,6 +113,7 @@ struct LimitsType {
         time[WHITE] = time[BLACK] = inc[WHITE] = inc[BLACK] = npmsec = movetime = TimePoint(0);
         movestogo = depth = mate = perft = infinite = 0;
         nodes                                       = 0;
+        ponderMode                                  = false;
     }
 
     bool use_time_management() const { return time[WHITE] || time[BLACK]; }
@@ -117,22 +122,27 @@ struct LimitsType {
     TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
     int               movestogo, depth, mate, perft, infinite;
     uint64_t          nodes;
+    bool              ponderMode;
 };
 
 
 // The UCI stores the uci options, thread pool, and transposition table.
 // This struct is used to easily forward data to the Search::Worker class.
 struct SharedState {
-    SharedState(const OptionsMap&   optionsMap,
-                ThreadPool&         threadPool,
-                TranspositionTable& transpositionTable) :
+    SharedState(const OptionsMap&           optionsMap,
+                ThreadPool&                 threadPool,
+                TranspositionTable&         transpositionTable,
+                const Eval::NNUE::Networks& nets) :
         options(optionsMap),
         threads(threadPool),
-        tt(transpositionTable) {}
+        tt(transpositionTable),
+        networks(nets) {}
 
-    const OptionsMap&   options;
-    ThreadPool&         threads;
-    TranspositionTable& tt;
+
+    const OptionsMap&           options;
+    ThreadPool&                 threads;
+    TranspositionTable&         tt;
+    const Eval::NNUE::Networks& networks;
 };
 
 class Worker;
@@ -173,6 +183,7 @@ class NullSearchManager: public ISearchManager {
    public:
     void check_time(Search::Worker&) override {}
 };
+
 
 // Search::Worker is the class that does the actual search.
 // It is instantiated once per thread, and it is responsible for keeping track
@@ -245,9 +256,10 @@ class Worker {
 
     Tablebases::Config tbConfig;
 
-    const OptionsMap&   options;
-    ThreadPool&         threads;
-    TranspositionTable& tt;
+    const OptionsMap&           options;
+    ThreadPool&                 threads;
+    TranspositionTable&         tt;
+    const Eval::NNUE::Networks& networks;
 
     friend class Stockfish::ThreadPool;
     friend class SearchManager;

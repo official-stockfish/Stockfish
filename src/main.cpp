@@ -17,10 +17,8 @@
 */
 
 #include <iostream>
-#include <unordered_map>
 
 #include "bitboard.h"
-#include "evaluate.h"
 #include "misc.h"
 #include "position.h"
 #include "tune.h"
@@ -39,8 +37,6 @@ int main(int argc, char* argv[]) {
     UCI uci(argc, argv);
 
     Tune::init(uci.options);
-
-    uci.evalFiles = Eval::NNUE::load_networks(uci.workingDirectory(), uci.options, uci.evalFiles);
 
     uci.loop();
 
