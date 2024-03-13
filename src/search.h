@@ -89,6 +89,7 @@ struct RootMove {
         return m.score != score ? m.score < score : m.previousScore < previousScore;
     }
 
+    uint64_t          effort          = 0;
     Value             score           = -VALUE_INFINITE;
     Value             previousScore   = -VALUE_INFINITE;
     Value             averageScore    = -VALUE_INFINITE;
@@ -229,8 +230,6 @@ class Worker {
         assert(thread_idx == 0);
         return static_cast<SearchManager*>(manager.get());
     }
-
-    std::array<std::array<uint64_t, SQUARE_NB>, SQUARE_NB> effort;
 
     LimitsType limits;
 
