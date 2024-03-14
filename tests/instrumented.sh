@@ -8,6 +8,13 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
+# Since Linux Kernel 6.5 we are getting false positives from the ci,
+# lower the ALSR entropy to disable ALSR, which works as a temporary workaround.
+# https://github.com/google/sanitizers/issues/1716
+# https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2056762
+sudo sysctl -w vm.mmap_rnd_bits=28
+
+
 # define suitable post and prefixes for testing options
 case $1 in
   --valgrind)
