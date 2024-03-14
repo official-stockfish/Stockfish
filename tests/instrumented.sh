@@ -97,6 +97,8 @@ do
 
 done
 
+./stockfish uci
+
 # verify the generated net equals the base net
 network=`./stockfish uci | grep 'option name EvalFile type string default' | awk '{print $NF}'`
 echo "Comparing $network to the written verify.nnue"
