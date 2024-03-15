@@ -69,10 +69,10 @@ class StatsEntry {
     operator const T&() const { return entry; }
 
     void operator<<(int bonus) {
-        assert(std::abs(bonus) <= D);  // Ensure range is [-D, D]
         static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
+        T truncatedBonus = std::clamp(bonus, -D, D); // Make sure that bonus isn't overflowing D
 
-        entry += bonus - entry * std::abs(bonus) / D;
+        entry += truncatedBonus - entry * std::abs(truncatedBonus) / D;
 
         assert(std::abs(entry) <= D);
     }
