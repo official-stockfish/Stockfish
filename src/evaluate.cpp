@@ -59,39 +59,39 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
                           : networks.big.evaluate(pos, true, &nnueComplexity, false);
     if (!smallNet){
         // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 524;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 31950;
+        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 513;
+        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32395;
 
         npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (927 + npm + 9 * pos.count<PAWN>()) + optimism * (159 + npm)) / 1000;
+        v   = (nnue * (919 + npm + 11 * pos.count<PAWN>()) + optimism * (145 + npm)) / 1036;
 
         // Damp down the evaluation linearly when shuffling
         shuffling = pos.rule50_count();
-        v             = v * (195 - shuffling) / 228;
+        v             = v * (178 - shuffling) / 204;
     }
     else if (psqtOnly){
         // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 524;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 31950;
+        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 517;
+        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32857;
 
         npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (927 + npm + 9 * pos.count<PAWN>()) + optimism * (159 + npm)) / 1000;
+        v   = (nnue * (908 + npm + 7 * pos.count<PAWN>()) + optimism * (155 + npm)) / 1019;
 
         // Damp down the evaluation linearly when shuffling
         shuffling = pos.rule50_count();
-        v             = v * (195 - shuffling) / 228;
+        v             = v * (224 - shuffling) / 238;
     }
-    else{
+    else {
         // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 524;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 31950;
+        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 499;
+        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32793;
 
         npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (927 + npm + 9 * pos.count<PAWN>()) + optimism * (159 + npm)) / 1000;
+        v   = (nnue * (903 + npm + 9 * pos.count<PAWN>()) + optimism * (147 + npm)) / 1067;
 
         // Damp down the evaluation linearly when shuffling
         shuffling = pos.rule50_count();
-        v             = v * (195 - shuffling) / 228;
+        v             = v * (208 - shuffling) / 211;
     }
   
     // Guarantee evaluation does not hit the tablebase range
