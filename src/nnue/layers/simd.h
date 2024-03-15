@@ -87,6 +87,21 @@ m512_hadd128x16_interleave(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum
     #endif
 }
 
+[[maybe_unused]] static void
+m512_add_dpbusd_epi32x2(__m512i& acc, __m512i a, __m512i b, __m512i c, __m512i d) {
+
+    #if defined(USE_VNNI)
+    acc = _mm512_dpbusd_epi32(acc, a, b);
+    acc = _mm512_dpbusd_epi32(acc, c, d);
+    #else
+    __m512i product0 = _mm512_maddubs_epi16(a, b);
+    __m512i product1 = _mm512_maddubs_epi16(c, d);
+    product0         = _mm512_add_epi16(product0, product1);
+    product0         = _mm512_madd_epi16(product0, _mm512_set1_epi16(1));
+    acc              = _mm512_add_epi32(acc, product0);
+    #endif
+}
+
 #endif
 
 #if defined(USE_AVX2)
@@ -109,6 +124,21 @@ m512_hadd128x16_interleave(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum
     #endif
 }
 
+[[maybe_unused]] static void
+m256_add_dpbusd_epi32x2(__m256i& acc, __m256i a, __m256i b, __m256i c, __m256i d) {
+
+    #if defined(USE_VNNI)
+    acc = _mm256_dpbusd_epi32(acc, a, b);
+    acc = _mm256_dpbusd_epi32(acc, c, d);
+    #else
+    __m256i product0 = _mm256_maddubs_epi16(a, b);
+    __m256i product1 = _mm256_maddubs_epi16(c, d);
+    product0         = _mm256_add_epi16(product0, product1);
+    product0         = _mm256_madd_epi16(product0, _mm256_set1_epi16(1));
+    acc              = _mm256_add_epi32(acc, product0);
+    #endif
+}
+
 #endif
 
 #if defined(USE_SSSE3)
@@ -122,6 +152,16 @@ m512_hadd128x16_interleave(__m512i sum0, __m512i sum1, __m512i sum2, __m512i sum
 [[maybe_unused]] static void m128_add_dpbusd_epi32(__m128i& acc, __m128i a, __m128i b) {
 
     __m128i product0 = _mm_maddubs_epi16(a, b);
+    product0         = _mm_madd_epi16(product0, _mm_set1_epi16(1));
+    acc              = _mm_add_epi32(acc, product0);
+}
+
+[[maybe_unused]] static void
+m128_add_dpbusd_epi32x2(__m128i& acc, __m128i a, __m128i b, __m128i c, __m128i d) {
+
+    __m128i product0 = _mm_maddubs_epi16(a, b);
+    __m128i product1 = _mm_maddubs_epi16(c, d);
+    product0         = _mm_add_epi16(product0, product1);
     product0         = _mm_madd_epi16(product0, _mm_set1_epi16(1));
     acc              = _mm_add_epi32(acc, product0);
 }

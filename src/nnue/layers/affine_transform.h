@@ -33,7 +33,7 @@
     - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
       - that's why AVX512 is hard to implement
     - expected use-case is small layers
-    - inputs are processed in chunks of 4, weights are respectively transposed
+    - inputs are processed in chunks of 4 (or 8 if conditions apply), weights are respectively transposed
     - accumulation happens directly to int32s
 */
 
@@ -200,18 +200,21 @@ class AffineTransform {
         #define vec_setzero _mm512_setzero_si512
         #define vec_set_32 _mm512_set1_epi32
         #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+        #define vec_add_dpbusd_32x2 Simd::m512_add_dpbusd_epi32x2
         #define vec_hadd Simd::m512_hadd
     #elif defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_setzero _mm256_setzero_si256
         #define vec_set_32 _mm256_set1_epi32
         #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
+        #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
         #define vec_hadd Simd::m256_hadd
     #elif defined(USE_SSSE3)
             using vec_t = __m128i;
         #define vec_setzero _mm_setzero_si128
         #define vec_set_32 _mm_set1_epi32
         #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32x2 Simd::m128_add_dpbusd_epi32x2
         #define vec_hadd Simd::m128_hadd
     #endif
 
@@ -219,7 +222,7 @@ class AffineTransform {
 
             static_assert(OutputDimensions % OutputSimdWidth == 0);
 
-            constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
+            constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 8;
             constexpr IndexType NumRegs   = OutputDimensions / OutputSimdWidth;
 
             const auto   input32 = reinterpret_cast<const std::int32_t*>(input);
@@ -228,14 +231,22 @@ class AffineTransform {
             for (IndexType k = 0; k < NumRegs; ++k)
                 acc[k] = biasvec[k];
 
-            for (IndexType i = 0; i < NumChunks; ++i)
+            for (int i = 0; i < int(NumChunks); ++i)
             {
-                const vec_t in0 = vec_set_32(input32[i]);
+                const vec_t in0 = vec_set_32(input32[i * 2 + 0]);
+                const vec_t in1 = vec_set_32(input32[i * 2 + 1]);
                 const auto  col0 =
-                  reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
+                  reinterpret_cast<const vec_t*>(&weights[(i * 2 + 0) * OutputDimensions * 4]);
+                const auto col1 =
+                  reinterpret_cast<const vec_t*>(&weights[(i * 2 + 1) * OutputDimensions * 4]);
 
                 for (IndexType k = 0; k < NumRegs; ++k)
-                    vec_add_dpbusd_32(acc[k], in0, col0[k]);
+                {
+                    // We can do 2 operations at once here because the inputs into this layer,
+                    // although are uint8_t, are actually clamped to [0, 127] in the previous layer
+                    // which prevents overflow.
+                    vec_add_dpbusd_32x2(acc[k], in0, col0[k], in1, col1[k]);
+                }
             }
 
             vec_t* outptr = reinterpret_cast<vec_t*>(output);
