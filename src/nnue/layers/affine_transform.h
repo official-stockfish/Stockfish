@@ -256,6 +256,7 @@ class AffineTransform {
     #undef vec_setzero
     #undef vec_set_32
     #undef vec_add_dpbusd_32
+    #undef vec_add_dpbusd_32x2
     #undef vec_hadd
         }
         else if constexpr (OutputDimensions == 1)

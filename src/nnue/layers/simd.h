@@ -175,6 +175,13 @@ dotprod_m128_add_dpbusd_epi32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
 
     acc = vdotq_s32(acc, a, b);
 }
+
+[[maybe_unused]] static void dotprod_m128_add_dpbusd_epi32x2(
+  int32x4_t& acc, int8x16_t a, int8x16_t b, int8x16_t c, int8x16_t d) {
+
+    acc = vdotq_s32(acc, a, b);
+    acc = vdotq_s32(acc, c, d);
+}
 #endif
 
 #if defined(USE_NEON)
@@ -200,6 +207,13 @@ dotprod_m128_add_dpbusd_epi32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
     int16x8_t product1 = vmull_high_s8(a, b);
     int16x8_t sum      = vpaddq_s16(product0, product1);
     acc                = vpadalq_s16(acc, sum);
+}
+
+[[maybe_unused]] static void
+neon_m128_add_dpbusd_epi32x2(int32x4_t& acc, int8x16_t a, int8x16_t b, int8x16_t c, int8x16_t d) {
+
+    neon_m128_add_dpbusd_epi32(acc, a, b);
+    neon_m128_add_dpbusd_epi32(acc, c, d);
 }
 #endif
 }
