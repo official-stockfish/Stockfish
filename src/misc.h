@@ -200,7 +200,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 // called to set group affinity for each thread. Original code from Texel by
 // Peter Österlund.
 namespace WinProcGroup {
-void bindThisThread(size_t idx);
+void bind_this_thread(size_t idx);
 }
 
 
