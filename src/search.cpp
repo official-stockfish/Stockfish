@@ -158,7 +158,7 @@ void Search::Worker::start_searching() {
     {
         rootMoves.emplace_back(Move::none());
         sync_cout << "info depth 0 score "
-                  << UCI::to_score(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW, rootPos)
+                  << UCIEngine::to_score(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW, rootPos)
                   << sync_endl;
     }
     else
@@ -204,11 +204,13 @@ void Search::Worker::start_searching() {
         sync_cout << main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth)
                   << sync_endl;
 
-    sync_cout << "bestmove " << UCI::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+    sync_cout << "bestmove "
+              << UCIEngine::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
 
     if (bestThread->rootMoves[0].pv.size() > 1
         || bestThread->rootMoves[0].extract_ponder_from_tt(tt, rootPos))
-        std::cout << " ponder " << UCI::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
+        std::cout << " ponder "
+                  << UCIEngine::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
     std::cout << sync_endl;
 }
@@ -933,7 +935,7 @@ moves_loop:  // When in check, search starts here
         if (rootNode && is_mainthread()
             && main_manager()->tm.elapsed(threads.nodes_searched()) > 3000)
             sync_cout << "info depth " << depth << " currmove "
-                      << UCI::move(move, pos.is_chess960()) << " currmovenumber "
+                      << UCIEngine::move(move, pos.is_chess960()) << " currmovenumber "
                       << moveCount + thisThread->pvIdx << sync_endl;
         if (PvNode)
             (ss + 1)->pv = nullptr;
@@ -1904,10 +1906,10 @@ std::string SearchManager::pv(const Search::Worker&     worker,
 
         ss << "info"
            << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
-           << " score " << UCI::to_score(v, pos);
+           << " score " << UCIEngine::to_score(v, pos);
 
         if (worker.options["UCI_ShowWDL"])
-            ss << UCI::wdl(v, pos);
+            ss << UCIEngine::wdl(v, pos);
 
         if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
             ss << (rootMoves[i].scoreLowerbound
@@ -1918,7 +1920,7 @@ std::string SearchManager::pv(const Search::Worker&     worker,
            << " tbhits " << tbHits << " time " << time << " pv";
 
         for (Move m : rootMoves[i].pv)
-            ss << " " << UCI::move(m, pos.is_chess960());
+            ss << " " << UCIEngine::move(m, pos.is_chess960());
     }
 
     return ss.str();
