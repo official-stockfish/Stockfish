@@ -344,8 +344,8 @@ std::pair<double, double> win_rate_params(const Position& pos) {
     int material = pos.count<PAWN>() + 3 * pos.count<KNIGHT>() + 3 * pos.count<BISHOP>()
                  + 5 * pos.count<ROOK>() + 9 * pos.count<QUEEN>();
 
-    // The fitted model only uses data for material counts in [10, 78], and is anchored at count 62.
-    double m = std::clamp(material, 10, 78) / 62.0;
+    // The fitted model only uses data for material counts in [10, 78], and is anchored at count 58.
+    double m = std::clamp(material, 10, 78) / 58.0;
 
     // Return a = p_a(material) and b = p_b(material), see github.com/official-stockfish/WDL_model
     constexpr double as[] = {-185.71965483, 504.85014385, -438.58295743, 474.04604627};
