@@ -42,11 +42,11 @@ class UCI {
 
     void loop();
 
-    static int         to_cp(Value v);
-    static std::string value(Value v);
+    static int         to_cp(Value v, const Position& pos);
+    static std::string to_score(Value v, const Position& pos);
     static std::string square(Square s);
     static std::string move(Move m, bool chess960);
-    static std::string wdl(Value v, int ply);
+    static std::string wdl(Value v, const Position& pos);
     static Move        to_move(const Position& pos, std::string& str);
 
     static Search::LimitsType parse_limits(const Position& pos, std::istream& is);
