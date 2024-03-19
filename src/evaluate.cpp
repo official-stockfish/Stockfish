@@ -53,6 +53,9 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
     bool smallNet   = std::abs(simpleEval) > SmallNetThreshold;
     bool psqtOnly   = std::abs(simpleEval) > PsqtOnlyThreshold;
     int nnueComplexity;
+
+    Value nnue = smallNet ? networks.small.evaluate(pos, true, &nnueComplexity, psqtOnly)
+                          : networks.big.evaluate(pos, true, &nnueComplexity, false);
   
     const auto adjustEval = [&](int optDiv, int nnueDiv, int pawnCountConstant, int pawnCountMul,
                                 int npmConstant, int evalDiv, int shufflingConstant,
@@ -61,13 +64,13 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / optDiv;
         nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / nnueDiv;
 
-        npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (pawnCountConstant + npm + pawnCountMul * pos.count<PAWN>())
+        int npm = pos.non_pawn_material() / 64;
+        int v   = (nnue * (pawnCountConstant + npm + pawnCountMul * pos.count<PAWN>())
              + optimism * (npmConstant + npm))
           / evalDiv;
 
         // Damp down the evaluation linearly when shuffling
-        shuffling = pos.rule50_count();
+        int shuffling = pos.rule50_count();
         v         = v * (shufflingConstant - shuffling) / shufflingDiv;
     };
 
