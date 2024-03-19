@@ -53,7 +53,8 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
     bool smallNet   = std::abs(simpleEval) > SmallNetThreshold;
     bool psqtOnly   = std::abs(simpleEval) > PsqtOnlyThreshold;
     int nnueComplexity;
-
+    int v;
+  
     Value nnue = smallNet ? networks.small.evaluate(pos, true, &nnueComplexity, psqtOnly)
                           : networks.big.evaluate(pos, true, &nnueComplexity, false);
   
@@ -65,7 +66,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
         nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / nnueDiv;
 
         int npm = pos.non_pawn_material() / 64;
-        int v   = (nnue * (pawnCountConstant + npm + pawnCountMul * pos.count<PAWN>())
+        v   = (nnue * (pawnCountConstant + npm + pawnCountMul * pos.count<PAWN>())
              + optimism * (npmConstant + npm))
           / evalDiv;
 
