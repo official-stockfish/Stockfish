@@ -61,7 +61,9 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
     int evalDiv[3] = {1036, 1067, 1019};
     int shufflingConstant[3] = {178, 208, 224};
     int shufflingDiv[3] = {204, 211, 238};
-    int netIndex = smallNet + psqtOnly;
+    int netIndex = 0;
+    netIndex += smallNet;
+    netIndex += psqtOnly;
       
     Value nnue = smallNet ? networks.small.evaluate(pos, true, &nnueComplexity, psqtOnly)
                           : networks.big.evaluate(pos, true, &nnueComplexity, false);
