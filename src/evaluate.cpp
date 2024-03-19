@@ -52,47 +52,30 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
     bool smallNet   = std::abs(simpleEval) > SmallNetThreshold;
     bool psqtOnly   = std::abs(simpleEval) > PsqtOnlyThreshold;
-    int npm, v, shuffling;
     int nnueComplexity;
-
+    int optDiv[3] = {513, 499, 517};
+    int nnueDiv[3] = {32395, 32793, 32857};
+    int pawnCountConstant[3] = {919, 903, 908};
+    int pawnCountMul[3] = {11, 9, 7};
+    int npmConstant[3] = {145, 147, 155};
+    int evalDiv[3] = {1036, 1067, 1019};
+    int shufflingConstant[3] = {178, 208, 224};
+    int shufflingDiv[3] = {204, 211, 238};
+    int netIndex = smallNet + psqtOnly;
+      
     Value nnue = smallNet ? networks.small.evaluate(pos, true, &nnueComplexity, psqtOnly)
                           : networks.big.evaluate(pos, true, &nnueComplexity, false);
-    if (!smallNet){
-        // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 513;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32395;
 
-        npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (919 + npm + 11 * pos.count<PAWN>()) + optimism * (145 + npm)) / 1036;
+    // Blend optimism and eval with nnue complexity and material imbalance
+    optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / optDiv[netIndex];
+    nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / nnueDiv[netIndex];
 
-        // Damp down the evaluation linearly when shuffling
-        shuffling = pos.rule50_count();
-        v             = v * (178 - shuffling) / 204;
-    }
-    else if (psqtOnly){
-        // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 517;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32857;
+    int npm = pos.non_pawn_material() / 64;
+    int v   = (nnue * (npm + pawnCountConstant[netIndex] + pawnCountMul[netIndex] * pos.count<PAWN>()) + optimism * (npmConstant[netIndex] + npm)) / evalDiv[netIndex];
 
-        npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (908 + npm + 7 * pos.count<PAWN>()) + optimism * (155 + npm)) / 1019;
-
-        // Damp down the evaluation linearly when shuffling
-        shuffling = pos.rule50_count();
-        v             = v * (224 - shuffling) / 238;
-    }
-    else {
-        // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 499;
-        nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / 32793;
-
-        npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (903 + npm + 9 * pos.count<PAWN>()) + optimism * (147 + npm)) / 1067;
-
-        // Damp down the evaluation linearly when shuffling
-        shuffling = pos.rule50_count();
-        v             = v * (208 - shuffling) / 211;
-    }
+    // Damp down the evaluation linearly when shuffling
+    int shuffling = pos.rule50_count();
+    v             = v * (shufflingConstant[netIndex] - shuffling) / shufflingDiv[netIndex];
   
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
