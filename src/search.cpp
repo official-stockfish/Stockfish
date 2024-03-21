@@ -155,7 +155,8 @@ void Search::Worker::start_searching() {
     {
         rootMoves.emplace_back(Move::none());
         sync_cout << "info depth 0 score "
-                  << UCI::value(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW) << sync_endl;
+                  << UCI::to_score(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW, rootPos)
+                  << sync_endl;
     }
     else
     {
@@ -1116,10 +1117,6 @@ moves_loop:  // When in check, search starts here
         if (PvNode)
             r--;
 
-        // Increase reduction on repetition (~1 Elo)
-        if (move == (ss - 4)->currentMove && pos.has_repeated())
-            r += 2;
-
         // Increase reduction if next ply has a lot of fail high (~5 Elo)
         if ((ss + 1)->cutoffCnt > 3)
             r++;
@@ -1898,10 +1895,10 @@ std::string SearchManager::pv(const Search::Worker&     worker,
 
         ss << "info"
            << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
-           << " score " << UCI::value(v);
+           << " score " << UCI::to_score(v, pos);
 
         if (worker.options["UCI_ShowWDL"])
-            ss << UCI::wdl(v, pos.game_ply());
+            ss << UCI::wdl(v, pos);
 
         if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
             ss << (rootMoves[i].scoreLowerbound
