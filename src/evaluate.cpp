@@ -52,8 +52,8 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
     bool smallNet   = std::abs(simpleEval) > SmallNetThreshold;
     bool psqtOnly   = std::abs(simpleEval) > PsqtOnlyThreshold;
-    int nnueComplexity;
-    int v;
+    int  nnueComplexity;
+    int  v;
 
     Value nnue = smallNet ? networks.small.evaluate(pos, true, &nnueComplexity, psqtOnly)
                           : networks.big.evaluate(pos, true, &nnueComplexity, false);
@@ -66,13 +66,13 @@ Value Eval::evaluate(const Eval::NNUE::Networks& networks, const Position& pos, 
         nnue -= nnue * (nnueComplexity + std::abs(simpleEval - nnue)) / nnueDiv;
 
         int npm = pos.non_pawn_material() / 64;
-        v   = (nnue * (npm + pawnCountConstant + pawnCountMul * pos.count<PAWN>())
+        v       = (nnue * (npm + pawnCountConstant + pawnCountMul * pos.count<PAWN>())
              + optimism * (npmConstant + npm))
           / evalDiv;
 
         // Damp down the evaluation linearly when shuffling
         int shuffling = pos.rule50_count();
-        v         = v * (shufflingConstant - shuffling) / shufflingDiv;
+        v             = v * (shufflingConstant - shuffling) / shufflingDiv;
     };
 
     if (!smallNet)
@@ -105,11 +105,11 @@ std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     Value v = networks.big.evaluate(pos, false);
     v       = pos.side_to_move() == WHITE ? v : -v;
-    ss << "NNUE evaluation        " << 0.01 * UCI::to_cp(v) << " (white side)\n";
+    ss << "NNUE evaluation        " << 0.01 * UCI::to_cp(v, pos) << " (white side)\n";
 
     v = evaluate(networks, pos, VALUE_ZERO);
     v = pos.side_to_move() == WHITE ? v : -v;
-    ss << "Final evaluation       " << 0.01 * UCI::to_cp(v) << " (white side)";
+    ss << "Final evaluation       " << 0.01 * UCI::to_cp(v, pos) << " (white side)";
     ss << " [with scaled NNUE, ...]";
     ss << "\n";
 
