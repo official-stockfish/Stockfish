@@ -159,11 +159,16 @@ void UCI::loop() {
             sync_cout << compiler_info() << sync_endl;
         else if (token == "export_net")
         {
-            std::optional<std::string> filename;
-            std::string                f;
-            if (is >> std::skipws >> f)
-                filename = f;
-            networks.big.save(filename);
+            std::pair<std::optional<std::string>, std::string> files[2];
+
+            if (is >> std::skipws >> files[0].second)
+                files[0].first = files[0].second;
+
+            if (is >> std::skipws >> files[1].second)
+                files[1].first = files[1].second;
+
+            networks.big.save(files[0].first);
+            networks.small.save(files[1].first);
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout
