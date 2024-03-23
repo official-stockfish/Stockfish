@@ -21,19 +21,17 @@
 
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include "engine.h"
 #include "misc.h"
-#include "nnue/network.h"
-#include "position.h"
 #include "search.h"
-#include "thread.h"
-#include "tt.h"
-#include "ucioption.h"
 
 namespace Stockfish {
 
+class Position;
 class Move;
+class Score;
 enum Square : int;
 using Value = int;
 
@@ -44,13 +42,15 @@ class UCIEngine {
     void loop();
 
     static int         to_cp(Value v, const Position& pos);
-    static std::string to_score(Value v, const Position& pos);
+    static std::string format_score(const Score& s);
     static std::string square(Square s);
     static std::string move(Move m, bool chess960);
     static std::string wdl(Value v, const Position& pos);
     static Move        to_move(const Position& pos, std::string str);
 
     static Search::LimitsType parse_limits(const Position& pos, std::istream& is);
+
+    auto& engine_options() { return engine.get_options(); }
 
    private:
     Engine      engine;
@@ -60,6 +60,11 @@ class UCIEngine {
     void bench(Position& pos, std::istream& args);
     void position(std::istringstream& is);
     void setoption(std::istringstream& is);
+
+    static void on_update_no_moves(const Engine::InfoShort& info);
+    static void on_update_full(const Engine::InfoFull& info, bool showWDL);
+    static void on_iter(const Engine::InfoIter& info);
+    static void on_bestmove(std::string_view bestmove, std::string_view ponder);
 };
 
 }  // namespace Stockfish

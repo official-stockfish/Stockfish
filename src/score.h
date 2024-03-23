@@ -16,29 +16,54 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#ifndef SCORE_H_INCLUDED
+#define SCORE_H_INCLUDED
 
-#include "bitboard.h"
-#include "misc.h"
-#include "position.h"
+#include <variant>
+#include <utility>
+
 #include "types.h"
-#include "uci.h"
-#include "tune.h"
 
-using namespace Stockfish;
+namespace Stockfish {
 
-int main(int argc, char* argv[]) {
+class Position;
 
-    std::cout << engine_info() << std::endl;
+class Score {
+   public:
+    struct Mate {
+        int plies;
+    };
 
-    Bitboards::init();
-    Position::init();
+    struct TBWin {
+        int plies;
+    };
 
-    UCIEngine uci(argc, argv);
+    struct InternalUnits {
+        int value;
+    };
 
-    Tune::init(uci.engine_options());
+    Score() = default;
+    Score(Value v, const Position& pos);
 
-    uci.loop();
+    template<typename T>
+    bool is() const {
+        return std::holds_alternative<T>(score);
+    }
 
-    return 0;
+    template<typename T>
+    T get() const {
+        return std::get<T>(score);
+    }
+
+    template<typename F>
+    decltype(auto) visit(F&& f) const {
+        return std::visit(std::forward<F>(f), score);
+    }
+
+   private:
+    std::variant<Mate, TBWin, InternalUnits> score;
+};
+
 }
+
+#endif  // #ifndef SCORE_H_INCLUDED

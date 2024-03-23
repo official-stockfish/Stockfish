@@ -119,7 +119,8 @@ uint64_t ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
-void ThreadPool::set(Search::SharedState sharedState) {
+void ThreadPool::set(Search::SharedState                         sharedState,
+                     const Search::SearchManager::UpdateContext& updateContext) {
 
     if (threads.size() > 0)  // destroy any existing thread(s)
     {
@@ -133,14 +134,15 @@ void ThreadPool::set(Search::SharedState sharedState) {
 
     if (requested > 0)  // create new thread(s)
     {
-        threads.push_back(new Thread(
-          sharedState, std::unique_ptr<Search::ISearchManager>(new Search::SearchManager()), 0));
-
+        auto manager = std::make_unique<Search::SearchManager>(updateContext);
+        threads.push_back(new Thread(sharedState, std::move(manager), 0));
 
         while (threads.size() < requested)
-            threads.push_back(new Thread(
-              sharedState, std::unique_ptr<Search::ISearchManager>(new Search::NullSearchManager()),
-              threads.size()));
+        {
+            auto null_manager = std::make_unique<Search::NullSearchManager>();
+            threads.push_back(new Thread(sharedState, std::move(null_manager), threads.size()));
+        }
+
         clear();
 
         main_thread()->wait_for_search_finished();
