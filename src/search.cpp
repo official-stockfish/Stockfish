@@ -74,10 +74,10 @@ Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
 }
 
 // History and stats update bonus, based on depth
-int stat_bonus(Depth d) { return std::min(223 * d - 332, 1258); }
+int stat_bonus(Depth d) { return std::clamp(245 * d - 320, 0, 1296); }
 
 // History and stats update malus, based on depth
-int stat_malus(Depth d) { return std::min(536 * d - 299, 1353); }
+int stat_malus(Depth d) { return (d < 4 ? 554 * d - 303 : 1203); }
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
 Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
@@ -1709,7 +1709,7 @@ void update_all_stats(const Position& pos,
 
     if (!pos.capture_stage(bestMove))
     {
-        int bestMoveBonus = bestValue > beta + 173 ? quietMoveBonus      // larger bonus
+        int bestMoveBonus = bestValue > beta + 168 ? quietMoveBonus      // larger bonus
                                                    : stat_bonus(depth);  // smaller bonus
 
         // Increase stats for the best move in case it was a quiet move
