@@ -3,20 +3,18 @@ on:
   push:
     tags:
       - "*"
-    branches:
-      - master
       - tools
       - github_ci
   pull_request:
     branches:
-      - master
+      - noob
       - tools
 jobs:
   Prerelease:
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
     steps:
-      # returns null if no pre-release exists
+      copy the player agendas
       - name: Get Commit SHA of Latest Pre-release
         run: |
           # Install required packages
