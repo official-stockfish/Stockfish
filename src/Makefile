@@ -464,6 +464,10 @@ ifeq ($(COMP),clang)
 	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-prototypes \
 	            -Wconditional-uninitialized
 
+	ifneq ($(KERNEL),Darwin)
+		LDFLAGS += -fuse-ld=lld
+	endif
+
 	ifeq ($(filter $(KERNEL),Darwin OpenBSD FreeBSD),)
 	ifeq ($(target_windows),)
 	ifneq ($(RTLIB),compiler-rt)
@@ -759,9 +763,6 @@ ifeq ($(debug), no)
 		ifeq ($(comp),icx)
 			CXXFLAGS += -fwhole-program-vtables
                 endif
-		ifeq ($(target_windows),yes)
-			CXXFLAGS += -fuse-ld=lld
-		endif
 		LDFLAGS += $(CXXFLAGS)
 
 # GCC and CLANG use different methods for parallelizing LTO and CLANG pretends to be
