@@ -243,144 +243,145 @@ Move MovePicker::next_move(bool skipQuiets) {
 
     auto quiet_threshold = [](Depth d) { return -3550 * d; };
 
-top:
-    switch (stage)
+    while (true)
     {
-
-    case MAIN_TT :
-    case EVASION_TT :
-    case QSEARCH_TT :
-    case PROBCUT_TT :
-        ++stage;
-        return ttMove;
-
-    case CAPTURE_INIT :
-    case PROBCUT_INIT :
-    case QCAPTURE_INIT :
-        cur = endBadCaptures = moves;
-        endMoves             = generate<CAPTURES>(pos, cur);
-
-        score<CAPTURES>();
-        partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
-        ++stage;
-        goto top;
-
-    case GOOD_CAPTURE :
-        if (select<Next>([&]() {
-                // Move losing capture to endBadCaptures to be tried later
-                return pos.see_ge(*cur, -cur->value / 18) ? true
-                                                          : (*endBadCaptures++ = *cur, false);
-            }))
-            return *(cur - 1);
-
-        // Prepare the pointers to loop over the refutations array
-        cur      = std::begin(refutations);
-        endMoves = std::end(refutations);
-
-        // If the countermove is the same as a killer, skip it
-        if (refutations[0] == refutations[2] || refutations[1] == refutations[2])
-            --endMoves;
-
-        ++stage;
-        [[fallthrough]];
-
-    case REFUTATION :
-        if (select<Next>([&]() {
-                return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
-            }))
-            return *(cur - 1);
-        ++stage;
-        [[fallthrough]];
-
-    case QUIET_INIT :
-        if (!skipQuiets)
+        switch (stage)
         {
-            cur      = endBadCaptures;
-            endMoves = beginBadQuiets = endBadQuiets = generate<QUIETS>(pos, cur);
 
-            score<QUIETS>();
-            partial_insertion_sort(cur, endMoves, quiet_threshold(depth));
-        }
+        case MAIN_TT :
+        case EVASION_TT :
+        case QSEARCH_TT :
+        case PROBCUT_TT :
+            ++stage;
+            return ttMove;
 
-        ++stage;
-        [[fallthrough]];
+        case CAPTURE_INIT :
+        case PROBCUT_INIT :
+        case QCAPTURE_INIT :
+            cur = endBadCaptures = moves;
+            endMoves             = generate<CAPTURES>(pos, cur);
 
-    case GOOD_QUIET :
-        if (!skipQuiets && select<Next>([&]() {
-                return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
-            }))
-        {
-            if ((cur - 1)->value > -8000 || (cur - 1)->value <= quiet_threshold(depth))
+            score<CAPTURES>();
+            partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
+            ++stage;
+            continue;
+
+        case GOOD_CAPTURE :
+            if (select<Next>([&]() {
+                    // Move losing capture to endBadCaptures to be tried later
+                    return pos.see_ge(*cur, -cur->value / 18) ? true
+                                                              : (*endBadCaptures++ = *cur, false);
+                }))
                 return *(cur - 1);
 
-            // Remaining quiets are bad
-            beginBadQuiets = cur - 1;
-        }
+            // Prepare the pointers to loop over the refutations array
+            cur      = std::begin(refutations);
+            endMoves = std::end(refutations);
 
-        // Prepare the pointers to loop over the bad captures
-        cur      = moves;
-        endMoves = endBadCaptures;
+            // If the countermove is the same as a killer, skip it
+            if (refutations[0] == refutations[2] || refutations[1] == refutations[2])
+                --endMoves;
 
-        ++stage;
-        [[fallthrough]];
+            ++stage;
+            [[fallthrough]];
 
-    case BAD_CAPTURE :
-        if (select<Next>([]() { return true; }))
-            return *(cur - 1);
+        case REFUTATION :
+            if (select<Next>([&]() {
+                    return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
+                }))
+                return *(cur - 1);
+            ++stage;
+            [[fallthrough]];
 
-        // Prepare the pointers to loop over the bad quiets
-        cur      = beginBadQuiets;
-        endMoves = endBadQuiets;
+        case QUIET_INIT :
+            if (!skipQuiets)
+            {
+                cur      = endBadCaptures;
+                endMoves = beginBadQuiets = endBadQuiets = generate<QUIETS>(pos, cur);
 
-        ++stage;
-        [[fallthrough]];
+                score<QUIETS>();
+                partial_insertion_sort(cur, endMoves, quiet_threshold(depth));
+            }
 
-    case BAD_QUIET :
-        if (!skipQuiets)
-            return select<Next>([&]() {
-                return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
-            });
+            ++stage;
+            [[fallthrough]];
 
-        return Move::none();
+        case GOOD_QUIET :
+            if (!skipQuiets && select<Next>([&]() {
+                    return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
+                }))
+            {
+                if ((cur - 1)->value > -8000 || (cur - 1)->value <= quiet_threshold(depth))
+                    return *(cur - 1);
 
-    case EVASION_INIT :
-        cur      = moves;
-        endMoves = generate<EVASIONS>(pos, cur);
+                // Remaining quiets are bad
+                beginBadQuiets = cur - 1;
+            }
 
-        score<EVASIONS>();
-        ++stage;
-        [[fallthrough]];
+            // Prepare the pointers to loop over the bad captures
+            cur      = moves;
+            endMoves = endBadCaptures;
 
-    case EVASION :
-        return select<Best>([]() { return true; });
+            ++stage;
+            [[fallthrough]];
 
-    case PROBCUT :
-        return select<Next>([&]() { return pos.see_ge(*cur, threshold); });
+        case BAD_CAPTURE :
+            if (select<Next>([]() { return true; }))
+                return *(cur - 1);
 
-    case QCAPTURE :
-        if (select<Next>([]() { return true; }))
-            return *(cur - 1);
+            // Prepare the pointers to loop over the bad quiets
+            cur      = beginBadQuiets;
+            endMoves = endBadQuiets;
 
-        // If we did not find any move and we do not try checks, we have finished
-        if (depth != DEPTH_QS_CHECKS)
+            ++stage;
+            [[fallthrough]];
+
+        case BAD_QUIET :
+            if (!skipQuiets)
+                return select<Next>([&]() {
+                    return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
+                });
+
             return Move::none();
 
-        ++stage;
-        [[fallthrough]];
+        case EVASION_INIT :
+            cur      = moves;
+            endMoves = generate<EVASIONS>(pos, cur);
 
-    case QCHECK_INIT :
-        cur      = moves;
-        endMoves = generate<QUIET_CHECKS>(pos, cur);
+            score<EVASIONS>();
+            ++stage;
+            [[fallthrough]];
 
-        ++stage;
-        [[fallthrough]];
+        case EVASION :
+            return select<Best>([]() { return true; });
 
-    case QCHECK :
-        return select<Next>([]() { return true; });
+        case PROBCUT :
+            return select<Next>([&]() { return pos.see_ge(*cur, threshold); });
+
+        case QCAPTURE :
+            if (select<Next>([]() { return true; }))
+                return *(cur - 1);
+
+            // If we did not find any move and we do not try checks, we have finished
+            if (depth != DEPTH_QS_CHECKS)
+                return Move::none();
+
+            ++stage;
+            [[fallthrough]];
+
+        case QCHECK_INIT :
+            cur      = moves;
+            endMoves = generate<QUIET_CHECKS>(pos, cur);
+
+            ++stage;
+            [[fallthrough]];
+
+        case QCHECK :
+            return select<Next>([]() { return true; });
+        }
     }
 
     assert(false);
-    return Move::none();  // Silence warning
 }
 
 }  // namespace Stockfish
