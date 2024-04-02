@@ -287,7 +287,8 @@ Move MovePicker::next_move(bool skipQuiets) {
 
         case REFUTATION :
             if (select<Next>([&]() {
-                    return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
+                    return *cur != Move::none() && !pos.capture_stage(*cur)
+                        && pos.pseudo_legal(*cur);
                 }))
                 return *(cur - 1);
             ++stage;
@@ -308,7 +309,8 @@ Move MovePicker::next_move(bool skipQuiets) {
 
         case GOOD_QUIET :
             if (!skipQuiets && select<Next>([&]() {
-                    return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
+                    return *cur != refutations[0] && *cur != refutations[1]
+                        && *cur != refutations[2];
                 }))
             {
                 if ((cur - 1)->value > -8000 || (cur - 1)->value <= quiet_threshold(depth))
@@ -339,7 +341,8 @@ Move MovePicker::next_move(bool skipQuiets) {
         case BAD_QUIET :
             if (!skipQuiets)
                 return select<Next>([&]() {
-                    return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
+                    return *cur != refutations[0] && *cur != refutations[1]
+                        && *cur != refutations[2];
                 });
 
             return Move::none();
