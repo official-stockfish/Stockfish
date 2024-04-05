@@ -10,7 +10,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
@@ -50,7 +50,7 @@ jobs:
         run: make net
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Test help target
         run: make help
@@ -59,7 +59,7 @@ jobs:
         run: git --version
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Show g++ cpu info
         if: runner.os != 'macOS'
