@@ -11,7 +11,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
