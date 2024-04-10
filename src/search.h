@@ -275,6 +275,8 @@ class Worker {
         return static_cast<SearchManager*>(manager.get());
     }
 
+    TimePoint elapsed() const;
+
     LimitsType limits;
 
     size_t                pvIdx, pvLast;
