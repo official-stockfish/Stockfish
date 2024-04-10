@@ -3,8 +3,8 @@
  * @author Dale Weiler
  * @brief Utility for including binary files
  *
- * Facilities for including binary files into the current translation unit and
- * making use from them externally in other translation units.
+ * Facilities for including binary files into the current translation unit
+ * and making use of them externally in other translation units.
  */
 #ifndef INCBIN_HDR
 #define INCBIN_HDR
@@ -139,7 +139,7 @@
 #endif
 
 #if defined(__APPLE__)
-/* The directives are different for Apple branded compilers */
+/* The directives are different for Apple-branded compilers */
 #  define INCBIN_SECTION         INCBIN_OUTPUT_SECTION "\n"
 #  define INCBIN_GLOBAL(NAME)    ".globl " INCBIN_MANGLE INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME "\n"
 #  define INCBIN_INT             ".long "
@@ -261,8 +261,8 @@
     INCBIN_STRINGIZE( \
         INCBIN_STYLE_IDENT(TYPE)) \
 
-/* Generate the global labels by indirectly invoking the macro with our style
- * type and concatenating the name against them. */
+/* Generate the global labels by indirectly invoking the macro
+ * with our style type and concatenate the name against them. */
 #define INCBIN_GLOBAL_LABELS(NAME, TYPE) \
     INCBIN_INVOKE( \
         INCBIN_GLOBAL, \

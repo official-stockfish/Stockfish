@@ -1,0 +1,7 @@
+# .git-blame-ignore-revs
+# Ignore commit which added clang-format
+2d0237db3f0e596fb06e3ffbadba84dcc4e018f6
+
+# Post commit formatting fixes
+0fca5605fa2e5e7240fde5e1aae50952b2612231
+08ed4c90db31959521b7ef3186c026edd1e90307

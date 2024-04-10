@@ -1,0 +1,365 @@
+name: Tests
+on:
+  workflow_call:
+jobs:
+  Test-Targets:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    env:
+      COMPILER: ${{ matrix.config.compiler }}
+      COMP: ${{ matrix.config.comp }}
+      CXXFLAGS: "-Werror"
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Ubuntu 20.04 GCC
+            os: ubuntu-20.04
+            compiler: g++
+            comp: gcc
+            run_32bit_tests: true
+            run_64bit_tests: true
+            shell: bash
+          - name: Ubuntu 20.04 Clang
+            os: ubuntu-20.04
+            compiler: clang++
+            comp: clang
+            run_32bit_tests: true
+            run_64bit_tests: true
+            shell: bash
+          - name: Android NDK aarch64
+            os: ubuntu-22.04
+            compiler: aarch64-linux-android21-clang++
+            comp: ndk
+            run_armv8_tests: true
+            shell: bash
+          - name: Android NDK arm
+            os: ubuntu-22.04
+            compiler: armv7a-linux-androideabi21-clang++
+            comp: ndk
+            run_armv7_tests: true
+            shell: bash
+          - name: Linux GCC riscv64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_riscv64_tests: true
+            base_image: "riscv64/alpine:edge"
+            platform: linux/riscv64
+            shell: bash
+          - name: Linux GCC ppc64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_ppc64_tests: true
+            base_image: "ppc64le/alpine:latest"
+            platform: linux/ppc64le
+            shell: bash
+          - name: MacOS 13 Apple Clang
+            os: macos-13
+            compiler: clang++
+            comp: clang
+            run_64bit_tests: true
+            shell: bash
+          - name: MacOS 14 Apple Clang M1
+            os: macos-14
+            compiler: clang++
+            comp: clang
+            run_64bit_tests: false
+            run_m1_tests: true
+            shell: bash
+          - name: MacOS 13 GCC 11
+            os: macos-13
+            compiler: g++-11
+            comp: gcc
+            run_64bit_tests: true
+            shell: bash
+          - name: Windows 2022 Mingw-w64 GCC x86_64
+            os: windows-2022
+            compiler: g++
+            comp: mingw
+            run_64bit_tests: true
+            msys_sys: mingw64
+            msys_env: x86_64-gcc
+            shell: msys2 {0}
+          - name: Windows 2022 Mingw-w64 GCC i686
+            os: windows-2022
+            compiler: g++
+            comp: mingw
+            run_32bit_tests: true
+            msys_sys: mingw32
+            msys_env: i686-gcc
+            shell: msys2 {0}
+          - name: Windows 2022 Mingw-w64 Clang x86_64
+            os: windows-2022
+            compiler: clang++
+            comp: clang
+            run_64bit_tests: true
+            msys_sys: clang64
+            msys_env: clang-x86_64-clang
+            shell: msys2 {0}
+    defaults:
+      run:
+        working-directory: src
+        shell: ${{ matrix.config.shell }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download required linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install expect valgrind g++-multilib qemu-user-static
+
+      - name: Install NDK
+        if: runner.os == 'Linux'
+        run: |
+          if [ $COMP == ndk ]; then
+            NDKV="21.4.7075529"
+            ANDROID_ROOT=/usr/local/lib/android
+            ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
+            SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+            echo "y" | $SDKMANAGER "ndk;$NDKV"
+            ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/$NDKV
+            ANDROID_NDK_BIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin
+            echo "ANDROID_NDK_BIN=$ANDROID_NDK_BIN" >> $GITHUB_ENV
+          fi
+
+      - name: Set up QEMU
+        if: matrix.config.base_image
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: matrix.config.base_image
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker container
+        if: matrix.config.base_image
+        run: |
+          docker buildx build --load -t sf_builder - << EOF
+          FROM ${{ matrix.config.base_image }}
+          WORKDIR /app
+          RUN apk update && apk add make g++
+          CMD ["sh", "script.sh"]
+          EOF
+
+      - name: Download required macOS packages
+        if: runner.os == 'macOS'
+        run: brew install coreutils
+
+      - name: Setup msys and install required packages
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.config.msys_sys }}
+          install: mingw-w64-${{ matrix.config.msys_env }} make git expect
+
+      - name: Download the used network from the fishtest framework
+        run: make net
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check compiler
+        run: |
+          if [ -z "${{ matrix.config.base_image }}" ]; then
+            if [ $COMP == ndk ]; then
+              export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            fi
+            $COMPILER -v
+          else
+            echo "$COMPILER -v" > script.sh
+            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          fi
+
+      - name: Test help target
+        run: make help
+
+      - name: Check git
+        run: git --version
+
+      # x86-32 tests
+
+      - name: Test debug x86-32 build
+        if: matrix.config.run_32bit_tests
+        run: |
+          export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
+          make clean
+          make -j4 ARCH=x86-32 optimize=no debug=yes build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32 build
+        if: matrix.config.run_32bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-32 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32-sse41-popcnt build
+        if: matrix.config.run_32bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-32-sse41-popcnt build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-32-sse2 build
+        if: matrix.config.run_32bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-32-sse2 build
+          ../tests/signature.sh $benchref
+
+      - name: Test general-32 build
+        if: matrix.config.run_32bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=general-32 build
+          ../tests/signature.sh $benchref
+
+      # x86-64 tests
+
+      - name: Test debug x86-64-avx2 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          export CXXFLAGS="-Werror -D_GLIBCXX_DEBUG"
+          make clean
+          make -j4 ARCH=x86-64-avx2 optimize=no debug=yes build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-bmi2 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-bmi2 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-avx2 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-avx2 build
+          ../tests/signature.sh $benchref
+
+      # Test a deprecated arch
+      - name: Test x86-64-modern build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-modern build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-sse41-popcnt build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-sse41-popcnt build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-ssse3 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-ssse3 build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64-sse3-popcnt build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-sse3-popcnt build
+          ../tests/signature.sh $benchref
+
+      - name: Test x86-64 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64 build
+          ../tests/signature.sh $benchref
+
+      - name: Test general-64 build
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=general-64 build
+          ../tests/signature.sh $benchref
+
+      - name: Test apple-silicon build
+        if: matrix.config.run_m1_tests
+        run: |
+          make clean
+          make -j4 ARCH=apple-silicon build
+          ../tests/signature.sh $benchref
+
+      # armv8 tests
+
+      - name: Test armv8 build
+        if: matrix.config.run_armv8_tests
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          make clean
+          make -j4 ARCH=armv8 build
+          ../tests/signature.sh $benchref
+
+      - name: Test armv8-dotprod build
+        if: matrix.config.run_armv8_tests
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          make clean
+          make -j4 ARCH=armv8-dotprod build
+          ../tests/signature.sh $benchref
+
+      # armv7 tests
+
+      - name: Test armv7 build
+        if: matrix.config.run_armv7_tests
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          make clean
+          make -j4 ARCH=armv7 build
+          ../tests/signature.sh $benchref
+
+      - name: Test armv7-neon build
+        if: matrix.config.run_armv7_tests
+        run: |
+          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          make clean
+          make -j4 ARCH=armv7-neon build
+          ../tests/signature.sh $benchref
+
+      # riscv64 tests
+
+      - name: Test riscv64 build
+        if: matrix.config.run_riscv64_tests
+        run: |
+          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      # ppc64 tests
+
+      - name: Test ppc64 build
+        if: matrix.config.run_ppc64_tests
+        run: |
+          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      # Other tests
+
+      - name: Check perft and search reproducibility
+        if: matrix.config.run_64bit_tests
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-avx2 build
+          ../tests/perft.sh
+          ../tests/reprosearch.sh

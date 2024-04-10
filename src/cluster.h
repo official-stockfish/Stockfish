@@ -28,6 +28,11 @@
 
 namespace Stockfish {
 class Thread;
+class ThreadPool;
+
+namespace Search {
+class Worker;
+}
 
 /// The Cluster namespace contains functionality required to run on distributed
 /// memory architectures using MPI as the message passing interface. On a high level,
@@ -43,84 +48,110 @@ namespace Cluster {
 
 /// Basic info to find the cluster-wide bestMove
 struct MoveInfo {
-  int move;
-  int ponder;
-  int depth;
-  int score;
-  int rank;
+    int move;
+    int ponder;
+    int depth;
+    int score;
+    int rank;
 };
 
 #ifdef USE_MPI
 
 // store the TTEntry with its full key, so it can be saved on the receiver side
-using KeyedTTEntry = std::pair<Key, TTEntry>;
+using KeyedTTEntry                = std::pair<Key, TTEntry>;
 constexpr std::size_t TTCacheSize = 16;
 
 // Threads locally cache their high-depth TT entries till a batch can be send by MPI
-template <std::size_t N> class TTCache : public std::array<KeyedTTEntry, N> {
+template<std::size_t N>
+class TTCache: public std::array<KeyedTTEntry, N> {
 
-  struct Compare {
-      inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
-          return lhs.second.depth() > rhs.second.depth();
-      }
-  };
-  Compare compare;
+    struct Compare {
+        inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
+            return lhs.second.depth() > rhs.second.depth();
+        }
+    };
+    Compare compare;
 
-public:
+   public:
+    // Keep a heap of entries replacing low depth with high depth entries
+    bool replace(const KeyedTTEntry& value) {
 
-  // Keep a heap of entries replacing low depth with high depth entries
-  bool replace(const KeyedTTEntry& value) {
-
-      if (compare(value, this->front()))
-      {
-          std::pop_heap(this->begin(), this->end(), compare);
-          this->back() = value;
-          std::push_heap(this->begin(), this->end(), compare);
-          return true;
-      }
-      return false;
-  }
+        if (compare(value, this->front()))
+        {
+            std::pop_heap(this->begin(), this->end(), compare);
+            this->back() = value;
+            std::push_heap(this->begin(), this->end(), compare);
+            return true;
+        }
+        return false;
+    }
 };
 
-void init();
-void finalize();
-bool getline(std::istream& input, std::string& str);
-int size();
-int rank();
+void        init();
+void        finalize();
+bool        getline(std::istream& input, std::string& str);
+int         size();
+int         rank();
 inline bool is_root() { return rank() == 0; }
-void save(Thread* thread, TTEntry* tte, Key k, Value v, bool PvHit, Bound b, Depth d, Move m, Value ev);
-void pick_moves(MoveInfo& mi, std::string& PVLine);
-void ttSendRecvBuff_resize(size_t nThreads);
-uint64_t nodes_searched();
-uint64_t tb_hits();
-uint64_t TT_saves();
-void cluster_info(Depth depth);
-void signals_init();
-void signals_poll();
-void signals_sync();
+void        save(TranspositionTable&,
+                 ThreadPool&,
+                 Search::Worker* thread,
+                 TTEntry*        tte,
+                 Key             k,
+                 Value           v,
+                 bool            PvHit,
+                 Bound           b,
+                 Depth           d,
+                 Move            m,
+                 Value           ev,
+                 uint8_t         generation8);
+void        pick_moves(MoveInfo& mi, std::string& PVLine);
+void        ttSendRecvBuff_resize(size_t nThreads);
+uint64_t    nodes_searched(const ThreadPool&);
+uint64_t    tb_hits(const ThreadPool&);
+uint64_t    TT_saves(const ThreadPool&);
+void        cluster_info(const ThreadPool&, Depth depth, TimePoint elapsed);
+void        signals_init();
+void        signals_poll(ThreadPool& threads);
+void        signals_sync(ThreadPool& threads);
 
 #else
 
-inline void init() { }
-inline void finalize() { }
-inline bool getline(std::istream& input, std::string& str) { return static_cast<bool>(std::getline(input, str)); }
-constexpr int size() { return 1; }
-constexpr int rank() { return 0; }
+inline void init() {}
+inline void finalize() {}
+inline bool getline(std::istream& input, std::string& str) {
+    return static_cast<bool>(std::getline(input, str));
+}
+constexpr int  size() { return 1; }
+constexpr int  rank() { return 0; }
 constexpr bool is_root() { return true; }
-inline void save(Thread*, TTEntry* tte, Key k, Value v, bool PvHit, Bound b, Depth d, Move m, Value ev) { tte->save(k, v, PvHit, b, d, m, ev); }
-inline void pick_moves(MoveInfo&, std::string&) { }
-inline void ttSendRecvBuff_resize(size_t) { }
-uint64_t nodes_searched();
-uint64_t tb_hits();
-uint64_t TT_saves();
-inline void cluster_info(Depth) { }
-inline void signals_init() { }
-inline void signals_poll() { }
-inline void signals_sync() { }
+inline void    save(TranspositionTable&,
+                    ThreadPool&,
+                    Search::Worker*,
+                    TTEntry* tte,
+                    Key      k,
+                    Value    v,
+                    bool     PvHit,
+                    Bound    b,
+                    Depth    d,
+                    Move     m,
+                    Value    ev,
+                    uint8_t  generation8) {
+    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+}
+inline void pick_moves(MoveInfo&, std::string&) {}
+inline void ttSendRecvBuff_resize(size_t) {}
+uint64_t    nodes_searched(const ThreadPool&);
+uint64_t    tb_hits(const ThreadPool&);
+uint64_t    TT_saves(const ThreadPool&);
+inline void cluster_info(const ThreadPool&, Depth, TimePoint) {}
+inline void signals_init() {}
+inline void signals_poll(ThreadPool& threads) {}
+inline void signals_sync(ThreadPool& threads) {}
 
 #endif /* USE_MPI */
 
 }
 }
 
-#endif // #ifndef CLUSTER_H_INCLUDED
+#endif  // #ifndef CLUSTER_H_INCLUDED

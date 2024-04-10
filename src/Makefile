@@ -1,5 +1,5 @@
 # Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-# Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+# Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 #
 # Stockfish is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
 ### ==========================================================================
 
 ### Establish the operating system name
-KERNEL = $(shell uname -s)
+KERNEL := $(shell uname -s)
 ifeq ($(KERNEL),Linux)
-	OS = $(shell uname -o)
+	OS := $(shell uname -o)
 endif
 
 ### Target Windows OS
@@ -33,7 +33,7 @@ ifeq ($(OS),Windows_NT)
 else ifeq ($(COMP),mingw)
 	target_windows = yes
 	ifeq ($(WINE_PATH),)
-		WINE_PATH = $(shell which wine)
+		WINE_PATH := $(shell which wine)
 	endif
 endif
 
@@ -49,17 +49,21 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-ifeq ($(SDE_PATH),)
-	PGOBENCH = $(WINE_PATH) ./$(EXE) bench
-else
-	PGOBENCH = $(SDE_PATH) -- $(WINE_PATH) ./$(EXE) bench
-endif
+PGOBENCH = $(WINE_PATH) ./$(EXE) bench
 
 ### Source and object files
-SRCS = benchmark.cpp bitbase.cpp bitboard.cpp cluster.cpp endgame.cpp evaluate.cpp main.cpp \
-	material.cpp misc.cpp movegen.cpp movepick.cpp pawns.cpp position.cpp psqt.cpp \
+SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
+	misc.cpp movegen.cpp movepick.cpp position.cpp cluster.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
-	nnue/evaluate_nnue.cpp nnue/features/half_ka_v2_hm.cpp
+	nnue/nnue_misc.cpp nnue/features/half_ka_v2_hm.cpp nnue/network.cpp
+
+HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h \
+		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/layers/affine_transform.h \
+		nnue/layers/affine_transform_sparse_input.h nnue/layers/clipped_relu.h nnue/layers/simd.h \
+		nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h nnue/nnue_architecture.h \
+		nnue/nnue_common.h nnue/nnue_feature_transformer.h position.h \
+		search.h syzygy/tbprobe.h thread.h thread_win32_osx.h timeman.h \
+		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h cluster.h
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
@@ -95,8 +99,8 @@ VPATH = syzygy:nnue:nnue/features
 # vnni256 = yes/no    --- -mavx256vnni       --- Use Intel Vector Neural Network Instructions 512 with 256bit operands
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
-# mpi = yes/no        --- -DUSE_MPI        --- Use Message Passing Interface
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
+# mpi = yes/no        --- -DUSE_MPI        --- Use Message Passing Interface
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -109,16 +113,20 @@ VPATH = syzygy:nnue:nnue/features
 ### 2.1. General and architecture defaults
 
 ifeq ($(ARCH),)
-   ARCH = x86-64-modern
-   help_skip_sanity = yes
+   ARCH = native
 endif
+
+ifeq ($(ARCH), native)
+   override ARCH := $(shell $(SHELL) ../scripts/get_native_properties.sh | cut -d " " -f 1)
+endif
+
 # explicitly check for the list of supported architectures (as listed with make help),
 # the user can override with `make ARCH=x86-32-vnni256 SUPPORTED_ARCH=true`
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64))
+                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64 loongarch64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -146,6 +154,12 @@ mpi = no
 dotprod = no
 arm_version = 0
 STRIP = strip
+
+ifneq ($(shell which clang-format-17 2> /dev/null),)
+	CLANG-FORMAT = clang-format-17
+else
+	CLANG-FORMAT = clang-format
+endif
 
 ### 2.2 Architecture specific
 
@@ -195,6 +209,8 @@ ifeq ($(findstring -sse41,$(ARCH)),-sse41)
 endif
 
 ifeq ($(findstring -modern,$(ARCH)),-modern)
+        $(warning *** ARCH=$(ARCH) is deprecated, defaulting to ARCH=x86-64-sse41-popcnt. Execute `make help` for a list of available architectures. ***)
+        $(shell sleep 5)
 	popcnt = yes
 	sse = yes
 	sse2 = yes
@@ -355,6 +371,10 @@ endif
 ifeq ($(ARCH),riscv64)
 	arch = riscv64
 endif
+
+ifeq ($(ARCH),loongarch64)
+	arch = loongarch64
+endif
 endif
 
 
@@ -390,6 +410,8 @@ ifeq ($(COMP),gcc)
 		ifeq ($(ARCH),riscv64)
 			CXXFLAGS += -latomic
 		endif
+	else ifeq ($(ARCH),loongarch64)
+		CXXFLAGS += -latomic
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -460,6 +482,8 @@ ifeq ($(COMP),clang)
 		ifeq ($(ARCH),riscv64)
 			CXXFLAGS += -latomic
 		endif
+	else ifeq ($(ARCH),loongarch64)
+		CXXFLAGS += -latomic
 	else
 		CXXFLAGS += -m$(bits)
 		LDFLAGS += -m$(bits)
@@ -499,6 +523,14 @@ ifeq ($(COMP),ndk)
 			STRIP=llvm-strip
 		endif
 	endif
+	ifeq ($(arch),x86_64)
+		CXX=x86_64-linux-android21-clang++
+		ifneq ($(shell which x86_64-linux-android-strip 2>/dev/null),)
+			STRIP=x86_64-linux-android-strip
+		else
+			STRIP=llvm-strip
+		endif
+	endif
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
@@ -528,8 +560,8 @@ endif
 
 ### Sometimes gcc is really clang
 ifeq ($(COMP),gcc)
-	gccversion = $(shell $(CXX) --version 2>/dev/null)
-	gccisclang = $(findstring clang,$(gccversion))
+	gccversion := $(shell $(CXX) --version 2>/dev/null)
+	gccisclang := $(findstring clang,$(gccversion))
 	ifneq ($(gccisclang),)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
@@ -566,7 +598,7 @@ endif
 ### 3.3 Optimization
 ifeq ($(optimize),yes)
 
-	CXXFLAGS += -O3
+	CXXFLAGS += -O3 -funroll-loops
 
 	ifeq ($(comp),gcc)
 		ifeq ($(OS), Android)
@@ -587,7 +619,7 @@ ifeq ($(optimize),yes)
 	endif
 
 	ifeq ($(comp),clang)
-		clangmajorversion = $(shell $(CXX) -dumpversion 2>/dev/null | cut -f1 -d.)
+		clangmajorversion := $(shell $(CXX) -dumpversion 2>/dev/null | cut -f1 -d.)
 		ifeq ($(shell expr $(clangmajorversion) \< 16),1)
 			CXXFLAGS += -fexperimental-new-pass-manager
 		endif
@@ -674,7 +706,6 @@ ifeq ($(sse2),yes)
 endif
 
 ifeq ($(mmx),yes)
-	CXXFLAGS += -DUSE_MMX
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mmmx
 	endif
@@ -703,19 +734,24 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.7.1 Try to include git commit sha for versioning
-GIT_SHA = $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8)
+### 3.8.1 Try to include git commit sha for versioning
+GIT_SHA := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8)
 ifneq ($(GIT_SHA), )
 	CXXFLAGS += -DGIT_SHA=$(GIT_SHA)
 endif
 
-### 3.7.2 Try to include git commit date for versioning
-GIT_DATE = $(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD 2>/dev/null)
+### 3.8.2 Try to include git commit date for versioning
+GIT_DATE := $(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD 2>/dev/null)
 ifneq ($(GIT_DATE), )
 	CXXFLAGS += -DGIT_DATE=$(GIT_DATE)
 endif
 
-### 3.8 Link Time Optimization
+### 3.8.3 Try to include architecture
+ifneq ($(ARCH), )
+	CXXFLAGS += -DARCH=$(ARCH)
+endif
+
+### 3.9 Link Time Optimization
 ### This is a mix of compile and link time options because the lto link phase
 ### needs access to the optimization flags.
 ifeq ($(optimize),yes)
@@ -750,7 +786,7 @@ ifeq ($(debug), no)
 endif
 endif
 
-### 3.9 Android 5 can only run position independent executables. Note that this
+### 3.10 Android 5 can only run position independent executables. Note that this
 ### breaks Android 4.0 and earlier.
 ifeq ($(OS), Android)
 	CXXFLAGS += -fPIE
@@ -770,25 +806,25 @@ endif
 ### Section 4. Public Targets
 ### ==========================================================================
 
-
 help:
 	@echo ""
 	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make target ARCH=arch [COMP=compiler] [COMPCXX=cxx]"
+	@echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx]"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
 	@echo "help                    > Display architecture details"
 	@echo "profile-build           > standard build with profile-guided optimization"
 	@echo "build                   > skip profile-guided optimization"
-	@echo "net                     > Download the default nnue net"
+	@echo "net                     > Download the default nnue nets"
 	@echo "strip                   > Strip executable"
 	@echo "install                 > Install executable"
 	@echo "clean                   > Clean up"
 	@echo ""
 	@echo "Supported archs:"
 	@echo ""
+	@echo "native                  > select the best architecture for the host processor (default)"
 	@echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support"
 	@echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide"
 	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
@@ -796,13 +832,13 @@ help:
 	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
 	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
 	@echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
-	@echo "x86-64-modern           > common modern CPU, currently x86-64-sse41-popcnt"
+	@echo "x86-64-modern           > deprecated, currently x86-64-sse41-popcnt"
 	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
-	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 and popcnt support"
+	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 compile and popcnt support"
 	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
 	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
 	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32                  > x86 32-bit generic (with mmx and sse support)"
+	@echo "x86-32                  > x86 32-bit generic (with mmx compile support)"
 	@echo "ppc-64                  > PPC 64-bit"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
@@ -814,11 +850,12 @@ help:
 	@echo "general-64              > unspecified 64-bit"
 	@echo "general-32              > unspecified 32-bit"
 	@echo "riscv64                 > RISC-V 64-bit"
+	@echo "loongarch64             > LoongArch 64-bit"
 	@echo ""
 	@echo "Supported compilers:"
 	@echo ""
-	@echo "gcc                     > Gnu compiler (default)"
-	@echo "mingw                   > Gnu compiler with MinGW under Windows"
+	@echo "gcc                     > GNU compiler (default)"
+	@echo "mingw                   > GNU compiler with MinGW under Windows"
 	@echo "clang                   > LLVM Clang compiler"
 	@echo "icx                     > Intel oneAPI DPC++/C++ Compiler"
 	@echo "ndk                     > Google NDK to cross-compile for Android"
@@ -826,30 +863,30 @@ help:
 	@echo "Simple examples. If you don't know what to do, you likely want to run one of: "
 	@echo ""
 	@echo "make -j profile-build ARCH=x86-64-avx2    # typically a fast compile for common systems "
-	@echo "make -j profile-build ARCH=x86-64-modern  # A more portable compile for 64-bit systems "
+	@echo "make -j profile-build ARCH=x86-64-sse41-popcnt  # A more portable compile for 64-bit systems "
 	@echo "make -j profile-build ARCH=x86-64         # A portable compile for 64-bit systems "
 	@echo ""
 	@echo "Advanced examples, for experienced users: "
 	@echo ""
-	@echo "make -j profile-build ARCH=x86-64-bmi2"
-	@echo "make -j profile-build ARCH=x86-64-bmi2 COMP=gcc COMPCXX=g++-9.0"
+	@echo "make -j profile-build ARCH=x86-64-avxvnni"
+	@echo "make -j profile-build ARCH=x86-64-avxvnni COMP=gcc COMPCXX=g++-12.0"
 	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
 	@echo ""
-	@echo "-------------------------------"
-ifeq ($(SUPPORTED_ARCH)$(help_skip_sanity), true)
-	@echo "The selected architecture $(ARCH) will enable the following configuration: "
-	@$(MAKE) ARCH=$(ARCH) COMP=$(COMP) config-sanity
-else
+ifneq ($(SUPPORTED_ARCH), true)
 	@echo "Specify a supported architecture with the ARCH option for more details"
 	@echo ""
 endif
 
 
-.PHONY: help build profile-build strip install clean net objclean profileclean \
-	config-sanity \
+.PHONY: help analyze build profile-build strip install clean net \
+	objclean profileclean config-sanity \
 	icx-profile-use icx-profile-make \
 	gcc-profile-use gcc-profile-make \
-	clang-profile-use clang-profile-make FORCE
+	clang-profile-use clang-profile-make FORCE \
+	format analyze
+
+analyze: net config-sanity objclean
+	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) $(OBJS)
 
 build: net config-sanity
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
@@ -860,7 +897,8 @@ profile-build: net config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOBENCH) 2>&1 | tail -n 4
+	$(PGOBENCH) > PGOBENCH.out 2>&1
+	tail -n 4 PGOBENCH.out
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -881,42 +919,6 @@ install:
 clean: objclean profileclean
 	@rm -f .depend *~ core
 
-# evaluation network (nnue)
-net:
-	$(eval nnuenet := $(shell grep EvalFileDefaultName evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
-	@echo "Default net: $(nnuenet)"
-	$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
-	$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
-	$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
-	@if [ "x$(curl_or_wget)" = "x" ]; then \
-	    echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
-        fi
-	$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-	@if [ "x$(shasum_command)" = "x" ]; then \
-            echo "shasum / sha256sum not found, skipping net validation"; \
-        fi
-	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
-	   if test -f "$(nnuenet)"; then \
-	      echo "$(nnuenet) available."; \
-	   else \
-	      if [ "x$(curl_or_wget)" != "x" ]; then \
-                 echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
-              else \
-                 echo "No net found and download not possible"; exit 1;\
-	      fi; \
-	   fi; \
-	   if [ "x$(shasum_command)" != "x" ]; then \
-	      if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-	         echo "Removing failed download"; rm -f $(nnuenet); \
-	      else \
-	         echo "Network validated"; break; \
-	      fi; \
-	   fi; \
-	done
-	@if ! test -f "$(nnuenet)"; then \
-	    echo "Failed to download $(nnuenet)."; \
-	fi
-
 # clean binaries and objects
 objclean:
 	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
@@ -924,13 +926,71 @@ objclean:
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
 	@rm -f stockfish.profdata *.profraw
 	@rm -f stockfish.*args*
 	@rm -f stockfish.*lt*
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
+define fetch_network
+	@echo "Default net: $(nnuenet)"
+	@if [ "x$(curl_or_wget)" = "x" ]; then \
+		echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
+	fi
+	@if [ "x$(shasum_command)" = "x" ]; then \
+		echo "shasum / sha256sum not found, skipping net validation"; \
+	elif test -f "$(nnuenet)"; then \
+		if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+			echo "Removing invalid network"; rm -f $(nnuenet); \
+		fi; \
+	fi;
+	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
+		if test -f "$(nnuenet)"; then \
+			echo "$(nnuenet) available : OK"; break; \
+		else \
+			if [ "x$(curl_or_wget)" != "x" ]; then \
+				echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
+			else \
+				echo "No net found and download not possible"; exit 1;\
+			fi; \
+		fi; \
+		if [ "x$(shasum_command)" != "x" ]; then \
+			if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+				echo "Removing failed download"; rm -f $(nnuenet); \
+			fi; \
+		fi; \
+	done
+	@if ! test -f "$(nnuenet)"; then \
+		echo "Failed to download $(nnuenet)."; \
+	fi;
+	@if [ "x$(shasum_command)" != "x" ]; then \
+		if [ "$(nnuenet)" = "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
+			echo "Network validated"; break; \
+		fi; \
+	fi;
+endef
+
+# set up shell variables for the net stuff
+define netvariables
+$(eval nnuenet := $(shell grep $(1) evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
+$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
+$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
+$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
+$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
+endef
+
+# evaluation network (nnue)
+net:
+	$(call netvariables, EvalFileDefaultNameBig)
+	$(call fetch_network)
+	$(call netvariables, EvalFileDefaultNameSmall)
+	$(call fetch_network)
+
+format:
+	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
+
+# default target
 default:
 	help
 
@@ -981,7 +1041,7 @@ config-sanity: net
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
 	 test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
-	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64"
+	 test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64" || test "$(arch)" = "loongarch64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
