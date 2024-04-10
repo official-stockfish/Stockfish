@@ -182,7 +182,6 @@ class PRNG {
 
 inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
-    // https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
     __extension__ using uint128 = unsigned __int128;
     return (uint128(a) * uint128(b)) >> 64;
 #else
