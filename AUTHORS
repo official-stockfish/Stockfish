@@ -12,6 +12,7 @@ Hisayori Noda (nodchip)
 # All other authors of Stockfish code (in alphabetical order)
 Aditya (absimaldata)
 Adrian Petrescu (apetresc)
+Ahmed Kerimov (wcdbmv)
 Ajith Chandy Jose (ajithcj)
 Alain Savard (Rocky640)
 Alayan Feh (Alayan-stk-2)
@@ -29,6 +30,7 @@ Aram Tumanian (atumanian)
 Arjun Temurnikar
 Artem Solopiy (EntityFX)
 Auguste Pop
+Balazs Szilagyi
 Balint Pfliegel
 Ben Chaney (Chaneybenjamini)
 Ben Koshy (BKSpurgeon)
@@ -45,9 +47,12 @@ candirufish
 Chess13234
 Chris Cain (ceebo)
 clefrks
+Clemens L. (rn5f107s2)
+Cody Ho (aesrentai)
 Dale Weiler (graphitemaster)
 Daniel Axtens (daxtens)
 Daniel Dugovic (ddugovic)
+Daniel Monroe (Ergodice)
 Dan Schmidt (dfannius)
 Dariusz Orzechowski (dorzechowski)
 David (dav1312)
@@ -69,9 +74,11 @@ Fabian Beuke (madnight)
 Fabian Fichter (ianfab)
 Fanael Linithien (Fanael)
 fanon
-Fauzi Akram Dabat (FauziAkram)
+Fauzi Akram Dabat (fauzi2)
 Felix Wittmann
 gamander
+Gabriele Lombardo (gabe)
+Gahtan Nahdi
 Gary Heckman (gheckman)
 George Sobala (gsobala)
 gguliash
@@ -94,6 +101,7 @@ Jake Senne (w1wwwwww)
 Jan Ondruš (hxim)
 Jared Kish (Kurtbusch, kurt22i)
 Jarrod Torriero (DU-jdto)
+Jasper Shovelton (Beanie496)
 Jean-Francois Romang (jromang)
 Jean Gauthier (OuaisBla)
 Jekaa
@@ -178,6 +186,7 @@ Raminder Singh
 renouve
 Reuven Peleg (R-Peleg)
 Richard Lloyd (Richard-Lloyd)
+Robert Nürnberg (robertnurnberg)
 Rodrigo Exterckötter Tjäder
 Rodrigo Roim (roim)
 Ronald de Man (syzygy1, syzygy)
@@ -195,16 +204,22 @@ sf-x
 Shahin M. Shahin (peregrine)
 Shane Booth (shane31)
 Shawn Varghese (xXH4CKST3RXx)
+Shawn Xu (xu-shawn)
 Siad Daboul (Topologist)
 Stefan Geschwentner (locutus2)
 Stefano Cardanobile (Stefano80)
 Stefano Di Martino (StefanoD)
 Steinar Gunderson (sesse)
 Stéphane Nicolet (snicolet)
+Stephen Touset (stouset)
 Syine Mineta (MinetaS)
+Taras Vuk (TarasVuk)
 Thanar2
 thaspel
 theo77186
+TierynnB
+Ting-Hsuan Huang (fffelix-huang)
+Tobias Steinmann
 Tomasz Sobczyk (Sopel97)
 Tom Truscott
 Tom Vijlbrief (tomtor)
@@ -218,9 +233,10 @@ Vince Negri (cuddlestmonkey)
 Viren
 windfishballad
 xefoci7612
+Xiang Wang (KatyushaScarlet)
 zz4032
 
 # Additionally, we acknowledge the authors and maintainers of fishtest,
 # an amazing and essential framework for Stockfish development!
 #
-# https://github.com/glinscott/fishtest/blob/master/AUTHORS
+# https://github.com/official-stockfish/fishtest/blob/master/AUTHORS

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,14 +19,16 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
+#include <cstddef>
+#include <cstdint>
+
 #include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
 
-//void Cluster::init();
 namespace Cluster {
-  void init();
+void init();
 }
 
 /// TTEntry struct is the 10 bytes transposition table entry, defined as below:
@@ -42,74 +44,87 @@ namespace Cluster {
 
 struct TTEntry {
 
-  Move  move()  const { return (Move )move16; }
-  Value value() const { return (Value)value16; }
-  Value eval()  const { return (Value)eval16; }
-  Depth depth() const { return (Depth)depth8 + DEPTH_OFFSET; }
-  bool is_pv()  const { return (bool)(genBound8 & 0x4); }
-  Bound bound() const { return (Bound)(genBound8 & 0x3); }
-  void save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev);
+    Move  move() const { return Move(move16); }
+    Value value() const { return Value(value16); }
+    Value eval() const { return Value(eval16); }
+    Depth depth() const { return Depth(depth8 + DEPTH_OFFSET); }
+    bool  is_pv() const { return bool(genBound8 & 0x4); }
+    Bound bound() const { return Bound(genBound8 & 0x3); }
+    void  save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    // The returned age is a multiple of TranspositionTable::GENERATION_DELTA
+    uint8_t relative_age(const uint8_t generation8) const;
 
-private:
-  friend class TranspositionTable;
-  friend void Cluster::init();
+   private:
+    friend class TranspositionTable;
+    friend void Cluster::init();
 
-  uint16_t key16;
-  uint8_t  depth8;
-  uint8_t  genBound8;
-  uint16_t move16;
-  int16_t  value16;
-  int16_t  eval16;
+
+    uint16_t key16;
+    uint8_t  depth8;
+    uint8_t  genBound8;
+    Move     move16;
+    int16_t  value16;
+    int16_t  eval16;
 };
 
 
-/// A TranspositionTable is an array of Cluster, of size clusterCount. Each
-/// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
-/// contains information on exactly one position. The size of a Cluster should
-/// divide the size of a cache line for best performance, as the cacheline is
-/// prefetched when possible.
-
+// A TranspositionTable is an array of Cluster, of size clusterCount. Each
+// cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
+// contains information on exactly one position. The size of a Cluster should
+// divide the size of a cache line for best performance, as the cacheline is
+// prefetched when possible.
 class TranspositionTable {
 
-  friend void Cluster::init();
+    friend void Cluster::init();
 
-  static constexpr int ClusterSize = 3;
+    static constexpr int ClusterSize = 3;
 
-  struct Cluster {
-    TTEntry entry[ClusterSize];
-    char padding[2]; // Pad to 32 bytes
-  };
+    struct Cluster {
+        TTEntry entry[ClusterSize];
+        char    padding[2];  // Pad to 32 bytes
+    };
 
-  static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
+    static_assert(sizeof(Cluster) == 32, "Unexpected Cluster size");
 
-  // Constants used to refresh the hash table periodically
-  static constexpr unsigned GENERATION_BITS  = 3;                                // nb of bits reserved for other things
-  static constexpr int      GENERATION_DELTA = (1 << GENERATION_BITS);           // increment for generation field
-  static constexpr int      GENERATION_CYCLE = 255 + (1 << GENERATION_BITS);     // cycle length
-  static constexpr int      GENERATION_MASK  = (0xFF << GENERATION_BITS) & 0xFF; // mask to pull out generation number
+    // Constants used to refresh the hash table periodically
 
-public:
- ~TranspositionTable() { aligned_large_pages_free(table); }
-  void new_search() { generation8 += GENERATION_DELTA; } // Lower bits are used for other things
-  TTEntry* probe(const Key key, bool& found) const;
-  int hashfull() const;
-  void resize(size_t mbSize);
-  void clear();
+    // We have 8 bits available where the lowest 3 bits are
+    // reserved for other things.
+    static constexpr unsigned GENERATION_BITS = 3;
+    // increment for generation field
+    static constexpr int GENERATION_DELTA = (1 << GENERATION_BITS);
+    // cycle length
+    static constexpr int GENERATION_CYCLE = 255 + GENERATION_DELTA;
+    // mask to pull out generation number
+    static constexpr int GENERATION_MASK = (0xFF << GENERATION_BITS) & 0xFF;
 
-  TTEntry* first_entry(const Key key) const {
-    return &table[mul_hi64(key, clusterCount)].entry[0];
-  }
+   public:
+    ~TranspositionTable() { aligned_large_pages_free(table); }
 
-private:
-  friend struct TTEntry;
+    void new_search() {
+        // increment by delta to keep lower bits as is
+        generation8 += GENERATION_DELTA;
+    }
 
-  size_t clusterCount;
-  Cluster* table;
-  uint8_t generation8; // Size must be not bigger than TTEntry::genBound8
+    TTEntry* probe(const Key key, bool& found) const;
+    int      hashfull() const;
+    void     resize(size_t mbSize, int threadCount);
+    void     clear(size_t threadCount);
+
+    TTEntry* first_entry(const Key key) const {
+        return &table[mul_hi64(key, clusterCount)].entry[0];
+    }
+
+    uint8_t generation() const { return generation8; }
+
+   private:
+    friend struct TTEntry;
+
+    size_t   clusterCount;
+    Cluster* table       = nullptr;
+    uint8_t  generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
 };
 
-extern TranspositionTable TT;
+}  // namespace Stockfish
 
-} // namespace Stockfish
-
-#endif // #ifndef TT_H_INCLUDED
+#endif  // #ifndef TT_H_INCLUDED

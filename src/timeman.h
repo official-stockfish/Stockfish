@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,33 +19,42 @@
 #ifndef TIMEMAN_H_INCLUDED
 #define TIMEMAN_H_INCLUDED
 
-#include "misc.h"
-#include "search.h"
+#include <cstddef>
+#include <cstdint>
+
 #include "cluster.h"
+#include "misc.h"
 
 namespace Stockfish {
 
-/// The TimeManagement class computes the optimal time to think depending on
-/// the maximum available time, the game move number and other parameters.
+class OptionsMap;
 
+namespace Search {
+struct LimitsType;
+}
+
+// The TimeManagement class computes the optimal time to think depending on
+// the maximum available time, the game move number, and other parameters.
 class TimeManagement {
-public:
-  void init(Search::LimitsType& limits, Color us, int ply);
-  TimePoint optimum() const { return optimumTime; }
-  TimePoint maximum() const { return maximumTime; }
-  TimePoint elapsed() const { return Search::Limits.npmsec ?
-                                     TimePoint(Cluster::nodes_searched()) : now() - startTime; }
+   public:
+    void init(Search::LimitsType& limits, Color us, int ply, const OptionsMap& options);
 
-  int64_t availableNodes; // When in 'nodes as time' mode
+    TimePoint optimum() const;
+    TimePoint maximum() const;
+    TimePoint elapsed(std::size_t nodes) const;
 
-private:
-  TimePoint startTime;
-  TimePoint optimumTime;
-  TimePoint maximumTime;
+    void clear();
+    void advance_nodes_time(std::int64_t nodes);
+
+   private:
+    TimePoint startTime;
+    TimePoint optimumTime;
+    TimePoint maximumTime;
+
+    std::int64_t availableNodes = 0;      // When in 'nodes as time' mode
+    bool         useNodesTime   = false;  // True if we are in 'nodes as time' mode
 };
 
-extern TimeManagement Time;
+}  // namespace Stockfish
 
-} // namespace Stockfish
-
-#endif // #ifndef TIMEMAN_H_INCLUDED
+#endif  // #ifndef TIMEMAN_H_INCLUDED
