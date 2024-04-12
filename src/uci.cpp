@@ -22,8 +22,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
-#include <deque>
-#include <memory>
 #include <optional>
 #include <sstream>
 #include <string_view>
@@ -98,11 +96,7 @@ UCIEngine::UCIEngine(int argc, char** argv) :
 
 void UCIEngine::loop() {
 
-    Position     pos;
-    std::string  token, cmd;
-    StateListPtr states(new std::deque<StateInfo>(1));
-
-    pos.set(StartFEN, false, &states->back());
+    std::string token, cmd;
 
     for (int i = 1; i < cli.argc; ++i)
         cmd += std::string(cli.argv[i]) + " ";
@@ -135,9 +129,9 @@ void UCIEngine::loop() {
         else if (token == "setoption")
             setoption(is);
         else if (token == "go")
-            go(pos, is);
+            go(is);
         else if (token == "position")
-            position(pos, is);
+            position(is);
         else if (token == "ucinewgame")
             engine.search_clear();
         else if (token == "isready")
@@ -146,11 +140,11 @@ void UCIEngine::loop() {
         // Add custom non-UCI commands, mainly for debugging purposes.
         // These commands must not be used during a search!
         else if (token == "flip")
-            pos.flip();
+            engine.flip();
         else if (token == "bench")
-            bench(pos, is);
+            bench(is);
         else if (token == "d")
-            sync_cout << pos << sync_endl;
+            sync_cout << engine.visualize() << sync_endl;
         else if (token == "eval")
             engine.trace_eval();
         else if (token == "compiler")
@@ -183,7 +177,7 @@ void UCIEngine::loop() {
     } while (token != "quit" && cli.argc == 1);  // The command-line arguments are one-shot
 }
 
-Search::LimitsType UCIEngine::parse_limits(const Position& pos, std::istream& is) {
+Search::LimitsType UCIEngine::parse_limits(std::istream& is) {
     Search::LimitsType limits;
     std::string        token;
 
@@ -192,7 +186,7 @@ Search::LimitsType UCIEngine::parse_limits(const Position& pos, std::istream& is
     while (is >> token)
         if (token == "searchmoves")  // Needs to be the last command on the line
             while (is >> token)
-                limits.searchmoves.push_back(to_move(pos, token));
+                limits.searchmoves.push_back(to_lower(token));
 
         else if (token == "wtime")
             is >> limits.time[WHITE];
@@ -222,13 +216,13 @@ Search::LimitsType UCIEngine::parse_limits(const Position& pos, std::istream& is
     return limits;
 }
 
-void UCIEngine::go(Position& pos, std::istringstream& is) {
+void UCIEngine::go(std::istringstream& is) {
 
-    Search::LimitsType limits = parse_limits(pos, is);
+    Search::LimitsType limits = parse_limits(is);
     engine.go(limits);
 }
 
-void UCIEngine::bench(Position& pos, std::istream& args) {
+void UCIEngine::bench(std::istream& args) {
     std::string token;
     uint64_t    num, nodes = 0, cnt = 1;
     uint64_t    nodesSearched = 0;
@@ -239,7 +233,7 @@ void UCIEngine::bench(Position& pos, std::istream& args) {
         on_update_full(i, options["UCI_ShowWDL"]);
     });
 
-    std::vector<std::string> list = setup_bench(pos, args);
+    std::vector<std::string> list = setup_bench(engine.fen(), args);
 
     num = count_if(list.begin(), list.end(),
                    [](const std::string& s) { return s.find("go ") == 0 || s.find("eval") == 0; });
@@ -253,11 +247,11 @@ void UCIEngine::bench(Position& pos, std::istream& args) {
 
         if (token == "go" || token == "eval")
         {
-            std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << pos.fen() << ")"
+            std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
                       << std::endl;
             if (token == "go")
             {
-                go(pos, is);
+                go(is);
                 engine.wait_for_search_finished();
                 nodes += nodesSearched;
                 nodesSearched = 0;
@@ -268,7 +262,7 @@ void UCIEngine::bench(Position& pos, std::istream& args) {
         else if (token == "setoption")
             setoption(is);
         else if (token == "position")
-            position(pos, is);
+            position(is);
         else if (token == "ucinewgame")
         {
             engine.search_clear();  // search_clear may take a while
@@ -294,7 +288,7 @@ void UCIEngine::setoption(std::istringstream& is) {
     engine.get_options().setoption(is);
 }
 
-void UCIEngine::position(Position& pos, std::istringstream& is) {
+void UCIEngine::position(std::istringstream& is) {
     std::string token, fen;
 
     is >> token;
@@ -317,7 +311,6 @@ void UCIEngine::position(Position& pos, std::istringstream& is) {
         moves.push_back(token);
     }
 
-    pos.set(fen, engine.get_options()["UCI_Chess960"], pos.state());
     engine.set_position(fen, moves);
 }
 
@@ -425,9 +418,14 @@ std::string UCIEngine::move(Move m, bool chess960) {
 }
 
 
+std::string UCIEngine::to_lower(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(), [](auto c) { return std::tolower(c); });
+
+    return str;
+}
+
 Move UCIEngine::to_move(const Position& pos, std::string str) {
-    if (str.length() == 5)
-        str[4] = char(tolower(str[4]));  // The promotion piece character must be lowercased
+    str = to_lower(str);
 
     for (const auto& m : MoveList<LEGAL>(pos))
         if (str == move(m, pos.is_chess960()))

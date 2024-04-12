@@ -24,6 +24,7 @@
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <string>
 
 #include "misc.h"
 #include "movegen.h"
@@ -33,6 +34,7 @@
 #include "tt.h"
 #include "types.h"
 #include "ucioption.h"
+#include "uci.h"
 
 namespace Stockfish {
 
@@ -182,10 +184,18 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
     increaseDepth = true;
 
     Search::RootMoves rootMoves;
+    const auto        legalmoves = MoveList<LEGAL>(pos);
 
-    for (const auto& m : MoveList<LEGAL>(pos))
-        if (limits.searchmoves.empty()
-            || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
+    for (const auto& uciMove : limits.searchmoves)
+    {
+        auto move = UCIEngine::to_move(pos, uciMove);
+
+        if (std::find(legalmoves.begin(), legalmoves.end(), move) != legalmoves.end())
+            rootMoves.emplace_back(move);
+    }
+
+    if (rootMoves.empty())
+        for (const auto& m : legalmoves)
             rootMoves.emplace_back(m);
 
     Tablebases::Config tbConfig = Tablebases::rank_root_moves(options, pos, rootMoves);

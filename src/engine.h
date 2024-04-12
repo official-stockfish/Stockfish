@@ -79,6 +79,9 @@ class Engine {
 
     void        trace_eval() const;
     OptionsMap& get_options();
+    std::string fen() const;
+    void        flip();
+    std::string visualize() const;
 
    private:
     const std::string binaryDirectory;
