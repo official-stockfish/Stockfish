@@ -360,12 +360,12 @@ std::string UCIEngine::format_score(const Score& s) {
     constexpr int TB_CP = 20000;
     const auto    format =
       overload{[](Score::Mate mate) -> std::string {
-                   auto m = (mate.plies > 0 ? (mate.plies + 1) : -mate.plies) / 2;
+                   auto m = (mate.plies > 0 ? (mate.plies + 1) : mate.plies) / 2;
                    return std::string("mate ") + std::to_string(m);
                },
                [](Score::TBWin tb) -> std::string {
                    return std::string("cp ")
-                        + std::to_string((tb.plies > 0 ? TB_CP - tb.plies : -TB_CP + tb.plies));
+                        + std::to_string((tb.plies > 0 ? TB_CP - tb.plies : -TB_CP - tb.plies));
                },
                [](Score::InternalUnits units) -> std::string {
                    return std::string("cp ") + std::to_string(units.value);
