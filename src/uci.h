@@ -58,7 +58,7 @@ class UCIEngine {
 
     void go(Position& pos, std::istringstream& is);
     void bench(Position& pos, std::istream& args);
-    void position(std::istringstream& is);
+    void position(Position& pos, std::istringstream& is);
     void setoption(std::istringstream& is);
 
     static void on_update_no_moves(const Engine::InfoShort& info);

@@ -137,7 +137,7 @@ void UCIEngine::loop() {
         else if (token == "go")
             go(pos, is);
         else if (token == "position")
-            position(is);
+            position(pos, is);
         else if (token == "ucinewgame")
             engine.search_clear();
         else if (token == "isready")
@@ -268,7 +268,7 @@ void UCIEngine::bench(Position& pos, std::istream& args) {
         else if (token == "setoption")
             setoption(is);
         else if (token == "position")
-            position(is);
+            position(pos, is);
         else if (token == "ucinewgame")
         {
             engine.search_clear();  // search_clear may take a while
@@ -294,7 +294,7 @@ void UCIEngine::setoption(std::istringstream& is) {
     engine.get_options().setoption(is);
 }
 
-void UCIEngine::position(std::istringstream& is) {
+void UCIEngine::position(Position& pos, std::istringstream& is) {
     std::string token, fen;
 
     is >> token;
@@ -317,6 +317,7 @@ void UCIEngine::position(std::istringstream& is) {
         moves.push_back(token);
     }
 
+    pos.set(fen, engine.get_options()["UCI_Chess960"], pos.state());
     engine.set_position(fen, moves);
 }
 
@@ -393,7 +394,7 @@ std::string UCIEngine::wdl(Value v, const Position& pos) {
     int wdl_w = win_rate_model(v, pos);
     int wdl_l = win_rate_model(-v, pos);
     int wdl_d = 1000 - wdl_w - wdl_l;
-    ss << " wdl " << wdl_w << " " << wdl_d << " " << wdl_l;
+    ss << wdl_w << " " << wdl_d << " " << wdl_l;
 
     return ss.str();
 }
