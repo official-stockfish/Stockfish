@@ -24,6 +24,7 @@
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include <string>
 
 #include "misc.h"
 #include "movegen.h"

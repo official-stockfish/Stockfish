@@ -23,8 +23,6 @@
 #include <iostream>
 #include <vector>
 
-#include "position.h"
-
 namespace {
 
 // clang-format off

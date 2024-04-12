@@ -28,6 +28,7 @@
 #include <memory>
 #include <string_view>
 #include <vector>
+#include <string>
 
 #include "misc.h"
 #include "movepick.h"
