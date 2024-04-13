@@ -60,10 +60,9 @@ using psqt_vec_t = __m256i;
     #define vec_set_16(a) _mm512_set1_epi16(a)
     #define vec_max_16(a, b) _mm512_max_epi16(a, b)
     #define vec_min_16(a, b) _mm512_min_epi16(a, b)
-inline vec_t vec_msb_pack_16(vec_t a, vec_t b) {
-    vec_t compacted = _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7));
-    return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7), compacted);
-}
+    // Inverse permuted at load time
+    #define vec_msb_pack_16(a, b) \
+        _mm512_packs_epi16(_mm512_srli_epi16(a, 7), _mm512_srli_epi16(b, 7))
     #define vec_load_psqt(a) _mm256_load_si256(a)
     #define vec_store_psqt(a, b) _mm256_store_si256(a, b)
     #define vec_add_psqt_32(a, b) _mm256_add_epi32(a, b)
@@ -84,10 +83,9 @@ using psqt_vec_t = __m256i;
     #define vec_set_16(a) _mm256_set1_epi16(a)
     #define vec_max_16(a, b) _mm256_max_epi16(a, b)
     #define vec_min_16(a, b) _mm256_min_epi16(a, b)
-inline vec_t vec_msb_pack_16(vec_t a, vec_t b) {
-    vec_t compacted = _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7));
-    return _mm256_permute4x64_epi64(compacted, 0b11011000);
-}
+    // Inverse permuted at load time
+    #define vec_msb_pack_16(a, b) \
+        _mm256_packs_epi16(_mm256_srli_epi16(a, 7), _mm256_srli_epi16(b, 7))
     #define vec_load_psqt(a) _mm256_load_si256(a)
     #define vec_store_psqt(a, b) _mm256_store_si256(a, b)
     #define vec_add_psqt_32(a, b) _mm256_add_epi32(a, b)
@@ -229,6 +227,62 @@ class FeatureTransformer {
         return FeatureSet::HashValue ^ (OutputDimensions * 2);
     }
 
+    static constexpr void order_packs([[maybe_unused]] uint64_t* v) {
+#if defined(USE_AVX512)  // _mm512_packs_epi16 ordering
+        uint64_t tmp0, tmp1;
+        tmp0 = v[2], tmp1 = v[3];
+        v[2] = v[8], v[3] = v[9];
+        v[8] = v[4], v[9] = v[5];
+        v[4] = tmp0, v[5] = tmp1;
+        tmp0 = v[6], tmp1 = v[7];
+        v[6] = v[10], v[7] = v[11];
+        v[10] = v[12], v[11] = v[13];
+        v[12] = tmp0, v[13] = tmp1;
+#elif defined(USE_AVX2)  // _mm256_packs_epi16 ordering
+        std::swap(v[2], v[4]);
+        std::swap(v[3], v[5]);
+#endif
+    }
+
+    static constexpr void inverse_order_packs([[maybe_unused]] uint64_t* v) {
+#if defined(USE_AVX512)  // Inverse _mm512_packs_epi16 ordering
+        uint64_t tmp0, tmp1;
+        tmp0 = v[2], tmp1 = v[3];
+        v[2] = v[4], v[3] = v[5];
+        v[4] = v[8], v[5] = v[9];
+        v[8] = tmp0, v[9] = tmp1;
+        tmp0 = v[6], tmp1 = v[7];
+        v[6] = v[12], v[7] = v[13];
+        v[12] = v[10], v[13] = v[11];
+        v[10] = tmp0, v[11] = tmp1;
+#elif defined(USE_AVX2)  // Inverse _mm256_packs_epi16 ordering
+        std::swap(v[2], v[4]);
+        std::swap(v[3], v[5]);
+#endif
+    }
+
+    void permute_weights([[maybe_unused]] void (*order_fn)(uint64_t*)) const {
+#if defined(USE_AVX2)
+    #if defined(USE_AVX512)
+        constexpr IndexType di = 16;
+    #else
+        constexpr IndexType di = 8;
+    #endif
+        uint64_t* b = reinterpret_cast<uint64_t*>(const_cast<BiasType*>(&biases[0]));
+        for (IndexType i = 0; i < HalfDimensions * sizeof(BiasType) / sizeof(uint64_t); i += di)
+            order_fn(&b[i]);
+
+        for (IndexType j = 0; j < InputDimensions; ++j)
+        {
+            uint64_t* w =
+              reinterpret_cast<uint64_t*>(const_cast<WeightType*>(&weights[j * HalfDimensions]));
+            for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(uint64_t);
+                 i += di)
+                order_fn(&w[i]);
+        }
+#endif
+    }
+
     // Read network parameters
     bool read_parameters(std::istream& stream) {
 
@@ -236,16 +290,20 @@ class FeatureTransformer {
         read_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
+        permute_weights(inverse_order_packs);
         return !stream.fail();
     }
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
 
+        permute_weights(order_packs);
+
         write_leb_128<BiasType>(stream, biases, HalfDimensions);
         write_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         write_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
+        permute_weights(inverse_order_packs);
         return !stream.fail();
     }
 
@@ -276,8 +334,8 @@ class FeatureTransformer {
             static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-            vec_t Zero = vec_zero();
-            vec_t One  = vec_set_16(127);
+            const vec_t Zero = vec_zero();
+            const vec_t One  = vec_set_16(127);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =

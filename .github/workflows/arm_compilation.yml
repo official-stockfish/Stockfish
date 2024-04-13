@@ -10,7 +10,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EMU: ${{ matrix.config.emu }}
       EXT: ${{ matrix.config.ext }}
@@ -62,7 +62,7 @@ jobs:
           if [ $COMP == ndk ]; then
             export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           fi
-          $COMPILER -v
+          $COMPCXX -v
 
       - name: Test help target
         run: make help

@@ -206,13 +206,15 @@ void bind_this_thread(size_t idx);
 
 struct CommandLine {
    public:
-    CommandLine(int, char**);
+    CommandLine(int _argc, char** _argv) :
+        argc(_argc),
+        argv(_argv) {}
+
+    static std::string get_binary_directory(std::string argv0);
+    static std::string get_working_directory();
 
     int    argc;
     char** argv;
-
-    std::string binaryDirectory;   // path of the executable directory
-    std::string workingDirectory;  // path of the working directory
 };
 
 namespace Utility {

@@ -723,13 +723,9 @@ void bind_this_thread(size_t idx) {
     #define GETCWD getcwd
 #endif
 
-CommandLine::CommandLine(int _argc, char** _argv) :
-    argc(_argc),
-    argv(_argv) {
-    std::string pathSeparator;
 
-    // Extract the path+name of the executable binary
-    std::string argv0 = argv[0];
+std::string CommandLine::get_binary_directory(std::string argv0) {
+    std::string pathSeparator;
 
 #ifdef _WIN32
     pathSeparator = "\\";
@@ -745,15 +741,11 @@ CommandLine::CommandLine(int _argc, char** _argv) :
 #endif
 
     // Extract the working directory
-    workingDirectory = "";
-    char  buff[40000];
-    char* cwd = GETCWD(buff, 40000);
-    if (cwd)
-        workingDirectory = cwd;
+    auto workingDirectory = CommandLine::get_working_directory();
 
     // Extract the binary directory path from argv0
-    binaryDirectory = argv0;
-    size_t pos      = binaryDirectory.find_last_of("\\/");
+    auto   binaryDirectory = argv0;
+    size_t pos             = binaryDirectory.find_last_of("\\/");
     if (pos == std::string::npos)
         binaryDirectory = "." + pathSeparator;
     else
@@ -762,6 +754,19 @@ CommandLine::CommandLine(int _argc, char** _argv) :
     // Pattern replacement: "./" at the start of path is replaced by the working directory
     if (binaryDirectory.find("." + pathSeparator) == 0)
         binaryDirectory.replace(0, 1, workingDirectory);
+
+    return binaryDirectory;
 }
+
+std::string CommandLine::get_working_directory() {
+    std::string workingDirectory = "";
+    char        buff[40000];
+    char*       cwd = GETCWD(buff, 40000);
+    if (cwd)
+        workingDirectory = cwd;
+
+    return workingDirectory;
+}
+
 
 }  // namespace Stockfish

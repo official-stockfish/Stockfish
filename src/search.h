@@ -24,13 +24,16 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
-#include <string>
+#include <string_view>
 #include <vector>
+#include <string>
 
 #include "misc.h"
 #include "movepick.h"
 #include "position.h"
+#include "score.h"
 #include "syzygy/tbprobe.h"
 #include "timeman.h"
 #include "types.h"
@@ -119,11 +122,11 @@ struct LimitsType {
 
     bool use_time_management() const { return time[WHITE] || time[BLACK]; }
 
-    std::vector<Move> searchmoves;
-    TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-    int               movestogo, depth, mate, perft, infinite;
-    uint64_t          nodes;
-    bool              ponderMode;
+    std::vector<std::string> searchmoves;
+    TimePoint                time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+    int                      movestogo, depth, mate, perft, infinite;
+    uint64_t                 nodes;
+    bool                     ponderMode;
 };
 
 
@@ -138,7 +141,6 @@ struct SharedState {
         threads(threadPool),
         tt(transpositionTable),
         networks(nets) {}
-
 
     const OptionsMap&           options;
     ThreadPool&                 threads;
@@ -156,16 +158,56 @@ class ISearchManager {
     virtual void check_time(Search::Worker&) = 0;
 };
 
+struct InfoShort {
+    int   depth;
+    Score score;
+};
+
+struct InfoFull: InfoShort {
+    int              selDepth;
+    size_t           multiPV;
+    std::string_view wdl;
+    std::string_view bound;
+    size_t           timeMs;
+    size_t           nodes;
+    size_t           nps;
+    size_t           tbHits;
+    std::string_view pv;
+    int              hashfull;
+};
+
+struct InfoIteration {
+    int              depth;
+    std::string_view currmove;
+    size_t           currmovenumber;
+};
+
 // SearchManager manages the search from the main thread. It is responsible for
 // keeping track of the time, and storing data strictly related to the main thread.
 class SearchManager: public ISearchManager {
    public:
+    using UpdateShort    = std::function<void(const InfoShort&)>;
+    using UpdateFull     = std::function<void(const InfoFull&)>;
+    using UpdateIter     = std::function<void(const InfoIteration&)>;
+    using UpdateBestmove = std::function<void(std::string_view, std::string_view)>;
+
+    struct UpdateContext {
+        UpdateShort    onUpdateNoMoves;
+        UpdateFull     onUpdateFull;
+        UpdateIter     onIter;
+        UpdateBestmove onBestmove;
+    };
+
+
+    SearchManager(const UpdateContext& updateContext) :
+        updates(updateContext) {}
+
     void check_time(Search::Worker& worker) override;
 
-    std::string pv(const Search::Worker&     worker,
-                   const ThreadPool&         threads,
-                   const TranspositionTable& tt,
-                   Depth                     depth) const;
+    void pv(const Search::Worker&     worker,
+            const ThreadPool&         threads,
+            const TranspositionTable& tt,
+            Depth                     depth) const;
 
     Stockfish::TimeManagement tm;
     int                       callsCnt;
@@ -178,6 +220,8 @@ class SearchManager: public ISearchManager {
     bool                 stopOnPonderhit;
 
     size_t id;
+
+    const UpdateContext& updates;
 };
 
 class NullSearchManager: public ISearchManager {

@@ -16,17 +16,33 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef BENCHMARK_H_INCLUDED
-#define BENCHMARK_H_INCLUDED
+#include "score.h"
 
-#include <iosfwd>
-#include <string>
-#include <vector>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+
+#include "uci.h"
 
 namespace Stockfish {
 
-std::vector<std::string> setup_bench(const std::string&, std::istream&);
+Score::Score(Value v, const Position& pos) {
+    assert(-VALUE_INFINITE < v && v < VALUE_INFINITE);
 
-}  // namespace Stockfish
+    if (std::abs(v) < VALUE_TB_WIN_IN_MAX_PLY)
+    {
+        score = InternalUnits{UCIEngine::to_cp(v, pos)};
+    }
+    else if (std::abs(v) <= VALUE_TB)
+    {
+        auto distance = VALUE_TB - std::abs(v);
+        score         = (v > 0) ? TBWin{distance} : TBWin{-distance};
+    }
+    else
+    {
+        auto distance = VALUE_MATE - std::abs(v);
+        score         = (v > 0) ? Mate{distance} : Mate{-distance};
+    }
+}
 
-#endif  // #ifndef BENCHMARK_H_INCLUDED
+}
