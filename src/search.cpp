@@ -1629,7 +1629,7 @@ Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
 }
 
 TimePoint Search::Worker::elapsed() const {
-    return main_manager()->tm.elapsed(threads.nodes_searched());
+    return main_manager()->tm.elapsed([this]() { return threads.nodes_searched(); });
 }
 
 
@@ -1847,7 +1847,7 @@ void SearchManager::check_time(Search::Worker& worker) {
 
     static TimePoint lastInfoTime = now();
 
-    TimePoint elapsed = tm.elapsed(worker.threads.nodes_searched());
+    TimePoint elapsed = tm.elapsed([&worker]() { return worker.threads.nodes_searched(); });
     TimePoint tick    = worker.limits.startTime + elapsed;
 
     if (tick - lastInfoTime >= 1000)
@@ -1879,7 +1879,7 @@ void SearchManager::pv(const Search::Worker&     worker,
     const auto& rootMoves = worker.rootMoves;
     const auto& pos       = worker.rootPos;
     size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed(nodes) + 1;
+    TimePoint   time      = tm.elapsed([nodes]() { return nodes; }) + 1;
     size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
     uint64_t    tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
