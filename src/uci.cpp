@@ -435,7 +435,7 @@ Move UCIEngine::to_move(const Position& pos, std::string str) {
 }
 
 void UCIEngine::on_update_no_moves(const Engine::InfoShort& info) {
-    sync_cout << "info depth" << info.depth << " score " << format_score(info.score) << sync_endl;
+    sync_cout << "info depth " << info.depth << " score " << format_score(info.score) << sync_endl;
 }
 
 void UCIEngine::on_update_full(const Engine::InfoFull& info, bool showWDL) {
