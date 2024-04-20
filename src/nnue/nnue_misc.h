@@ -50,12 +50,13 @@ struct NnueEvalTrace {
     std::size_t correctBucket;
 };
 
-
 struct Networks;
+struct AccumulatorCaches;
 
-
-std::string trace(Position& pos, const Networks& networks);
-void        hint_common_parent_position(const Position& pos, const Networks& networks);
+std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& caches);
+void        hint_common_parent_position(const Position&    pos,
+                                        const Networks&    networks,
+                                        AccumulatorCaches& caches);
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
