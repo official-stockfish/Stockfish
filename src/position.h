@@ -172,6 +172,9 @@ class Position {
     void put_piece(Piece pc, Square s);
     void remove_piece(Square s);
 
+    // Used by NNUE
+    Eval::NNUE::AccumulatorRefreshEntry refreshTable[SQUARE_NB];
+
    private:
     // Initialization helpers (used while setting up a position)
     void set_castling_right(Color c, Square rfrom);

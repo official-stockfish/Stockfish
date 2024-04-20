@@ -34,6 +34,7 @@
 
 namespace Stockfish::Eval::NNUE {
 
+struct AccumulatorRefreshEntry;
 
 enum class EmbeddedNNUEType {
     BIG,
@@ -51,7 +52,6 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-
     Value evaluate(const Position& pos,
                    bool            adjusted   = false,
                    int*            complexity = nullptr,
@@ -59,6 +59,8 @@ class Network {
 
 
     void hint_common_access(const Position& pos, bool psqtOnl) const;
+
+    void init_refresh_entry(AccumulatorRefreshEntry& entry) const;
 
     void          verify(std::string evalfilePath) const;
     NnueEvalTrace trace_evaluate(const Position& pos) const;

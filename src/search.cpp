@@ -33,6 +33,8 @@
 #include "misc.h"
 #include "movegen.h"
 #include "movepick.h"
+#include "nnue/network.h"
+#include "nnue/nnue_accumulator.h"
 #include "nnue/nnue_common.h"
 #include "nnue/nnue_misc.h"
 #include "position.h"
@@ -143,6 +145,11 @@ Search::Worker::Worker(SharedState&                    sharedState,
 }
 
 void Search::Worker::start_searching() {
+
+    // Initialize accumulator refresh entries
+    for (int i = 0; i < SQUARE_NB; i++)
+        networks.big.init_refresh_entry(rootPos.refreshTable[i]);
+
     // Non-main threads go directly to iterative_deepening()
     if (!is_mainthread())
     {
