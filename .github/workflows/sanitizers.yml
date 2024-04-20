@@ -31,6 +31,9 @@ jobs:
           - name: Run under valgrind-thread
             make_option: ""
             instrumented_option: valgrind-thread
+          - name: Run non-instrumented
+            make_option: ""
+            instrumented_option: none
     defaults:
       run:
         working-directory: src
