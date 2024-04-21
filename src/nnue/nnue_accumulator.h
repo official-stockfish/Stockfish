@@ -37,10 +37,11 @@ struct alignas(CacheLineSize) Accumulator {
     bool         computedPSQT[2];
 };
 
-struct AccumulatorRefreshEntry {
-    Bitboard                                     byColorBB[COLOR_NB][COLOR_NB];
-    Bitboard                                     byTypeBB[COLOR_NB][PIECE_TYPE_NB];
-    Accumulator<TransformedFeatureDimensionsBig> acc;
+struct alignas(CacheLineSize) AccumulatorRefreshEntry {
+    std::int16_t accumulation[2][TransformedFeatureDimensionsBig];
+    std::int32_t psqtAccumulation[2][PSQTBuckets];
+    Bitboard     byColorBB[COLOR_NB][COLOR_NB];
+    Bitboard     byTypeBB[COLOR_NB][PIECE_TYPE_NB];
 };
 
 using AccumulatorCache = std::array<Eval::NNUE::AccumulatorRefreshEntry, SQUARE_NB>;

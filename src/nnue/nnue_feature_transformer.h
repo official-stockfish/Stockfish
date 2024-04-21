@@ -388,9 +388,9 @@ class FeatureTransformer {
         std::memset(entry.byColorBB, 0, 2 * 2 * sizeof(Bitboard));
         std::memset(entry.byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
 
-        std::memcpy(entry.acc.accumulation[WHITE], biases, HalfDimensions * sizeof(BiasType));
-        std::memcpy(entry.acc.accumulation[BLACK], biases, HalfDimensions * sizeof(BiasType));
-        std::memset(entry.acc.psqtAccumulation, 0, sizeof(entry.acc.psqtAccumulation));
+        std::memcpy(entry.accumulation[WHITE], biases, HalfDimensions * sizeof(BiasType));
+        std::memcpy(entry.accumulation[BLACK], biases, HalfDimensions * sizeof(BiasType));
+        std::memset(entry.psqtAccumulation, 0, sizeof(entry.psqtAccumulation));
     }
 
    private:
@@ -704,15 +704,12 @@ class FeatureTransformer {
         }
 
 #ifdef VECTOR
-        int16_t* entryAccumulation     = entry.acc.accumulation[Perspective];
-        int32_t* entryPsqtAccumulation = entry.acc.psqtAccumulation[Perspective];
-
         vec_t      acc[NumRegs];
         psqt_vec_t psqt[NumPsqtRegs];
 
         for (IndexType j = 0; j < HalfDimensions / TileHeight; ++j)
         {
-            auto entryTile = reinterpret_cast<vec_t*>(&entryAccumulation[j * TileHeight]);
+            auto entryTile = reinterpret_cast<vec_t*>(&entry.accumulation[Perspective][j * TileHeight]);
             for (IndexType k = 0; k < NumRegs; ++k)
                 acc[k] = entryTile[k];
 
@@ -742,7 +739,7 @@ class FeatureTransformer {
         for (IndexType j = 0; j < PSQTBuckets / PsqtTileHeight; ++j)
         {
             auto entryTilePsqt =
-              reinterpret_cast<psqt_vec_t*>(&entryPsqtAccumulation[j * PsqtTileHeight]);
+              reinterpret_cast<psqt_vec_t*>(&entry.psqtAccumulation[Perspective][j * PsqtTileHeight]);
             for (std::size_t k = 0; k < NumPsqtRegs; ++k)
                 psqt[k] = entryTilePsqt[k];
 
@@ -775,19 +772,19 @@ class FeatureTransformer {
         {
             const IndexType offset = HalfDimensions * index;
             for (IndexType j = 0; j < HalfDimensions; ++j)
-                entry.acc.accumulation[Perspective][j] += weights[offset + j];
+                entry.accumulation[Perspective][j] += weights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                entry.acc.psqtAccumulation[Perspective][k] += psqtWeights[index * PSQTBuckets + k];
+                entry.psqtAccumulation[Perspective][k] += psqtWeights[index * PSQTBuckets + k];
         }
         for (const auto index : removed)
         {
             const IndexType offset = HalfDimensions * index;
             for (IndexType j = 0; j < HalfDimensions; ++j)
-                entry.acc.accumulation[Perspective][j] -= weights[offset + j];
+                entry.accumulation[Perspective][j] -= weights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                entry.acc.psqtAccumulation[Perspective][k] -= psqtWeights[index * PSQTBuckets + k];
+                entry.psqtAccumulation[Perspective][k] -= psqtWeights[index * PSQTBuckets + k];
         }
 
 #endif
@@ -796,9 +793,9 @@ class FeatureTransformer {
         // Now copy its content to the actual accumulator we were refreshing
 
         std::memcpy(accumulator.psqtAccumulation[Perspective],
-                    entry.acc.psqtAccumulation[Perspective], sizeof(int32_t) * PSQTBuckets);
+                    entry.psqtAccumulation[Perspective], sizeof(int32_t) * PSQTBuckets);
 
-        std::memcpy(accumulator.accumulation[Perspective], entry.acc.accumulation[Perspective],
+        std::memcpy(accumulator.accumulation[Perspective], entry.accumulation[Perspective],
                     sizeof(int16_t) * HalfDimensions);
 
         for (Color c : {WHITE, BLACK})
