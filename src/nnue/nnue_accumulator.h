@@ -39,15 +39,12 @@ struct alignas(CacheLineSize) Accumulator {
 
 
 struct alignas(CacheLineSize) AccumulatorRefreshEntry {
-    std::int16_t accumulation[2][TransformedFeatureDimensionsBig];
-    // using Acc = std::array<std::array<std::int16_t, TransformedFeatureDimensionsBig>, 2>;
-    // Acc          accumulation;
-    std::int32_t psqtAccumulation[2][PSQTBuckets];
-    Bitboard     byColorBB[COLOR_NB][COLOR_NB];
-    Bitboard     byTypeBB[COLOR_NB][PIECE_TYPE_NB];
+    BiasType       accumulation[2][TransformedFeatureDimensionsBig];
+    PSQTWeightType psqtAccumulation[2][PSQTBuckets];
+    Bitboard       byColorBB[COLOR_NB][COLOR_NB];
+    Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
 
-    // todo use BiasType
-    void clear(const std::int16_t* biases) {
+    void clear(const BiasType* biases) {
         // To initialize a refresh entry, we set all its bitboards empty,
         // so we put the biases in the accumulation, without any weights on top
 
@@ -55,9 +52,9 @@ struct alignas(CacheLineSize) AccumulatorRefreshEntry {
         std::memset(byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
 
         std::memcpy(accumulation[WHITE], biases,
-                    TransformedFeatureDimensionsBig * sizeof(std::int16_t));
+                    TransformedFeatureDimensionsBig * sizeof(BiasType));
         std::memcpy(accumulation[BLACK], biases,
-                    TransformedFeatureDimensionsBig * sizeof(std::int16_t));
+                    TransformedFeatureDimensionsBig * sizeof(BiasType));
 
         std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
     }
