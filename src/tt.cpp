@@ -40,7 +40,8 @@ void TTEntry::save(
         move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || uint16_t(k) != key16 || d - DEPTH_OFFSET + 2 * pv > depth8 - 4)
+    if (b == BOUND_EXACT || uint16_t(k) != key16 || d - DEPTH_OFFSET + 2 * pv > depth8 - 4
+        || relative_age(generation8))
     {
         assert(d > DEPTH_OFFSET);
         assert(d < 256 + DEPTH_OFFSET);
@@ -67,7 +68,7 @@ uint8_t TTEntry::relative_age(const uint8_t generation8) const {
 
 
 // Sets the size of the transposition table,
-// measured in megabytes. Transposition table consists of a power of 2 number
+// measured in megabytes. Transposition table consists
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
 void TranspositionTable::resize(size_t mbSize, int threadCount) {
     aligned_large_pages_free(table);
@@ -123,13 +124,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
 
     for (int i = 0; i < ClusterSize; ++i)
         if (tte[i].key16 == key16 || !tte[i].depth8)
-        {
-            constexpr uint8_t lowerBits = GENERATION_DELTA - 1;
-
-            // Refresh with new generation, keeping the lower bits the same.
-            tte[i].genBound8 = uint8_t(generation8 | (tte[i].genBound8 & lowerBits));
-            return found     = bool(tte[i].depth8), &tte[i];
-        }
+            return found = bool(tte[i].depth8), &tte[i];
 
     // Find an entry to be replaced according to the replacement strategy
     TTEntry* replace = tte;

@@ -340,7 +340,7 @@ void Search::Worker::iterative_deepening() {
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
                 if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
-                    && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
+                    && elapsed() > 3000)
                     main_manager()->pv(*this, threads, tt, rootDepth);
 
                 // In case of failing low/high increase aspiration window and
@@ -371,8 +371,7 @@ void Search::Worker::iterative_deepening() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (mainThread
-                && (threads.stop || pvIdx + 1 == multiPV
-                    || mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
+                && (threads.stop || pvIdx + 1 == multiPV || elapsed() > 3000)
                 // A thread that aborted search can have mated-in/TB-loss PV and score
                 // that cannot be trusted, i.e. it can be delayed or refuted if we would have
                 // had time to fully search other root-moves. Thus we suppress this output and
@@ -448,13 +447,14 @@ void Search::Worker::iterative_deepening() {
             if (rootMoves.size() == 1)
                 totalTime = std::min(500.0, totalTime);
 
-            if (completedDepth >= 10 && nodesEffort >= 97
-                && mainThread->tm.elapsed(threads.nodes_searched()) > totalTime * 0.739
+            auto elapsedTime = elapsed();
+
+            if (completedDepth >= 10 && nodesEffort >= 97 && elapsedTime > totalTime * 0.739
                 && !mainThread->ponder)
                 threads.stop = true;
 
             // Stop the search if we have exceeded the totalTime
-            if (mainThread->tm.elapsed(threads.nodes_searched()) > totalTime)
+            if (elapsedTime > totalTime)
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -464,9 +464,7 @@ void Search::Worker::iterative_deepening() {
                     threads.stop = true;
             }
             else
-                threads.increaseDepth =
-                  mainThread->ponder
-                  || mainThread->tm.elapsed(threads.nodes_searched()) <= totalTime * 0.506;
+                threads.increaseDepth = mainThread->ponder || elapsedTime <= totalTime * 0.506;
         }
 
         mainThread->iterValue[iterIdx] = bestValue;
@@ -928,8 +926,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && is_mainthread()
-            && main_manager()->tm.elapsed(threads.nodes_searched()) > 3000)
+        if (rootNode && is_mainthread() && elapsed() > 3000)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
@@ -966,11 +963,11 @@ moves_loop:  // When in check, search starts here
                 if (!givesCheck && lmrDepth < 7 && !ss->inCheck)
                 {
                     Piece capturedPiece = pos.piece_on(move.to_sq());
-                    int   futilityEval =
-                      ss->staticEval + 287 + 277 * lmrDepth + PieceValue[capturedPiece]
+                    Value futilityValue =
+                      ss->staticEval + 288 + 277 * lmrDepth + PieceValue[capturedPiece]
                       + thisThread->captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)]
                           / 7;
-                    if (futilityEval < alpha)
+                    if (futilityValue <= alpha)
                         continue;
                 }
 
@@ -1083,7 +1080,7 @@ moves_loop:  // When in check, search starts here
                     extension = -1;
             }
 
-            // Recapture extensions (~0 Elo on STC, ~1 Elo on LTC)
+            // Extension for capturing the previous moved piece (~0 Elo on STC, ~1 Elo on LTC)
             else if (PvNode && move == ttMove && move.to_sq() == prevSq
                      && thisThread->captureHistory[movedPiece][move.to_sq()]
                                                   [type_of(pos.piece_on(move.to_sq()))]
@@ -1147,7 +1144,7 @@ moves_loop:  // When in check, search starts here
         {
             // In general we want to cap the LMR depth search at newDepth, but when
             // reduction is negative, we allow this move a limited search extension
-            // beyond the first move depth. This may lead to hidden multiple extensions.
+            // beyond the first move depth.
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
             Depth d = std::max(1, std::min(newDepth - r, newDepth + 1));
@@ -1392,7 +1389,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     Key      posKey;
     Move     ttMove, move, bestMove;
     Depth    ttDepth;
-    Value    bestValue, value, ttValue, futilityValue, futilityBase;
+    Value    bestValue, value, ttValue, futilityBase;
     bool     pvHit, givesCheck, capture;
     int      moveCount;
     Color    us = pos.side_to_move();
@@ -1521,7 +1518,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
                 if (moveCount > 2)
                     continue;
 
-                futilityValue = futilityBase + PieceValue[pos.piece_on(move.to_sq())];
+                Value futilityValue = futilityBase + PieceValue[pos.piece_on(move.to_sq())];
 
                 // If static eval + value of piece we are going to capture is much lower
                 // than alpha we can prune this move. (~2 Elo)
@@ -1630,6 +1627,11 @@ Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
     int reductionScale = reductions[d] * reductions[mn];
     return (reductionScale + 1123 - delta * 832 / rootDelta) / 1024 + (!i && reductionScale > 1025);
 }
+
+TimePoint Search::Worker::elapsed() const {
+    return main_manager()->tm.elapsed([this]() { return threads.nodes_searched(); });
+}
+
 
 namespace {
 // Adjusts a mate or TB score from "plies to mate from the root"
@@ -1845,7 +1847,7 @@ void SearchManager::check_time(Search::Worker& worker) {
 
     static TimePoint lastInfoTime = now();
 
-    TimePoint elapsed = tm.elapsed(worker.threads.nodes_searched());
+    TimePoint elapsed = tm.elapsed([&worker]() { return worker.threads.nodes_searched(); });
     TimePoint tick    = worker.limits.startTime + elapsed;
 
     if (tick - lastInfoTime >= 1000)
@@ -1877,7 +1879,7 @@ void SearchManager::pv(const Search::Worker&     worker,
     const auto& rootMoves = worker.rootMoves;
     const auto& pos       = worker.rootPos;
     size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed(nodes) + 1;
+    TimePoint   time      = tm.elapsed([nodes]() { return nodes; }) + 1;
     size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
     uint64_t    tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
