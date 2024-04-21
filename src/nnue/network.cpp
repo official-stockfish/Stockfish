@@ -187,11 +187,11 @@ bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename
 
 template<typename Arch, typename Transformer>
 Value Network<Arch, Transformer>::evaluate(
-  const Position&                                        pos,
-  AccumulatorCaches::Cache<Transformer::HalfDimensions>& cache,
-  bool                                                   adjusted,
-  int*                                                   complexity,
-  bool                                                   psqtOnly) const {
+  const Position&                                            pos,
+  AccumulatorCaches::CacheType<Transformer::HalfDimensions>& cache,
+  bool                                                       adjusted,
+  int*                                                       complexity,
+  bool                                                       psqtOnly) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
 
@@ -259,15 +259,15 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::hint_common_access(
-  const Position&                                        pos,
-  AccumulatorCaches::Cache<Transformer::HalfDimensions>& cache,
-  bool                                                   psqtOnl) const {
+  const Position&                                            pos,
+  AccumulatorCaches::CacheType<Transformer::HalfDimensions>& cache,
+  bool                                                       psqtOnl) const {
     featureTransformer->hint_common_access(pos, cache, psqtOnl);
 }
 
 template<typename Arch, typename Transformer>
 NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(
-  const Position& pos, AccumulatorCaches::Cache<Transformer::HalfDimensions>& entry) const {
+  const Position& pos, AccumulatorCaches::CacheType<Transformer::HalfDimensions>& entry) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
     constexpr uint64_t alignment = CacheLineSize;

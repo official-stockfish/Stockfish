@@ -22,6 +22,7 @@
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
 #include <cstdint>
+#include <optional>
 
 #include "nnue_architecture.h"
 #include "nnue_common.h"
@@ -42,6 +43,18 @@ struct alignas(CacheLineSize) Accumulator {
 };
 
 struct AccumulatorCaches {
+
+    enum Initializer {
+        INIT_SMALL = 1,
+        INIT_BIG   = 2,
+    };
+
+    explicit AccumulatorCaches(Initializer init = Initializer(INIT_BIG)) {
+        if (init & INIT_SMALL)
+            small.emplace();
+        if (init & INIT_BIG)
+            big.emplace();
+    }
 
     template<IndexType Size>
     struct alignas(CacheLineSize) Cache {
@@ -83,9 +96,19 @@ struct AccumulatorCaches {
         std::array<Entry, SQUARE_NB> entries;
     };
 
-    Cache<TransformedFeatureDimensionsBig> big;
+    template<typename Networks>
+    void clear(const Networks& networks) {
+        if (big)
+            big->clear(networks.big);
+        if (small)
+            small->clear(networks.small);
+    }
 
-    Cache<TransformedFeatureDimensionsSmall> small;
+    template<IndexType Size>
+    using CacheType = std::optional<Cache<Size>>;
+
+    std::optional<Cache<TransformedFeatureDimensionsBig>>   big;
+    std::optional<Cache<TransformedFeatureDimensionsSmall>> small;
 };
 
 }  // namespace Stockfish::Eval::NNUE
