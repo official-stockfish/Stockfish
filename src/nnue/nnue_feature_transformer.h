@@ -679,7 +679,7 @@ class FeatureTransformer {
         accumulator.computedPSQT[Perspective] = true;
 
         FeatureSet::IndexList removed, added;
-        for (Color c = WHITE; c <= BLACK; c = Color(int(c) + 1))
+        for (Color c : {WHITE, BLACK})
         {
             for (PieceType pt = PAWN; pt <= KING; ++pt)
             {
@@ -801,11 +801,11 @@ class FeatureTransformer {
         std::memcpy(accumulator.accumulation[Perspective], entry.acc.accumulation[Perspective],
                     sizeof(int16_t) * HalfDimensions);
 
-        for (int i = WHITE; i <= BLACK; i++)
-            entry.byColorBB[Perspective][i] = pos.pieces(Color(i));
+        for (Color c : {WHITE, BLACK})
+            entry.byColorBB[Perspective][c] = pos.pieces(c);
 
-        for (int i = PAWN; i <= KING; i++)
-            entry.byTypeBB[Perspective][i] = pos.pieces(PieceType(i));
+        for (PieceType pt = PAWN; pt <= KING; ++pt)
+            entry.byTypeBB[Perspective][pt] = pos.pieces(pt);
     }
 
     template<Color Perspective>
@@ -816,7 +816,6 @@ class FeatureTransformer {
         // redirect to the version of refresh that uses the refresh table
         if (HalfDimensions == Eval::NNUE::TransformedFeatureDimensionsBig)
         {
-            // TODO: find a better solution than const_casting the position
             update_accumulator_refresh_cache<Perspective>(pos, cache);
             return;
         }

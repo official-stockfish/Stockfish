@@ -38,8 +38,8 @@ struct alignas(CacheLineSize) Accumulator {
 };
 
 struct AccumulatorRefreshEntry {
-    Bitboard                                     byColorBB[2][2];
-    Bitboard                                     byTypeBB[2][8];
+    Bitboard                                     byColorBB[COLOR_NB][COLOR_NB];
+    Bitboard                                     byTypeBB[COLOR_NB][PIECE_TYPE_NB];
     Accumulator<TransformedFeatureDimensionsBig> acc;
 };
 

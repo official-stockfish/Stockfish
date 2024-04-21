@@ -37,6 +37,7 @@
 #include "syzygy/tbprobe.h"
 #include "timeman.h"
 #include "types.h"
+#include "nnue/nnue_accumulator.h"
 
 namespace Stockfish {
 

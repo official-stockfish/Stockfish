@@ -20,7 +20,9 @@
 #define EVALUATE_H_INCLUDED
 
 #include <string>
+#include <array>
 
+#include "nnue/nnue_accumulator.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -40,8 +42,6 @@ constexpr inline int SmallNetThreshold = 1274, PsqtOnlyThreshold = 2389;
 
 namespace NNUE {
 struct Networks;
-struct AccumulatorRefreshEntry;
-using AccumulatorCache = std::array<AccumulatorRefreshEntry, SQUARE_NB>;
 }
 
 std::string trace(Position& pos, const Eval::NNUE::Networks& networks);
