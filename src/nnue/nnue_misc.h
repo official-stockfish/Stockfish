@@ -52,10 +52,14 @@ struct NnueEvalTrace {
 
 
 struct Networks;
+struct AccumulatorRefreshEntry;
 
+using AccumulatorCache = std::array<AccumulatorRefreshEntry, SQUARE_NB>;
 
-std::string trace(Position& pos, const Networks& networks);
-void        hint_common_parent_position(const Position& pos, const Networks& networks);
+std::string trace(Position& pos, const Networks& networks, AccumulatorCache& cache);
+void        hint_common_parent_position(const Position&   pos,
+                                        const Networks&   networks,
+                                        AccumulatorCache& cache);
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish

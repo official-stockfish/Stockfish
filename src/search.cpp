@@ -148,7 +148,7 @@ void Search::Worker::start_searching() {
 
     // Initialize accumulator refresh entries
     for (int i = 0; i < SQUARE_NB; i++)
-        networks.big.init_refresh_entry(rootPos.refreshTable[i]);
+        networks.big.init_refresh_entry(refreshTable[i]);
 
     // Non-main threads go directly to iterative_deepening()
     if (!is_mainthread())
@@ -571,7 +571,7 @@ Value Search::Worker::search(
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !ss->inCheck)
-                   ? evaluate(networks, pos, thisThread->optimism[us])
+                   ? evaluate(networks, pos, refreshTable, thisThread->optimism[us])
                    : value_draw(thisThread->nodes);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
@@ -705,7 +705,7 @@ Value Search::Worker::search(
     {
         // Providing the hint that this node's accumulator will be used often
         // brings significant Elo gain (~13 Elo).
-        Eval::NNUE::hint_common_parent_position(pos, networks);
+        Eval::NNUE::hint_common_parent_position(pos, networks, refreshTable);
         unadjustedStaticEval = eval = ss->staticEval;
     }
     else if (ss->ttHit)
@@ -713,9 +713,9 @@ Value Search::Worker::search(
         // Never assume anything about values stored in TT
         unadjustedStaticEval = tte->eval();
         if (unadjustedStaticEval == VALUE_NONE)
-            unadjustedStaticEval = evaluate(networks, pos, thisThread->optimism[us]);
+            unadjustedStaticEval = evaluate(networks, pos, refreshTable, thisThread->optimism[us]);
         else if (PvNode)
-            Eval::NNUE::hint_common_parent_position(pos, networks);
+            Eval::NNUE::hint_common_parent_position(pos, networks, refreshTable);
 
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
@@ -725,7 +725,7 @@ Value Search::Worker::search(
     }
     else
     {
-        unadjustedStaticEval = evaluate(networks, pos, thisThread->optimism[us]);
+        unadjustedStaticEval = evaluate(networks, pos, refreshTable, thisThread->optimism[us]);
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
         // Static evaluation is saved as it was before adjustment by correction history
@@ -882,7 +882,7 @@ Value Search::Worker::search(
                 }
             }
 
-        Eval::NNUE::hint_common_parent_position(pos, networks);
+        Eval::NNUE::hint_common_parent_position(pos, networks, refreshTable);
     }
 
 moves_loop:  // When in check, search starts here
@@ -1420,7 +1420,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     // Step 2. Check for an immediate draw or maximum ply reached
     if (pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !ss->inCheck)
-               ? evaluate(networks, pos, thisThread->optimism[us])
+               ? evaluate(networks, pos, refreshTable, thisThread->optimism[us])
                : VALUE_DRAW;
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
@@ -1452,7 +1452,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
             // Never assume anything about values stored in TT
             unadjustedStaticEval = tte->eval();
             if (unadjustedStaticEval == VALUE_NONE)
-                unadjustedStaticEval = evaluate(networks, pos, thisThread->optimism[us]);
+                unadjustedStaticEval =
+                  evaluate(networks, pos, refreshTable, thisThread->optimism[us]);
             ss->staticEval = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);
 
@@ -1465,7 +1466,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
         {
             // In case of null move search, use previous static eval with a different sign
             unadjustedStaticEval = (ss - 1)->currentMove != Move::null()
-                                   ? evaluate(networks, pos, thisThread->optimism[us])
+                                   ? evaluate(networks, pos, refreshTable, thisThread->optimism[us])
                                    : -(ss - 1)->staticEval;
             ss->staticEval       = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, *thisThread, pos);

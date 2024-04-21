@@ -52,18 +52,19 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    Value evaluate(const Position& pos,
-                   bool            adjusted   = false,
-                   int*            complexity = nullptr,
-                   bool            psqtOnly   = false) const;
+    Value evaluate(const Position&   pos,
+                   AccumulatorCache& cache,
+                   bool              adjusted   = false,
+                   int*              complexity = nullptr,
+                   bool              psqtOnly   = false) const;
 
 
-    void hint_common_access(const Position& pos, bool psqtOnl) const;
+    void hint_common_access(const Position& pos, AccumulatorCache& cache, bool psqtOnl) const;
 
     void init_refresh_entry(AccumulatorRefreshEntry& entry) const;
 
     void          verify(std::string evalfilePath) const;
-    NnueEvalTrace trace_evaluate(const Position& pos) const;
+    NnueEvalTrace trace_evaluate(const Position& pos, AccumulatorCache& entry) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);

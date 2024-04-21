@@ -26,9 +26,9 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
-#include <string>
 
 #include "misc.h"
 #include "movepick.h"
@@ -254,6 +254,10 @@ class Worker {
     ContinuationHistory   continuationHistory[2][2];
     PawnHistory           pawnHistory;
     CorrectionHistory     correctionHistory;
+
+    // Used by NNUE
+
+    std::array<Eval::NNUE::AccumulatorRefreshEntry, SQUARE_NB> refreshTable;
 
    private:
     void iterative_deepening();

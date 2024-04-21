@@ -38,10 +38,12 @@ struct alignas(CacheLineSize) Accumulator {
 };
 
 struct AccumulatorRefreshEntry {
-  Bitboard byColorBB[2][2];
-  Bitboard byTypeBB[2][8];
-  Accumulator<TransformedFeatureDimensionsBig> acc;
+    Bitboard                                     byColorBB[2][2];
+    Bitboard                                     byTypeBB[2][8];
+    Accumulator<TransformedFeatureDimensionsBig> acc;
 };
+
+using AccumulatorCache = std::array<Eval::NNUE::AccumulatorRefreshEntry, SQUARE_NB>;
 
 }  // namespace Stockfish::Eval::NNUE
 

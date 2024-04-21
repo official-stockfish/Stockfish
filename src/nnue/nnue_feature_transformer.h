@@ -306,10 +306,13 @@ class FeatureTransformer {
     }
 
     // Convert input features
-    std::int32_t
-    transform(const Position& pos, OutputType* output, int bucket, bool psqtOnly) const {
-        update_accumulator<WHITE>(pos, psqtOnly);
-        update_accumulator<BLACK>(pos, psqtOnly);
+    std::int32_t transform(const Position&   pos,
+                           AccumulatorCache& cache,
+                           OutputType*       output,
+                           int               bucket,
+                           bool              psqtOnly) const {
+        update_accumulator<WHITE>(pos, cache, psqtOnly);
+        update_accumulator<BLACK>(pos, cache, psqtOnly);
 
         const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
         const auto& psqtAccumulation = (pos.state()->*accPtr).psqtAccumulation;
@@ -371,9 +374,9 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
-    void hint_common_access(const Position& pos, bool psqtOnly) const {
-        hint_common_access_for_perspective<WHITE>(pos, psqtOnly);
-        hint_common_access_for_perspective<BLACK>(pos, psqtOnly);
+    void hint_common_access(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
+        hint_common_access_for_perspective<WHITE>(pos, cache, psqtOnly);
+        hint_common_access_for_perspective<BLACK>(pos, cache, psqtOnly);
     }
 
     void init_refresh_entry(AccumulatorRefreshEntry& entry) {
@@ -383,7 +386,7 @@ class FeatureTransformer {
         // so we put the biases in the accumulation, without any weights on top
 
         std::memset(entry.byColorBB, 0, 2 * 2 * sizeof(Bitboard));
-        std::memset(entry.byTypeBB,  0, 2 * 8 * sizeof(Bitboard));
+        std::memset(entry.byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
 
         std::memcpy(entry.acc.accumulation[WHITE], biases, HalfDimensions * sizeof(BiasType));
         std::memcpy(entry.acc.accumulation[BLACK], biases, HalfDimensions * sizeof(BiasType));
@@ -664,31 +667,36 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void update_accumulator_refresh_cache(Position& pos) const {
+    void update_accumulator_refresh_cache(const Position& pos, AccumulatorCache& cache) const {
 
         assert(HalfDimensions == TransformedFeatureDimensionsBig);
 
-        Square   ksq = pos.square<KING>(Perspective);
-        AccumulatorRefreshEntry& entry = pos.refreshTable[ksq];
+        Square                   ksq   = pos.square<KING>(Perspective);
+        AccumulatorRefreshEntry& entry = cache[ksq];
 
         auto& accumulator                     = pos.state()->*accPtr;
         accumulator.computed[Perspective]     = true;
         accumulator.computedPSQT[Perspective] = true;
 
         FeatureSet::IndexList removed, added;
-        for (Color c = WHITE; c <= BLACK; c = Color(int(c)+1)) {
-            for (PieceType pt = PAWN; pt <= KING; ++pt) {
-                const Piece piece = make_piece(c, pt);
-                const Bitboard oldBB = entry.byColorBB[Perspective][c] & entry.byTypeBB[Perspective][pt];
-                const Bitboard newBB = pos.pieces(c, pt);
-                Bitboard toRemove = oldBB & ~newBB;
-                Bitboard toAdd = newBB & ~oldBB;
+        for (Color c = WHITE; c <= BLACK; c = Color(int(c) + 1))
+        {
+            for (PieceType pt = PAWN; pt <= KING; ++pt)
+            {
+                const Piece    piece = make_piece(c, pt);
+                const Bitboard oldBB =
+                  entry.byColorBB[Perspective][c] & entry.byTypeBB[Perspective][pt];
+                const Bitboard newBB    = pos.pieces(c, pt);
+                Bitboard       toRemove = oldBB & ~newBB;
+                Bitboard       toAdd    = newBB & ~oldBB;
 
-                while (toRemove) {
+                while (toRemove)
+                {
                     Square sq = pop_lsb(toRemove);
                     removed.push_back(FeatureSet::make_index<Perspective>(sq, piece, ksq));
                 }
-                while (toAdd) {
+                while (toAdd)
+                {
                     Square sq = pop_lsb(toAdd);
                     added.push_back(FeatureSet::make_index<Perspective>(sq, piece, ksq));
                 }
@@ -696,9 +704,9 @@ class FeatureTransformer {
         }
 
 #ifdef VECTOR
-        int16_t* entryAccumulation = entry.acc.accumulation[Perspective];
+        int16_t* entryAccumulation     = entry.acc.accumulation[Perspective];
         int32_t* entryPsqtAccumulation = entry.acc.psqtAccumulation[Perspective];
-        
+
         vec_t      acc[NumRegs];
         psqt_vec_t psqt[NumPsqtRegs];
 
@@ -733,7 +741,8 @@ class FeatureTransformer {
 
         for (IndexType j = 0; j < PSQTBuckets / PsqtTileHeight; ++j)
         {
-            auto entryTilePsqt = reinterpret_cast<psqt_vec_t*>(&entryPsqtAccumulation[j * PsqtTileHeight]);
+            auto entryTilePsqt =
+              reinterpret_cast<psqt_vec_t*>(&entryPsqtAccumulation[j * PsqtTileHeight]);
             for (std::size_t k = 0; k < NumPsqtRegs; ++k)
                 psqt[k] = entryTilePsqt[k];
 
@@ -769,8 +778,7 @@ class FeatureTransformer {
                 entry.acc.accumulation[Perspective][j] += weights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                entry.acc.psqtAccumulation[Perspective][k] +=
-                psqtWeights[index * PSQTBuckets + k];
+                entry.acc.psqtAccumulation[Perspective][k] += psqtWeights[index * PSQTBuckets + k];
         }
         for (const auto index : removed)
         {
@@ -779,8 +787,7 @@ class FeatureTransformer {
                 entry.acc.accumulation[Perspective][j] -= weights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                entry.acc.psqtAccumulation[Perspective][k] -=
-                psqtWeights[index * PSQTBuckets + k];
+                entry.acc.psqtAccumulation[Perspective][k] -= psqtWeights[index * PSQTBuckets + k];
         }
 
 #endif
@@ -789,11 +796,9 @@ class FeatureTransformer {
         // Now copy its content to the actual accumulator we were refreshing
 
         std::memcpy(accumulator.psqtAccumulation[Perspective],
-                    entry.acc.psqtAccumulation[Perspective],
-                    sizeof(int32_t) * PSQTBuckets);
+                    entry.acc.psqtAccumulation[Perspective], sizeof(int32_t) * PSQTBuckets);
 
-        std::memcpy(accumulator.accumulation[Perspective],
-                    entry.acc.accumulation[Perspective],
+        std::memcpy(accumulator.accumulation[Perspective], entry.acc.accumulation[Perspective],
                     sizeof(int16_t) * HalfDimensions);
 
         for (int i = WHITE; i <= BLACK; i++)
@@ -804,13 +809,15 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void update_accumulator_refresh(const Position& pos, bool psqtOnly) const {
+    void
+    update_accumulator_refresh(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
 
-        // When we are refreshing the accumulator of the big net, 
+        // When we are refreshing the accumulator of the big net,
         // redirect to the version of refresh that uses the refresh table
-        if (HalfDimensions == Eval::NNUE::TransformedFeatureDimensionsBig) {
+        if (HalfDimensions == Eval::NNUE::TransformedFeatureDimensionsBig)
+        {
             // TODO: find a better solution than const_casting the position
-            update_accumulator_refresh_cache<Perspective>(const_cast<Position&>(pos));
+            update_accumulator_refresh_cache<Perspective>(pos, cache);
             return;
         }
 
@@ -927,7 +934,9 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void hint_common_access_for_perspective(const Position& pos, bool psqtOnly) const {
+    void hint_common_access_for_perspective(const Position&   pos,
+                                            AccumulatorCache& cache,
+                                            bool              psqtOnly) const {
 
         // Works like update_accumulator, but performs less work.
         // Updates ONLY the accumulator for pos.
@@ -950,11 +959,11 @@ class FeatureTransformer {
                                                            psqtOnly);
         }
         else
-            update_accumulator_refresh<Perspective>(pos, psqtOnly);
+            update_accumulator_refresh<Perspective>(pos, cache, psqtOnly);
     }
 
     template<Color Perspective>
-    void update_accumulator(const Position& pos, bool psqtOnly) const {
+    void update_accumulator(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
 
         auto [oldest_st, next] = try_find_computed_accumulator<Perspective>(pos, psqtOnly);
 
@@ -976,7 +985,7 @@ class FeatureTransformer {
                                                            psqtOnly);
         }
         else
-            update_accumulator_refresh<Perspective>(pos, psqtOnly);
+            update_accumulator_refresh<Perspective>(pos, cache, psqtOnly);
     }
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
