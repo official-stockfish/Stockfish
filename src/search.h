@@ -256,9 +256,6 @@ class Worker {
     PawnHistory           pawnHistory;
     CorrectionHistory     correctionHistory;
 
-    // Used by NNUE
-
-    Eval::NNUE::AccumulatorCaches refreshTable;
 
    private:
     void iterative_deepening();
@@ -305,6 +302,10 @@ class Worker {
     std::unique_ptr<ISearchManager> manager;
 
     Tablebases::Config tbConfig;
+
+    // Used by NNUE
+
+    Eval::NNUE::AccumulatorCaches refreshTable;
 
     const OptionsMap&           options;
     ThreadPool&                 threads;
