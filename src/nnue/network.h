@@ -31,10 +31,9 @@
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
+#include "nnue_accumulator.h"
 
 namespace Stockfish::Eval::NNUE {
-
-struct AccumulatorRefreshEntry;
 
 enum class EmbeddedNNUEType {
     BIG,

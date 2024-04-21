@@ -20,7 +20,6 @@
 #define EVALUATE_H_INCLUDED
 
 #include <string>
-#include <array>
 
 #include "nnue/nnue_accumulator.h"
 #include "types.h"
@@ -51,8 +50,6 @@ Value evaluate(const NNUE::Networks&         networks,
                const Position&               pos,
                Eval::NNUE::AccumulatorCache& cache,
                int                           optimism);
-
-
 }  // namespace Eval
 
 }  // namespace Stockfish
