@@ -306,11 +306,11 @@ class FeatureTransformer {
     }
 
     // Convert input features
-    std::int32_t transform(const Position&   pos,
-                           AccumulatorCache& cache,
-                           OutputType*       output,
-                           int               bucket,
-                           bool              psqtOnly) const {
+    std::int32_t transform(const Position&    pos,
+                           AccumulatorCaches& cache,
+                           OutputType*        output,
+                           int                bucket,
+                           bool               psqtOnly) const {
         update_accumulator<WHITE>(pos, cache, psqtOnly);
         update_accumulator<BLACK>(pos, cache, psqtOnly);
 
@@ -374,7 +374,7 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
-    void hint_common_access(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
+    void hint_common_access(const Position& pos, AccumulatorCaches& cache, bool psqtOnly) const {
         hint_common_access_for_perspective<WHITE>(pos, cache, psqtOnly);
         hint_common_access_for_perspective<BLACK>(pos, cache, psqtOnly);
     }
@@ -653,12 +653,12 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void update_accumulator_refresh_cache(const Position& pos, AccumulatorCache& cache) const {
+    void update_accumulator_refresh_cache(const Position& pos, AccumulatorCaches& cache) const {
 
         assert(HalfDimensions == TransformedFeatureDimensionsBig);
 
-        Square                   ksq   = pos.square<KING>(Perspective);
-        AccumulatorRefreshEntry& entry = cache[ksq];
+        Square ksq   = pos.square<KING>(Perspective);
+        auto&  entry = cache.big[ksq];
 
         auto& accumulator                     = pos.state()->*accPtr;
         accumulator.computed[Perspective]     = true;
@@ -794,7 +794,7 @@ class FeatureTransformer {
 
     template<Color Perspective>
     void
-    update_accumulator_refresh(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
+    update_accumulator_refresh(const Position& pos, AccumulatorCaches& cache, bool psqtOnly) const {
 
         // When we are refreshing the accumulator of the big net,
         // redirect to the version of refresh that uses the refresh table
@@ -917,9 +917,9 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void hint_common_access_for_perspective(const Position&   pos,
-                                            AccumulatorCache& cache,
-                                            bool              psqtOnly) const {
+    void hint_common_access_for_perspective(const Position&    pos,
+                                            AccumulatorCaches& cache,
+                                            bool               psqtOnly) const {
 
         // Works like update_accumulator, but performs less work.
         // Updates ONLY the accumulator for pos.
@@ -946,7 +946,7 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void update_accumulator(const Position& pos, AccumulatorCache& cache, bool psqtOnly) const {
+    void update_accumulator(const Position& pos, AccumulatorCaches& cache, bool psqtOnly) const {
 
         auto [oldest_st, next] = try_find_computed_accumulator<Perspective>(pos, psqtOnly);
 
@@ -971,7 +971,8 @@ class FeatureTransformer {
             update_accumulator_refresh<Perspective>(pos, cache, psqtOnly);
     }
 
-    friend struct AccumulatorCache;
+    template<IndexType Size>
+    friend struct AccumulatorCaches::Cache;
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];

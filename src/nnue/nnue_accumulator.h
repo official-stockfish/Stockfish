@@ -28,6 +28,10 @@
 
 namespace Stockfish::Eval::NNUE {
 
+using BiasType       = std::int16_t;
+using PSQTWeightType = std::int32_t;
+using IndexType      = std::uint32_t;
+
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
@@ -37,57 +41,51 @@ struct alignas(CacheLineSize) Accumulator {
     bool         computedPSQT[2];
 };
 
+struct AccumulatorCaches {
 
-struct alignas(CacheLineSize) AccumulatorRefreshEntry {
-    BiasType       accumulation[2][TransformedFeatureDimensionsBig];
-    PSQTWeightType psqtAccumulation[2][PSQTBuckets];
-    Bitboard       byColorBB[COLOR_NB][COLOR_NB];
-    Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
+    template<IndexType Size>
+    struct alignas(CacheLineSize) Cache {
 
-    void clear(const BiasType* biases) {
-        // To initialize a refresh entry, we set all its bitboards empty,
-        // so we put the biases in the accumulation, without any weights on top
+        struct alignas(CacheLineSize) Entry {
+            BiasType       accumulation[2][Size];
+            PSQTWeightType psqtAccumulation[2][PSQTBuckets];
+            Bitboard       byColorBB[COLOR_NB][COLOR_NB];
+            Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
 
-        std::memset(byColorBB, 0, 2 * 2 * sizeof(Bitboard));
-        std::memset(byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
+            // To initialize a refresh entry, we set all its bitboards empty,
+            // so we put the biases in the accumulation, without any weights on top
+            void clear(const BiasType* biases) {
 
-        std::memcpy(accumulation[WHITE], biases,
-                    TransformedFeatureDimensionsBig * sizeof(BiasType));
-        std::memcpy(accumulation[BLACK], biases,
-                    TransformedFeatureDimensionsBig * sizeof(BiasType));
+                std::memset(byColorBB, 0, 2 * 2 * sizeof(Bitboard));
+                std::memset(byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
 
-        std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
-    }
-};
+                std::memcpy(accumulation[WHITE], biases,
+                            TransformedFeatureDimensionsBig * sizeof(BiasType));
+                std::memcpy(accumulation[BLACK], biases,
+                            TransformedFeatureDimensionsBig * sizeof(BiasType));
 
+                std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
+            }
+        };
 
-struct alignas(CacheLineSize) AccumulatorCache {
-    AccumulatorCache() = default;
-
-    template<typename Network>
-    AccumulatorCache(const Network& network) {
-        clear(network);
-    }
-
-    template<typename Network>
-    void clear(const Network& network) {
-        for (auto& entry : entries)
-        {
-            entry.clear(network.featureTransformer->biases);
+        template<typename Network>
+        void clear(const Network& network) {
+            for (auto& entry : entries)
+                entry.clear(network.featureTransformer->biases);
         }
-    }
 
-    void clear(const std::int16_t* biases) {
-        for (auto& entry : entries)
-        {
-            entry.clear(biases);
+        void clear(const std::int16_t* biases) {
+            for (auto& entry : entries)
+                entry.clear(biases);
         }
-    }
 
-    AccumulatorRefreshEntry& operator[](Square sq) { return entries[sq]; }
-    AccumulatorRefreshEntry& operator[](int sq) { return entries[sq]; }
+        Entry& operator[](Square sq) { return entries[sq]; }
+        Entry& operator[](int sq) { return entries[sq]; }
 
-    std::array<AccumulatorRefreshEntry, SQUARE_NB> entries;
+        std::array<Entry, SQUARE_NB> entries;
+    };
+
+    Cache<TransformedFeatureDimensionsBig> big;
 };
 
 }  // namespace Stockfish::Eval::NNUE

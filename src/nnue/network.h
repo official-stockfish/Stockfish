@@ -51,17 +51,17 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    Value evaluate(const Position&   pos,
-                   AccumulatorCache& cache,
-                   bool              adjusted   = false,
-                   int*              complexity = nullptr,
-                   bool              psqtOnly   = false) const;
+    Value evaluate(const Position&    pos,
+                   AccumulatorCaches& cache,
+                   bool               adjusted   = false,
+                   int*               complexity = nullptr,
+                   bool               psqtOnly   = false) const;
 
 
-    void hint_common_access(const Position& pos, AccumulatorCache& cache, bool psqtOnl) const;
+    void hint_common_access(const Position& pos, AccumulatorCaches& cache, bool psqtOnl) const;
 
     void          verify(std::string evalfilePath) const;
-    NnueEvalTrace trace_evaluate(const Position& pos, AccumulatorCache& entry) const;
+    NnueEvalTrace trace_evaluate(const Position& pos, AccumulatorCaches& entry) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);
@@ -90,7 +90,8 @@ class Network {
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
 
-    friend struct AccumulatorCache;
+    template<IndexType Size>
+    friend struct AccumulatorCaches::Cache;
 };
 
 // Definitions of the network types

@@ -258,7 +258,7 @@ class Worker {
 
     // Used by NNUE
 
-    Eval::NNUE::AccumulatorCache refreshTable;
+    Eval::NNUE::AccumulatorCaches refreshTable;
 
    private:
     void iterative_deepening();

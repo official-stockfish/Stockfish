@@ -147,7 +147,7 @@ Search::Worker::Worker(SharedState&                    sharedState,
 void Search::Worker::start_searching() {
 
     // Initialize accumulator refresh entries
-    refreshTable.clear(networks.big);
+    refreshTable.big.clear(networks.big);
 
     // Non-main threads go directly to iterative_deepening()
     if (!is_mainthread())

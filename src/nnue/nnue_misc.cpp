@@ -42,9 +42,9 @@ namespace Stockfish::Eval::NNUE {
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
 
-void hint_common_parent_position(const Position&   pos,
-                                 const Networks&   networks,
-                                 AccumulatorCache& cache) {
+void hint_common_parent_position(const Position&    pos,
+                                 const Networks&    networks,
+                                 AccumulatorCaches& cache) {
 
     int simpleEvalAbs = std::abs(simple_eval(pos, pos.side_to_move()));
     if (simpleEvalAbs > Eval::SmallNetThreshold)
@@ -107,7 +107,7 @@ void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& p
 // Returns a string with the value of each piece on a board,
 // and a table for (PSQT, Layers) values bucket by bucket.
 std::string
-trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::AccumulatorCache& cache) {
+trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::AccumulatorCaches& cache) {
 
     std::stringstream ss;
 
