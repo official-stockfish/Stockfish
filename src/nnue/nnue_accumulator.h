@@ -59,10 +59,8 @@ struct AccumulatorCaches {
                 std::memset(byColorBB, 0, sizeof(byColorBB));
                 std::memset(byTypeBB, 0, sizeof(byTypeBB));
 
-                std::memcpy(accumulation[WHITE], biases,
-                            TransformedFeatureDimensionsBig * sizeof(BiasType));
-                std::memcpy(accumulation[BLACK], biases,
-                            TransformedFeatureDimensionsBig * sizeof(BiasType));
+                std::memcpy(accumulation[WHITE], biases, Size * sizeof(BiasType));
+                std::memcpy(accumulation[BLACK], biases, Size * sizeof(BiasType));
 
                 std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
             }
@@ -86,6 +84,8 @@ struct AccumulatorCaches {
     };
 
     Cache<TransformedFeatureDimensionsBig> big;
+
+    Cache<TransformedFeatureDimensionsSmall> small;
 };
 
 }  // namespace Stockfish::Eval::NNUE

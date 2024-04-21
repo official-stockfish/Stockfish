@@ -59,8 +59,9 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     int  nnueComplexity;
     int  v;
 
-    Value nnue = smallNet ? networks.small.evaluate(pos, cache, true, &nnueComplexity, psqtOnly)
-                          : networks.big.evaluate(pos, cache, true, &nnueComplexity, false);
+    Value nnue = smallNet
+                 ? networks.small.evaluate(pos, cache.small, true, &nnueComplexity, psqtOnly)
+                 : networks.big.evaluate(pos, cache.big, true, &nnueComplexity, false);
 
     const auto adjustEval = [&](int optDiv, int nnueDiv, int pawnCountConstant, int pawnCountMul,
                                 int npmConstant, int evalDiv, int shufflingConstant,
@@ -109,7 +110,7 @@ std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
-    Value v = networks.big.evaluate(pos, *cache, false);
+    Value v = networks.big.evaluate(pos, cache->big, false);
     v       = pos.side_to_move() == WHITE ? v : -v;
     ss << "NNUE evaluation        " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)\n";
 
