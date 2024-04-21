@@ -37,14 +37,61 @@ struct alignas(CacheLineSize) Accumulator {
     bool         computedPSQT[2];
 };
 
+
 struct alignas(CacheLineSize) AccumulatorRefreshEntry {
     std::int16_t accumulation[2][TransformedFeatureDimensionsBig];
+    // using Acc = std::array<std::array<std::int16_t, TransformedFeatureDimensionsBig>, 2>;
+    // Acc          accumulation;
     std::int32_t psqtAccumulation[2][PSQTBuckets];
     Bitboard     byColorBB[COLOR_NB][COLOR_NB];
     Bitboard     byTypeBB[COLOR_NB][PIECE_TYPE_NB];
+
+    // todo use BiasType
+    void clear(const std::int16_t* biases) {
+        // To initialize a refresh entry, we set all its bitboards empty,
+        // so we put the biases in the accumulation, without any weights on top
+
+        std::memset(byColorBB, 0, 2 * 2 * sizeof(Bitboard));
+        std::memset(byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
+
+        std::memcpy(accumulation[WHITE], biases,
+                    TransformedFeatureDimensionsBig * sizeof(std::int16_t));
+        std::memcpy(accumulation[BLACK], biases,
+                    TransformedFeatureDimensionsBig * sizeof(std::int16_t));
+
+        std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
+    }
 };
 
-using AccumulatorCache = std::array<Eval::NNUE::AccumulatorRefreshEntry, SQUARE_NB>;
+
+struct alignas(CacheLineSize) AccumulatorCache {
+    AccumulatorCache() = default;
+
+    template<typename Network>
+    AccumulatorCache(const Network& network) {
+        clear(network);
+    }
+
+    template<typename Network>
+    void clear(const Network& network) {
+        for (auto& entry : entries)
+        {
+            entry.clear(network.featureTransformer->biases);
+        }
+    }
+
+    void clear(const std::int16_t* biases) {
+        for (auto& entry : entries)
+        {
+            entry.clear(biases);
+        }
+    }
+
+    AccumulatorRefreshEntry& operator[](Square sq) { return entries[sq]; }
+    AccumulatorRefreshEntry& operator[](int sq) { return entries[sq]; }
+
+    std::array<AccumulatorRefreshEntry, SQUARE_NB> entries;
+};
 
 }  // namespace Stockfish::Eval::NNUE
 

@@ -264,12 +264,6 @@ void Network<Arch, Transformer>::hint_common_access(const Position&   pos,
 }
 
 template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::init_refresh_entry(AccumulatorRefreshEntry& entry) const {
-    featureTransformer->init_refresh_entry(entry);
-}
-
-
-template<typename Arch, typename Transformer>
 NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(const Position&   pos,
                                                          AccumulatorCache& entry) const {
     // We manually align the arrays on the stack because with gcc < 9.3

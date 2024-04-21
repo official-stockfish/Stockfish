@@ -379,20 +379,6 @@ class FeatureTransformer {
         hint_common_access_for_perspective<BLACK>(pos, cache, psqtOnly);
     }
 
-    void init_refresh_entry(AccumulatorRefreshEntry& entry) {
-        assert(HalfDimensions == TransformedFeatureDimensionsBig);
-
-        // To initialize a refresh entry, we set all its bitboards empty,
-        // so we put the biases in the accumulation, without any weights on top
-
-        std::memset(entry.byColorBB, 0, 2 * 2 * sizeof(Bitboard));
-        std::memset(entry.byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
-
-        std::memcpy(entry.accumulation[WHITE], biases, HalfDimensions * sizeof(BiasType));
-        std::memcpy(entry.accumulation[BLACK], biases, HalfDimensions * sizeof(BiasType));
-        std::memset(entry.psqtAccumulation, 0, sizeof(entry.psqtAccumulation));
-    }
-
    private:
     template<Color Perspective>
     [[nodiscard]] std::pair<StateInfo*, StateInfo*>
@@ -709,7 +695,8 @@ class FeatureTransformer {
 
         for (IndexType j = 0; j < HalfDimensions / TileHeight; ++j)
         {
-            auto entryTile = reinterpret_cast<vec_t*>(&entry.accumulation[Perspective][j * TileHeight]);
+            auto entryTile =
+              reinterpret_cast<vec_t*>(&entry.accumulation[Perspective][j * TileHeight]);
             for (IndexType k = 0; k < NumRegs; ++k)
                 acc[k] = entryTile[k];
 
@@ -738,8 +725,8 @@ class FeatureTransformer {
 
         for (IndexType j = 0; j < PSQTBuckets / PsqtTileHeight; ++j)
         {
-            auto entryTilePsqt =
-              reinterpret_cast<psqt_vec_t*>(&entry.psqtAccumulation[Perspective][j * PsqtTileHeight]);
+            auto entryTilePsqt = reinterpret_cast<psqt_vec_t*>(
+              &entry.psqtAccumulation[Perspective][j * PsqtTileHeight]);
             for (std::size_t k = 0; k < NumPsqtRegs; ++k)
                 psqt[k] = entryTilePsqt[k];
 
@@ -792,11 +779,11 @@ class FeatureTransformer {
         // The accumulator of the refresh entry has been updated.
         // Now copy its content to the actual accumulator we were refreshing
 
-        std::memcpy(accumulator.psqtAccumulation[Perspective],
-                    entry.psqtAccumulation[Perspective], sizeof(int32_t) * PSQTBuckets);
+        std::memcpy(accumulator.psqtAccumulation[Perspective], entry.psqtAccumulation[Perspective],
+                    sizeof(int32_t) * PSQTBuckets);
 
         std::memcpy(accumulator.accumulation[Perspective], entry.accumulation[Perspective],
-                    sizeof(int16_t) * HalfDimensions);
+                    sizeof(BiasType) * HalfDimensions);
 
         for (Color c : {WHITE, BLACK})
             entry.byColorBB[Perspective][c] = pos.pieces(c);
@@ -983,6 +970,8 @@ class FeatureTransformer {
         else
             update_accumulator_refresh<Perspective>(pos, cache, psqtOnly);
     }
+
+    friend struct AccumulatorCache;
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];

@@ -258,7 +258,7 @@ class Worker {
 
     // Used by NNUE
 
-    std::array<Eval::NNUE::AccumulatorRefreshEntry, SQUARE_NB> refreshTable;
+    Eval::NNUE::AccumulatorCache refreshTable;
 
    private:
     void iterative_deepening();

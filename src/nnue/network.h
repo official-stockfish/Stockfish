@@ -60,8 +60,6 @@ class Network {
 
     void hint_common_access(const Position& pos, AccumulatorCache& cache, bool psqtOnl) const;
 
-    void init_refresh_entry(AccumulatorRefreshEntry& entry) const;
-
     void          verify(std::string evalfilePath) const;
     NnueEvalTrace trace_evaluate(const Position& pos, AccumulatorCache& entry) const;
 
@@ -91,6 +89,8 @@ class Network {
 
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
+
+    friend struct AccumulatorCache;
 };
 
 // Definitions of the network types
