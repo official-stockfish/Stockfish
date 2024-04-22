@@ -26,6 +26,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <cstdint>
 
 #include "nnue/network.h"
 #include "position.h"
@@ -33,6 +34,7 @@
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
+#include "syzygy/tbprobe.h"  // for Stockfish::Depth
 
 namespace Stockfish {
 
@@ -44,6 +46,8 @@ class Engine {
 
     Engine(std::string path = "");
     ~Engine() { wait_for_search_finished(); }
+
+    std::uint64_t perft(const std::string& fen, Depth depth, bool isChess960);
 
     // non blocking call to start searching
     void go(const Search::LimitsType&);

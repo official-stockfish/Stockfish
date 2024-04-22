@@ -26,7 +26,7 @@
 #include "types.h"
 #include "uci.h"
 
-namespace Stockfish {
+namespace Stockfish::Benchmark {
 
 // Utility to verify move generation. All the leaf nodes up
 // to the given depth are generated and counted, and the sum is returned.
@@ -56,13 +56,12 @@ uint64_t perft(Position& pos, Depth depth) {
     return nodes;
 }
 
-inline void perft(const std::string& fen, Depth depth, bool isChess960) {
+inline uint64_t perft(const std::string& fen, Depth depth, bool isChess960) {
     StateListPtr states(new std::deque<StateInfo>(1));
     Position     p;
     p.set(fen, isChess960, &states->back());
 
-    uint64_t nodes = perft<true>(p, depth);
-    sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
+    return perft<true>(p, depth);
 }
 }
 

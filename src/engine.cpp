@@ -26,6 +26,7 @@
 #include <vector>
 #include <sstream>
 #include <iosfwd>
+#include <cassert>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -54,14 +55,15 @@ Engine::Engine(std::string path) :
     pos.set(StartFEN, false, &states->back());
 }
 
-void Engine::go(const Search::LimitsType& limits) {
+std::uint64_t Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
     verify_networks();
 
-    if (limits.perft)
-    {
-        perft(pos.fen(), limits.perft, options["UCI_Chess960"]);
-        return;
-    }
+    return Benchmark::perft(fen, depth, isChess960);
+}
+
+void Engine::go(const Search::LimitsType& limits) {
+    assert(limits.perft == 0);
+    verify_networks();
 
     threads.start_thinking(options, pos, states, limits);
 }
