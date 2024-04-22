@@ -56,8 +56,8 @@ struct AccumulatorCaches {
             // so we put the biases in the accumulation, without any weights on top
             void clear(const BiasType* biases) {
 
-                std::memset(byColorBB, 0, 2 * 2 * sizeof(Bitboard));
-                std::memset(byTypeBB, 0, 2 * 8 * sizeof(Bitboard));
+                std::memset(byColorBB, 0, sizeof(byColorBB));
+                std::memset(byTypeBB, 0, sizeof(byTypeBB));
 
                 std::memcpy(accumulation[WHITE], biases,
                             TransformedFeatureDimensionsBig * sizeof(BiasType));
