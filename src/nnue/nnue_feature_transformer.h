@@ -802,7 +802,7 @@ class FeatureTransformer {
         // When we are refreshing the accumulator of the big net,
         // redirect to the version of refresh that uses the refresh table.
         // Using the cache for the small net is not beneficial.
-        if (HalfDimensions == Eval::NNUE::TransformedFeatureDimensionsBig)
+        if constexpr (HalfDimensions == Eval::NNUE::TransformedFeatureDimensionsBig)
         {
             update_accumulator_refresh_cache<Perspective>(pos, cache);
             return;
