@@ -32,6 +32,7 @@
 #include "position.h"
 #include "types.h"
 #include "uci.h"
+#include "nnue/nnue_accumulator.h"
 
 namespace Stockfish {
 

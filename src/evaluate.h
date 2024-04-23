@@ -21,7 +21,6 @@
 
 #include <string>
 
-#include "nnue/nnue_accumulator.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -41,6 +40,7 @@ constexpr inline int SmallNetThreshold = 1274, PsqtOnlyThreshold = 2389;
 
 namespace NNUE {
 struct Networks;
+struct AccumulatorCaches;
 }
 
 std::string trace(Position& pos, const Eval::NNUE::Networks& networks);

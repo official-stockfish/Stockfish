@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <string>
 
-#include "nnue_accumulator.h"
 #include "../types.h"
 #include "nnue_architecture.h"
 
@@ -52,6 +51,7 @@ struct NnueEvalTrace {
 };
 
 struct Networks;
+struct AccumulatorCaches;
 
 std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& caches);
 void        hint_common_parent_position(const Position&    pos,
