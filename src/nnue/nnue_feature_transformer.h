@@ -795,9 +795,10 @@ class FeatureTransformer {
     }
 
     template<Color Perspective>
-    void update_accumulator_refresh(const Position&                           pos,
-                                    AccumulatorCaches::Cache<HalfDimensions>* cache,
-                                    bool                                      psqtOnly) const {
+    void
+    update_accumulator_refresh(const Position&                                            pos,
+                               [[maybe_unused]] AccumulatorCaches::Cache<HalfDimensions>* cache,
+                               bool psqtOnly) const {
 
         // When we are refreshing the accumulator of the big net,
         // redirect to the version of refresh that uses the refresh table.
