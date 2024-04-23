@@ -657,6 +657,7 @@ class FeatureTransformer {
     template<Color Perspective>
     void update_accumulator_refresh_cache(const Position&                           pos,
                                           AccumulatorCaches::Cache<HalfDimensions>* cache) const {
+        assert(cache != nullptr);
 
         Square ksq = pos.square<KING>(Perspective);
 
