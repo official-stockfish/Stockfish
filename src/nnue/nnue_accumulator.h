@@ -22,7 +22,6 @@
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
 #include <cstdint>
-#include <optional>
 
 #include "nnue_architecture.h"
 #include "nnue_common.h"
