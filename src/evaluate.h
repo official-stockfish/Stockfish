@@ -48,7 +48,7 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks);
 int   simple_eval(const Position& pos, Color c);
 Value evaluate(const NNUE::Networks&          networks,
                const Position&                pos,
-               Eval::NNUE::AccumulatorCaches& cache,
+               Eval::NNUE::AccumulatorCaches& caches,
                int                            optimism);
 }  // namespace Eval
 

@@ -48,7 +48,7 @@ int Eval::simple_eval(const Position& pos, Color c) {
 // of the position from the point of view of the side to move.
 Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
                      const Position&                pos,
-                     Eval::NNUE::AccumulatorCaches& cache,
+                     Eval::NNUE::AccumulatorCaches& caches,
                      int                            optimism) {
 
     assert(!pos.checkers());
@@ -60,7 +60,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     int  v;
 
     Value nnue = smallNet ? networks.small.evaluate(pos, nullptr, true, &nnueComplexity, psqtOnly)
-                          : networks.big.evaluate(pos, &cache.big, true, &nnueComplexity, false);
+                          : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity, false);
 
     const auto adjustEval = [&](int optDiv, int nnueDiv, int pawnCountConstant, int pawnCountMul,
                                 int npmConstant, int evalDiv, int shufflingConstant,

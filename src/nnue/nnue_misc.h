@@ -53,10 +53,10 @@ struct NnueEvalTrace {
 
 struct Networks;
 
-std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& cache);
+std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& caches);
 void        hint_common_parent_position(const Position&    pos,
                                         const Networks&    networks,
-                                        AccumulatorCaches& cache);
+                                        AccumulatorCaches& caches);
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
