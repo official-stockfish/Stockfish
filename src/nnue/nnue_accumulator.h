@@ -35,10 +35,10 @@ using IndexType      = std::uint32_t;
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t accumulation[2][Size];
-    std::int32_t psqtAccumulation[2][PSQTBuckets];
-    bool         computed[2];
-    bool         computedPSQT[2];
+    std::int16_t accumulation[COLOR_NB][Size];
+    std::int32_t psqtAccumulation[COLOR_NB][PSQTBuckets];
+    bool         computed[COLOR_NB];
+    bool         computedPSQT[COLOR_NB];
 };
 
 
@@ -54,8 +54,8 @@ struct AccumulatorCaches {
     struct alignas(CacheLineSize) Cache {
 
         struct alignas(CacheLineSize) Entry {
-            BiasType       accumulation[2][Size];
-            PSQTWeightType psqtAccumulation[2][PSQTBuckets];
+            BiasType       accumulation[COLOR_NB][Size];
+            PSQTWeightType psqtAccumulation[COLOR_NB][PSQTBuckets];
             Bitboard       byColorBB[COLOR_NB][COLOR_NB];
             Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
 
