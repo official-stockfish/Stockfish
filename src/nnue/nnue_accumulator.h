@@ -79,7 +79,7 @@ struct AccumulatorCaches {
                 entry.clear(network.featureTransformer->biases);
         }
 
-        void clear(const std::int16_t* biases) {
+        void clear(const BiasType* biases) {
             for (auto& entry : entries)
                 entry.clear(biases);
         }
