@@ -44,18 +44,6 @@ struct alignas(CacheLineSize) Accumulator {
 
 struct AccumulatorCaches {
 
-    enum Initializer {
-        INIT_SMALL = 1,
-        INIT_BIG   = 2,
-    };
-
-    explicit AccumulatorCaches(Initializer init = Initializer(INIT_BIG)) {
-        if (init & INIT_SMALL)
-            small.emplace();
-        if (init & INIT_BIG)
-            big.emplace();
-    }
-
     template<IndexType Size>
     struct alignas(CacheLineSize) Cache {
 
@@ -98,17 +86,10 @@ struct AccumulatorCaches {
 
     template<typename Networks>
     void clear(const Networks& networks) {
-        if (big)
-            big->clear(networks.big);
-        if (small)
-            small->clear(networks.small);
+        big.clear(networks.big);
     }
 
-    template<IndexType Size>
-    using CacheType = std::optional<Cache<Size>>;
-
-    std::optional<Cache<TransformedFeatureDimensionsBig>>   big;
-    std::optional<Cache<TransformedFeatureDimensionsSmall>> small;
+    Cache<TransformedFeatureDimensionsBig> big;
 };
 
 }  // namespace Stockfish::Eval::NNUE
