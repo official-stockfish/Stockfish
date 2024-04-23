@@ -98,22 +98,22 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 // Trace scores are from white's point of view
 std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
-    auto cache = std::make_unique<Eval::NNUE::AccumulatorCaches>();
+    auto caches = std::make_unique<Eval::NNUE::AccumulatorCaches>();
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";
 
     std::stringstream ss;
     ss << std::showpoint << std::noshowpos << std::fixed << std::setprecision(2);
-    ss << '\n' << NNUE::trace(pos, networks, *cache) << '\n';
+    ss << '\n' << NNUE::trace(pos, networks, *caches) << '\n';
 
     ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
-    Value v = networks.big.evaluate(pos, &cache->big, false);
+    Value v = networks.big.evaluate(pos, &caches->big, false);
     v       = pos.side_to_move() == WHITE ? v : -v;
     ss << "NNUE evaluation        " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)\n";
 
-    v = evaluate(networks, pos, *cache, VALUE_ZERO);
+    v = evaluate(networks, pos, *caches, VALUE_ZERO);
     v = pos.side_to_move() == WHITE ? v : -v;
     ss << "Final evaluation       " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)";
     ss << " [with scaled NNUE, ...]";
