@@ -194,7 +194,7 @@ static constexpr int BestRegisterCount() {
 template<IndexType                                 TransformedFeatureDimensions,
          Accumulator<TransformedFeatureDimensions> StateInfo::*accPtr>
 class FeatureTransformer {
-   public:
+
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
 
