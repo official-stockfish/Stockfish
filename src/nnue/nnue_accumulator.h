@@ -50,6 +50,11 @@ struct alignas(CacheLineSize) Accumulator {
 // is commonly referred to as "Finny Tables".
 struct AccumulatorCaches {
 
+    template<typename Networks>
+    AccumulatorCaches(const Networks& networks) {
+        clear(networks);
+    }
+
     template<IndexType Size>
     struct alignas(CacheLineSize) Cache {
 
