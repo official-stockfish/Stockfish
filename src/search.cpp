@@ -137,11 +137,11 @@ Search::Worker::Worker(SharedState&                    sharedState,
     // Unpack the SharedState struct into member variables
     thread_idx(thread_id),
     manager(std::move(sm)),
-    refreshTable(),
     options(sharedState.options),
     threads(sharedState.threads),
     tt(sharedState.tt),
-    networks(sharedState.networks) {
+    networks(sharedState.networks),
+    refreshTable(networks) {
     clear();
 }
 

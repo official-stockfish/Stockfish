@@ -302,14 +302,13 @@ class Worker {
 
     Tablebases::Config tbConfig;
 
-    // Used by NNUE
-
-    Eval::NNUE::AccumulatorCaches refreshTable;
-
     const OptionsMap&           options;
     ThreadPool&                 threads;
     TranspositionTable&         tt;
     const Eval::NNUE::Networks& networks;
+
+    // Used by NNUE
+    Eval::NNUE::AccumulatorCaches refreshTable;
 
     friend class Stockfish::ThreadPool;
     friend class SearchManager;

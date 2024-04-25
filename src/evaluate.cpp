@@ -99,7 +99,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 // Trace scores are from white's point of view
 std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
-    auto caches = std::make_unique<Eval::NNUE::AccumulatorCaches>();
+    auto caches = std::make_unique<Eval::NNUE::AccumulatorCaches>(networks);
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";
