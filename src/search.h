@@ -26,9 +26,9 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
-#include <string>
 
 #include "misc.h"
 #include "movepick.h"
@@ -37,6 +37,7 @@
 #include "syzygy/tbprobe.h"
 #include "timeman.h"
 #include "types.h"
+#include "nnue/nnue_accumulator.h"
 
 namespace Stockfish {
 
@@ -300,6 +301,10 @@ class Worker {
     std::unique_ptr<ISearchManager> manager;
 
     Tablebases::Config tbConfig;
+
+    // Used by NNUE
+
+    Eval::NNUE::AccumulatorCaches refreshTable;
 
     const OptionsMap&           options;
     ThreadPool&                 threads;

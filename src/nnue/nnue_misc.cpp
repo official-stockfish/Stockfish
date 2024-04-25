@@ -42,13 +42,15 @@ namespace Stockfish::Eval::NNUE {
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
 
-void hint_common_parent_position(const Position& pos, const Networks& networks) {
+void hint_common_parent_position(const Position&    pos,
+                                 const Networks&    networks,
+                                 AccumulatorCaches& caches) {
 
     int simpleEvalAbs = std::abs(simple_eval(pos, pos.side_to_move()));
     if (simpleEvalAbs > Eval::SmallNetThreshold)
-        networks.small.hint_common_access(pos, simpleEvalAbs > Eval::PsqtOnlyThreshold);
+        networks.small.hint_common_access(pos, nullptr, simpleEvalAbs > Eval::PsqtOnlyThreshold);
     else
-        networks.big.hint_common_access(pos, false);
+        networks.big.hint_common_access(pos, &caches.big, false);
 }
 
 namespace {
@@ -104,7 +106,8 @@ void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& p
 
 // Returns a string with the value of each piece on a board,
 // and a table for (PSQT, Layers) values bucket by bucket.
-std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
+std::string
+trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::AccumulatorCaches& caches) {
 
     std::stringstream ss;
 
@@ -130,7 +133,7 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    Value base = networks.big.evaluate(pos);
+    Value base = networks.big.evaluate(pos, &caches.big);
     base       = pos.side_to_move() == WHITE ? base : -base;
 
     for (File f = FILE_A; f <= FILE_H; ++f)
@@ -149,7 +152,7 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
                   st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
                     false;
 
-                Value eval = networks.big.evaluate(pos);
+                Value eval = networks.big.evaluate(pos, &caches.big);
                 eval       = pos.side_to_move() == WHITE ? eval : -eval;
                 v          = base - eval;
 
@@ -167,7 +170,7 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
         ss << board[row] << '\n';
     ss << '\n';
 
-    auto t = networks.big.trace_evaluate(pos);
+    auto t = networks.big.trace_evaluate(pos, &caches.big);
 
     ss << " NNUE network contributions "
        << (pos.side_to_move() == WHITE ? "(White to move)" : "(Black to move)") << std::endl
