@@ -390,7 +390,7 @@ std::string UCIEngine::format_score(const Score& s) {
 // without treatment of mate and similar special scores.
 int UCIEngine::to_cp(Value v, const Position& pos) {
 
-    // In general, the score can be defined via the the WDL as
+    // In general, the score can be defined via the WDL as
     // (log(1/L - 1) - log(1/W - 1)) / ((log(1/L - 1) + log(1/W - 1))
     // Based on our win_rate_model, this simply yields v / a.
 
