@@ -263,8 +263,8 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::hint_common_access(const Position&                         pos,
                                                     AccumulatorCaches::Cache<FTDimensions>* cache,
-                                                    bool psqtOnl) const {
-    featureTransformer->hint_common_access(pos, cache, psqtOnl);
+                                                    bool psqtOnly) const {
+    featureTransformer->hint_common_access(pos, cache, psqtOnly);
 }
 
 template<typename Arch, typename Transformer>
