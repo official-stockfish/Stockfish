@@ -20,24 +20,25 @@
 #define ENGINE_H_INCLUDED
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <cstdint>
 
 #include "nnue/network.h"
 #include "position.h"
 #include "search.h"
+#include "syzygy/tbprobe.h"  // for Stockfish::Depth
 #include "thread.h"
 #include "tt.h"
-#include "types.h"
 #include "ucioption.h"
-#include "syzygy/tbprobe.h"  // for Stockfish::Depth
 
 namespace Stockfish {
+
+enum Square : int;
 
 class Engine {
    public:
