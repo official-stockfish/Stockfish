@@ -252,15 +252,19 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
         exit(EXIT_FAILURE);
     }
 
-    sync_cout << "info string NNUE evaluation using " << evalfilePath << sync_endl;
+    size_t size = sizeof(*featureTransformer) + sizeof(*network) * LayerStacks;
+    sync_cout << "info string NNUE evaluation using " << evalfilePath << " ("
+              << size / (1024 * 1024) << "MiB, (" << featureTransformer->InputDimensions << ", "
+              << network[0]->TransformedFeatureDimensions << ", " << network[0]->FC_0_OUTPUTS
+              << ", " << network[0]->FC_1_OUTPUTS << ", 1))" << sync_endl;
 }
 
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::hint_common_access(const Position&                         pos,
                                                     AccumulatorCaches::Cache<FTDimensions>* cache,
-                                                    bool psqtOnl) const {
-    featureTransformer->hint_common_access(pos, cache, psqtOnl);
+                                                    bool psqtOnly) const {
+    featureTransformer->hint_common_access(pos, cache, psqtOnly);
 }
 
 template<typename Arch, typename Transformer>

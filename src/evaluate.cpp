@@ -60,17 +60,18 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     int  nnueComplexity;
     int  v;
 
-    Value nnue = smallNet ? networks.small.evaluate(pos, nullptr, true, &nnueComplexity, psqtOnly)
-                          : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity, false);
+    Value nnue = smallNet
+                 ? networks.small.evaluate(pos, &caches.small, true, &nnueComplexity, psqtOnly)
+                 : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity, false);
 
-    const auto adjustEval = [&](int optDiv, int nnueDiv, int npmDiv, int pawnCountConstant,
-                                int pawnCountMul, int npmConstant, int evalDiv,
-                                int shufflingConstant, int shufflingDiv) {
+    const auto adjustEval = [&](int optDiv, int nnueDiv, int pawnCountConstant, int pawnCountMul,
+                                int npmConstant, int evalDiv, int shufflingConstant,
+                                int shufflingDiv) {
         // Blend optimism and eval with nnue complexity and material imbalance
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / optDiv;
         nnue -= nnue * (nnueComplexity * 5 / 3) / nnueDiv;
 
-        int npm = pos.non_pawn_material() / npmDiv;
+        int npm = pos.non_pawn_material() / 64;
         v       = (nnue * (npm + pawnCountConstant + pawnCountMul * pos.count<PAWN>())
              + optimism * (npmConstant + npm))
           / evalDiv;
@@ -81,11 +82,11 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     };
 
     if (!smallNet)
-        adjustEval(524, 32395, 66, 942, 11, 139, 1058, 178, 204);
+        adjustEval(524, 32395, 942, 11, 139, 1058, 178, 204);
     else if (psqtOnly)
-        adjustEval(517, 32857, 65, 908, 7, 155, 1006, 224, 238);
+        adjustEval(517, 32857, 908, 7, 155, 1006, 224, 238);
     else
-        adjustEval(515, 32793, 63, 944, 9, 140, 1067, 206, 206);
+        adjustEval(515, 32793, 944, 9, 140, 1067, 206, 206);
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
@@ -99,7 +100,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 // Trace scores are from white's point of view
 std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
-    auto caches = std::make_unique<Eval::NNUE::AccumulatorCaches>();
+    auto caches = std::make_unique<Eval::NNUE::AccumulatorCaches>(networks);
 
     if (pos.checkers())
         return "Final evaluation: none (in check)";

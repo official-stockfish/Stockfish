@@ -50,6 +50,11 @@ struct alignas(CacheLineSize) Accumulator {
 // is commonly referred to as "Finny Tables".
 struct AccumulatorCaches {
 
+    template<typename Networks>
+    AccumulatorCaches(const Networks& networks) {
+        clear(networks);
+    }
+
     template<IndexType Size>
     struct alignas(CacheLineSize) Cache {
 
@@ -58,6 +63,7 @@ struct AccumulatorCaches {
             PSQTWeightType psqtAccumulation[COLOR_NB][PSQTBuckets];
             Bitboard       byColorBB[COLOR_NB][COLOR_NB];
             Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
+            bool           psqtOnly;
 
             // To initialize a refresh entry, we set all its bitboards empty,
             // so we put the biases in the accumulation, without any weights on top
@@ -65,6 +71,7 @@ struct AccumulatorCaches {
 
                 std::memset(byColorBB, 0, sizeof(byColorBB));
                 std::memset(byTypeBB, 0, sizeof(byTypeBB));
+                psqtOnly = false;
 
                 std::memcpy(accumulation[WHITE], biases, Size * sizeof(BiasType));
                 std::memcpy(accumulation[BLACK], biases, Size * sizeof(BiasType));
@@ -92,11 +99,11 @@ struct AccumulatorCaches {
     template<typename Networks>
     void clear(const Networks& networks) {
         big.clear(networks.big);
+        small.clear(networks.small);
     }
 
-    // When adding a new cache for a network, i.e. the smallnet
-    // the appropriate condition must be added to FeatureTransformer::update_accumulator_refresh.
-    Cache<TransformedFeatureDimensionsBig> big;
+    Cache<TransformedFeatureDimensionsBig>   big;
+    Cache<TransformedFeatureDimensionsSmall> small;
 };
 
 }  // namespace Stockfish::Eval::NNUE
