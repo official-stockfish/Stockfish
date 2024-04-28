@@ -102,7 +102,7 @@ struct AccumulatorCaches {
         small.clear(networks.small);
     }
 
-    Cache<TransformedFeatureDimensionsBig> big;
+    Cache<TransformedFeatureDimensionsBig>   big;
     Cache<TransformedFeatureDimensionsSmall> small;
 };
 
