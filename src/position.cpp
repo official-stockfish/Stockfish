@@ -131,7 +131,7 @@ void Position::init() {
 
     // Prepare the cuckoo tables
     cuckoo.fill(0);
-    cuckooMove.fill(Move::none());
+    cuckooMove.fill(Move::None());
     [[maybe_unused]] int count = 0;
     for (Piece pc : Pieces)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
@@ -145,7 +145,7 @@ void Position::init() {
                     {
                         std::swap(cuckoo[i], key);
                         std::swap(cuckooMove[i], move);
-                        if (move == Move::none())  // Arrived at empty slot?
+                        if (move == Move::None())  // Arrived at empty slot?
                             break;
                         i = (i == H1(key)) ? H2(key) : H1(key);  // Push victim to alternative slot
                     }

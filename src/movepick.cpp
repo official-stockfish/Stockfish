@@ -233,7 +233,7 @@ Move MovePicker::select(Pred filter) {
 
         cur++;
     }
-    return Move::none();
+    return Move::None();
 }
 
 // Most important method of the MovePicker class. It
@@ -286,7 +286,7 @@ top:
 
     case REFUTATION :
         if (select<Next>([&]() {
-                return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
+                return *cur != Move::None() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
             }))
             return *(cur - 1);
         ++stage;
@@ -341,7 +341,7 @@ top:
                 return *cur != refutations[0] && *cur != refutations[1] && *cur != refutations[2];
             });
 
-        return Move::none();
+        return Move::None();
 
     case EVASION_INIT :
         cur      = moves;
@@ -363,7 +363,7 @@ top:
 
         // If we did not find any move and we do not try checks, we have finished
         if (depth != DEPTH_QS_CHECKS)
-            return Move::none();
+            return Move::None();
 
         ++stage;
         [[fallthrough]];
@@ -380,7 +380,7 @@ top:
     }
 
     assert(false);
-    return Move::none();  // Silence warning
+    return Move::None();  // Silence warning
 }
 
 }  // namespace Stockfish

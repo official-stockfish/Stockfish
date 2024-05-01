@@ -336,13 +336,6 @@ constexpr Key make_key(uint64_t seed) {
 }
 
 
-enum MoveType {
-    NORMAL,
-    PROMOTION  = 1 << 14,
-    EN_PASSANT = 2 << 14,
-    CASTLING   = 3 << 14
-};
-
 // A move needs 16 bits to be stored
 //
 // bit  0- 5: destination square (from 0 to 63)
@@ -351,49 +344,53 @@ enum MoveType {
 // bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
 // NOTE: en passant bit is set only when a pawn can be captured
 //
-// Special cases are Move::none() and Move::null(). We can sneak these in because in
+// Special cases are Move::None() and Move::Null(). We can sneak these in because in
 // any normal move destination square is always different from origin square
-// while Move::none() and Move::null() have the same origin and destination square.
+// while Move::None() and Move::Null() have the same origin and destination square.
+
+enum MoveType {
+    NORMAL,
+    PROMOTION  = 1 << 14,
+    EN_PASSANT = 2 << 14,
+    CASTLING   = 3 << 14
+};
+
 class Move {
    public:
     Move() = default;
     constexpr explicit Move(std::uint16_t d) :
         data(d) {}
-
     constexpr Move(Square from, Square to) :
         data((from << 6) + to) {}
 
     template<MoveType T>
-    static constexpr Move make(Square from, Square to, PieceType pt = KNIGHT) {
-        return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
+    static constexpr Move make(Square from, Square to, PieceType promo = KNIGHT) {
+        return Move(T + ((promo - KNIGHT) << 12) + (from << 6) + to);
     }
 
     constexpr Square from_sq() const {
         assert(is_ok());
         return Square((data >> 6) & 0x3F);
     }
-
     constexpr Square to_sq() const {
         assert(is_ok());
         return Square(data & 0x3F);
     }
 
     constexpr int from_to() const { return data & 0xFFF; }
-
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
-
     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
 
-    constexpr bool is_ok() const { return none().data != data && null().data != data; }
-
-    static constexpr Move null() { return Move(65); }
-    static constexpr Move none() { return Move(0); }
+    // These are really compiletime singleton constants, but since we can't make static constexpr
+    // members of the class's own type, we're stuck with function syntax. The upper case reflects
+    // the fact that they really are just constants despite the parens.
+    static constexpr Move None() { return Move(0); }
+    static constexpr Move Null() { return Move(65); }
+    constexpr bool is_ok() const { return None().data != data && Null().data != data; }
 
     constexpr bool operator==(const Move& m) const { return data == m.data; }
     constexpr bool operator!=(const Move& m) const { return data != m.data; }
-
     constexpr explicit operator bool() const { return data != 0; }
-
     constexpr std::uint16_t raw() const { return data; }
 
     struct MoveHash {

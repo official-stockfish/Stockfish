@@ -415,10 +415,10 @@ std::string UCIEngine::square(Square s) {
 }
 
 std::string UCIEngine::move(Move m, bool chess960) {
-    if (m == Move::none())
+    if (m == Move::None())
         return "(none)";
 
-    if (m == Move::null())
+    if (m == Move::Null())
         return "0000";
 
     Square from = m.from_sq();
@@ -449,7 +449,7 @@ Move UCIEngine::to_move(const Position& pos, std::string str) {
         if (str == move(m, pos.is_chess960()))
             return m;
 
-    return Move::none();
+    return Move::None();
 }
 
 void UCIEngine::on_update_no_moves(const Engine::InfoShort& info) {

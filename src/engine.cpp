@@ -109,7 +109,7 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
     {
         auto m = UCIEngine::to_move(pos, move);
 
-        if (m == Move::none())
+        if (m == Move::None())
             break;
 
         states->emplace_back();
