@@ -668,20 +668,20 @@ class FeatureTransformer {
             for (IndexType k = 0; k < NumRegs; ++k)
                 acc[k] = entryTile[k];
 
-            int i0 = 0;
-            for (; i0 < int(std::min(removed.size(), added.size())); ++i0)
+            int i = 0;
+            for (; i < int(std::min(removed.size(), added.size())); ++i)
             {
-                IndexType       indexR  = removed[i0];
+                IndexType       indexR  = removed[i];
                 const IndexType offsetR = HalfDimensions * indexR + j * TileHeight;
                 auto            columnR = reinterpret_cast<const vec_t*>(&weights[offsetR]);
-                IndexType       indexA  = added[i0];
+                IndexType       indexA  = added[i];
                 const IndexType offsetA = HalfDimensions * indexA + j * TileHeight;
                 auto            columnA = reinterpret_cast<const vec_t*>(&weights[offsetA]);
 
                 for (unsigned k = 0; k < NumRegs; ++k)
                     acc[k] = vec_add_16(vec_sub_16(acc[k], columnR[k]), columnA[k]);
             }
-            for (int i = i0; i < int(removed.size()); ++i)
+            for (; i < int(removed.size()); ++i)
             {
                 IndexType       index  = removed[i];
                 const IndexType offset = HalfDimensions * index + j * TileHeight;
@@ -690,7 +690,7 @@ class FeatureTransformer {
                 for (unsigned k = 0; k < NumRegs; ++k)
                     acc[k] = vec_sub_16(acc[k], column[k]);
             }
-            for (int i = i0; i < int(added.size()); ++i)
+            for (; i < int(added.size()); ++i)
             {
                 IndexType       index  = added[i];
                 const IndexType offset = HalfDimensions * index + j * TileHeight;
