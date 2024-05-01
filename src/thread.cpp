@@ -161,6 +161,9 @@ void ThreadPool::clear() {
     for (Thread* th : threads)
         th->worker->clear();
 
+    if (threads.size() == 0)
+        return;
+
     main_manager()->callsCnt                 = 0;
     main_manager()->bestPreviousScore        = VALUE_INFINITE;
     main_manager()->bestPreviousAverageScore = VALUE_INFINITE;
