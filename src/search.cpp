@@ -593,7 +593,6 @@ Value Search::Worker::search(
     bestMove             = Move::none();
     (ss + 2)->killers[0] = (ss + 2)->killers[1] = Move::none();
     (ss + 2)->cutoffCnt                         = 0;
-    ss->multipleExtensions                      = (ss - 1)->multipleExtensions;
     Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
     ss->statScore = 0;
 
@@ -1049,17 +1048,16 @@ moves_loop:  // When in check, search starts here
 
                 if (value < singularBeta)
                 {
-                    extension = 1;
+                    int doubleMargin = 251 * PvNode - 241 * !ttCapture;
+                    int tripleMargin =
+                      135 + 234 * PvNode - 248 * !ttCapture + 124 * (ss->ttPv || !ttCapture);
+                    int quadMargin = 447 + 354 * PvNode - 300 * !ttCapture + 206 * ss->ttPv;
 
-                    // We make sure to limit the extensions in some way to avoid a search explosion
-                    if (!PvNode && ss->multipleExtensions <= 16)
-                    {
-                        extension = 2 + (value < singularBeta - 11 && !ttCapture);
-                        depth += depth < 14;
-                    }
-                    if (PvNode && !ttCapture && ss->multipleExtensions <= 5
-                        && value < singularBeta - 38)
-                        extension = 2;
+                    extension = 1 + (value < singularBeta - doubleMargin)
+                              + (value < singularBeta - tripleMargin)
+                              + (value < singularBeta - quadMargin);
+
+                    depth += ((!PvNode) && (depth < 14));
                 }
 
                 // Multi-cut pruning
@@ -1104,7 +1102,6 @@ moves_loop:  // When in check, search starts here
 
         // Add extension to new depth
         newDepth += extension;
-        ss->multipleExtensions = (ss - 1)->multipleExtensions + (extension >= 2);
 
         // Speculative prefetch as early as possible
         prefetch(tt.first_entry(pos.key_after(move)));
