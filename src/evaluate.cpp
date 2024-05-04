@@ -56,13 +56,11 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
     bool smallNet   = std::abs(simpleEval) > SmallNetThreshold;
-    bool psqtOnly   = std::abs(simpleEval) > PsqtOnlyThreshold;
     int  nnueComplexity;
     int  v;
 
-    Value nnue = smallNet
-                 ? networks.small.evaluate(pos, &caches.small, true, &nnueComplexity, psqtOnly)
-                 : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity, false);
+    Value nnue = smallNet ? networks.small.evaluate(pos, &caches.small, true, &nnueComplexity)
+                          : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
 
     const auto adjustEval = [&](int optDiv, int nnueDiv, int pawnCountConstant, int pawnCountMul,
                                 int npmConstant, int evalDiv, int shufflingConstant,
@@ -83,8 +81,6 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 
     if (!smallNet)
         adjustEval(524, 32395, 942, 11, 139, 1058, 178, 204);
-    else if (psqtOnly)
-        adjustEval(517, 32857, 908, 7, 155, 1006, 224, 238);
     else
         adjustEval(515, 32793, 944, 9, 140, 1067, 206, 206);
 
