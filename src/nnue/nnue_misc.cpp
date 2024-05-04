@@ -48,10 +48,9 @@ void hint_common_parent_position(const Position&    pos,
 
     int simpleEvalAbs = std::abs(simple_eval(pos, pos.side_to_move()));
     if (simpleEvalAbs > Eval::SmallNetThreshold)
-        networks.small.hint_common_access(pos, &caches.small,
-                                          simpleEvalAbs > Eval::PsqtOnlyThreshold);
+        networks.small.hint_common_access(pos, &caches.small);
     else
-        networks.big.hint_common_access(pos, &caches.big, false);
+        networks.big.hint_common_access(pos, &caches.big);
 }
 
 namespace {
@@ -149,18 +148,14 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
                 auto st = pos.state();
 
                 pos.remove_piece(sq);
-                st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-                  st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-                    false;
+                st->accumulatorBig.computed[WHITE] = st->accumulatorBig.computed[BLACK] = false;
 
                 Value eval = networks.big.evaluate(pos, &caches.big);
                 eval       = pos.side_to_move() == WHITE ? eval : -eval;
                 v          = base - eval;
 
                 pos.put_piece(pc, sq);
-                st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-                  st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-                    false;
+                st->accumulatorBig.computed[WHITE] = st->accumulatorBig.computed[BLACK] = false;
             }
 
             writeSquare(f, r, pc, v);
