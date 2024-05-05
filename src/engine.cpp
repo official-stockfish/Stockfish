@@ -141,14 +141,18 @@ void Engine::verify_networks() const {
 }
 
 void Engine::load_networks() {
-    networks.big.load(binaryDirectory, options["EvalFile"]);
-    networks.small.load(binaryDirectory, options["EvalFileSmall"]);
+    load_big_network(options["EvalFile"]);
+    load_small_network(options["EvalFileSmall"]);
 }
 
-void Engine::load_big_network(const std::string& file) { networks.big.load(binaryDirectory, file); }
+void Engine::load_big_network(const std::string& file) {
+    networks.big.load(binaryDirectory, file);
+    threads.clear();
+}
 
 void Engine::load_small_network(const std::string& file) {
     networks.small.load(binaryDirectory, file);
+    threads.clear();
 }
 
 void Engine::save_network(const std::pair<std::optional<std::string>, std::string> files[2]) {

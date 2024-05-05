@@ -114,8 +114,11 @@ Value value_to_tt(Value v, int ply);
 Value value_from_tt(Value v, int ply, int r50c);
 void  update_pv(Move* pv, Move move, const Move* childPv);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
-void  update_quiet_stats(
+void  update_refutations(const Position& pos, Stack* ss, Search::Worker& workerThread, Move move);
+void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
+void update_quiet_stats(
+  const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
 void update_all_stats(const Position& pos,
                       Stack*          ss,
                       Search::Worker& workerThread,
@@ -988,7 +991,7 @@ moves_loop:  // When in check, search starts here
                 int history =
                   (*contHist[0])[movedPiece][move.to_sq()]
                   + (*contHist[1])[movedPiece][move.to_sq()]
-                  + (*contHist[3])[movedPiece][move.to_sq()]
+                  + (*contHist[3])[movedPiece][move.to_sq()] / 2
                   + thisThread->pawnHistory[pawn_structure_index(pos)][movedPiece][move.to_sq()];
 
                 // Continuation history based pruning (~2 Elo)
@@ -1050,8 +1053,8 @@ moves_loop:  // When in check, search starts here
                 {
                     int doubleMargin = 251 * PvNode - 241 * !ttCapture;
                     int tripleMargin =
-                      493 - 234 * !PvNode - 248 * !ttCapture - 124 * (!ss->ttPv && ttCapture);
-                    int quadMargin = 1007 - 354 * !PvNode - 300 * !ttCapture - 206 * !ss->ttPv;
+                      135 + 234 * PvNode - 248 * !ttCapture + 124 * (ss->ttPv || !ttCapture);
+                    int quadMargin = 447 + 354 * PvNode - 300 * !ttCapture + 206 * ss->ttPv;
 
                     extension = 1 + (value < singularBeta - doubleMargin)
                               + (value < singularBeta - tripleMargin)
@@ -1068,7 +1071,7 @@ moves_loop:  // When in check, search starts here
                 else if (singularBeta >= beta)
                 {
                     if (!ttCapture)
-                        update_quiet_stats(pos, ss, *this, ttMove, -stat_malus(depth));
+                        update_quiet_histories(pos, ss, *this, ttMove, -stat_malus(depth));
 
                     return singularBeta;
                 }
@@ -1332,8 +1335,8 @@ moves_loop:  // When in check, search starts here
     else if (!priorCapture && prevSq != SQ_NONE)
     {
         int bonus = (depth > 5) + (PvNode || cutNode) + ((ss - 1)->statScore < -14455)
-                  + ((ss - 1)->moveCount > 10)
-                  + (!ss->inCheck && bestValue <= ss->staticEval - 130);
+                  + ((ss - 1)->moveCount > 10) + (!ss->inCheck && bestValue <= ss->staticEval - 130)
+                  + (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 77);
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       stat_bonus(depth) * bonus);
         thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()]
@@ -1724,7 +1727,6 @@ void update_all_stats(const Position& pos,
                       int             captureCount,
                       Depth           depth) {
 
-    Color                  us             = pos.side_to_move();
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
@@ -1737,23 +1739,11 @@ void update_all_stats(const Position& pos,
         int bestMoveBonus = bestValue > beta + 165 ? quietMoveBonus      // larger bonus
                                                    : stat_bonus(depth);  // smaller bonus
 
-        // Increase stats for the best move in case it was a quiet move
         update_quiet_stats(pos, ss, workerThread, bestMove, bestMoveBonus);
-
-        int pIndex = pawn_structure_index(pos);
-        workerThread.pawnHistory[pIndex][moved_piece][bestMove.to_sq()] << quietMoveBonus;
 
         // Decrease stats for all non-best quiet moves
         for (int i = 0; i < quietCount; ++i)
-        {
-            workerThread
-                .pawnHistory[pIndex][pos.moved_piece(quietsSearched[i])][quietsSearched[i].to_sq()]
-              << -quietMoveMalus;
-
-            workerThread.mainHistory[us][quietsSearched[i].from_to()] << -quietMoveMalus;
-            update_continuation_histories(ss, pos.moved_piece(quietsSearched[i]),
-                                          quietsSearched[i].to_sq(), -quietMoveMalus);
-        }
+            update_quiet_histories(pos, ss, workerThread, quietsSearched[i], -quietMoveMalus);
     }
     else
     {
@@ -1794,10 +1784,8 @@ void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
     }
 }
 
-
 // Updates move sorting heuristics
-void update_quiet_stats(
-  const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
+void update_refutations(const Position& pos, Stack* ss, Search::Worker& workerThread, Move move) {
 
     // Update killers
     if (ss->killers[0] != move)
@@ -1806,10 +1794,6 @@ void update_quiet_stats(
         ss->killers[0] = move;
     }
 
-    Color us = pos.side_to_move();
-    workerThread.mainHistory[us][move.from_to()] << bonus;
-    update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(), bonus);
-
     // Update countermove history
     if (((ss - 1)->currentMove).is_ok())
     {
@@ -1817,6 +1801,27 @@ void update_quiet_stats(
         workerThread.counterMoves[pos.piece_on(prevSq)][prevSq] = move;
     }
 }
+
+void update_quiet_histories(
+  const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
+
+    Color us = pos.side_to_move();
+    workerThread.mainHistory[us][move.from_to()] << bonus;
+
+    update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(), bonus);
+
+    int pIndex = pawn_structure_index(pos);
+    workerThread.pawnHistory[pIndex][pos.moved_piece(move)][move.to_sq()] << bonus;
+}
+
+// Updates move sorting heuristics
+void update_quiet_stats(
+  const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
+
+    update_refutations(pos, ss, workerThread, move);
+    update_quiet_histories(pos, ss, workerThread, move, bonus);
+}
+
 }
 
 // When playing with strength handicap, choose the best move among a set of RootMoves

@@ -29,7 +29,7 @@ class Position;
 
 namespace Eval {
 
-constexpr inline int SmallNetThreshold = 1274, PsqtOnlyThreshold = 2389;
+constexpr inline int SmallNetThreshold = 1274;
 
 // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
 // for the build process (profile-build and fishtest) to work. Do not change the
