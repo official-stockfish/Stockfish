@@ -86,8 +86,8 @@ class Position {
     Position& operator=(const Position&) = delete;
 
     // FEN string input/output
-    Position&   set(const std::string& fenStr, bool isChess960, StateInfo* si);
-    Position&   set(const std::string& code, Color c, StateInfo* si);
+    Position&   set(const char* fenStr, bool isChess960, StateInfo* si);
+    Position&   set(const char* code, Color c, StateInfo* si);
     std::string fen() const;
 
     // Position representation
