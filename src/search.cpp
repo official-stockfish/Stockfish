@@ -775,8 +775,12 @@ Value Search::Worker::search(
                - (ss - 1)->statScore / 254
              >= beta
         && eval >= beta && eval < VALUE_TB_WIN_IN_MAX_PLY && (!ttMove || ttCapture))
+    {
+        if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 2 && !priorCapture)
+            update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
+                                            -stat_malus(depth + 1));
         return beta > VALUE_TB_LOSS_IN_MAX_PLY ? (eval + beta) / 2 : eval;
-
+    }
     // Step 9. Null move search with verification search (~35 Elo)
     if (!PvNode && (ss - 1)->currentMove != Move::null() && (ss - 1)->statScore < 16993
         && eval >= beta && ss->staticEval >= beta - 19 * depth + 326 && !excludedMove
