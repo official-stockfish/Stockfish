@@ -158,7 +158,7 @@ void Position::init() {
 // Initializes the position object with the given FEN string.
 // This function is not very robust - make sure that input FENs are correct,
 // this is assumed to be the responsibility of the GUI.
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
+Position& Position::set(const char* fenStr, bool isChess960, StateInfo* si) {
     /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -197,16 +197,14 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     unsigned char      col, row, token;
     size_t             idx;
     Square             sq = SQ_A8;
-    std::istringstream ss(fenStr);
 
     std::memset(this, 0, sizeof(Position));
     std::memset(si, 0, sizeof(StateInfo));
     st = si;
 
-    ss >> std::noskipws;
 
     // 1. Piece placement
-    while ((ss >> token) && !isspace(token))
+    while ((token = *fenStr++) && token != ' ')
     {
         if (isdigit(token))
             sq += (token - '0') * EAST;  // Advance the given number of files
@@ -222,16 +220,16 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     }
 
     // 2. Active color
-    ss >> token;
+    token = *fenStr++;
     sideToMove = (token == 'w' ? WHITE : BLACK);
-    ss >> token;
+    token = *fenStr++;
 
     // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
     // Shredder-FEN that uses the letters of the columns on which the rooks began
     // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
     // if an inner rook is associated with the castling right, the castling tag is
     // replaced by the file letter of the involved rook, as for the Shredder-FEN.
-    while ((ss >> token) && !isspace(token))
+    while ((token = *fenStr++) && token != ' ')
     {
         Square rsq;
         Color  c    = islower(token) ? BLACK : WHITE;
@@ -260,8 +258,8 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     // Ignore if square is invalid or not on side to move relative rank 6.
     bool enpassant = false;
 
-    if (((ss >> col) && (col >= 'a' && col <= 'h'))
-        && ((ss >> row) && (row == (sideToMove == WHITE ? '6' : '3'))))
+    if (((col = *fenStr++) && (col >= 'a' && col <= 'h'))
+        && ((row = *fenStr++) && (row == (sideToMove == WHITE ? '6' : '3'))))
     {
         st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
@@ -278,7 +276,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         st->epSquare = SQ_NONE;
 
     // 5-6. Halfmove clock and fullmove number
-    ss >> std::skipws >> st->rule50 >> gamePly;
+    st->rule50 = *fenStr++; gamePly = *fenStr++;
 
     // Convert from fullmove starting from 1 to gamePly starting from 0,
     // handle also common incorrect FEN with fullmove = 0.
@@ -370,7 +368,7 @@ void Position::set_state() const {
 
 // Overload to initialize the position object with the given endgame code string
 // like "KBPKN". It's mainly a helper to get the material key out of an endgame code.
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const char* code, Color c, StateInfo* si) {
 
     assert(code[0] == 'K');
 
@@ -394,7 +392,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
 string Position::fen() const {
 
     int                emptyCnt;
-    std::ostringstream ss;
+    string *str;
 
     for (Rank r = RANK_8; r >= RANK_1; --r)
     {
@@ -404,37 +402,37 @@ string Position::fen() const {
                 ++emptyCnt;
 
             if (emptyCnt)
-                ss << emptyCnt;
+                *str++ = emptyCnt;
 
             if (f <= FILE_H)
-                ss << PieceToChar[piece_on(make_square(f, r))];
+                *str++ = PieceToChar[piece_on(make_square(f, r))];
         }
 
         if (r > RANK_1)
-            ss << '/';
+            *str++ = '/';
     }
 
-    ss << (sideToMove == WHITE ? " w " : " b ");
+    *str++ = (sideToMove == WHITE ? " w " : " b ");
 
     if (can_castle(WHITE_OO))
-        ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OO))) : 'K');
+        *str++ = (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OO))) : ('K'));
 
     if (can_castle(WHITE_OOO))
-        ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OOO))) : 'Q');
+        *str++ = (chess960 ? char('A' + file_of(castling_rook_square(WHITE_OOO))) : ('Q'));
 
     if (can_castle(BLACK_OO))
-        ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OO))) : 'k');
+        *str++ = (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OO))) : ('k'));
 
     if (can_castle(BLACK_OOO))
-        ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OOO))) : 'q');
+        *str++ = (chess960 ? char('a' + file_of(castling_rook_square(BLACK_OOO))) : ('q'));
 
     if (!can_castle(ANY_CASTLING))
-        ss << '-';
+        *str++ = ('-');
 
-    ss << (ep_square() == SQ_NONE ? " - " : " " + UCIEngine::square(ep_square()) + " ")
-       << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
+    *str++ = (ep_square() == SQ_NONE ? " - " : " " + UCIEngine::square(ep_square()) + " ");
+       *str++ = st->rule50; *str++ = " "; *str++ = 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
-    return ss.str();
+    return *str;
 }
 
 // Calculates st->blockersForKing[c] and st->pinners[~c],
