@@ -190,8 +190,8 @@ void Search::Worker::start_searching() {
     // When playing in 'nodes as time' mode, subtract the searched nodes from
     // the available ones before exiting.
     if (limits.npmsec)
-        main_manager()->tm.advance_nodes_time(limits.inc[rootPos.side_to_move()]
-                                              - threads.nodes_searched());
+        main_manager()->tm.advance_nodes_time(threads.nodes_searched()
+                                              - limits.inc[rootPos.side_to_move()]);
 
     Worker* bestThread = this;
     Skill   skill =
@@ -347,7 +347,7 @@ void Search::Worker::iterative_deepening() {
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
                 if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
-                    && elapsed() > 3000)
+                    && elapsed_time() > 3000)
                     main_manager()->pv(*this, threads, tt, rootDepth);
 
                 // In case of failing low/high increase aspiration window and
@@ -378,7 +378,7 @@ void Search::Worker::iterative_deepening() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (mainThread
-                && (threads.stop || pvIdx + 1 == multiPV || elapsed() > 3000)
+                && (threads.stop || pvIdx + 1 == multiPV || elapsed_time() > 3000)
                 // A thread that aborted search can have mated-in/TB-loss PV and score
                 // that cannot be trusted, i.e. it can be delayed or refuted if we would have
                 // had time to fully search other root-moves. Thus we suppress this output and
@@ -828,8 +828,8 @@ Value Search::Worker::search(
         return qsearch<PV>(pos, ss, alpha, beta);
 
     // For cutNodes without a ttMove, we decrease depth by 2 if depth is high enough.
-    if (cutNode && depth >= 8 && !ttMove)
-        depth -= 2;
+    if (cutNode && depth >= 8 && (!ttMove || tte->bound() == BOUND_UPPER))
+        depth -= 1 + !ttMove;
 
     // Step 11. ProbCut (~10 Elo)
     // If we have a good enough capture (or queen promotion) and a reduced search returns a value
@@ -935,7 +935,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && is_mainthread() && elapsed() > 3000)
+        if (rootNode && is_mainthread() && elapsed_time() > 3000)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
@@ -960,8 +960,7 @@ moves_loop:  // When in check, search starts here
         if (!rootNode && pos.non_pawn_material(us) && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~8 Elo)
-            if (!moveCountPruning)
-                moveCountPruning = moveCount >= futility_move_count(improving, depth);
+            moveCountPruning = moveCount >= futility_move_count(improving, depth);
 
             // Reduced depth of the next LMR search
             int lmrDepth = newDepth - r;
@@ -991,7 +990,6 @@ moves_loop:  // When in check, search starts here
                 int history =
                   (*contHist[0])[movedPiece][move.to_sq()]
                   + (*contHist[1])[movedPiece][move.to_sq()]
-                  + (*contHist[3])[movedPiece][move.to_sq()] / 2
                   + thisThread->pawnHistory[pawn_structure_index(pos)][movedPiece][move.to_sq()];
 
                 // Continuation history based pruning (~2 Elo)
@@ -1089,10 +1087,6 @@ moves_loop:  // When in check, search starts here
                 // If we are on a cutNode but the ttMove is not assumed to fail high over current beta (~1 Elo)
                 else if (cutNode)
                     extension = -2;
-
-                // If the ttMove is assumed to fail low over the value of the reduced search (~1 Elo)
-                else if (ttValue <= value)
-                    extension = -1;
             }
 
             // Extension for capturing the previous moved piece (~0 Elo on STC, ~1 Elo on LTC)
@@ -1150,11 +1144,10 @@ moves_loop:  // When in check, search starts here
 
         ss->statScore = 2 * thisThread->mainHistory[us][move.from_to()]
                       + (*contHist[0])[movedPiece][move.to_sq()]
-                      + (*contHist[1])[movedPiece][move.to_sq()]
-                      + (*contHist[3])[movedPiece][move.to_sq()] - 5078;
+                      + (*contHist[1])[movedPiece][move.to_sq()] - 5078;
 
         // Decrease/increase reduction for moves with a good/bad history (~8 Elo)
-        r -= ss->statScore / 12076;
+        r -= ss->statScore / (17662 - std::min(depth, 16) * 105);
 
         // Step 17. Late moves reduction / extension (LMR, ~117 Elo)
         if (depth >= 2 && moveCount > 1 + rootNode)
@@ -1291,7 +1284,7 @@ moves_loop:  // When in check, search starts here
                 else
                 {
                     // Reduce other moves if we have found at least one score improvement (~2 Elo)
-                    if (depth > 2 && depth < 13 && beta < 15868 && value > -14630)
+                    if (depth > 2 && depth < 13 && abs(value) < VALUE_TB_WIN_IN_MAX_PLY)
                         depth -= 2;
 
                     assert(depth > 0);
@@ -1570,8 +1563,12 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
                 break;
 
             // Continuation history based pruning (~3 Elo)
-            if (!capture && (*contHist[0])[pos.moved_piece(move)][move.to_sq()] < 0
-                && (*contHist[1])[pos.moved_piece(move)][move.to_sq()] < 0)
+            if (!capture
+                && (*contHist[0])[pos.moved_piece(move)][move.to_sq()]
+                       + (*contHist[1])[pos.moved_piece(move)][move.to_sq()]
+                       + thisThread->pawnHistory[pawn_structure_index(pos)][pos.moved_piece(move)]
+                                                [move.to_sq()]
+                     <= 4000)
                 continue;
 
             // Do not search moves with bad enough SEE values (~5 Elo)
@@ -1646,9 +1643,19 @@ Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
     return (reductionScale + 1318 - delta * 760 / rootDelta) / 1024 + (!i && reductionScale > 1066);
 }
 
+// elapsed() returns the time elapsed since the search started. If the
+// 'nodestime' option is enabled, it will return the count of nodes searched
+// instead. This function is called to check whether the search should be
+// stopped based on predefined thresholds like time limits or nodes searched.
+//
+// elapsed_time() returns the actual time elapsed since the start of the search.
+// This function is intended for use only when printing PV outputs, and not used
+// for making decisions within the search algorithm itself.
 TimePoint Search::Worker::elapsed() const {
     return main_manager()->tm.elapsed([this]() { return threads.nodes_searched(); });
 }
+
+TimePoint Search::Worker::elapsed_time() const { return main_manager()->tm.elapsed_time(); }
 
 
 namespace {
@@ -1899,7 +1906,7 @@ void SearchManager::pv(const Search::Worker&     worker,
     const auto& rootMoves = worker.rootMoves;
     const auto& pos       = worker.rootPos;
     size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed([nodes]() { return nodes; }) + 1;
+    TimePoint   time      = tm.elapsed_time() + 1;
     size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
     uint64_t    tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
