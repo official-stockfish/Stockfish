@@ -63,7 +63,10 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
                           : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
 
     if (smallNet && (nnue * simpleEval < 0 || std::abs(nnue) < 500))
-        nnue = networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
+    {
+        nnue     = networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
+        smallNet = false;
+    }
 
     const auto adjustEval = [&](int nnueDiv, int pawnCountMul, int evalDiv, int shufflingConstant) {
         // Blend optimism and eval with nnue complexity and material imbalance
