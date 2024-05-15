@@ -2,7 +2,7 @@ name: Update contributor list each month
 
 on: 
   schedule:
-    - cron: '0 20 * * *'
+    - cron: '20 18 * * *'
 
 jobs:
   build:
