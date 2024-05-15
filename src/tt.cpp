@@ -35,7 +35,7 @@ namespace Stockfish {
 void TTEntry::save(
   Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8) {
 
-    // Preserve any existing move for the same position
+    // Preserve any existing move for the same position if move is null
     if (m || uint16_t(k) != key16)
         move16 = m;
 
