@@ -1,0 +1,31 @@
+name: Update contributor list each month
+
+on: 
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Configurar Git
+      run: |
+        git config --global user.name 'Pablohn26'
+        git config --global user.email 'pablohn6@gmail.com'
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        pip install requests bs4 pandas
+    - name: Run update script
+      run: python scripts/contributors-update.py
+    - name: Commit 
+      run: |
+        git add "Top CPU Contributors.txt"
+        git commit -m "Monthly update Top CPU Contributors"
+        git push
