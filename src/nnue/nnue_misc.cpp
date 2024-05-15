@@ -47,7 +47,7 @@ void hint_common_parent_position(const Position&    pos,
                                  AccumulatorCaches& caches) {
 
     int simpleEvalAbs = std::abs(simple_eval(pos, pos.side_to_move()));
-    if (simpleEvalAbs > Eval::SmallNetThreshold)
+    if (simpleEvalAbs > Eval::SmallNetThreshold + 6 * pos.count<PAWN>())
         networks.small.hint_common_access(pos, &caches.small);
     else
         networks.big.hint_common_access(pos, &caches.big);
