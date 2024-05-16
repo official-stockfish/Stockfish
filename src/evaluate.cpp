@@ -44,6 +44,10 @@ int Eval::simple_eval(const Position& pos, Color c) {
          + (pos.non_pawn_material(c) - pos.non_pawn_material(~c));
 }
 
+bool Eval::use_smallnet(const Position& pos) {
+    int simpleEval = simple_eval(pos, pos.side_to_move());
+    return std::abs(simpleEval) > 1126 + 6 * pos.count<PAWN>();
+}
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
@@ -55,7 +59,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     assert(!pos.checkers());
 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
-    bool smallNet   = std::abs(simpleEval) > SmallNetThreshold + 6 * pos.count<PAWN>();
+    bool smallNet   = use_smallnet(pos);
     int  nnueComplexity;
     int  v;
 
