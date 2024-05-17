@@ -60,7 +60,16 @@ UCIEngine::UCIEngine(int argc, char** argv) :
 
     options["Debug Log File"] << Option("", [](const Option& o) { start_logger(o); });
 
-    options["Threads"] << Option(1, 1, 1024, [this](const Option&) { engine.resize_threads(); });
+    options["NumaPolicy"] << Option("auto", [this](const Option& o) {
+        engine.set_numa_config_from_option(o);
+        print_numa_config_information();
+        print_thread_binding_information();
+    });
+
+    options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
+        engine.resize_threads();
+        print_thread_binding_information();
+    });
 
     options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) { engine.set_tt_size(o); });
 
@@ -123,8 +132,15 @@ void UCIEngine::loop() {
             engine.set_ponderhit(false);
 
         else if (token == "uci")
+        {
             sync_cout << "id name " << engine_info(true) << "\n"
-                      << engine.get_options() << "\nuciok" << sync_endl;
+                      << engine.get_options() << sync_endl;
+
+            print_numa_config_information();
+            print_thread_binding_information();
+
+            sync_cout << "uciok" << sync_endl;
+        }
 
         else if (token == "setoption")
             setoption(is);
@@ -175,6 +191,28 @@ void UCIEngine::loop() {
                       << sync_endl;
 
     } while (token != "quit" && cli.argc == 1);  // The command-line arguments are one-shot
+}
+
+void UCIEngine::print_numa_config_information() const {
+    auto cfgStr = engine.get_numa_config_as_string();
+    sync_cout << "info string Available Processors: " << cfgStr << sync_endl;
+}
+
+void UCIEngine::print_thread_binding_information() const {
+    auto boundThreadsByNode = engine.get_bound_thread_count_by_numa_node();
+    if (!boundThreadsByNode.empty())
+    {
+        sync_cout << "info string NUMA Node Thread Binding: ";
+        bool isFirst = true;
+        for (auto&& [current, total] : boundThreadsByNode)
+        {
+            if (!isFirst)
+                std::cout << ":";
+            std::cout << current << "/" << total;
+            isFirst = false;
+        }
+        std::cout << sync_endl;
+    }
 }
 
 Search::LimitsType UCIEngine::parse_limits(std::istream& is) {
