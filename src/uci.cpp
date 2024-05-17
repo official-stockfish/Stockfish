@@ -286,9 +286,9 @@ void UCIEngine::bench(std::istream& args) {
 
     dbg_print();
 
-    std::cerr << "\n==========================="
-              << "\nTotal time (ms) : " << elapsed << "\nNodes searched  : " << nodes
-              << "\nNodes/second    : " << 1000 * nodes / elapsed << std::endl;
+    std::cerr << "\n===========================" << "\nTotal time (ms) : " << elapsed
+              << "\nNodes searched  : " << nodes << "\nNodes/second    : " << 1000 * nodes / elapsed
+              << std::endl;
 
     // reset callback, to not capture a dangling reference to nodesSearched
     engine.set_on_update_full([&](const auto& i) { on_update_full(i, options["UCI_ShowWDL"]); });
