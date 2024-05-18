@@ -72,23 +72,15 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
         smallNet = false;
     }
 
-    const auto adjustEval = [&](int shufflingConstant) {
-        // Blend optimism and eval with nnue complexity and material imbalance
-        optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 584;
-        nnue -= nnue * (nnueComplexity * 5 / 3) / 32395;
+    // Blend optimism and eval with nnue complexity and material imbalance
+    optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 584;
+    nnue -= nnue * (nnueComplexity * 5 / 3) / 32395;
 
-        int npm = pos.non_pawn_material() / 64;
-        v       = (nnue * (npm + 943 + 11 * pos.count<PAWN>()) + optimism * (npm + 140)) / 1058;
+    int npm = pos.non_pawn_material() / 64;
+    v       = (nnue * (npm + 943 + 11 * pos.count<PAWN>()) + optimism * (npm + 140)) / 1058;
 
-        // Damp down the evaluation linearly when shuffling
-        int shuffling = pos.rule50_count();
-        v             = v * (shufflingConstant - shuffling) / 207;
-    };
-
-    if (!smallNet)
-        adjustEval(178);
-    else
-        adjustEval(206);
+    // Damp down the evaluation linearly when shuffling
+    v = v * ((smallNet ? 206 : 178) - pos.rule50_count()) / 207;
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
