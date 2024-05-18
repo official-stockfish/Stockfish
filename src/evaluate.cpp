@@ -44,6 +44,10 @@ int Eval::simple_eval(const Position& pos, Color c) {
          + (pos.non_pawn_material(c) - pos.non_pawn_material(~c));
 }
 
+bool Eval::use_smallnet(const Position& pos) {
+    int simpleEval = simple_eval(pos, pos.side_to_move());
+    return std::abs(simpleEval) > 1126 + 6 * pos.count<PAWN>();
+}
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
@@ -55,7 +59,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     assert(!pos.checkers());
 
     int  simpleEval = simple_eval(pos, pos.side_to_move());
-    bool smallNet   = std::abs(simpleEval) > SmallNetThreshold + 6 * pos.count<PAWN>();
+    bool smallNet   = use_smallnet(pos);
     int  nnueComplexity;
     int  v;
 
@@ -68,13 +72,13 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
         smallNet = false;
     }
 
-    const auto adjustEval = [&](int pawnCountMul, int shufflingConstant) {
+    const auto adjustEval = [&](int shufflingConstant) {
         // Blend optimism and eval with nnue complexity and material imbalance
         optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 584;
         nnue -= nnue * (nnueComplexity * 5 / 3) / 32395;
 
         int npm = pos.non_pawn_material() / 64;
-        v = (nnue * (npm + 943 + pawnCountMul * pos.count<PAWN>()) + optimism * (npm + 140)) / 1058;
+        v       = (nnue * (npm + 943 + 11 * pos.count<PAWN>()) + optimism * (npm + 140)) / 1058;
 
         // Damp down the evaluation linearly when shuffling
         int shuffling = pos.rule50_count();
@@ -82,9 +86,9 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     };
 
     if (!smallNet)
-        adjustEval(11, 178);
+        adjustEval(178);
     else
-        adjustEval(9, 206);
+        adjustEval(206);
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
