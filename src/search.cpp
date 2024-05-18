@@ -816,6 +816,8 @@ Value Search::Worker::search(
 
             if (v >= beta)
                 return nullValue;
+            else
+                return v;
         }
     }
 
