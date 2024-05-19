@@ -187,10 +187,10 @@ constexpr Value PieceValue[PIECE_NB] = {
 using Depth = int;
 
 enum : int {
-  // The following DEPTH_ constants are used for TT entries from search. In regular search,
+  // The following DEPTH_ constants are used for TT entries and QS movegen stages. In regular search,
   // TT depth is literal: the search depth (effort) used to make the corresponding TT value.
-  // In qsearch, however, we only store which movegen stage of QS we were in when saving the
-  // ttentry (which should thus compare lower than any regular search depth).
+  // In qsearch, however, TT entries only store the current QS movegen stage (which should thus compare
+  // lower than any regular search depth).
   DEPTH_QS_CHECKS =  0,
   DEPTH_QS_NORMAL = -1,
   // For TT entries where no searching at all was done (whether regular or qsearch) we use

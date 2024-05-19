@@ -1438,8 +1438,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     // Note that unlike regular search, which stores literal depth, in QS we only store the
-    // current movegen stage, see comments in types.h. If in check, we search all
-    // evasions and thus store DEPTH_QS_CHECKS. (Evasions may be quiet, and _CHECKS include quiets.)
+    // current movegen stage. If in check, we search all evasions and thus store
+    // DEPTH_QS_CHECKS. (Evasions may be quiet, and _CHECKS includes quiets.)
     ttDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS
                                                       : DEPTH_QS_NORMAL;
 
@@ -1510,7 +1510,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
 
     // Initialize a MovePicker object for the current position, and prepare to search the moves.
     // We presently use two stages of qs movegen, first captures+checks, then captures only.
-    // (When in check, we simply search all evasions.) See also comments in types.h.
+    // (When in check, we simply search all evasions.)
     // (Presently, having the checks stage is worth only 1 Elo, and may be removable in the near future,
     // which would result in only a single stage of QS movegen.)
     Square     prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
