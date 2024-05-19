@@ -346,11 +346,10 @@ inline void Position::remove_piece(Square s) {
 
 inline void Position::move_piece(Square from, Square to) {
 
-    Piece    pc     = board[from];
-    Bitboard fromTo = from | to;
-    byTypeBB[ALL_PIECES] ^= fromTo;
-    byTypeBB[type_of(pc)] ^= fromTo;
-    byColorBB[color_of(pc)] ^= fromTo;
+    Piece pc = board[from];
+    byTypeBB[ALL_PIECES] ^= (from | to);
+    byTypeBB[type_of(pc)] ^= (from | to);
+    byColorBB[color_of(pc)] ^= (from | to);
     board[from] = NO_PIECE;
     board[to]   = pc;
 }
