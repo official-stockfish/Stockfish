@@ -80,7 +80,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     v       = (nnue * (npm + 943 + 11 * pos.count<PAWN>()) + optimism * (npm + 140)) / 1058;
 
     // Damp down the evaluation linearly when shuffling
-    v = v * ((smallNet ? 206 : 178) - pos.rule50_count()) / 207;
+    v = v * (204 - pos.rule50_count()) / 208;
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
