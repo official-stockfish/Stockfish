@@ -37,6 +37,9 @@ namespace Stockfish {
 // move       16 bit
 // value      16 bit
 // eval value 16 bit
+//
+// These fields are in the same order as accessed by TT::probe(), since memory is fastest sequentially.
+// Equally, the store order in save() matches this order.
 struct TTEntry {
 
     Move  move() const { return Move(move16); }
