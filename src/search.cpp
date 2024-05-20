@@ -802,7 +802,14 @@ Value Search::Worker::search(
         if (nullValue >= beta && nullValue < VALUE_TB_WIN_IN_MAX_PLY)
         {
             if (thisThread->nmpMinPly || depth < 16)
+            {
+                if (nullValue >= ss->staticEval)
+                {
+                    auto bonus = std::min(int(nullValue - ss->staticEval) * depth / 32, CORRECTION_HISTORY_LIMIT / 16);
+                    thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] << bonus;
+                }
                 return nullValue;
+            }
 
             assert(!thisThread->nmpMinPly);  // Recursive verification is not allowed
 
