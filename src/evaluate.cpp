@@ -46,7 +46,7 @@ int Eval::simple_eval(const Position& pos, Color c) {
 
 bool Eval::use_smallnet(const Position& pos) {
     int simpleEval = simple_eval(pos, pos.side_to_move());
-    return std::abs(simpleEval) > 1126 + 6 * pos.count<PAWN>();
+    return std::abs(simpleEval) > 1018 + 5 * pos.count<PAWN>();
 }
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
@@ -73,8 +73,8 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     }
 
     // Blend optimism and eval with nnue complexity and material imbalance
-    optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 584;
-    nnue -= nnue * (nnueComplexity * 5 / 3) / 32395;
+    optimism += optimism * (nnueComplexity + std::abs(simpleEval - nnue)) / 620;
+    nnue -= nnue * (nnueComplexity * 5 / 3) / 32082;
 
     v = (nnue
            * (32961 + 381 * pos.count<PAWN>() + 349 * pos.count<KNIGHT>()
@@ -82,7 +82,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
          + optimism
              * (4835 + 136 * pos.count<PAWN>() + 375 * pos.count<KNIGHT>()
                 + 403 * pos.count<BISHOP>() + 628 * pos.count<ROOK>() + 1124 * pos.count<QUEEN>()))
-      / 32768;
+      / 36860;
 
     // Damp down the evaluation linearly when shuffling
     v = v * (204 - pos.rule50_count()) / 208;
