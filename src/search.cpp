@@ -1083,12 +1083,7 @@ moves_loop:  // When in check, search starts here
                 // we assume this expected cut-node is not singular (multiple moves fail high),
                 // and we can prune the whole subtree by returning a softbound.
                 else if (singularBeta >= beta)
-                {
-                    if (!ttCapture)
-                        update_quiet_histories(pos, ss, *this, ttMove, -stat_malus(depth));
-
                     return singularBeta;
-                }
 
                 // Negative extensions
                 // If other moves failed high over (ttValue - margin) without the ttMove on a reduced search,
