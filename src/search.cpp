@@ -833,12 +833,9 @@ Value Search::Worker::search(
     if (PvNode && !ttMove)
         depth -= 3;
 
-    if (!PvNode && ss->ttHit && (tte->bound() & BOUND_UPPER) && ttValue > alpha + 5 * depth)
-        depth--;
-
     // Use qsearch if depth <= 0.
     if (depth <= 0)
-        return qsearch < PvNode ? PV : NonPV > (pos, ss, alpha, beta);
+        return qsearch<PV>(pos, ss, alpha, beta);
 
     // For cutNodes, if depth is high enough, decrease depth by 2 if there is no ttMove, or
     // by 1 if there is a ttMove with an upper bound.
