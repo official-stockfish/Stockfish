@@ -66,6 +66,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     Value nnue = smallNet ? networks.small.evaluate(pos, &caches.small, true, &nnueComplexity)
                           : networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
 
+    // Re-evaluate the position when higher eval accuracy is worth the time spent
     if (smallNet && nnue * simpleEval < 0)
     {
         nnue     = networks.big.evaluate(pos, &caches.big, true, &nnueComplexity);
