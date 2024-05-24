@@ -361,8 +361,8 @@ top:
         if (select<Next>([]() { return true; }))
             return *(cur - 1);
 
-        // If we did not find any move and we do not try checks, we have finished
-        if (depth != DEPTH_QS_CHECKS)
+        // If we found no move and the depth is too low to try checks, then we have finished
+        if (depth <= DEPTH_QS_NORMAL)
             return Move::none();
 
         ++stage;
