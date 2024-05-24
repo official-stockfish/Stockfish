@@ -1066,11 +1066,9 @@ moves_loop:  // When in check, search starts here
                 {
                     int doubleMargin = 304 * PvNode - 203 * !ttCapture;
                     int tripleMargin = 117 + 259 * PvNode - 296 * !ttCapture + 97 * ss->ttPv;
-                    int quadMargin   = 486 + 343 * PvNode - 273 * !ttCapture + 232 * ss->ttPv;
 
                     extension = 1 + (value < singularBeta - doubleMargin)
-                              + (value < singularBeta - tripleMargin)
-                              + (value < singularBeta - quadMargin);
+                              + (value < singularBeta - tripleMargin);
 
                     depth += ((!PvNode) && (depth < 16));
                 }
