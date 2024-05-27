@@ -1341,18 +1341,19 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonus = (depth > 4) + (depth > 5) + (PvNode || cutNode) + ((ss - 1)->statScore < -14144)
-                  + ((ss - 1)->moveCount > 9) + (!ss->inCheck && bestValue <= ss->staticEval - 115)
-                  + (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 81);
+        int bonus = (54 * (depth > 4) + 62 * (depth > 5) + 115 * (PvNode || cutNode)
+                     + 186 * ((ss - 1)->statScore < -14144) + 121 * ((ss - 1)->moveCount > 9)
+                     + 64 * (!ss->inCheck && bestValue <= ss->staticEval - 115)
+                     + 137 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 81));
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                      stat_bonus(depth) * bonus);
+                                      stat_bonus(depth) * bonus / 100);
         thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()]
-          << stat_bonus(depth) * bonus / 2;
+          << stat_bonus(depth) * bonus / 200;
 
 
         if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
             thisThread->pawnHistory[pawn_structure_index(pos)][pos.piece_on(prevSq)][prevSq]
-              << stat_bonus(depth) * bonus * 4;
+              << stat_bonus(depth) * bonus / 25;
     }
 
     if (PvNode)
