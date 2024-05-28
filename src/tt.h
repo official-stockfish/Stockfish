@@ -63,6 +63,7 @@ struct TTEntry {
     int16_t  eval16;
 };
 
+class ThreadPool;
 
 // A TranspositionTable is an array of Cluster, of size clusterCount. Each
 // cluster consists of ClusterSize number of TTEntry. Each non-empty TTEntry
@@ -102,8 +103,8 @@ class TranspositionTable {
 
     TTEntry* probe(const Key key, bool& found) const;
     int      hashfull() const;
-    void     resize(size_t mbSize, int threadCount);
-    void     clear(size_t threadCount);
+    void     resize(size_t mbSize, ThreadPool& threads);
+    void     clear(ThreadPool& threads);
 
     TTEntry* first_entry(const Key key) const {
         return &table[mul_hi64(key, clusterCount)].entry[0];

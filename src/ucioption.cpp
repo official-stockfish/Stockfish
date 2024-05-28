@@ -118,6 +118,8 @@ bool Option::operator==(const char* s) const {
     return !CaseInsensitiveLess()(currentValue, s) && !CaseInsensitiveLess()(s, currentValue);
 }
 
+bool Option::operator!=(const char* s) const { return !(*this == s); }
+
 
 // Inits options and assigns idx in the correct printing order
 
