@@ -77,6 +77,8 @@ using AlignedPtr = std::unique_ptr<T, AlignedDeleter<T>>;
 template<typename T>
 using LargePagePtr = std::unique_ptr<T, LargePageDeleter<T>>;
 
+#if defined(__linux__)
+
 struct PipeDeleter {
     void operator()(FILE* file) const {
         if (file != nullptr)
@@ -85,8 +87,6 @@ struct PipeDeleter {
         }
     }
 };
-
-#if defined(__linux__)
 
 inline std::optional<std::string> get_system_command_output(const std::string& command) {
     std::unique_ptr<FILE, PipeDeleter> pipe(popen(command.c_str(), "r"));
