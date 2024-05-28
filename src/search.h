@@ -208,6 +208,7 @@ class SearchManager: public ISearchManager {
             Depth                     depth) const;
 
     Stockfish::TimeManagement tm;
+    double                    originalTimeAdjust;
     int                       originalPly;
     int                       callsCnt;
     std::atomic_bool          ponder;
