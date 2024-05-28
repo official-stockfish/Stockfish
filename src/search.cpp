@@ -161,7 +161,7 @@ void Search::Worker::start_searching() {
     }
 
     main_manager()->tm.init(limits, rootPos.side_to_move(), rootPos.game_ply(), options,
-                            main_manager()->originalPly);
+                            main_manager()->originalPly, main_manager()->originalTimeAdjust);
     tt.new_search();
 
     if (rootMoves.empty())
