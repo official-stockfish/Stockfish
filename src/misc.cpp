@@ -57,13 +57,7 @@ using fun8_t = bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGE
 #include <mutex>
 #include <sstream>
 #include <string_view>
-
-// > misc.cpp should add these lines:
-// > #include <__system_error/errc.h>  // for std::errc
-// > misc.cpp should remove these lines:
-// > - #include <system_error>  // lines 60-60
-#include <system_error> // IWYU pragma: keep
-// IWYU pragma: no_include <__system_error/errc.h>
+#include <system_error>
 
 #include "types.h"
 
