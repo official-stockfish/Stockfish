@@ -33,9 +33,8 @@
 #include <utility>
 #include <vector>
 
-// We support linux very well, but we explicitly do NOT support Android, partially because
-// there are potential issues with `lscpu`, `popen` availability, and partially because
-// there's no NUMA environments running Android and there probably won't be.
+// We support linux very well, but we explicitly do NOT support Android, because there's
+// no affected systems, not worth maintaining.
 #if defined(__linux__) && !defined(__ANDROID__)
     #if !defined(_GNU_SOURCE)
         #define _GNU_SOURCE
@@ -143,7 +142,9 @@ class NumaConfig {
     }
 
     // This function queries the system for the mapping of processors to NUMA nodes.
-    // On Linux we utilize `lscpu` to avoid libnuma.
+    // On Linux we read from standardized kernel sysfs, with a fallback to single NUMA node.
+    // On Windows we utilize GetNumaProcessorNodeEx, which has its quirks, see
+    // comment for Windows implementation of get_process_affinity
     static NumaConfig from_system([[maybe_unused]] bool respectProcessAffinity = true) {
         NumaConfig cfg = empty();
 
@@ -160,48 +161,52 @@ class NumaConfig {
 
         // On Linux things are straightforward, since there's no processor groups and
         // any thread can be scheduled on all processors.
-        // This command produces output in the following form
-        // CPU NODE
-        //   0    0
-        //   1    0
-        //   2    1
-        //   3    1
-        //
-        // On some systems it may use '-' to signify no NUMA node, in which case we assume it's in node 0.
-        auto lscpuOpt = get_system_command_output("lscpu -e=cpu,node");
-        if (lscpuOpt.has_value())
+
+        // We try to gather this information from the sysfs first
+        // https://www.kernel.org/doc/Documentation/ABI/stable/sysfs-devices-node
+
+        bool useFallback = false;
+        auto fallback    = [&]() {
+            useFallback = true;
+            cfg         = empty();
+        };
+
+        // /sys/devices/system/node/online contains information about active NUMA nodes
+        auto nodeIdsStr = read_file_to_string("/sys/devices/system/node/online");
+        if (!nodeIdsStr.has_value() || nodeIdsStr->empty())
         {
-
-            std::istringstream ss(*lscpuOpt);
-
-            // skip the list header
-            ss.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-            while (true)
-            {
-                CpuIndex  c;
-                NumaIndex n;
-
-                ss >> c;
-
-                if (!ss)
-                    break;
-
-                ss >> n;
-
-                if (!ss)
-                {
-                    ss.clear();
-                    std::string dummy;
-                    ss >> dummy;
-                    n = 0;
-                }
-
-                if (is_cpu_allowed(c))
-                    cfg.add_cpu_to_node(n, c);
-            }
+            fallback();
         }
         else
+        {
+            remove_whitespace(*nodeIdsStr);
+            for (size_t n : indices_from_shortened_string(*nodeIdsStr))
+            {
+                // /sys/devices/system/node/node.../cpulist
+                std::string path =
+                  std::string("/sys/devices/system/node/node") + std::to_string(n) + "/cpulist";
+                auto cpuIdsStr = read_file_to_string(path);
+                // Now, we only bail if the file does not exist. Some nodes may be empty, that's fine.
+                // An empty node still has a file that appears to have some whitespace, so we need
+                // to handle that.
+                if (!cpuIdsStr.has_value())
+                {
+                    fallback();
+                    break;
+                }
+                else
+                {
+                    remove_whitespace(*cpuIdsStr);
+                    for (size_t c : indices_from_shortened_string(*cpuIdsStr))
+                    {
+                        if (is_cpu_allowed(c))
+                            cfg.add_cpu_to_node(n, c);
+                    }
+                }
+            }
+        }
+
+        if (useFallback)
         {
             for (CpuIndex c = 0; c < SYSTEM_THREADS_NB; ++c)
                 if (is_cpu_allowed(c))
@@ -309,38 +314,17 @@ class NumaConfig {
         NumaIndex n = 0;
         for (auto&& nodeStr : split(s, ":"))
         {
-            bool addedAnyCpuInThisNode = false;
-
-            for (const std::string& cpuStr : split(nodeStr, ","))
+            auto indices = indices_from_shortened_string(nodeStr);
+            if (!indices.empty())
             {
-                if (cpuStr.empty())
-                    continue;
-
-                auto parts = split(cpuStr, "-");
-                if (parts.size() == 1)
+                for (auto idx : indices)
                 {
-                    const CpuIndex c = CpuIndex{str_to_size_t(parts[0])};
-                    if (!cfg.add_cpu_to_node(n, c))
+                    if (!cfg.add_cpu_to_node(n, CpuIndex(idx)))
                         std::exit(EXIT_FAILURE);
                 }
-                else if (parts.size() == 2)
-                {
-                    const CpuIndex cfirst = CpuIndex{str_to_size_t(parts[0])};
-                    const CpuIndex clast  = CpuIndex{str_to_size_t(parts[1])};
 
-                    if (!cfg.add_cpu_range_to_node(n, cfirst, clast))
-                        std::exit(EXIT_FAILURE);
-                }
-                else
-                {
-                    std::exit(EXIT_FAILURE);
-                }
-
-                addedAnyCpuInThisNode = true;
-            }
-
-            if (addedAnyCpuInThisNode)
                 n += 1;
+            }
         }
 
         cfg.customAffinity = true;
@@ -675,7 +659,6 @@ class NumaConfig {
         return true;
     }
 
-
 #if defined(__linux__) && !defined(__ANDROID__)
 
     static std::set<CpuIndex> get_process_affinity() {
@@ -807,6 +790,37 @@ class NumaConfig {
     }
 
 #endif
+
+    static std::vector<size_t> indices_from_shortened_string(const std::string& s) {
+        std::vector<size_t> indices;
+
+        if (s.empty())
+            return indices;
+
+        for (const std::string& ss : split(s, ","))
+        {
+            if (ss.empty())
+                continue;
+
+            auto parts = split(ss, "-");
+            if (parts.size() == 1)
+            {
+                const CpuIndex c = CpuIndex{str_to_size_t(parts[0])};
+                indices.emplace_back(c);
+            }
+            else if (parts.size() == 2)
+            {
+                const CpuIndex cfirst = CpuIndex{str_to_size_t(parts[0])};
+                const CpuIndex clast  = CpuIndex{str_to_size_t(parts[1])};
+                for (size_t c = cfirst; c <= clast; ++c)
+                {
+                    indices.emplace_back(c);
+                }
+            }
+        }
+
+        return indices;
+    }
 };
 
 class NumaReplicationContext;
