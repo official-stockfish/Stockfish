@@ -382,12 +382,12 @@ WinRateParams win_rate_params(const Position& pos) {
     int material = pos.count<PAWN>() + 3 * pos.count<KNIGHT>() + 3 * pos.count<BISHOP>()
                  + 5 * pos.count<ROOK>() + 9 * pos.count<QUEEN>();
 
-    // The fitted model only uses data for material counts in [10, 78], and is anchored at count 58.
-    double m = std::clamp(material, 10, 78) / 58.0;
+    // The fitted model only uses data for material counts in [17, 78], and is anchored at count 58.
+    double m = std::clamp(material, 17, 78) / 58.0;
 
     // Return a = p_a(material) and b = p_b(material), see github.com/official-stockfish/WDL_model
-    constexpr double as[] = {-150.77043883, 394.96159472, -321.73403766, 406.15850091};
-    constexpr double bs[] = {62.33245393, -91.02264855, 45.88486850, 51.63461272};
+    constexpr double as[] = {-41.25712052, 121.47473115, -124.46958843, 411.84490997};
+    constexpr double bs[] = {84.92998051, -143.66658718, 80.09988253, 49.80869370};
 
     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];
@@ -428,8 +428,8 @@ std::string UCIEngine::format_score(const Score& s) {
 // without treatment of mate and similar special scores.
 int UCIEngine::to_cp(Value v, const Position& pos) {
 
-    // In general, the score can be defined via the the WDL as
-    // (log(1/L - 1) - log(1/W - 1)) / ((log(1/L - 1) + log(1/W - 1))
+    // In general, the score can be defined via the WDL as
+    // (log(1/L - 1) - log(1/W - 1)) / (log(1/L - 1) + log(1/W - 1)).
     // Based on our win_rate_model, this simply yields v / a.
 
     auto [a, b] = win_rate_params(pos);
