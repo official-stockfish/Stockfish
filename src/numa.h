@@ -42,6 +42,11 @@
     #include <sched.h>
 #elif defined(_WIN64)
 
+    #if _WIN32_WINNT < 0x0601
+        #undef _WIN32_WINNT
+        #define _WIN32_WINNT 0x0601  // Force to include needed API prototypes
+    #endif
+
 // On Windows each processor group can have up to 64 processors.
 // https://learn.microsoft.com/en-us/windows/win32/procthread/processor-groups
 static constexpr size_t WIN_PROCESSOR_GROUP_SIZE = 64;
