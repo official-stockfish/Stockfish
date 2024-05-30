@@ -51,6 +51,9 @@ static constexpr size_t WIN_PROCESSOR_GROUP_SIZE = 64;
         #define NOMINMAX
     #endif
     #include <windows.h>
+    #if defined small
+        #undef small
+    #endif
 
 // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadselectedcpusetmasks
 using SetThreadSelectedCpuSetMasks_t = BOOL (*)(HANDLE, PGROUP_AFFINITY, USHORT);
@@ -561,8 +564,8 @@ class NumaConfig {
         if (SetThreadSelectedCpuSetMasks_f != nullptr)
         {
             // Only available on Windows 11 and Windows Server 2022 onwards.
-            const USHORT numProcGroups =
-              ((highestCpuIndex + 1) + WIN_PROCESSOR_GROUP_SIZE - 1) / WIN_PROCESSOR_GROUP_SIZE;
+            const USHORT numProcGroups = USHORT(
+              ((highestCpuIndex + 1) + WIN_PROCESSOR_GROUP_SIZE - 1) / WIN_PROCESSOR_GROUP_SIZE);
             auto groupAffinities = std::make_unique<GROUP_AFFINITY[]>(numProcGroups);
             std::memset(groupAffinities.get(), 0, sizeof(GROUP_AFFINITY) * numProcGroups);
             for (WORD i = 0; i < numProcGroups; ++i)
