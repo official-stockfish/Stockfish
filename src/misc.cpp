@@ -42,16 +42,15 @@ using AdjustTokenPrivileges_t =
 #endif
 
 #include <atomic>
-#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <sstream>
 #include <string_view>
-#include <system_error>
 
 #include "types.h"
 
@@ -598,13 +597,10 @@ void aligned_large_pages_free(void* mem) { std_aligned_free(mem); }
 #endif
 
 size_t str_to_size_t(const std::string& s) {
-    size_t value;
-    auto   result = std::from_chars(s.data(), s.data() + s.size(), value);
-
-    if (result.ec != std::errc())
+    unsigned long long value = std::stoull(s);
+    if (value > std::numeric_limits<size_t>::max())
         std::exit(EXIT_FAILURE);
-
-    return value;
+    return static_cast<size_t>(value);
 }
 
 std::string CommandLine::get_binary_directory(std::string argv0) {
