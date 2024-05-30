@@ -61,6 +61,7 @@ using SetThreadSelectedCpuSetMasks_t = BOOL (*)(HANDLE, PGROUP_AFFINITY, USHORT)
 // https://learn.microsoft.com/en-us/windows/win32/api/processtopologyapi/nf-processtopologyapi-setthreadgroupaffinity
 using SetThreadGroupAffinity_t = BOOL (*)(HANDLE, const GROUP_AFFINITY*, PGROUP_AFFINITY);
 
+using GetActiveProcessorCount_t = DWORD (*)(WORD);
 #endif
 
 #include "misc.h"
@@ -70,8 +71,28 @@ namespace Stockfish {
 using CpuIndex  = size_t;
 using NumaIndex = size_t;
 
-inline const CpuIndex SYSTEM_THREADS_NB =
-  std::max<CpuIndex>(1, std::thread::hardware_concurrency());
+inline CpuIndex get_hardware_concurrency() {
+    CpuIndex concurrency = std::thread::hardware_concurrency();
+
+    // Get all processors across all processor groups on windows, since ::hardware_concurrency
+    // only returns the number of processors in the first group, because only these
+    // are available to std::thread.
+#ifdef _WIN64
+    HMODULE k32 = GetModuleHandle(TEXT("Kernel32.dll"));
+    auto    GetActiveProcessorCount_f =
+      GetActiveProcessorCount_t((void (*)()) GetProcAddress(k32, "GetActiveProcessorCount"));
+
+    if (GetActiveProcessorCount_f != nullptr)
+    {
+        concurrency = GetActiveProcessorCount_f(ALL_PROCESSOR_GROUPS);
+    }
+#endif
+
+    return concurrency;
+}
+
+inline const CpuIndex SYSTEM_THREADS_NB = std::max<CpuIndex>(1, get_hardware_concurrency());
+
 
 // We want to abstract the purpose of storing the numa node index somewhat.
 // Whoever is using this does not need to know the specifics of the replication
