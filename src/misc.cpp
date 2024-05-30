@@ -34,16 +34,10 @@
 // the calls at compile time), try to load them at runtime. To do this we need
 // first to define the corresponding function pointers.
 extern "C" {
-using fun1_t = bool (*)(LOGICAL_PROCESSOR_RELATIONSHIP,
-                        PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX,
-                        PDWORD);
-using fun2_t = bool (*)(USHORT, PGROUP_AFFINITY);
-using fun3_t = bool (*)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
-using fun4_t = bool (*)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
-using fun5_t = WORD (*)();
-using fun6_t = bool (*)(HANDLE, DWORD, PHANDLE);
-using fun7_t = bool (*)(LPCSTR, LPCSTR, PLUID);
-using fun8_t = bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
+using OpenProcessToken_t      = bool (*)(HANDLE, DWORD, PHANDLE);
+using LookupPrivilegeValueA_t = bool (*)(LPCSTR, LPCSTR, PLUID);
+using AdjustTokenPrivileges_t =
+  bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
 #endif
 
@@ -488,23 +482,25 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
     if (!hAdvapi32)
         hAdvapi32 = LoadLibrary(TEXT("advapi32.dll"));
 
-    auto fun6 = fun6_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
-    if (!fun6)
+    auto OpenProcessToken_f =
+      OpenProcessToken_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
+    if (!OpenProcessToken_f)
         return nullptr;
-    auto fun7 = fun7_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
-    if (!fun7)
+    auto LookupPrivilegeValueA_f =
+      LookupPrivilegeValueA_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
+    if (!LookupPrivilegeValueA_f)
         return nullptr;
-    auto fun8 = fun8_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
-    if (!fun8)
+    auto AdjustTokenPrivileges_f =
+      AdjustTokenPrivileges_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
+    if (!AdjustTokenPrivileges_f)
         return nullptr;
 
     // We need SeLockMemoryPrivilege, so try to enable it for the process
-    if (!fun6(  // OpenProcessToken()
+    if (!OpenProcessToken_f(  // OpenProcessToken()
           GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
         return nullptr;
 
-    if (fun7(  // LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid)
-          nullptr, "SeLockMemoryPrivilege", &luid))
+    if (LookupPrivilegeValueA_f(nullptr, "SeLockMemoryPrivilege", &luid))
     {
         TOKEN_PRIVILEGES tp{};
         TOKEN_PRIVILEGES prevTp{};
@@ -516,8 +512,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
 
         // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
         // we still need to query GetLastError() to ensure that the privileges were actually obtained.
-        if (fun8(  // AdjustTokenPrivileges()
-              hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen)
+        if (AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
+                                    &prevTpLen)
             && GetLastError() == ERROR_SUCCESS)
         {
             // Round up size to full pages and allocate
@@ -526,8 +522,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
                                      PAGE_READWRITE);
 
             // Privilege no longer needed, restore previous state
-            fun8(  // AdjustTokenPrivileges ()
-              hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
+            AdjustTokenPrivileges_f(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
         }
     }
 
