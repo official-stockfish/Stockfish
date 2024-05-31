@@ -88,20 +88,11 @@ struct PipeDeleter {
     }
 };
 
-inline std::optional<std::string> get_system_command_output(const std::string& command) {
-    std::unique_ptr<FILE, PipeDeleter> pipe(popen(command.c_str(), "r"));
-    if (!pipe)
-        return std::nullopt;
-
-    std::string result;
-    char        buffer[1024];
-    while (fgets(buffer, sizeof(buffer), pipe.get()) != nullptr)
-        result += buffer;
-
-    return result;
-}
-
 #endif
+
+// Reads the file as bytes.
+// Returns std::nullopt if the file does not exist.
+std::optional<std::string> read_file_to_string(const std::string& path);
 
 void dbg_hit_on(bool cond, int slot = 0);
 void dbg_mean_of(int64_t value, int slot = 0);
@@ -118,9 +109,12 @@ inline TimePoint now() {
 }
 
 inline std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
-    size_t                   begin = 0;
     std::vector<std::string> res;
 
+    if (s.empty())
+        return res;
+
+    size_t begin = 0;
     for (;;)
     {
         const size_t end = s.find(delimiter, begin);
@@ -135,6 +129,8 @@ inline std::vector<std::string> split(const std::string& s, const std::string& d
 
     return res;
 }
+
+void remove_whitespace(std::string& s);
 
 enum SyncCout {
     IO_LOCK,

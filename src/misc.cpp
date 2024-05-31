@@ -34,30 +34,25 @@
 // the calls at compile time), try to load them at runtime. To do this we need
 // first to define the corresponding function pointers.
 extern "C" {
-using fun1_t = bool (*)(LOGICAL_PROCESSOR_RELATIONSHIP,
-                        PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX,
-                        PDWORD);
-using fun2_t = bool (*)(USHORT, PGROUP_AFFINITY);
-using fun3_t = bool (*)(HANDLE, CONST GROUP_AFFINITY*, PGROUP_AFFINITY);
-using fun4_t = bool (*)(USHORT, PGROUP_AFFINITY, USHORT, PUSHORT);
-using fun5_t = WORD (*)();
-using fun6_t = bool (*)(HANDLE, DWORD, PHANDLE);
-using fun7_t = bool (*)(LPCSTR, LPCSTR, PLUID);
-using fun8_t = bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
+using OpenProcessToken_t      = bool (*)(HANDLE, DWORD, PHANDLE);
+using LookupPrivilegeValueA_t = bool (*)(LPCSTR, LPCSTR, PLUID);
+using AdjustTokenPrivileges_t =
+  bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
 #endif
 
 #include <atomic>
-#include <charconv>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
+#include <iterator>
 #include <mutex>
 #include <sstream>
 #include <string_view>
-#include <system_error>
 
 #include "types.h"
 
@@ -488,23 +483,25 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
     if (!hAdvapi32)
         hAdvapi32 = LoadLibrary(TEXT("advapi32.dll"));
 
-    auto fun6 = fun6_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
-    if (!fun6)
+    auto OpenProcessToken_f =
+      OpenProcessToken_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
+    if (!OpenProcessToken_f)
         return nullptr;
-    auto fun7 = fun7_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
-    if (!fun7)
+    auto LookupPrivilegeValueA_f =
+      LookupPrivilegeValueA_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
+    if (!LookupPrivilegeValueA_f)
         return nullptr;
-    auto fun8 = fun8_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
-    if (!fun8)
+    auto AdjustTokenPrivileges_f =
+      AdjustTokenPrivileges_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
+    if (!AdjustTokenPrivileges_f)
         return nullptr;
 
     // We need SeLockMemoryPrivilege, so try to enable it for the process
-    if (!fun6(  // OpenProcessToken()
+    if (!OpenProcessToken_f(  // OpenProcessToken()
           GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
         return nullptr;
 
-    if (fun7(  // LookupPrivilegeValue(nullptr, SE_LOCK_MEMORY_NAME, &luid)
-          nullptr, "SeLockMemoryPrivilege", &luid))
+    if (LookupPrivilegeValueA_f(nullptr, "SeLockMemoryPrivilege", &luid))
     {
         TOKEN_PRIVILEGES tp{};
         TOKEN_PRIVILEGES prevTp{};
@@ -516,8 +513,8 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
 
         // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges() succeeds,
         // we still need to query GetLastError() to ensure that the privileges were actually obtained.
-        if (fun8(  // AdjustTokenPrivileges()
-              hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp, &prevTpLen)
+        if (AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
+                                    &prevTpLen)
             && GetLastError() == ERROR_SUCCESS)
         {
             // Round up size to full pages and allocate
@@ -526,8 +523,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
                                      PAGE_READWRITE);
 
             // Privilege no longer needed, restore previous state
-            fun8(  // AdjustTokenPrivileges ()
-              hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
+            AdjustTokenPrivileges_f(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
         }
     }
 
@@ -603,13 +599,21 @@ void aligned_large_pages_free(void* mem) { std_aligned_free(mem); }
 #endif
 
 size_t str_to_size_t(const std::string& s) {
-    size_t value;
-    auto   result = std::from_chars(s.data(), s.data() + s.size(), value);
-
-    if (result.ec != std::errc())
+    unsigned long long value = std::stoull(s);
+    if (value > std::numeric_limits<size_t>::max())
         std::exit(EXIT_FAILURE);
+    return static_cast<size_t>(value);
+}
 
-    return value;
+std::optional<std::string> read_file_to_string(const std::string& path) {
+    std::ifstream f(path, std::ios_base::binary);
+    if (!f)
+        return std::nullopt;
+    return std::string(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+}
+
+void remove_whitespace(std::string& s) {
+    s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return std::isspace(c); }), s.end());
 }
 
 std::string CommandLine::get_binary_directory(std::string argv0) {
