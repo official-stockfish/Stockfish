@@ -1150,7 +1150,7 @@ moves_loop:  // When in check, search starts here
             r++;
 
         // Set reduction to 0 for first picked move (ttMove) if it's less than 2
-        // Otherwise, reduce by 2 (~2 Elo)
+        // Otherwise, reduce by 2 (~3 Elo)
         else if (move == ttMove)
             (r < 2) ? r = 0: r -= 2;
 
