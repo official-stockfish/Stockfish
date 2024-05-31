@@ -23,15 +23,15 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
-#include <functional>
 
+#include "numa.h"
 #include "position.h"
 #include "search.h"
 #include "thread_win32_osx.h"
-#include "numa.h"
 
 namespace Stockfish {
 

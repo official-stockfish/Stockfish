@@ -25,13 +25,13 @@
 #include <string>
 #include <utility>
 
-#include "../misc.h"
+#include "../memory.h"
 #include "../position.h"
 #include "../types.h"
+#include "nnue_accumulator.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
-#include "nnue_accumulator.h"
 
 namespace Stockfish::Eval::NNUE {
 
@@ -91,7 +91,7 @@ class Network {
     LargePagePtr<Transformer> featureTransformer;
 
     // Evaluation function
-    AlignedPtr<Arch> network[LayerStacks];
+    AlignedPtr<Arch[]> network;
 
     EvalFile         evalFile;
     EmbeddedNNUEType embeddedType;
