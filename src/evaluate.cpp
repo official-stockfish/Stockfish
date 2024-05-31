@@ -81,10 +81,10 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     int material = 300 * pos.count<PAWN>() + 350 * pos.count<KNIGHT>() + 400 * pos.count<BISHOP>()
                  + 640 * pos.count<ROOK>() + 1200 * pos.count<QUEEN>();
 
-    v = (nnue * (34300 + material) + optimism * (4400 + material)) / 35967;
+    v = (nnue * (34300 + material) + optimism * (4400 + material)) / 36672;
 
     // Damp down the evaluation linearly when shuffling
-    v = v * (204 - pos.rule50_count()) / 208;
+    v -= v * pos.rule50_count() / 212;
 
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
