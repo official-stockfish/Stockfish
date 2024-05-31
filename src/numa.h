@@ -32,6 +32,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <cstring>
 
 // We support linux very well, but we explicitly do NOT support Android, because there's
 // no affected systems, not worth maintaining.
