@@ -760,10 +760,12 @@ Value Search::Worker::search(
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2;
 
-    // Step 7. Razoring (~1 Elo)
+    // Step 7. Razoring (~4 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
-    // return a fail low.
-    if (eval < alpha - 501 - 305 * depth * depth)
+    // return a fail low. (Main history ~3 Elo out of 4)
+    if (eval < alpha - 501 - 305 * depth * depth
+                           - (priorCapture ? 0
+                              : thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()] / 32))
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
