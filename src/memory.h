@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <new>
 #include <type_traits>
