@@ -1149,8 +1149,8 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 3)
             r++;
 
-        // Set reduction to 0 for first picked move (ttMove) if it's less than 2
-        // Otherwise, reduce by 2 (~3 Elo)
+        // For first picked move (ttMove) reduce reduction
+        // but never allow it to go below 0 (~3 Elo)
         else if (move == ttMove)
             r = std::max(0, r - 2);
 
