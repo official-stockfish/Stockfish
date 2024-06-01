@@ -578,9 +578,10 @@ Value Search::Worker::search(
         // Step 2. Check for aborted search and immediate draw
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(
-                     networks[numaAccessToken], pos, refreshTable, thisThread->optimism[us])
-                                                        : value_draw(thisThread->nodes);
+            return (ss->ply >= MAX_PLY && !ss->inCheck)
+                   ? evaluate(networks[numaAccessToken], pos, refreshTable,
+                              thisThread->optimism[us])
+                   : value_draw(thisThread->nodes);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
@@ -762,10 +763,8 @@ Value Search::Worker::search(
 
     // Step 7. Razoring (~4 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
-    // return a fail low. (Main history ~3 Elo out of 4)
-    if (eval < alpha - 501 - 305 * depth * depth
-                           - (priorCapture ? 0
-                              : thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()] / 32))
+    // return a fail low. (priorCapture ~3 Elo out of 4)
+    if (eval < alpha - 457 - 305 * depth * depth - priorCapture * 44)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
