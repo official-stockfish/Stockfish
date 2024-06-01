@@ -564,7 +564,7 @@ class NumaConfig {
             {
                 const size_t procGroupIndex     = c / WIN_PROCESSOR_GROUP_SIZE;
                 const size_t idxWithinProcGroup = c % WIN_PROCESSOR_GROUP_SIZE;
-                // We skip processors that are not in the same proccessor group.
+                // We skip processors that are not in the same processor group.
                 // If everything was set up correctly this will never be an issue,
                 // but we have to account for bad NUMA node specification.
                 if (procGroupIndex != forcedProcGroupIndex)
