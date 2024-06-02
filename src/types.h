@@ -196,8 +196,8 @@ enum : int {
     // For TT entries where no searching at all was done (whether regular or qsearch) we use
     // _UNSEARCHED, which should thus compare lower than any QS or regular depth. _ENTRY_OFFSET is used
     // only for the TT entry occupancy check (see tt.cpp), and should thus be lower than _UNSEARCHED.
-    DEPTH_UNSEARCHED   = -6,
-    DEPTH_ENTRY_OFFSET = -7
+    DEPTH_UNSEARCHED   = -2,
+    DEPTH_ENTRY_OFFSET = -3
 };
 
 // clang-format off
