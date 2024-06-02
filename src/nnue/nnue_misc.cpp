@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <string_view>
+#include <tuple>
 
 #include "../evaluate.h"
 #include "../position.h"
@@ -131,7 +132,8 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    Value base = networks.big.evaluate(pos, &caches.big);
+    auto [psqt, positional] = networks.big.evaluate(pos, &caches.big);
+    Value base = psqt + positional;
     base       = pos.side_to_move() == WHITE ? base : -base;
 
     for (File f = FILE_A; f <= FILE_H; ++f)
@@ -148,7 +150,8 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
                 pos.remove_piece(sq);
                 st->accumulatorBig.computed[WHITE] = st->accumulatorBig.computed[BLACK] = false;
 
-                Value eval = networks.big.evaluate(pos, &caches.big);
+                std::tie(psqt, positional) = networks.big.evaluate(pos, &caches.big);
+                Value eval = psqt + positional;
                 eval       = pos.side_to_move() == WHITE ? eval : -eval;
                 v          = base - eval;
 
