@@ -55,9 +55,6 @@ constexpr std::uint32_t Version = 0x7AF32F20u;
 constexpr int OutputScale     = 16;
 constexpr int WeightScaleBits = 6;
 
-// Size of cache line (in bytes)
-constexpr std::size_t CacheLineSize = 64;
-
 constexpr const char        Leb128MagicString[]   = "COMPRESSED_LEB128";
 constexpr const std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
 

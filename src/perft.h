@@ -34,7 +34,7 @@ template<bool Root>
 uint64_t perft(Position& pos, Depth depth) {
 
     StateInfo st;
-    ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+    ASSERT_ALIGNED(&st, CacheLineSize);
 
     uint64_t   cnt, nodes = 0;
     const bool leaf = (depth == 2);

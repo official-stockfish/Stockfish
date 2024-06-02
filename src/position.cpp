@@ -83,7 +83,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         StateInfo st;
-        ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
+        ASSERT_ALIGNED(&st, CacheLineSize);
 
         Position p;
         p.set(pos.fen(), pos.is_chess960(), &st);
