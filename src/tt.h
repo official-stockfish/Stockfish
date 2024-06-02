@@ -41,15 +41,24 @@ namespace Stockfish {
 //
 // These fields are in the same order as accessed by TT::probe(), since memory is fastest sequentially.
 // Equally, the store order in save() matches this order.
+struct TTData {
+    Move  move;
+    Value value;
+    Value eval;
+    Depth depth;
+    bool  is_pv;
+    Bound bound;
+};
+
 struct TTEntry {
 
-    Move  move() const { return Move(move16); }
-    Value value() const { return Value(value16); }
-    Value eval() const { return Value(eval16); }
-    Depth depth() const { return Depth(depth8 + DEPTH_ENTRY_OFFSET); }
-    bool  is_pv() const { return bool(genBound8 & 0x4); }
-    Bound bound() const { return Bound(genBound8 & 0x3); }
-    void  save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    TTData expose() {
+        return TTData{Move(move16),          Value(value16),
+                      Value(eval16),         Depth(depth8 + DEPTH_ENTRY_OFFSET),
+                      bool(genBound8 & 0x4), Bound(genBound8 & 0x3)};
+    }
+
+    void save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
     // The returned age is a multiple of TranspositionTable::GENERATION_DELTA
     uint8_t relative_age(const uint8_t generation8) const;
 
