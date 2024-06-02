@@ -23,6 +23,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "../memory.h"
@@ -40,6 +41,7 @@ enum class EmbeddedNNUEType {
     SMALL,
 };
 
+using NetworkOutput = std::tuple<Value, Value>;
 
 template<typename Arch, typename Transformer>
 class Network {
@@ -59,10 +61,8 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    Value evaluate(const Position&                         pos,
-                   AccumulatorCaches::Cache<FTDimensions>* cache,
-                   bool                                    adjusted   = false,
-                   int*                                    complexity = nullptr) const;
+    NetworkOutput evaluate(const Position&                         pos,
+                           AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
 
     void hint_common_access(const Position&                         pos,
