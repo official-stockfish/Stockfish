@@ -117,14 +117,14 @@ void TranspositionTable::clear(ThreadPool& threads) {
 // to be replaced later. The replace value of an entry is calculated as its depth
 // minus 8 times its relative age. TTEntry t1 is considered more valuable than
 // TTEntry t2 if its replace value is greater than that of t2.
-TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
+TTData TranspositionTable::probe(const Key key, bool& found) const {
 
     TTEntry* const tte   = first_entry(key);
     const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
 
     for (int i = 0; i < ClusterSize; ++i)
         if (tte[i].key16 == key16)
-            return found = bool(tte[i].depth8), &tte[i];
+            return found = bool(tte[i].depth8), TTData(&tte[i]);
 
     // Find an entry to be replaced according to the replacement strategy
     TTEntry* replace = tte;
@@ -133,7 +133,7 @@ TTEntry* TranspositionTable::probe(const Key key, bool& found) const {
             > tte[i].depth8 - tte[i].relative_age(generation8) * 2)
             replace = &tte[i];
 
-    return found = false, replace;
+    return found = false, TTData(replace);
 }
 
 

@@ -65,6 +65,20 @@ struct TTEntry {
     int16_t  eval16;
 };
 
+struct TTData: public TTEntry {
+
+    explicit TTData(TTEntry* tte) :
+        TTEntry(*tte),
+        entry(tte) {}
+    void
+    save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8) const {
+        entry->save(k, v, pv, b, d, m, ev, generation8);
+    }
+
+   private:
+    TTEntry* entry;
+};
+
 class ThreadPool;
 
 // A TranspositionTable is an array of Cluster, of size clusterCount. Each
@@ -101,10 +115,10 @@ class TranspositionTable {
         generation8 += GENERATION_DELTA;
     }
 
-    TTEntry* probe(const Key key, bool& found) const;
-    int      hashfull() const;
-    void     resize(size_t mbSize, ThreadPool& threads);
-    void     clear(ThreadPool& threads);
+    TTData probe(const Key key, bool& found) const;
+    int    hashfull() const;
+    void   resize(size_t mbSize, ThreadPool& threads);
+    void   clear(ThreadPool& threads);
 
     TTEntry* first_entry(const Key key) const {
         return &table[mul_hi64(key, clusterCount)].entry[0];
