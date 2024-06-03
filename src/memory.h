@@ -124,21 +124,26 @@ struct LargePageArrayDeleter {
     void operator()(T* ptr) const { return memory_deleter_array<T>(ptr, aligned_large_pages_free); }
 };
 
+template<typename T>
+using LargePagePtr =
+  std::conditional_t<std::is_array_v<T>,
+                     std::unique_ptr<T, LargePageArrayDeleter<std::remove_extent_t<T>>>,
+                     std::unique_ptr<T, LargePageDeleter<T>>>;
+
 // make_unique_large_page for single objects
 template<typename T, typename... Args>
-inline std::enable_if_t<!std::is_array_v<T>, std::unique_ptr<T, LargePageDeleter<T>>>
-make_unique_large_page(Args&&... args) {
+std::enable_if_t<!std::is_array_v<T>, LargePagePtr<T>> make_unique_large_page(Args&&... args) {
     static_assert(alignof(T) <= 4096,
                   "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
+
     T* obj = memory_allocator<T>(aligned_large_pages_alloc, std::forward<Args>(args)...);
-    return std::unique_ptr<T, LargePageDeleter<T>>(obj);
+
+    return LargePagePtr<T>(obj);
 }
 
 // make_unique_large_page for arrays of unknown bound
 template<typename T>
-inline std::enable_if_t<std::is_array_v<T>,
-                        std::unique_ptr<T, LargePageArrayDeleter<std::remove_extent_t<T>>>>
-make_unique_large_page(size_t num) {
+std::enable_if_t<std::is_array_v<T>, LargePagePtr<T>> make_unique_large_page(size_t num) {
     using ElementType = std::remove_extent_t<T>;
 
     static_assert(alignof(ElementType) <= 4096,
@@ -146,14 +151,8 @@ make_unique_large_page(size_t num) {
 
     ElementType* memory = memory_allocator<T>(aligned_large_pages_alloc, num);
 
-    return std::unique_ptr<T, LargePageArrayDeleter<ElementType>>(memory);
+    return LargePagePtr<T>(memory);
 }
-
-template<typename T>
-using LargePagePtr =
-  std::conditional_t<std::is_array_v<T>,
-                     std::unique_ptr<T, LargePageArrayDeleter<std::remove_extent_t<T>>>,
-                     std::unique_ptr<T, LargePageDeleter<T>>>;
 
 //
 //
@@ -171,33 +170,31 @@ struct AlignedArrayDeleter {
     void operator()(T* ptr) const { return memory_deleter_array<T>(ptr, std_aligned_free); }
 };
 
-// make_unique_aligned for single objects
-template<typename T, typename... Args>
-inline std::enable_if_t<!std::is_array_v<T>, std::unique_ptr<T, AlignedDeleter<T>>>
-make_unique_aligned(Args&&... args) {
-    T* obj = memory_allocator<T>([](size_t size) { return std_aligned_alloc(alignof(T), size); },
-                                 std::forward<Args>(args)...);
-    return std::unique_ptr<T, AlignedDeleter<T>>(obj);
-}
-
-// make_unique_aligned for arrays of unknown bound
-template<typename T>
-inline std::enable_if_t<std::is_array_v<T>,
-                        std::unique_ptr<T, AlignedArrayDeleter<std::remove_extent_t<T>>>>
-make_unique_aligned(size_t num) {
-    using ElementType = std::remove_extent_t<T>;
-
-    ElementType* memory = memory_allocator<T>(
-      [](size_t size) { return std_aligned_alloc(alignof(ElementType), size); }, num);
-
-    return std::unique_ptr<T, AlignedArrayDeleter<ElementType>>(memory);
-}
-
 template<typename T>
 using AlignedPtr =
   std::conditional_t<std::is_array_v<T>,
                      std::unique_ptr<T, AlignedArrayDeleter<std::remove_extent_t<T>>>,
                      std::unique_ptr<T, AlignedDeleter<T>>>;
+
+// make_unique_aligned for single objects
+template<typename T, typename... Args>
+std::enable_if_t<!std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(Args&&... args) {
+    const auto func = [](size_t size) { return std_aligned_alloc(alignof(T), size); };
+    T*         obj  = memory_allocator<T>(func, std::forward<Args>(args)...);
+
+    return AlignedPtr<T>(obj);
+}
+
+// make_unique_aligned for arrays of unknown bound
+template<typename T>
+std::enable_if_t<std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(size_t num) {
+    using ElementType = std::remove_extent_t<T>;
+
+    const auto   func   = [](size_t size) { return std_aligned_alloc(alignof(ElementType), size); };
+    ElementType* memory = memory_allocator<T>(func, num);
+
+    return AlignedPtr<T>(memory);
+}
 
 
 // Get the first aligned element of an array.
