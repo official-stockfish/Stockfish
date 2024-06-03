@@ -127,9 +127,7 @@ void Thread::idle_loop() {
     }
 }
 
-Search::SearchManager* ThreadPool::main_manager() {
-    return static_cast<Search::SearchManager*>(main_thread()->worker.get()->manager.get());
-}
+Search::SearchManager* ThreadPool::main_manager() { return main_thread()->worker->main_manager(); }
 
 uint64_t ThreadPool::nodes_searched() const { return accumulate(&Search::Worker::nodes); }
 uint64_t ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits); }

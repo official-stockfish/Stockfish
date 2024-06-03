@@ -244,7 +244,7 @@ class Worker {
     // It searches from the root position and outputs the "bestmove".
     void start_searching();
 
-    bool is_mainthread() const { return thread_idx == 0; }
+    bool is_mainthread() const { return threadIdx == 0; }
 
     // Public because they need to be updatable by the stats
     CounterMoveHistory    counterMoves;
@@ -270,7 +270,7 @@ class Worker {
     // Get a pointer to the search manager, only allowed to be called by the
     // main thread.
     SearchManager* main_manager() const {
-        assert(thread_idx == 0);
+        assert(threadIdx == 0);
         return static_cast<SearchManager*>(manager.get());
     }
 
@@ -291,7 +291,7 @@ class Worker {
     Depth     rootDepth, completedDepth;
     Value     rootDelta;
 
-    size_t                    thread_idx;
+    size_t                    threadIdx;
     NumaReplicatedAccessToken numaAccessToken;
 
     // Reductions lookup table initialized at startup
