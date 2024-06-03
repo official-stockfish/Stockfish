@@ -60,6 +60,6 @@ body:
     description: |
       This can be found by running the engine.
       You can also use the commit ID.
-    placeholder: Stockfish 15 / e6e324e
+    placeholder: Stockfish 16.1 / e67cc97
   validations:
     required: true
