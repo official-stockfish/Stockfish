@@ -19,10 +19,10 @@
 #ifndef UCI_H_INCLUDED
 #define UCI_H_INCLUDED
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <string_view>
-#include <cstdint>
 
 #include "engine.h"
 #include "misc.h"
@@ -41,9 +41,6 @@ class UCIEngine {
     UCIEngine(int argc, char** argv);
 
     void loop();
-
-    void print_numa_config_information() const;
-    void print_thread_binding_information() const;
 
     static int         to_cp(Value v, const Position& pos);
     static std::string format_score(const Score& s);

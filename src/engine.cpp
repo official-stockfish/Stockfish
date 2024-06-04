@@ -44,7 +44,8 @@ namespace Stockfish {
 
 namespace NN = Eval::NNUE;
 
-constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+constexpr auto StartFEN  = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+constexpr int  MaxHashMB = Is64Bit ? 33554432 : 2048;
 
 Engine::Engine(std::string path) :
     binaryDirectory(CommandLine::get_binary_directory(path)),
@@ -58,6 +59,58 @@ Engine::Engine(std::string path) :
         NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
     pos.set(StartFEN, false, &states->back());
     capSq = SQ_NONE;
+
+    options["Debug Log File"] << Option("", [](const Option& o) {
+        start_logger(o);
+        return std::nullopt;
+    });
+
+    options["NumaPolicy"] << Option("auto", [this](const Option& o) {
+        set_numa_config_from_option(o);
+        return numa_config_information_as_string() + "\n" + thread_binding_information_as_string();
+    });
+
+    options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
+        resize_threads();
+        return thread_binding_information_as_string();
+    });
+
+    options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) {
+        set_tt_size(o);
+        return std::nullopt;
+    });
+
+    options["Clear Hash"] << Option([this](const Option&) {
+        search_clear();
+        return std::nullopt;
+    });
+    options["Ponder"] << Option(false);
+    options["MultiPV"] << Option(1, 1, MAX_MOVES);
+    options["Skill Level"] << Option(20, 0, 20);
+    options["Move Overhead"] << Option(10, 0, 5000);
+    options["nodestime"] << Option(0, 0, 10000);
+    options["UCI_Chess960"] << Option(false);
+    options["UCI_LimitStrength"] << Option(false);
+    options["UCI_Elo"] << Option(1320, 1320, 3190);
+    options["UCI_ShowWDL"] << Option(false);
+    options["SyzygyPath"] << Option("<empty>", [](const Option& o) {
+        Tablebases::init(o);
+        return std::nullopt;
+    });
+    options["SyzygyProbeDepth"] << Option(1, 1, 100);
+    options["Syzygy50MoveRule"] << Option(true);
+    options["SyzygyProbeLimit"] << Option(7, 0, 7);
+    options["EvalFile"] << Option(EvalFileDefaultNameBig, [this](const Option& o) {
+        load_big_network(o);
+        return std::nullopt;
+    });
+    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall, [this](const Option& o) {
+        load_small_network(o);
+        return std::nullopt;
+    });
+
+    load_networks();
+    resize_threads();
 }
 
 std::uint64_t Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
@@ -212,7 +265,8 @@ void Engine::trace_eval() const {
     sync_cout << "\n" << Eval::trace(p, *networks) << sync_endl;
 }
 
-OptionsMap& Engine::get_options() { return options; }
+const OptionsMap& Engine::get_options() const { return options; }
+OptionsMap&       Engine::get_options() { return options; }
 
 std::string Engine::fen() const { return pos.fen(); }
 
@@ -239,6 +293,32 @@ std::vector<std::pair<size_t, size_t>> Engine::get_bound_thread_count_by_numa_no
 
 std::string Engine::get_numa_config_as_string() const {
     return numaContext.get_numa_config().to_string();
+}
+
+std::string Engine::numa_config_information_as_string() const {
+    auto cfgStr = get_numa_config_as_string();
+    return "Available Processors: " + cfgStr;
+}
+
+std::string Engine::thread_binding_information_as_string() const {
+    auto boundThreadsByNode = get_bound_thread_count_by_numa_node();
+    if (boundThreadsByNode.empty())
+        return "";
+
+    std::stringstream ss;
+    ss << "NUMA Node Thread Binding: ";
+
+    bool isFirst = true;
+
+    for (auto&& [current, total] : boundThreadsByNode)
+    {
+        if (!isFirst)
+            ss << ":";
+        ss << current << "/" << total;
+        isFirst = false;
+    }
+
+    return ss.str();
 }
 
 }
