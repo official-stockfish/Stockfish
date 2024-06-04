@@ -296,7 +296,7 @@ void UCIEngine::bench(std::istream& args) {
                 Search::LimitsType limits = parse_limits(is);
 
                 if (limits.perft)
-                    nodes = perft(limits);
+                    nodesSearched = perft(limits);
                 else
                 {
                     engine.go(limits);

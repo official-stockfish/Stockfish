@@ -21,7 +21,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 
 #include "memory.h"
 #include "misc.h"
