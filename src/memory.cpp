@@ -212,6 +212,37 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 
 #endif
 
+bool has_large_pages() {
+
+#if defined(_WIN32)
+
+    constexpr size_t page_size = 2 * 1024 * 1024;  // 2MB page size assumed
+    void*            mem       = aligned_large_pages_alloc_windows(page_size);
+    if (mem == nullptr)
+    {
+        return false;
+    }
+    else
+    {
+        aligned_large_pages_free(mem);
+        return true;
+    }
+
+#elif defined(__linux__)
+
+    #if defined(MADV_HUGEPAGE)
+    return true;
+    #else
+    return false;
+    #endif
+
+#else
+
+    return false;
+
+#endif
+}
+
 
 // aligned_large_pages_free() will free the previously memory allocated
 // by aligned_large_pages_alloc(). The effect is a nop if mem == nullptr.

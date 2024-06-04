@@ -22,6 +22,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <iterator>
 #include <optional>
 #include <sstream>
 #include <string_view>
@@ -30,6 +31,7 @@
 
 #include "benchmark.h"
 #include "engine.h"
+#include "memory.h"
 #include "movegen.h"
 #include "position.h"
 #include "score.h"
@@ -38,6 +40,8 @@
 #include "ucioption.h"
 
 namespace Stockfish {
+
+constexpr auto BenchmarkCommand = "speedtest";
 
 constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 template<typename... Ts>
@@ -48,7 +52,7 @@ struct overload: Ts... {
 template<typename... Ts>
 overload(Ts...) -> overload<Ts...>;
 
-void UCIEngine::print_info_string(const std::string& str) {
+void UCIEngine::print_info_string(std::string_view str) {
     sync_cout_start();
     for (auto& line : split(str, "\n"))
     {
@@ -69,11 +73,16 @@ UCIEngine::UCIEngine(int argc, char** argv) :
             print_info_string(*str);
     });
 
+    init_search_update_listeners();
+}
+
+void UCIEngine::init_search_update_listeners() {
     engine.set_on_iter([](const auto& i) { on_iter(i); });
     engine.set_on_update_no_moves([](const auto& i) { on_update_no_moves(i); });
     engine.set_on_update_full(
       [this](const auto& i) { on_update_full(i, engine.get_options()["UCI_ShowWDL"]); });
     engine.set_on_bestmove([](const auto& bm, const auto& p) { on_bestmove(bm, p); });
+    engine.set_on_verify_networks([](const auto& s) { print_info_string(s); });
 }
 
 void UCIEngine::loop() {
@@ -117,7 +126,7 @@ void UCIEngine::loop() {
         {
             // send info strings after the go command is sent for old GUIs and python-chess
             print_info_string(engine.numa_config_information_as_string());
-            print_info_string(engine.thread_binding_information_as_string());
+            print_info_string(engine.thread_allocation_information_as_string());
             go(is);
         }
         else if (token == "position")
@@ -133,6 +142,8 @@ void UCIEngine::loop() {
             engine.flip();
         else if (token == "bench")
             bench(is);
+        else if (token == BenchmarkCommand)
+            benchmark(is);
         else if (token == "d")
             sync_cout << engine.visualize() << sync_endl;
         else if (token == "eval")
@@ -285,6 +296,165 @@ void UCIEngine::bench(std::istream& args) {
     engine.set_on_update_full([&](const auto& i) { on_update_full(i, options["UCI_ShowWDL"]); });
 }
 
+void UCIEngine::benchmark(std::istream& args) {
+    // Probably not very important for a test this long, but include for completeness and sanity.
+    static constexpr int NUM_WARMUP_POSITIONS = 3;
+
+    std::string token;
+    uint64_t    nodes = 0, cnt = 1;
+    uint64_t    nodesSearched = 0;
+
+    engine.set_on_update_full([&](const Engine::InfoFull& i) { nodesSearched = i.nodes; });
+
+    engine.set_on_iter([](const auto&) {});
+    engine.set_on_update_no_moves([](const auto&) {});
+    engine.set_on_bestmove([](const auto&, const auto&) {});
+    engine.set_on_verify_networks([](const auto&) {});
+
+    Benchmark::BenchmarkSetup setup = Benchmark::setup_benchmark(args);
+
+    const int numGoCommands = count_if(setup.commands.begin(), setup.commands.end(),
+                                       [](const std::string& s) { return s.find("go ") == 0; });
+
+    TimePoint totalTime = 0;
+
+    // Set options once at the start.
+    auto ss = std::istringstream("name Threads value " + std::to_string(setup.threads));
+    setoption(ss);
+    ss = std::istringstream("name Hash value " + std::to_string(setup.ttSize));
+    setoption(ss);
+    ss = std::istringstream("name UCI_Chess960 value false");
+    setoption(ss);
+
+    // Warmup
+    for (const auto& cmd : setup.commands)
+    {
+        std::istringstream is(cmd);
+        is >> std::skipws >> token;
+
+        if (token == "go")
+        {
+            // One new line is produced by the search, so omit it here
+            std::cerr << "\rWarmup position " << cnt++ << '/' << NUM_WARMUP_POSITIONS;
+
+            Search::LimitsType limits = parse_limits(is);
+
+            TimePoint elapsed = now();
+
+            // Run with silenced network verification
+            engine.go(limits);
+            engine.wait_for_search_finished();
+
+            totalTime += now() - elapsed;
+
+            nodes += nodesSearched;
+            nodesSearched = 0;
+        }
+        else if (token == "position")
+            position(is);
+        else if (token == "ucinewgame")
+        {
+            engine.search_clear();  // search_clear may take a while
+        }
+
+        if (cnt > NUM_WARMUP_POSITIONS)
+            break;
+    }
+
+    std::cerr << "\n";
+
+    cnt   = 1;
+    nodes = 0;
+
+    int           numHashfullReadings = 0;
+    constexpr int hashfullAges[]      = {0, 999};  // Only normal hashfull and touched hash.
+    int           totalHashfull[std::size(hashfullAges)] = {0};
+    int           maxHashfull[std::size(hashfullAges)]   = {0};
+
+    auto updateHashfullReadings = [&]() {
+        numHashfullReadings += 1;
+
+        for (int i = 0; i < static_cast<int>(std::size(hashfullAges)); ++i)
+        {
+            const int hashfull = engine.get_hashfull(hashfullAges[i]);
+            maxHashfull[i]     = std::max(maxHashfull[i], hashfull);
+            totalHashfull[i] += hashfull;
+        }
+    };
+
+    engine.search_clear();  // search_clear may take a while
+
+    for (const auto& cmd : setup.commands)
+    {
+        std::istringstream is(cmd);
+        is >> std::skipws >> token;
+
+        if (token == "go")
+        {
+            // One new line is produced by the search, so omit it here
+            std::cerr << "\rPosition " << cnt++ << '/' << numGoCommands;
+
+            Search::LimitsType limits = parse_limits(is);
+
+            TimePoint elapsed = now();
+
+            // Run with silenced network verification
+            engine.go(limits);
+            engine.wait_for_search_finished();
+
+            totalTime += now() - elapsed;
+
+            updateHashfullReadings();
+
+            nodes += nodesSearched;
+            nodesSearched = 0;
+        }
+        else if (token == "position")
+            position(is);
+        else if (token == "ucinewgame")
+        {
+            engine.search_clear();  // search_clear may take a while
+        }
+    }
+
+    totalTime = std::max<TimePoint>(totalTime, 1);  // Ensure positivity to avoid a 'divide by zero'
+
+    dbg_print();
+
+    std::cerr << "\n";
+
+    static_assert(
+      std::size(hashfullAges) == 2 && hashfullAges[0] == 0 && hashfullAges[1] == 999,
+      "Hardcoded for display. Would complicate the code needlessly in the current state.");
+
+    std::string threadBinding = engine.thread_binding_information_as_string();
+    if (threadBinding.empty())
+        threadBinding = "none";
+
+    std::cerr << "==========================="
+              << "\nVersion                    : "
+              << engine_version_info()
+              // "\nCompiled by                : "
+              << compiler_info()
+              << "Large pages                : " << (has_large_pages() ? "yes" : "no")
+              << "\nUser invocation            : " << BenchmarkCommand << " "
+              << setup.originalInvocation << "\nFilled invocation          : " << BenchmarkCommand
+              << " " << setup.filledInvocation
+              << "\nAvailable processors       : " << engine.get_numa_config_as_string()
+              << "\nThread count               : " << setup.threads
+              << "\nThread binding             : " << threadBinding
+              << "\nTT size [MiB]              : " << setup.ttSize
+              << "\nHash max, avg [per mille]  : "
+              << "\n    single search          : " << maxHashfull[0] << ", "
+              << totalHashfull[0] / numHashfullReadings
+              << "\n    single game            : " << maxHashfull[1] << ", "
+              << totalHashfull[1] / numHashfullReadings
+              << "\nTotal nodes searched       : " << nodes
+              << "\nTotal search time [s]      : " << totalTime / 1000.0
+              << "\nNodes/second               : " << 1000 * nodes / totalTime << std::endl;
+
+    init_search_update_listeners();
+}
 
 void UCIEngine::setoption(std::istringstream& is) {
     engine.wait_for_search_finished();

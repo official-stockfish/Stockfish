@@ -234,35 +234,44 @@ Network<Arch, Transformer>::evaluate(const Position&                         pos
 
 
 template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
+void Network<Arch, Transformer>::verify(std::string                                  evalfilePath,
+                                        const std::function<void(std::string_view)>& f) const {
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
     if (evalFile.current != evalfilePath)
     {
-        std::string msg1 =
-          "Network evaluation parameters compatible with the engine must be available.";
-        std::string msg2 = "The network file " + evalfilePath + " was not loaded successfully.";
-        std::string msg3 = "The UCI option EvalFile might need to specify the full path, "
-                           "including the directory name, to the network file.";
-        std::string msg4 = "The default net can be downloaded from: "
-                           "https://tests.stockfishchess.org/api/nn/"
-                         + evalFile.defaultName;
-        std::string msg5 = "The engine will be terminated now.";
+        if (f)
+        {
+            std::string msg1 =
+              "Network evaluation parameters compatible with the engine must be available.";
+            std::string msg2 = "The network file " + evalfilePath + " was not loaded successfully.";
+            std::string msg3 = "The UCI option EvalFile might need to specify the full path, "
+                               "including the directory name, to the network file.";
+            std::string msg4 = "The default net can be downloaded from: "
+                               "https://tests.stockfishchess.org/api/nn/"
+                             + evalFile.defaultName;
+            std::string msg5 = "The engine will be terminated now.";
 
-        sync_cout << "info string ERROR: " << msg1 << sync_endl;
-        sync_cout << "info string ERROR: " << msg2 << sync_endl;
-        sync_cout << "info string ERROR: " << msg3 << sync_endl;
-        sync_cout << "info string ERROR: " << msg4 << sync_endl;
-        sync_cout << "info string ERROR: " << msg5 << sync_endl;
+            std::string msg = "ERROR: " + msg1 + '\n' + "ERROR: " + msg2 + '\n' + "ERROR: " + msg3
+                            + '\n' + "ERROR: " + msg4 + '\n' + "ERROR: " + msg5 + '\n';
+
+            f(msg);
+        }
+
         exit(EXIT_FAILURE);
     }
 
-    size_t size = sizeof(*featureTransformer) + sizeof(Arch) * LayerStacks;
-    sync_cout << "info string NNUE evaluation using " << evalfilePath << " ("
-              << size / (1024 * 1024) << "MiB, (" << featureTransformer->InputDimensions << ", "
-              << network[0].TransformedFeatureDimensions << ", " << network[0].FC_0_OUTPUTS << ", "
-              << network[0].FC_1_OUTPUTS << ", 1))" << sync_endl;
+    if (f)
+    {
+        size_t size = sizeof(*featureTransformer) + sizeof(Arch) * LayerStacks;
+        f("info string NNUE evaluation using " + evalfilePath + " ("
+          + std::to_string(size / (1024 * 1024)) + "MiB, ("
+          + std::to_string(featureTransformer->InputDimensions) + ", "
+          + std::to_string(network[0].TransformedFeatureDimensions) + ", "
+          + std::to_string(network[0].FC_0_OUTPUTS) + ", " + std::to_string(network[0].FC_1_OUTPUTS)
+          + ", 1))");
+    }
 }
 
 

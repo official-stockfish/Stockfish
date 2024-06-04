@@ -67,12 +67,13 @@ Engine::Engine(std::optional<std::string> path) :
 
     options["NumaPolicy"] << Option("auto", [this](const Option& o) {
         set_numa_config_from_option(o);
-        return numa_config_information_as_string() + "\n" + thread_binding_information_as_string();
+        return numa_config_information_as_string() + "\n"
+             + thread_allocation_information_as_string();
     });
 
     options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
         resize_threads();
-        return thread_binding_information_as_string();
+        return thread_allocation_information_as_string();
     });
 
     options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) {
@@ -156,6 +157,10 @@ void Engine::set_on_bestmove(std::function<void(std::string_view, std::string_vi
     updateContext.onBestmove = std::move(f);
 }
 
+void Engine::set_on_verify_networks(std::function<void(std::string_view)>&& f) {
+    onVerifyNetworks = std::move(f);
+}
+
 void Engine::wait_for_search_finished() { threads.main_thread()->wait_for_search_finished(); }
 
 void Engine::set_position(const std::string& fen, const std::vector<std::string>& moves) {
@@ -226,8 +231,8 @@ void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
 // network related
 
 void Engine::verify_networks() const {
-    networks->big.verify(options["EvalFile"]);
-    networks->small.verify(options["EvalFileSmall"]);
+    networks->big.verify(options["EvalFile"], onVerifyNetworks);
+    networks->small.verify(options["EvalFileSmall"], onVerifyNetworks);
 }
 
 void Engine::load_networks() {
@@ -285,6 +290,8 @@ std::string Engine::visualize() const {
     return ss.str();
 }
 
+int Engine::get_hashfull(int maxAge) const { return tt.hashfull(maxAge); }
+
 std::vector<std::pair<size_t, size_t>> Engine::get_bound_thread_count_by_numa_node() const {
     auto                                   counts = threads.get_bound_thread_count_by_numa_node();
     const NumaConfig&                      cfg    = numaContext.get_numa_config();
@@ -310,14 +317,8 @@ std::string Engine::numa_config_information_as_string() const {
 std::string Engine::thread_binding_information_as_string() const {
     auto              boundThreadsByNode = get_bound_thread_count_by_numa_node();
     std::stringstream ss;
-
-    size_t threadsSize = threads.size();
-    ss << "Using " << threadsSize << (threadsSize > 1 ? " threads" : " thread");
-
     if (boundThreadsByNode.empty())
         return ss.str();
-
-    ss << " with NUMA node thread binding: ";
 
     bool isFirst = true;
 
@@ -328,6 +329,22 @@ std::string Engine::thread_binding_information_as_string() const {
         ss << current << "/" << total;
         isFirst = false;
     }
+
+    return ss.str();
+}
+
+std::string Engine::thread_allocation_information_as_string() const {
+    std::stringstream ss;
+
+    size_t threadsSize = threads.size();
+    ss << "Using " << threadsSize << (threadsSize > 1 ? " threads" : " thread");
+
+    auto boundThreadsByNodeStr = thread_binding_information_as_string();
+    if (boundThreadsByNodeStr.empty())
+        return ss.str();
+
+    ss << " with NUMA node thread binding: ";
+    ss << boundThreadsByNodeStr;
 
     return ss.str();
 }
