@@ -30,20 +30,16 @@
 
 #include "benchmark.h"
 #include "engine.h"
-#include "evaluate.h"
 #include "movegen.h"
 #include "position.h"
 #include "score.h"
 #include "search.h"
-#include "syzygy/tbprobe.h"
 #include "types.h"
 #include "ucioption.h"
 
 namespace Stockfish {
 
-constexpr auto StartFEN  = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr int  MaxHashMB = Is64Bit ? 33554432 : 2048;
-
+constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 template<typename... Ts>
 struct overload: Ts... {
     using Ts::operator()...;
@@ -56,55 +52,25 @@ UCIEngine::UCIEngine(int argc, char** argv) :
     engine(argv[0]),
     cli(argc, argv) {
 
-    auto& options = engine.get_options();
+    engine.get_options().add_info_listener([](const std::optional<std::string>& str) {
+        if (!str || (*str).empty())
+            return;
 
-    options["Debug Log File"] << Option("", [](const Option& o) { start_logger(o); });
+        // split all lines
+        auto ss = std::istringstream{*str};
 
-    options["NumaPolicy"] << Option("auto", [this](const Option& o) {
-        engine.set_numa_config_from_option(o);
-        print_numa_config_information();
-        print_thread_binding_information();
+        for (std::string line; std::getline(ss, line, '\n');)
+            sync_cout << "info string " << line << sync_endl;
     });
-
-    options["Threads"] << Option(1, 1, 1024, [this](const Option&) {
-        engine.resize_threads();
-        print_thread_binding_information();
-    });
-
-    options["Hash"] << Option(16, 1, MaxHashMB, [this](const Option& o) { engine.set_tt_size(o); });
-
-    options["Clear Hash"] << Option([this](const Option&) { engine.search_clear(); });
-    options["Ponder"] << Option(false);
-    options["MultiPV"] << Option(1, 1, MAX_MOVES);
-    options["Skill Level"] << Option(20, 0, 20);
-    options["Move Overhead"] << Option(10, 0, 5000);
-    options["nodestime"] << Option(0, 0, 10000);
-    options["UCI_Chess960"] << Option(false);
-    options["UCI_LimitStrength"] << Option(false);
-    options["UCI_Elo"] << Option(1320, 1320, 3190);
-    options["UCI_ShowWDL"] << Option(false);
-    options["SyzygyPath"] << Option("<empty>", [](const Option& o) { Tablebases::init(o); });
-    options["SyzygyProbeDepth"] << Option(1, 1, 100);
-    options["Syzygy50MoveRule"] << Option(true);
-    options["SyzygyProbeLimit"] << Option(7, 0, 7);
-    options["EvalFile"] << Option(EvalFileDefaultNameBig,
-                                  [this](const Option& o) { engine.load_big_network(o); });
-    options["EvalFileSmall"] << Option(EvalFileDefaultNameSmall,
-                                       [this](const Option& o) { engine.load_small_network(o); });
-
 
     engine.set_on_iter([](const auto& i) { on_iter(i); });
     engine.set_on_update_no_moves([](const auto& i) { on_update_no_moves(i); });
-    engine.set_on_update_full([&](const auto& i) { on_update_full(i, options["UCI_ShowWDL"]); });
+    engine.set_on_update_full(
+      [this](const auto& i) { on_update_full(i, engine.get_options()["UCI_ShowWDL"]); });
     engine.set_on_bestmove([](const auto& bm, const auto& p) { on_bestmove(bm, p); });
-
-    engine.load_networks();
-    engine.resize_threads();
-    engine.search_clear();  // After threads are up
 }
 
 void UCIEngine::loop() {
-
     std::string token, cmd;
 
     for (int i = 1; i < cli.argc; ++i)
@@ -136,8 +102,9 @@ void UCIEngine::loop() {
             sync_cout << "id name " << engine_info(true) << "\n"
                       << engine.get_options() << sync_endl;
 
-            print_numa_config_information();
-            print_thread_binding_information();
+            sync_cout << "info string " << engine.numa_config_information_as_string() << sync_endl;
+            sync_cout << "info string " << engine.thread_binding_information_as_string()
+                      << sync_endl;
 
             sync_cout << "uciok" << sync_endl;
         }
@@ -191,28 +158,6 @@ void UCIEngine::loop() {
                       << sync_endl;
 
     } while (token != "quit" && cli.argc == 1);  // The command-line arguments are one-shot
-}
-
-void UCIEngine::print_numa_config_information() const {
-    auto cfgStr = engine.get_numa_config_as_string();
-    sync_cout << "info string Available Processors: " << cfgStr << sync_endl;
-}
-
-void UCIEngine::print_thread_binding_information() const {
-    auto boundThreadsByNode = engine.get_bound_thread_count_by_numa_node();
-    if (!boundThreadsByNode.empty())
-    {
-        sync_cout << "info string NUMA Node Thread Binding: ";
-        bool isFirst = true;
-        for (auto&& [current, total] : boundThreadsByNode)
-        {
-            if (!isFirst)
-                std::cout << ":";
-            std::cout << current << "/" << total;
-            isFirst = false;
-        }
-        std::cout << sync_endl;
-    }
 }
 
 Search::LimitsType UCIEngine::parse_limits(std::istream& is) {

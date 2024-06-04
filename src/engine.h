@@ -29,13 +29,13 @@
 #include <vector>
 
 #include "nnue/network.h"
+#include "numa.h"
 #include "position.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"  // for Stockfish::Depth
 #include "thread.h"
 #include "tt.h"
 #include "ucioption.h"
-#include "numa.h"
 
 namespace Stockfish {
 
@@ -92,13 +92,18 @@ class Engine {
 
     // utility functions
 
-    void                                   trace_eval() const;
-    OptionsMap&                            get_options();
+    void trace_eval() const;
+
+    const OptionsMap& get_options() const;
+    OptionsMap&       get_options();
+
     std::string                            fen() const;
     void                                   flip();
     std::string                            visualize() const;
     std::vector<std::pair<size_t, size_t>> get_bound_thread_count_by_numa_node() const;
     std::string                            get_numa_config_as_string() const;
+    std::string                            numa_config_information_as_string() const;
+    std::string                            thread_binding_information_as_string() const;
 
    private:
     const std::string binaryDirectory;
