@@ -60,9 +60,9 @@ static constexpr double EvalLevel[10] = {0.981, 0.956, 0.895, 0.949, 0.913,
 
 // Futility margin
 Value futility_margin(Depth d, bool noTtCutNode, bool improving, bool oppWorsening) {
-    Value futilityMult       = 124 - 43 * noTtCutNode;
-    Value improvingDeduction = 60 * improving * futilityMult / 32;
-    Value worseningDeduction = 344 * oppWorsening * futilityMult / 1024;
+    Value futilityMult       = 109 - 40 * noTtCutNode;
+    Value improvingDeduction = 59 * improving * futilityMult / 32;
+    Value worseningDeduction = 328 * oppWorsening * futilityMult / 1024;
 
     return futilityMult * d - improvingDeduction - worseningDeduction;
 }
@@ -554,7 +554,7 @@ Value Search::Worker::search(
     bool     givesCheck, improving, priorCapture, opponentWorsening;
     bool     capture, moveCountPruning, ttCapture;
     Piece    movedPiece;
-    int      moveCount, captureCount, quietCount;
+    int      moveCount, captureCount, quietCount, futilityMargin;
     Bound    singularBound;
 
     // Step 1. Initialize node
@@ -761,10 +761,12 @@ Value Search::Worker::search(
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2;
 
+    futilityMargin = futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening);
+
     // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (eval < alpha - 512 - 293 * depth * depth)
+    if (eval < alpha - 465 - futilityMargin * depth * 33 / 32)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
@@ -774,9 +776,7 @@ Value Search::Worker::search(
     // Step 8. Futility pruning: child node (~40 Elo)
     // The depth condition is important for mate finding.
     if (!ss->ttPv && depth < 13
-        && eval - futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening)
-               - (ss - 1)->statScore / 263
-             >= beta
+        && eval - futilityMargin - (ss - 1)->statScore / 263 >= beta
         && eval >= beta && eval < VALUE_TB_WIN_IN_MAX_PLY && (!ttMove || ttCapture))
         return beta > VALUE_TB_LOSS_IN_MAX_PLY ? beta + (eval - beta) / 3 : eval;
 
