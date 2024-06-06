@@ -179,13 +179,16 @@ inline WindowsAffinity get_process_affinity() {
         BOOL   status =
           GetThreadSelectedCpuSetMasks_f(GetCurrentThread(), nullptr, 0, &RequiredMaskCount);
 
-        // If RequiredMaskCount then these affinities were never set, but it's not consistent
-        // so GetProcessAffinityMask may still return some affinity.
-        if (status == 0)
+        // We expect ERROR_INSUFFICIENT_BUFFER from GetThreadSelectedCpuSetMasks,
+        // but other failure is an actual error.
+        if (status == 0 && GetLastError() != ERROR_INSUFFICIENT_BUFFER)
         {
             affinity.isDeterminate = false;
             return affinity;
         }
+
+        // If RequiredMaskCount then these affinities were never set, but it's not consistent
+        // so GetProcessAffinityMask may still return some affinity.
 
         if (RequiredMaskCount > 0)
         {
@@ -193,8 +196,14 @@ inline WindowsAffinity get_process_affinity() {
 
             auto groupAffinities = std::make_unique<GROUP_AFFINITY[]>(RequiredMaskCount);
 
-            GetThreadSelectedCpuSetMasks_f(GetCurrentThread(), groupAffinities.get(),
-                                           RequiredMaskCount, &RequiredMaskCount);
+            status = GetThreadSelectedCpuSetMasks_f(GetCurrentThread(), groupAffinities.get(),
+                                                    RequiredMaskCount, &RequiredMaskCount);
+
+            if (status == 0)
+            {
+                affinity.isDeterminate = false;
+                return affinity;
+            }
 
             for (USHORT i = 0; i < RequiredMaskCount; ++i)
             {
