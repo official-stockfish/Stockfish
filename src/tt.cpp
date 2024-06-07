@@ -94,6 +94,7 @@ void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
 // Initializes the entire transposition table to zero,
 // in a multi-threaded way.
 void TranspositionTable::clear(ThreadPool& threads) {
+    generation8              = 0;
     const size_t threadCount = threads.num_threads();
 
     for (size_t i = 0; i < threadCount; ++i)
