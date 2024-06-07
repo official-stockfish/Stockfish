@@ -178,16 +178,16 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
 
     for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket)
     {
-        ss << "|  " << bucket << "        ";
-        ss << " |  ";
+        ss << "|  " << bucket << "        "  //
+           << " |  ";
         format_cp_aligned_dot(t.psqt[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |  ";
         format_cp_aligned_dot(t.positional[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |  ";
         format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |";
         if (bucket == t.correctBucket)
             ss << " <-- this bucket is used";
