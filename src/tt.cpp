@@ -55,6 +55,7 @@ struct TTEntry {
                       Bound(genBound8 & 0x3), bool(genBound8 & 0x4)};
     }
 
+    bool is_occupied() const;
     void save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
     // The returned age is a multiple of TranspositionTable::GENERATION_DELTA
     uint8_t relative_age(const uint8_t generation8) const;
@@ -84,7 +85,8 @@ static constexpr int GENERATION_MASK = (0xFF << GENERATION_BITS) & 0xFF;
 
 // DEPTH_ENTRY_OFFSET exists because 1) we use `bool(depth8)` as the occupancy check, but
 // 2) we need to store negative depths for QS. (`depth8` is the only field with "spare bits":
-// we sacrifice the ability to store depths greater than 1<<8 less the offset, as asserted below.)
+// we sacrifice the ability to store depths greater than 1<<8 less the offset, as asserted in `save`.)
+bool TTEntry::is_occupied() const { return bool(depth8); }
 
 // Populates the TTEntry with a new node's data, possibly
 // overwriting an old position. The update is not atomic and can be racy.
@@ -196,7 +198,7 @@ int TranspositionTable::hashfull() const {
     int cnt = 0;
     for (int i = 0; i < 1000; ++i)
         for (int j = 0; j < ClusterSize; ++j)
-            cnt += table[i].entry[j].depth8
+            cnt += table[i].entry[j].is_occupied()
                 && (table[i].entry[j].genBound8 & GENERATION_MASK) == generation8;
 
     return cnt / ClusterSize;
@@ -227,7 +229,7 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
         if (tte[i].key16 == key16)
             // This gap is the main place for read races.
             // After `read()` completes that copy is final, but may be self-inconsistent.
-            return {bool(tte[i].depth8), tte[i].read(), TTWriter(&tte[i])};
+            return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i])};
 
     // Find an entry to be replaced according to the replacement strategy
     TTEntry* replace = tte;
