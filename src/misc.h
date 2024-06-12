@@ -101,6 +101,7 @@ inline std::vector<std::string> split(const std::string& s, const std::string& d
 }
 
 void remove_whitespace(std::string& s);
+bool is_whitespace(const std::string& s);
 
 enum SyncCout {
     IO_LOCK,
@@ -110,6 +111,9 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
+
+void sync_cout_start();
+void sync_cout_end();
 
 // True if and only if the binary is compiled on a little-endian machine
 static inline const union {

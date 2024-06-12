@@ -58,6 +58,8 @@ class UCIEngine {
     Engine      engine;
     CommandLine cli;
 
+    static void print_info_string(const std::string& str);
+
     void          go(std::istringstream& is);
     void          bench(std::istream& args);
     void          position(std::istringstream& is);

@@ -48,19 +48,25 @@ struct overload: Ts... {
 template<typename... Ts>
 overload(Ts...) -> overload<Ts...>;
 
+void UCIEngine::print_info_string(const std::string& str) {
+    sync_cout_start();
+    for (auto& line : split(str, "\n"))
+    {
+        if (!is_whitespace(line))
+        {
+            std::cout << "info string " << line << '\n';
+        }
+    }
+    sync_cout_end();
+}
+
 UCIEngine::UCIEngine(int argc, char** argv) :
     engine(argv[0]),
     cli(argc, argv) {
 
     engine.get_options().add_info_listener([](const std::optional<std::string>& str) {
-        if (!str || (*str).empty())
-            return;
-
-        // split all lines
-        auto ss = std::istringstream{*str};
-
-        for (std::string line; std::getline(ss, line, '\n');)
-            sync_cout << "info string " << line << sync_endl;
+        if (str.has_value())
+            print_info_string(*str);
     });
 
     engine.set_on_iter([](const auto& i) { on_iter(i); });
@@ -102,9 +108,8 @@ void UCIEngine::loop() {
             sync_cout << "id name " << engine_info(true) << "\n"
                       << engine.get_options() << sync_endl;
 
-            sync_cout << "info string " << engine.numa_config_information_as_string() << sync_endl;
-            sync_cout << "info string " << engine.thread_binding_information_as_string()
-                      << sync_endl;
+            print_info_string(engine.numa_config_information_as_string());
+            print_info_string(engine.thread_binding_information_as_string());
 
             sync_cout << "uciok" << sync_endl;
         }
