@@ -934,13 +934,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
     if (Do)
     {
         auto& dp     = st->dirtyPiece;
-        dp.piece[0]  = make_piece(us, KING);
-        dp.from[0]   = from;
-        dp.to[0]     = to;
-        dp.piece[1]  = make_piece(us, ROOK);
-        dp.from[1]   = rfrom;
-        dp.to[1]     = rto;
-        dp.dirty_num = 2;
+        dp = {2, {make_piece(us, KING), make_piece(us, ROOK)}, {from, rfrom}, {to, rto}};
     }
 
     // Remove both pieces first since squares could overlap in Chess960
