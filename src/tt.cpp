@@ -135,7 +135,7 @@ void TTWriter::write(
 
 // A TranspositionTable is an array of Cluster, of size clusterCount. Each cluster consists of ClusterSize number
 // of TTEntry. Each non-empty TTEntry contains information on exactly one position. The size of a Cluster should
-// divide the size of a cache line for best performance, as the cacheline is prefetched when possible.
+// divide the size of a cache line for best performance, as the cache line is prefetched when possible.
 
 static constexpr int ClusterSize = 3;
 
@@ -241,9 +241,10 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
     return {false, replace->read(), TTWriter(replace)};
 }
 
-
+// This points to the whole array contained within the `Cluster`
 TTEntry* TranspositionTable::first_entry(const Key key) const {
     return &table[mul_hi64(key, clusterCount)].entry[0];
 }
+
 
 }  // namespace Stockfish

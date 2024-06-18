@@ -41,7 +41,22 @@ std::string compiler_info();
 // Preloads the given address in L1/L2 cache. This is a non-blocking
 // function that doesn't stall the CPU waiting for data to be loaded from memory,
 // which can be quite slow.
-void prefetch(const void* addr);
+#ifdef NO_PREFETCH
+
+inline void prefetch(const void*) {}
+
+#else
+
+inline void prefetch(const void* addr) {
+
+    #if defined(_MSC_VER)
+    _mm_prefetch((char const*) addr, _MM_HINT_T0);
+    #else
+    __builtin_prefetch(addr);
+    #endif
+}
+
+#endif
 
 void start_logger(const std::string& fname);
 
@@ -183,7 +198,7 @@ class PRNG {
     }
 };
 
-inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
+constexpr inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
     __extension__ using uint128 = unsigned __int128;
     return (uint128(a) * uint128(b)) >> 64;
