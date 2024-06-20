@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Configurar Git
+    - uses: actions/checkout@v3
+    - name: Set up Git
       run: |
         git config --global user.name 'Pablohn26'
         git config --global user.email 'pablohn6@gmail.com'
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
     - name: Install dependencies
