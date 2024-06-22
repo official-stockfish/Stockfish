@@ -92,6 +92,8 @@ jobs:
     uses: ./.github/workflows/tests.yml
   Matetrack:
     uses: ./.github/workflows/matetrack.yml
+  Games:
+    uses: ./.github/workflows/games.yml
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     needs: [Matrix, Prerelease, Compilation]
