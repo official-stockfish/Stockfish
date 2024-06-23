@@ -108,10 +108,11 @@ void UCIEngine::loop() {
             sync_cout << "id name " << engine_info(true) << "\n"
                       << engine.get_options() << sync_endl;
 
+            sync_cout << "uciok" << sync_endl;
+
+            // keep info strings after uciok for old GUIs
             print_info_string(engine.numa_config_information_as_string());
             print_info_string(engine.thread_binding_information_as_string());
-
-            sync_cout << "uciok" << sync_endl;
         }
 
         else if (token == "setoption")
