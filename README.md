@@ -67,7 +67,7 @@ Stockfish uses the UCI protocol and is compatible with any UCI-compliant chess G
 
 ## Contributing
 
-We welcome contributions to Stockfish! Whether you're a developer, a chess enthusiast, or simply interested in improving the project, there are many ways to get involved.
+We welcome contributions to Stockfish! Whether you're a developer, a chess enthusiast, or simply interested in improving the project, there are many ways to contribute. The full list of authors who have contributed to Stockfish can be found in the [AUTHORS][authors-link] file.
 
 ### Donating Hardware
 
@@ -104,6 +104,7 @@ Stockfish is free, open-source software licensed under the [GNU General Public L
 
 For the latest updates and more information, visit our [official website][website-link] or join our [Discord community][discord-link].
 
+[authors-link]:       https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
 [build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
 [commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
 [discord-link]:       https://discord.gg/GWDRS3kU6R
