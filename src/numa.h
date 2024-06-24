@@ -454,7 +454,7 @@ class NumaConfig {
    public:
     NumaConfig() :
         highestCpuIndex(0),
-        customAffinity(false) {
+        custom_affinity(false) {
         const auto numCpus = SYSTEM_THREADS_NB;
         add_cpu_range_to_node(NumaIndex{0}, CpuIndex{0}, numCpus - 1);
     }
@@ -615,7 +615,7 @@ class NumaConfig {
         // then it may be inconsistent with the current affinity (obviously), so we
         // consider it custom.
         if (!respectProcessAffinity)
-            cfg.customAffinity = true;
+            cfg.custom_affinity = true;
 
         return cfg;
     }
@@ -643,7 +643,7 @@ class NumaConfig {
             }
         }
 
-        cfg.customAffinity = true;
+        cfg.custom_affinity = true;
 
         return cfg;
     }
@@ -664,7 +664,7 @@ class NumaConfig {
 
     CpuIndex num_cpus() const { return nodeByCpu.size(); }
 
-    bool requires_memory_replication() const { return customAffinity || nodes.size() > 1; }
+    bool requires_memory_replication() const { return custom_affinity || nodes.size() > 1; }
 
     std::string to_string() const {
         std::string str;
@@ -722,7 +722,7 @@ class NumaConfig {
 
         // If the affinity set by the user does not match the affinity given by the OS
         // then binding is necessary to ensure the threads are running on correct processors.
-        if (customAffinity)
+        if (custom_affinity)
             return true;
 
         // We obviously can't distribute a single thread, so a single thread should never be bound.
@@ -919,7 +919,7 @@ class NumaConfig {
     std::map<CpuIndex, NumaIndex>   nodeByCpu;
     CpuIndex                        highestCpuIndex;
 
-    bool customAffinity;
+    bool custom_affinity;
 
     static NumaConfig empty() { return NumaConfig(EmptyNodeTag{}); }
 
@@ -927,7 +927,7 @@ class NumaConfig {
 
     NumaConfig(EmptyNodeTag) :
         highestCpuIndex(0),
-        customAffinity(false) {}
+        custom_affinity(false) {}
 
     void remove_empty_numa_nodes() {
         std::vector<std::set<CpuIndex>> newNodes;
