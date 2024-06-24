@@ -1022,9 +1022,6 @@ moves_loop:  // When in check, search starts here
                 Value futilityValue =
                   ss->staticEval + (bestValue < ss->staticEval - 51 ? 138 : 54) + 140 * lmrDepth;
 
-                if (bestValue < ss->staticEval - 150)
-                    futilityValue += 50;
-
                 // Futility pruning: parent node (~13 Elo)
                 if (!ss->inCheck && lmrDepth < 12 && futilityValue <= alpha)
                 {
@@ -1357,10 +1354,17 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonus = (113 * (depth > 5) + 118 * (PvNode || cutNode)
-                     + 191 * ((ss - 1)->statScore < -14396) + 119 * ((ss - 1)->moveCount > 8)
+        int bonus = (113 * (depth > 5) + 118 * (PvNode || cutNode) + 119 * ((ss - 1)->moveCount > 8)
                      + 64 * (!ss->inCheck && bestValue <= ss->staticEval - 107)
                      + 147 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75));
+
+        if ((ss - 1)->statScore < -25000)
+            bonus += 250;
+        else if ((ss - 1)->statScore < -14396)
+            bonus += 180;
+        else if ((ss - 1)->statScore < -8000)
+            bonus += 100;
+
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       stat_bonus(depth) * bonus / 100);
         thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()]
