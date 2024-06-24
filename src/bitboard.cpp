@@ -71,7 +71,7 @@ std::string Bitboards::pretty(Bitboard b) {
 }
 
 
-// Initializes various bitboard tables. It is called at
+// Initializes various bitboard tables. It is called only once at
 // startup and relies on global objects to be already zero-initialized.
 void Bitboards::init() {
 
