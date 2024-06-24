@@ -104,6 +104,7 @@ For comprehensive compilation instructions, including other platforms and archit
 
 Stockfish is free software licensed under the [GNU General Public License v3][license-link]. You are free to use, modify, and distribute the software under the terms of this license.
 
+[build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
 [commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
 [discord-link]:       https://discord.gg/GWDRS3kU6R
 [issue-link]:         https://github.com/official-stockfish/Stockfish/issues/new?assignees=&labels=&template=BUG-REPORT.yml
@@ -113,11 +114,8 @@ Stockfish is free software licensed under the [GNU General Public License v3][li
 [license-link]:       https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
 [programming-link]:   https://www.chessprogramming.org/Main_Page
 [programmingsf-link]: https://www.chessprogramming.org/Stockfish
-[readme-link]:        https://github.com/official-stockfish/Stockfish/blob/master/README.md
 [release-link]:       https://github.com/official-stockfish/Stockfish/releases/latest
-[src-link]:           https://github.com/official-stockfish/Stockfish/tree/master/src
 [stockfish128-logo]:  https://stockfishchess.org/images/logo/icon_128x128.png
-[uci-link]:           https://backscattering.de/chess/uci/
 [website-link]:       https://stockfishchess.org
 [website-blog-link]:  https://stockfishchess.org/blog/
 [wiki-link]:          https://github.com/official-stockfish/Stockfish/wiki
