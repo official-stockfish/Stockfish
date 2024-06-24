@@ -2,124 +2,107 @@
 
   [![Stockfish][stockfish128-logo]][website-link]
 
-  <h3>Stockfish</h3>
+  # Stockfish
 
-  A free and strong UCI chess engine.
-  <br>
-  <strong>[Explore Stockfish docs »][wiki-link]</strong>
-  <br>
-  <br>
-  [Report bug][issue-link]
-  ·
-  [Open a discussion][discussions-link]
-  ·
-  [Discord][discord-link]
-  ·
-  [Blog][website-blog-link]
+  A free, powerful, and open-source UCI chess engine.
+  
+  **[Explore Stockfish Documentation »][wiki-link]**
+  
+  [Report Bug][issue-link] · [Open Discussion][discussions-link] · [Join Discord][discord-link] · [Read Blog][website-blog-link]
 
   [![Build][build-badge]][build-link]
   [![License][license-badge]][license-link]
-  <br>
   [![Release][release-badge]][release-link]
   [![Commits][commits-badge]][commits-link]
-  <br>
   [![Website][website-badge]][website-link]
   [![Fishtest][fishtest-badge]][fishtest-link]
   [![Discord][discord-badge]][discord-link]
 
 </div>
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+  - [Donating Hardware](#donating-hardware)
+  - [Improving the Code](#improving-the-code)
+- [Compiling Stockfish](#compiling-stockfish)
+- [License](#license)
+
 ## Overview
 
-[Stockfish][website-link] is a **free and strong UCI chess engine** derived from
-Glaurung 2.1 that analyzes chess positions and computes the optimal moves.
+[Stockfish][website-link] is a powerful, open-source chess engine renowned for its strength and versatility. Derived from Glaurung 2.1, Stockfish has evolved into one of the world's strongest chess engines, consistently ranking at the top of chess engine rating lists.
 
-Stockfish **does not include a graphical user interface** (GUI) that is required
-to display a chessboard and to make it easy to input moves. These GUIs are
-developed independently from Stockfish and are available online. **Read the
-documentation for your GUI** of choice for information about how to use
-Stockfish with it.
+## Key Features
 
-See also the Stockfish [documentation][wiki-usage-link] for further usage help.
+- Extremely strong chess analysis
+- UCI (Universal Chess Interface) compatible
+- Cross-platform support (Windows, macOS, Linux, Android, iOS)
+- NNUE (Efficiently Updatable Neural Network) evaluation
+- Extensive configuration options for advanced users
+- Active development and frequent updates
 
-## Files
+## Getting Started
 
-This distribution of Stockfish consists of the following files:
+### Prerequisites
 
-  * [README.md][readme-link], the file you are currently reading.
+Stockfish is a chess engine that requires a chess GUI (Graphical User Interface) to function as a complete chess program. Popular GUIs include:
 
-  * [Copying.txt][license-link], a text file containing the GNU General Public
-    License version 3.
+- [Arena Chess GUI](http://www.playwitharena.de/) (Windows)
+- [Cute Chess](https://github.com/cutechess/cutechess) (Cross-platform)
+- [Scid vs. PC](http://scidvspc.sourceforge.net/) (Cross-platform)
 
-  * [AUTHORS][authors-link], a text file with the list of authors for the project.
+### Installation
 
-  * [src][src-link], a subdirectory containing the full source code, including a
-    Makefile that can be used to compile Stockfish on Unix-like systems.
+1. Download the latest version of Stockfish from the [official releases page][release-link].
+2. Extract the files to a location on your computer.
+3. Set up your chosen chess GUI to use Stockfish as the engine.
 
-  * a file with the .nnue extension, storing the neural network for the NNUE
-    evaluation. Binary distributions will have this file embedded.
+For detailed installation instructions, please refer to our [wiki][wiki-usage-link].
+
+## Usage
+
+Stockfish uses the UCI protocol and can be used with any UCI-compatible chess GUI. For command-line usage and advanced configuration options, please consult our [UCI commands documentation][wiki-uci-link].
 
 ## Contributing
 
-__See [Contributing Guide](CONTRIBUTING.md).__
+We welcome contributions to Stockfish! Whether you're a developer, a chess enthusiast, or simply interested in improving the project, there are many ways to contribute.
 
-### Donating hardware
+### Donating Hardware
 
-Improving Stockfish requires a massive amount of testing. You can donate your
-hardware resources by installing the [Fishtest Worker][worker-link] and viewing
-the current tests on [Fishtest][fishtest-link].
+Stockfish development relies heavily on testing. You can contribute your hardware resources by:
 
-### Improving the code
+1. Installing the [Fishtest Worker][worker-link]
+2. Viewing and participating in current tests on [Fishtest][fishtest-link]
 
-In the [chessprogramming wiki][programming-link], many techniques used in
-Stockfish are explained with a lot of background information.
-The [section on Stockfish][programmingsf-link] describes many features
-and techniques used by Stockfish. However, it is generic rather than
-focused on Stockfish's precise implementation.
+### Improving the Code
 
-The engine testing is done on [Fishtest][fishtest-link].
-If you want to help improve Stockfish, please read this [guideline][guideline-link]
-first, where the basics of Stockfish development are explained.
+1. Familiarize yourself with chess programming concepts in the [Chess Programming Wiki][programming-link].
+2. Read about Stockfish-specific techniques in the [Stockfish section][programmingsf-link].
+3. Review our [development guidelines][guideline-link].
+4. Join discussions and ask questions in our [Discord server][discord-link].
 
-Discussions about Stockfish take place these days mainly in the Stockfish
-[Discord server][discord-link]. This is also the best place to ask questions
-about the codebase and how to improve it.
+For more details, see our [Contributing Guide](CONTRIBUTING.md).
 
 ## Compiling Stockfish
 
-Stockfish has support for 32 or 64-bit CPUs, certain hardware instructions,
-big-endian machines such as Power PC, and other platforms.
+Stockfish can be compiled on various platforms and architectures. Here's a basic example for Unix-like systems:
 
-On Unix-like systems, it should be easy to compile Stockfish directly from the
-source code with the included Makefile in the folder `src`. In general, it is
-recommended to run `make help` to see a list of make targets with corresponding
-descriptions. An example suitable for most Intel and AMD chips:
-
-```
+```bash
 cd src
 make -j profile-build ARCH=x86-64-avx2
 ```
 
-Detailed compilation instructions for all platforms can be found in our
-[documentation][wiki-compile-link]. Our wiki also has information about
-the [UCI commands][wiki-uci-link] supported by Stockfish.
+For comprehensive compilation instructions, including other platforms and architectures, please refer to our [compilation guide][wiki-compile-link].
 
-## Terms of use
+## License
 
-Stockfish is free and distributed under the
-[**GNU General Public License version 3**][license-link] (GPL v3). Essentially,
-this means you are free to do almost exactly what you want with the program,
-including distributing it among your friends, making it available for download
-from your website, selling it (either by itself or as part of some bigger
-software package), or using it as the starting point for a software project of
-your own.
-
-The only real limitation is that whenever you distribute Stockfish in some way,
-you MUST always include the license and the full source code (or a pointer to
-where the source code can be found) to generate the exact binary you are
-distributing. If you make any changes to the source code, these changes must
-also be made available under GPL v3.
-
+Stockfish is free software licensed under the [GNU General Public License v3][license-link]. You are free to use, modify, and distribute the software under the terms of this license.
 
 [authors-link]:       https://github.com/official-stockfish/Stockfish/blob/master/AUTHORS
 [build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
