@@ -536,7 +536,9 @@ Value Search::Worker::search(
 
     // Check if we have an upcoming move that draws by repetition, or
     // if the opponent had an alternative move earlier to this position.
-    if (!rootNode && alpha < VALUE_DRAW && pos.has_game_cycle(ss->ply))
+    // The VALUE_TB_LOSS_IN_MAX_PLY check is necessary as long as has_game_cycle is approximate.
+    if (!rootNode && alpha < VALUE_DRAW && alpha > VALUE_TB_LOSS_IN_MAX_PLY
+        && pos.has_game_cycle(ss->ply))
     {
         alpha = value_draw(this->nodes);
         if (alpha >= beta)
@@ -1420,7 +1422,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
 
     // Check if we have an upcoming move that draws by repetition, or if
     // the opponent had an alternative move earlier to this position. (~1 Elo)
-    if (alpha < VALUE_DRAW && pos.has_game_cycle(ss->ply))
+    // The VALUE_TB_LOSS_IN_MAX_PLY check is necessary as long as has_game_cycle is approximate.
+    if (alpha < VALUE_DRAW && alpha > VALUE_TB_LOSS_IN_MAX_PLY && pos.has_game_cycle(ss->ply))
     {
         alpha = value_draw(this->nodes);
         if (alpha >= beta)

@@ -1158,6 +1158,8 @@ bool Position::has_repeated() const {
 
 // Tests if the position has a move which draws by repetition,
 // or an earlier position has a move that directly reaches the current position.
+// This function is currently inexact/buggy: it can return draw,
+// when there is no legal move drawing (see below).
 bool Position::has_game_cycle(int ply) const {
 
     int j;
@@ -1186,13 +1188,16 @@ bool Position::has_game_cycle(int ply) const {
                 if (ply > i)
                     return true;
 
-                // For nodes before or at the root, check that the move is a
-                // repetition rather than a move to the current position.
+                // BUG: This test needs to be before the previous return,
+                // for the function to be accurate. However, fixing this bug
+                // consistently costs Elo.
                 // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
                 // the same location, so we have to select which square to check.
                 if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
                     continue;
 
+                // For nodes before or at the root, check that the move is a
+                // repetition rather than a move to the current position.
                 // For repetitions before or at the root, require one more
                 if (stp->repetition)
                     return true;
