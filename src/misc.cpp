@@ -281,7 +281,7 @@ template<size_t N>
 struct DebugInfo {
     std::atomic<int64_t> data[N] = {0};
 
-    constexpr inline std::atomic<int64_t>& operator[](int index) { return data[index]; }
+    constexpr std::atomic<int64_t>& operator[](int index) { return data[index]; }
 };
 
 DebugInfo<2> hit[MaxDebugSlots];
