@@ -1,6 +1,6 @@
 <div align="center">
 
-  [![Stockfish][stockfish128-logo]][website-link]
+  [![Stockfish][stockfish-logo]][website-link]
 
   # Stockfish
 
@@ -22,8 +22,8 @@
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
+- [About Stockfish](#about-stockfish)
+  - [Key Features](#key-features)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -31,65 +31,61 @@
 - [Contributing](#contributing)
   - [Donating Hardware](#donating-hardware)
   - [Improving the Code](#improving-the-code)
-- [Compiling Stockfish](#compiling-stockfish)
+- [Building from Source](#building-from-source)
 - [License](#license)
 
-## Overview
+## About Stockfish
 
-[Stockfish][website-link] is a powerful, open-source chess engine renowned for its strength and versatility. Derived from Glaurung 2.1, Stockfish has evolved into one of the world's strongest chess engines, consistently ranking at the top of chess engine rating lists.
+[Stockfish][website-link] is a powerful, open-source chess engine renowned for its strength and versatility. Originally derived from Glaurung 2.1, Stockfish has evolved into one of the world's strongest chess engines, consistently ranking at the top of chess engine rating lists.
 
-## Key Features
+### Key Features
 
-- Extremely strong chess analysis
-- UCI (Universal Chess Interface) compatible
+- Exceptionally strong chess analysis
+- UCI (Universal Chess Interface) compatibility
 - Cross-platform support (Windows, macOS, Linux, Android, iOS)
-- NNUE (Efficiently Updatable Neural Network) evaluation
-- Extensive configuration options for advanced users
-- Active development and frequent updates
+- Advanced NNUE (Efficiently Updatable Neural Network) evaluation
+- Extensive configuration options for power users
+- Active development with frequent updates
 
 ## Getting Started
 
 ### Prerequisites
 
-Stockfish is a chess engine that requires a chess GUI (Graphical User Interface) to function as a complete chess program. Popular GUIs include:
-
-- [Arena Chess GUI](http://www.playwitharena.de/) (Windows)
-- [Cute Chess](https://github.com/cutechess/cutechess) (Cross-platform)
-- [Scid vs. PC](http://scidvspc.sourceforge.net/) (Cross-platform)
+Stockfish is a chess engine that requires a chess GUI (Graphical User Interface) to function as a complete chess program. Many compatible GUIs are available for various platforms.
 
 ### Installation
 
 1. Download the latest version of Stockfish from the [official releases page][release-link].
-2. Extract the files to a location on your computer.
-3. Set up your chosen chess GUI to use Stockfish as the engine.
+2. Extract the files to your preferred location.
+3. Configure your chosen chess GUI to use Stockfish as the engine.
 
-For detailed installation instructions, please refer to our [wiki][wiki-usage-link].
+For detailed installation instructions and GUI recommendations, please refer to our comprehensive [Download and Usage guide][wiki-usage-link] in the Stockfish Wiki.
 
 ## Usage
 
-Stockfish uses the UCI protocol and can be used with any UCI-compatible chess GUI. For command-line usage and advanced configuration options, please consult our [UCI commands documentation][wiki-uci-link].
+Stockfish uses the UCI protocol and is compatible with any UCI-compliant chess GUI. For command-line usage and advanced configuration options, please consult our [UCI commands documentation][wiki-uci-link].
 
 ## Contributing
 
-We welcome contributions to Stockfish! Whether you're a developer, a chess enthusiast, or simply interested in improving the project, there are many ways to contribute.
+We welcome contributions to Stockfish! Whether you're a developer, a chess enthusiast, or simply interested in improving the project, there are many ways to get involved.
 
 ### Donating Hardware
 
 Stockfish development relies heavily on testing. You can contribute your hardware resources by:
 
 1. Installing the [Fishtest Worker][worker-link]
-2. Viewing and participating in current tests on [Fishtest][fishtest-link]
+2. Participating in current tests on [Fishtest][fishtest-link]
 
 ### Improving the Code
 
 1. Familiarize yourself with chess programming concepts in the [Chess Programming Wiki][programming-link].
-2. Read about Stockfish-specific techniques in the [Stockfish section][programmingsf-link].
+2. Study Stockfish-specific techniques in the [Stockfish section][programmingsf-link].
 3. Review our [development guidelines][guideline-link].
 4. Join discussions and ask questions in our [Discord server][discord-link].
 
 For more details, see our [Contributing Guide](CONTRIBUTING.md).
 
-## Compiling Stockfish
+## Building from Source
 
 Stockfish can be compiled on various platforms and architectures. Here's a basic example for Unix-like systems:
 
@@ -102,7 +98,11 @@ For comprehensive compilation instructions, including other platforms and archit
 
 ## License
 
-Stockfish is free software licensed under the [GNU General Public License v3][license-link]. You are free to use, modify, and distribute the software under the terms of this license.
+Stockfish is free, open-source software licensed under the [GNU General Public License v3][license-link]. You are free to use, modify, and distribute the software under the terms of this license.
+
+---
+
+For the latest updates and more information, visit our [official website][website-link] or join our [Discord community][discord-link].
 
 [build-link]:         https://github.com/official-stockfish/Stockfish/actions/workflows/stockfish.yml
 [commits-link]:       https://github.com/official-stockfish/Stockfish/commits/master
@@ -115,7 +115,7 @@ Stockfish is free software licensed under the [GNU General Public License v3][li
 [programming-link]:   https://www.chessprogramming.org/Main_Page
 [programmingsf-link]: https://www.chessprogramming.org/Stockfish
 [release-link]:       https://github.com/official-stockfish/Stockfish/releases/latest
-[stockfish128-logo]:  https://stockfishchess.org/images/logo/icon_128x128.png
+[stockfish-logo]:     https://stockfishchess.org/images/logo/icon_128x128.png
 [website-link]:       https://stockfishchess.org
 [website-blog-link]:  https://stockfishchess.org/blog/
 [wiki-link]:          https://github.com/official-stockfish/Stockfish/wiki
@@ -124,7 +124,7 @@ Stockfish is free software licensed under the [GNU General Public License v3][li
 [wiki-usage-link]:    https://github.com/official-stockfish/Stockfish/wiki/Download-and-usage
 [worker-link]:        https://github.com/official-stockfish/fishtest/wiki/Running-the-worker
 
-[build-badge]:        https://img.shields.io/github/actions/workflow/status/official-stockfish/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=stockfish&logo=github
+[build-badge]: https://img.shields.io/github/actions/workflow/status/official-stockfish/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=stockfish&logo=github
 [commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
 [discord-badge]:      https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
 [fishtest-badge]:     https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests%2Ffinished
