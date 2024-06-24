@@ -534,9 +534,8 @@ Value Search::Worker::search(
     // Limit the depth if extensions made it too large
     depth = std::min(depth, MAX_PLY - 1);
 
-    // Check if we have an upcoming move that draws by repetition, or
-    // if the opponent had an alternative move earlier to this position.
-    if (!rootNode && alpha < VALUE_DRAW && pos.has_game_cycle(ss->ply))
+    // Check if we have an upcoming move that draws by repetition.
+    if (!rootNode && alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
     {
         alpha = value_draw(this->nodes);
         if (alpha >= beta)
@@ -1447,9 +1446,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     assert(PvNode || (alpha == beta - 1));
     assert(depth <= 0);
 
-    // Check if we have an upcoming move that draws by repetition, or if
-    // the opponent had an alternative move earlier to this position. (~1 Elo)
-    if (alpha < VALUE_DRAW && pos.has_game_cycle(ss->ply))
+    // Check if we have an upcoming move that draws by repetition. (~1 Elo)
+    if (alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
     {
         alpha = value_draw(this->nodes);
         if (alpha >= beta)
