@@ -66,7 +66,7 @@ namespace {
 
 constexpr int TBPIECES = 7;  // Max number of supported pieces
 constexpr int MAX_DTZ =
-  1 << 18;  // Max DTZ supported, large enough to deal with the syzygy TB limit.
+  1 << 18;  // Max DTZ supported times 2, large enough to deal with the syzygy TB limit.
 
 enum {
     BigEndian,
@@ -1574,7 +1574,10 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
+bool Tablebases::root_probe(Position&          pos,
+                            Search::RootMoves& rootMoves,
+                            bool               rule50,
+                            bool               rankDTZ) {
 
     ProbeState result = OK;
     StateInfo  st;
@@ -1585,7 +1588,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
     // Check whether a position was repeated since the last zeroing move.
     bool rep = pos.has_repeated();
 
-    int dtz, bound = rule50 ? (MAX_DTZ - 100) : 1;
+    int dtz, bound = rule50 ? (MAX_DTZ / 2 - 100) : 1;
 
     // Probe and rank each move
     for (auto& m : rootMoves)
@@ -1624,8 +1627,10 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
 
         // Better moves are ranked higher. Certain wins are ranked equally.
         // Losing moves are ranked equally unless a 50-move draw is in sight.
-        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ : MAX_DTZ - (dtz + cnt50))
-                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ : -MAX_DTZ + (-dtz + cnt50))
+        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ - (rankDTZ ? dtz : 0)
+                                                        : MAX_DTZ / 2 - (dtz + cnt50))
+                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ - (rankDTZ ? dtz : 0)
+                                                     : -MAX_DTZ / 2 + (-dtz + cnt50))
                            : 0;
         m.tbRank = r;
 
@@ -1633,10 +1638,11 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore = r >= bound ? VALUE_MATE - MAX_PLY - 1
-                  : r > 0      ? Value((std::max(3, r - (MAX_DTZ - 200)) * int(PawnValue)) / 200)
-                  : r == 0     ? VALUE_DRAW
-                  : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValue)) / 200)
-                               : -VALUE_MATE + MAX_PLY + 1;
+                  : r > 0  ? Value((std::max(3, r - (MAX_DTZ / 2 - 200)) * int(PawnValue)) / 200)
+                  : r == 0 ? VALUE_DRAW
+                  : r > -bound
+                    ? Value((std::min(-3, r + (MAX_DTZ / 2 - 200)) * int(PawnValue)) / 200)
+                    : -VALUE_MATE + MAX_PLY + 1;
     }
 
     return true;
@@ -1683,7 +1689,8 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
 
 Config Tablebases::rank_root_moves(const OptionsMap&  options,
                                    Position&          pos,
-                                   Search::RootMoves& rootMoves) {
+                                   Search::RootMoves& rootMoves,
+                                   bool               rankDTZ) {
     Config config;
 
     if (rootMoves.empty())
@@ -1707,7 +1714,7 @@ Config Tablebases::rank_root_moves(const OptionsMap&  options,
     if (config.cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
-        config.rootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"]);
+        config.rootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ);
 
         if (!config.rootInTB)
         {
