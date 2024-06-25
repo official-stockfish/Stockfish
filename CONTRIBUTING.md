@@ -51,6 +51,10 @@ further discussion._
 
 _First time contributors should add their name to [AUTHORS](../AUTHORS)._
 
+_Stockfish's development is not focused on adding new features. Thus any pull
+request introducing new features will potentially be closed without further
+discussion._
+
 ## Code Style
 
 Changes to Stockfish C++ code should respect our coding style defined by
