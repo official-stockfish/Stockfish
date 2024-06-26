@@ -39,10 +39,10 @@ namespace Stockfish {
 class OptionsMap;
 using Value = int;
 
-// Sometimes we don't want to actually bind the threads, but the recipent still
+// Sometimes we don't want to actually bind the threads, but the recipient still
 // needs to think it runs on *some* NUMA node, such that it can access structures
 // that rely on NUMA node knowledge. This class encapsulates this optional process
-// such that the recipent does not need to know whether the binding happened or not.
+// such that the recipient does not need to know whether the binding happened or not.
 class OptionalThreadToNumaNodeBinder {
    public:
     OptionalThreadToNumaNodeBinder(NumaIndex n) :
@@ -87,7 +87,7 @@ class Thread {
     // this name is no longer correct. However, this class (and ThreadPool)
     // require further work to make them properly generic while maintaining
     // appropriate specificity regarding search, from the point of view of an
-    // outside user, so renaming of this function in left for whenever that happens.
+    // outside user, so renaming of this function is left for whenever that happens.
     void   wait_for_search_finished();
     size_t id() const { return idx; }
 
