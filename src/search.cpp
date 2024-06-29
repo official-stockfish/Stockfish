@@ -1369,8 +1369,15 @@ moves_loop:  // When in check, search starts here
               << stat_bonus(depth) * bonus / 25;
     }
 
-    if (PvNode)
-        bestValue = std::min(bestValue, maxValue);
+    // if the child can't find the win (mostly in qsearch), set back this node to the TB loss value probed.
+    if (PvNode && bestValue > maxValue)
+    {
+        assert(maxValue != VALUE_INFINITE);
+        (ss + 1)->pv = pv;
+        ss->pv[0]    = Move::none();
+        bestValue    = maxValue;
+    }
+
 
     // If no good move is found and the previous position was ttPv, then the previous
     // opponent move is probably good and the new position is added to the search tree. (~7 Elo)
