@@ -286,6 +286,8 @@ struct DebugInfo {
 
     DebugInfo() {
 
+        data[0] = 0;
+
         for (size_t i = 1; i < N; i++)
         {
             data[i] = fill;
