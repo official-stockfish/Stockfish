@@ -18,6 +18,7 @@
 
 #include "misc.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <cmath>
@@ -277,17 +278,27 @@ constexpr int MaxDebugSlots = 32;
 
 namespace {
 
-template<size_t N>
+template<size_t N, int64_t fill>
 struct DebugInfo {
-    std::atomic<int64_t> data[N] = {0};
+    std::array<std::atomic<int64_t>, N> data;
 
     constexpr std::atomic<int64_t>& operator[](int index) { return data[index]; }
+
+    DebugInfo() {
+
+        for (size_t i = 1; i < N; i++)
+        {
+            data[i] = fill;
+        }
+    }
 };
 
-DebugInfo<2> hit[MaxDebugSlots];
-DebugInfo<2> mean[MaxDebugSlots];
-DebugInfo<3> stdev[MaxDebugSlots];
-DebugInfo<6> correl[MaxDebugSlots];
+DebugInfo<2, 0>                                   hit[MaxDebugSlots];
+DebugInfo<2, 0>                                   mean[MaxDebugSlots];
+DebugInfo<2, std::numeric_limits<int64_t>::min()> max[MaxDebugSlots];
+DebugInfo<2, std::numeric_limits<int64_t>::max()> min[MaxDebugSlots];
+DebugInfo<3, 0>                                   stdev[MaxDebugSlots];
+DebugInfo<6, 0>                                   correl[MaxDebugSlots];
 
 }  // namespace
 
@@ -302,6 +313,26 @@ void dbg_mean_of(int64_t value, int slot) {
 
     ++mean[slot][0];
     mean[slot][1] += value;
+}
+
+void dbg_max_of(int64_t value, int slot) {
+    ++max[slot][0];
+
+    int64_t current_val = max[slot][1].load();
+    while (current_val < value && !max[slot][1].compare_exchange_weak(current_val, value))
+    {
+        // current_val is updated with the actual value of atomic_val if the exchange fails
+    }
+}
+
+void dbg_min_of(int64_t value, int slot) {
+    ++min[slot][0];
+
+    int64_t current_val = min[slot][1].load();
+    while (current_val > value && !min[slot][1].compare_exchange_weak(current_val, value))
+    {
+        // current_val is updated with the actual value of atomic_val if the exchange fails
+    }
 }
 
 void dbg_stdev_of(int64_t value, int slot) {
@@ -336,6 +367,18 @@ void dbg_print() {
         if ((n = mean[i][0]))
         {
             std::cerr << "Mean #" << i << ": Total " << n << " Mean " << E(mean[i][1]) << std::endl;
+        }
+
+    for (int i = 0; i < MaxDebugSlots; ++i)
+        if ((n = max[i][0]))
+        {
+            std::cerr << "Max #" << i << ": Total " << n << " Max " << max[i][1] << std::endl;
+        }
+
+    for (int i = 0; i < MaxDebugSlots; ++i)
+        if ((n = min[i][0]))
+        {
+            std::cerr << "Min #" << i << ": Total " << n << " Min " << min[i][1] << std::endl;
         }
 
     for (int i = 0; i < MaxDebugSlots; ++i)
