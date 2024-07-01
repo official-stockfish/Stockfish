@@ -68,8 +68,7 @@ namespace Stockfish {
 // does not guarantee the availability of aligned_alloc(). Memory allocated with
 // std_aligned_alloc() must be freed with std_aligned_free().
 void* std_aligned_alloc(size_t alignment, size_t size) {
-    // Apple requires 10.15, which is enforced in the makefile
-#if defined(_ISOC11_SOURCE) || defined(__APPLE__)
+#if !defined(USE_POSIX_ALIGNED_ALLOC) && (defined(_ISOC11_SOURCE) || defined(__APPLE__))
     return aligned_alloc(alignment, size);
 #elif defined(POSIXALIGNEDALLOC)
     void* mem;
