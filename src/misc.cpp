@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
