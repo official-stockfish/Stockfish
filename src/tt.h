@@ -24,6 +24,7 @@
 #include <tuple>
 
 #include "memory.h"
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -81,14 +82,18 @@ class TranspositionTable {
     uint8_t generation() const;  // The current age, used when writing new data to the TT
     std::tuple<bool, TTData, TTWriter>
     probe(const Key key) const;  // The main method, whose retvals separate local vs global objects
-    TTEntry* first_entry(const Key key)
-      const;  // This is the hash function; its only external use is memory prefetching.
+    // Prefetch the cacheline which includes this key's entry
+    inline void prefetch_entry(const Key key) const {
+        prefetch(first_entry(key));
+    }
 
    private:
     friend struct TTEntry;
 
     size_t   clusterCount;
     Cluster* table = nullptr;
+
+    TTEntry* first_entry(const Key key) const;
 
     uint8_t generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
 };

@@ -377,24 +377,6 @@ void sync_cout_end() { std::cout << IO_UNLOCK; }
 // Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
 
-
-#ifdef NO_PREFETCH
-
-void prefetch(const void*) {}
-
-#else
-
-void prefetch(const void* addr) {
-
-    #if defined(_MSC_VER)
-    _mm_prefetch((char const*) addr, _MM_HINT_T0);
-    #else
-    __builtin_prefetch(addr);
-    #endif
-}
-
-#endif
-
 #ifdef _WIN32
     #include <direct.h>
     #define GETCWD _getcwd
