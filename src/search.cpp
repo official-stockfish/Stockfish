@@ -125,7 +125,7 @@ Value value_to_tt(Value v, int ply);
 Value value_from_tt(Value v, int ply, int r50c);
 void  update_pv(Move* pv, Move move, const Move* childPv);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
-void  update_refutations(const Position& pos, Stack* ss, Search::Worker& workerThread, Move move);
+void  update_refutations(Stack* ss, Move move);
 void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
 void update_quiet_stats(
@@ -510,7 +510,6 @@ void Search::Worker::iterative_deepening() {
 }
 
 void Search::Worker::clear() {
-    counterMoves.fill(Move::none());
     mainHistory.fill(0);
     captureHistory.fill(-700);
     pawnHistory.fill(-1188);
@@ -950,11 +949,9 @@ moves_loop:  // When in check, search starts here
                                         nullptr,
                                         (ss - 6)->continuationHistory};
 
-    Move countermove =
-      prevSq != SQ_NONE ? thisThread->counterMoves[pos.piece_on(prevSq)][prevSq] : Move::none();
 
     MovePicker mp(pos, ttData.move, depth, &thisThread->mainHistory, &thisThread->captureHistory,
-                  contHist, &thisThread->pawnHistory, countermove, ss->killers);
+                  contHist, &thisThread->pawnHistory, ss->killers);
 
     value            = bestValue;
     moveCountPruning = false;
@@ -1860,20 +1857,13 @@ void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 }
 
 // Updates move sorting heuristics
-void update_refutations(const Position& pos, Stack* ss, Search::Worker& workerThread, Move move) {
+void update_refutations(Stack* ss, Move move) {
 
     // Update killers
     if (ss->killers[0] != move)
     {
         ss->killers[1] = ss->killers[0];
         ss->killers[0] = move;
-    }
-
-    // Update countermove history
-    if (((ss - 1)->currentMove).is_ok())
-    {
-        Square prevSq                                           = ((ss - 1)->currentMove).to_sq();
-        workerThread.counterMoves[pos.piece_on(prevSq)][prevSq] = move;
     }
 }
 
@@ -1893,7 +1883,7 @@ void update_quiet_histories(
 void update_quiet_stats(
   const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
 
-    update_refutations(pos, ss, workerThread, move);
+    update_refutations(ss, move);
     update_quiet_histories(pos, ss, workerThread, move, bonus);
 }
 
