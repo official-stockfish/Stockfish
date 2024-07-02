@@ -297,16 +297,20 @@ std::string Engine::get_numa_config_as_string() const {
 
 std::string Engine::numa_config_information_as_string() const {
     auto cfgStr = get_numa_config_as_string();
-    return "Available Processors: " + cfgStr;
+    return "Available processors: " + cfgStr;
 }
 
 std::string Engine::thread_binding_information_as_string() const {
-    auto boundThreadsByNode = get_bound_thread_count_by_numa_node();
-    if (boundThreadsByNode.empty())
-        return "";
-
+    auto              boundThreadsByNode = get_bound_thread_count_by_numa_node();
     std::stringstream ss;
-    ss << "NUMA Node Thread Binding: ";
+
+    size_t threadsSize = threads.size();
+    ss << "Using " << threadsSize << (threadsSize > 1 ? " threads" : " thread");
+
+    if (boundThreadsByNode.empty())
+        return ss.str();
+
+    ss << " with NUMA node thread binding: ";
 
     bool isFirst = true;
 

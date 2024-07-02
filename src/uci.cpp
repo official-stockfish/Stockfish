@@ -109,16 +109,17 @@ void UCIEngine::loop() {
                       << engine.get_options() << sync_endl;
 
             sync_cout << "uciok" << sync_endl;
-
-            // keep info strings after uciok for old GUIs
-            print_info_string(engine.numa_config_information_as_string());
-            print_info_string(engine.thread_binding_information_as_string());
         }
 
         else if (token == "setoption")
             setoption(is);
         else if (token == "go")
+        {
+            // send info strings after the go command is sent for old GUIs and python-chess
+            print_info_string(engine.numa_config_information_as_string());
+            print_info_string(engine.thread_binding_information_as_string());
             go(is);
+        }
         else if (token == "position")
             position(is);
         else if (token == "ucinewgame")
