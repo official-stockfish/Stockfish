@@ -15,6 +15,8 @@ jobs:
   Prerelease:
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # For deleting/creating a prerelease
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,9 +106,17 @@ jobs:
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.matrix }}
+    permissions:
+      contents: write # For deleting/creating a (pre)release
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
   ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     needs: [Matrix, Prerelease, ARMCompilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+    permissions:
+      contents: write # For deleting/creating a (pre)release
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
