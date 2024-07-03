@@ -13,6 +13,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: Stockfish
+          persist-credentials: false
 
       - name: build SF
         working-directory: Stockfish/src
@@ -24,6 +25,7 @@ jobs:
           repository: vondele/matetrack
           path: matetrack
           ref: 20287a1a145f30a166b7ef251eddb611e4e44fbf
+          persist-credentials: false
 
       - name: matetrack install deps
         working-directory: matetrack

@@ -25,6 +25,8 @@ jobs:
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download artifact from compilation
         uses: actions/download-artifact@v4
