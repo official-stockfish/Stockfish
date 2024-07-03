@@ -25,6 +25,8 @@ jobs:
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install fixed GCC on Linux
         if: runner.os == 'Linux'
@@ -86,4 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-          path: .
+          path: |
+             .
+             !.git
+             !.output

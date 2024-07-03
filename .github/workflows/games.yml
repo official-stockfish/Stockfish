@@ -13,6 +13,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: Stockfish
+          persist-credentials: false
 
       - name: build debug enabled version of SF
         working-directory: Stockfish/src
@@ -24,6 +25,7 @@ jobs:
           repository: Disservin/fast-chess
           path: fast-chess
           ref: d54af1910d5479c669dc731f1f54f9108a251951
+          persist-credentials: false
 
       - name: fast-chess build
         working-directory: fast-chess
