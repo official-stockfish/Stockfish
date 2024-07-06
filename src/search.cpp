@@ -1075,8 +1075,8 @@ moves_loop:  // When in check, search starts here
         // We take care to not overdo to avoid search getting stuck.
         if (ss->ply < thisThread->rootDepth * 2)
         {
-            // Singular extension search (~94 Elo). If all moves but one fail low on a
-            // search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
+            // Singular extension search (~76 Elo, ~170 nElo). If all moves but one fail
+            // low on a search of (alpha-s, beta-s), and just one fails high on (alpha, beta),
             // then that move is singular and should be extended. To verify this we do
             // a reduced search on the position excluding the ttMove and if the result
             // is lower than ttValue minus a margin, then we will extend the ttMove.
