@@ -861,8 +861,6 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Move       probcutCapturesSearched[32];
-        int        probcutCaptureCount = 0;
         Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
@@ -900,25 +898,12 @@ Value Search::Worker::search(
                     thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
                       << stat_bonus(depth - 2);
 
-                    for (int i = 0; i < probcutCaptureCount; i++)
-                    {
-                        movedPiece = pos.moved_piece(probcutCapturesSearched[i]);
-                        captured   = pos.piece_on(probcutCapturesSearched[i].to_sq());
-
-                        thisThread->captureHistory[movedPiece][probcutCapturesSearched[i].to_sq()]
-                                                  [type_of(captured)]
-                          << -stat_malus(depth - 3);
-                    }
-
                     // Save ProbCut data into transposition table
                     ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                    depth - 3, move, unadjustedStaticEval, tt.generation());
                     return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
                                                                      : value;
                 }
-
-                if (probcutCaptureCount < 32)
-                    probcutCapturesSearched[probcutCaptureCount++] = move;
             }
 
         Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
