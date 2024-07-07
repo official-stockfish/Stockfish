@@ -82,7 +82,7 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 // does not hit the tablebase range.
 Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
     auto cv = w.correctionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
-    v += cv * std::abs(cv) / 5073;
+    v += 66 * cv / 512;
     return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
