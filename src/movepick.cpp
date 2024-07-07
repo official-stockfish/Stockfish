@@ -91,14 +91,14 @@ MovePicker::MovePicker(const Position&              p,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
                        const PawnHistory*           ph,
-                       const Move*                  killers) :
+                       Move                         killer) :
     pos(p),
     mainHistory(mh),
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
     ttMove(ttm),
-    refutations{{killers[0], 0}},
+    refutations{{killer, 0}},
     depth(d) {
     assert(d > 0);
 

@@ -160,7 +160,7 @@ class MovePicker {
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
-               const Move*);
+               Move);
     MovePicker(const Position&,
                Move,
                Depth,
