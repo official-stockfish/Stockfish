@@ -91,14 +91,14 @@ MovePicker::MovePicker(const Position&              p,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
                        const PawnHistory*           ph,
-                       const Move*                  killers) :
+                       Move                         killer) :
     pos(p),
     mainHistory(mh),
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
     ttMove(ttm),
-    refutations{{killers[0], 0}, {killers[1], 0}},
+    refutation{killer, 0},
     depth(d) {
     assert(d > 0);
 
@@ -267,11 +267,6 @@ top:
                                                           : (*endBadCaptures++ = *cur, false);
             }))
             return *(cur - 1);
-
-        // Prepare the pointers to loop over the refutations array
-        cur      = std::begin(refutations);
-        endMoves = std::end(refutations);
-
         ++stage;
         [[fallthrough]];
 
@@ -279,7 +274,7 @@ top:
         if (select<Next>([&]() {
                 return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
             }))
-            return *(cur - 1);
+            return refutation;
         ++stage;
         [[fallthrough]];
 
@@ -297,8 +292,7 @@ top:
         [[fallthrough]];
 
     case GOOD_QUIET :
-        if (!skipQuiets
-            && select<Next>([&]() { return *cur != refutations[0] && *cur != refutations[1]; }))
+        if (!skipQuiets && select<Next>([&]() { return *cur != refutation; }))
         {
             if ((cur - 1)->value > -7998 || (cur - 1)->value <= quiet_threshold(depth))
                 return *(cur - 1);
@@ -327,7 +321,7 @@ top:
 
     case BAD_QUIET :
         if (!skipQuiets)
-            return select<Next>([&]() { return *cur != refutations[0] && *cur != refutations[1]; });
+            return select<Next>([&]() { return *cur != refutation; });
 
         return Move::none();
 
