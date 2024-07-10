@@ -112,14 +112,16 @@ class Logger {
 
 
 // Returns the full name of the current Stockfish version.
-// For local dev compiles we try to append the commit sha and commit date
-// from git if that fails only the local compilation date is set and "nogit" is specified:
-// Stockfish dev-YYYYMMDD-SHA
-// or
-// Stockfish dev-YYYYMMDD-nogit
+//
+// For local dev compiles we try to append the commit SHA and
+// commit date from git. If that fails only the local compilation
+// date is set and "nogit" is specified:
+//      Stockfish dev-YYYYMMDD-SHA
+//      or
+//      Stockfish dev-YYYYMMDD-nogit
 //
 // For releases (non-dev builds) we only include the version number:
-// Stockfish version
+//      Stockfish version
 std::string engine_info(bool to_uci) {
     std::stringstream ss;
     ss << "Stockfish " << version << std::setfill('0');
@@ -131,8 +133,9 @@ std::string engine_info(bool to_uci) {
         ss << stringify(GIT_DATE);
 #else
         constexpr std::string_view months("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec");
-        std::string                month, day, year;
-        std::stringstream          date(__DATE__);  // From compiler, format is "Sep 21 2008"
+
+        std::string       month, day, year;
+        std::stringstream date(__DATE__);  // From compiler, format is "Sep 21 2008"
 
         date >> month >> day >> year;
         ss << year << std::setw(2) << std::setfill('0') << (1 + months.find(month) / 4)
