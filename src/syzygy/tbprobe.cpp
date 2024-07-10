@@ -443,6 +443,8 @@ class TBTables {
 
     std::deque<TBTable<WDL>> wdlTable;
     std::deque<TBTable<DTZ>> dtzTable;
+    size_t                   foundDTZFiles = 0;
+    size_t                   foundWDLFiles = 0;
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
         uint32_t homeBucket = uint32_t(key) & (Size - 1);
@@ -486,9 +488,16 @@ class TBTables {
         memset(hashTable, 0, sizeof(hashTable));
         wdlTable.clear();
         dtzTable.clear();
+        foundDTZFiles = 0;
+        foundWDLFiles = 0;
     }
-    size_t size() const { return wdlTable.size(); }
-    void   add(const std::vector<PieceType>& pieces);
+
+    void info() const {
+        sync_cout << "info string Found " << foundWDLFiles << " WDL and " << foundDTZFiles
+                  << " DTZ tablebase files (up to " << MaxCardinality << "-man)." << sync_endl;
+    }
+
+    void add(const std::vector<PieceType>& pieces);
 };
 
 TBTables TBTables;
@@ -501,13 +510,22 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
 
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
+    code.insert(code.find('K', 1), "v");
 
-    TBFile file(code.insert(code.find('K', 1), "v") + ".rtbw");  // KRK -> KRvK
+    TBFile file_dtz(code + ".rtbz");  // KRK -> KRvK
+    if (file_dtz.is_open())
+    {
+        file_dtz.close();
+        foundDTZFiles++;
+    }
+
+    TBFile file(code + ".rtbw");  // KRK -> KRvK
 
     if (!file.is_open())  // Only WDL file is checked
         return;
 
     file.close();
+    foundWDLFiles++;
 
     MaxCardinality = std::max(int(pieces.size()), MaxCardinality);
 
@@ -1466,7 +1484,7 @@ void Tablebases::init(const std::string& paths) {
         }
     }
 
-    sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
+    TBTables.info();
 }
 
 // Probe the WDL table for a particular position.
