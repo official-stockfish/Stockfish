@@ -354,13 +354,18 @@ class FeatureTransformer {
 
             for (IndexType j = 0; j < NumOutputChunks; ++j)
             {
-                    // What we want to do is multiply inputs in a pairwise manner (after clipping), and then shift right by 9.
-                    // Instead, we shift left by 7, and use mulhi, stripping the bottom 16 bits, effectively shifting right by 16,
-                    // resulting in a net shift of 9 bits. We use mulhi because it maintains the sign of the multiplication (unlike mullo),
-                    // allowing us to make use of packus to clip 2 of the inputs, resulting in a save of 2 "vec_max_16" calls.
-                    // A special case is when we use NEON, where we shift left by 6 instead, because the instruction "vqdmulhq_s16"
-                    // also doubles the return value after the multiplication, adding an extra shift to the left by 1, so we
-                    // compensate by shifting less before the multiplication.
+                    // What we want to do is multiply inputs in a pairwise manner
+                    // (after clipping), and then shift right by 9. Instead, we
+                    // shift left by 7, and use mulhi, stripping the bottom 16 bits,
+                    // effectively shifting right by 16, resulting in a net shift
+                    // of 9 bits. We use mulhi because it maintains the sign of
+                    // the multiplication (unlike mullo), allowing us to make use
+                    // of packus to clip 2 of the inputs, resulting in a save of 2
+                    // "vec_max_16" calls. A special case is when we use NEON,
+                    // where we shift left by 6 instead, because the instruction
+                    // "vqdmulhq_s16" also doubles the return value after the
+                    // multiplication, adding an extra shift to the left by 1, so
+                    // we compensate by shifting less before the multiplication.
 
     #if defined(USE_SSE2)
                 constexpr int shift = 7;
@@ -426,10 +431,10 @@ class FeatureTransformer {
     }
 
     // NOTE: The parameter states_to_update is an array of position states.
-    //       All states must be sequential, that is states_to_update[i] must either be reachable
-    //       by repeatedly applying ->previous from states_to_update[i+1].
-    //       computed_st must be reachable by repeatedly applying ->previous on
-    //       states_to_update[0].
+    //       All states must be sequential, that is states_to_update[i] must
+    //       either be reachable by repeatedly applying ->previous from
+    //       states_to_update[i+1], and computed_st must be reachable by
+    //       repeatedly applying ->previous on states_to_update[0].
     template<Color Perspective, size_t N>
     void update_accumulator_incremental(const Position& pos,
                                         StateInfo*      computed_st,
@@ -446,7 +451,7 @@ class FeatureTransformer {
 
 #ifdef VECTOR
         // Gcc-10.2 unnecessarily spills AVX2 registers if this array
-        // is defined in the VECTOR code below, once in each branch
+        // is defined in the VECTOR code below, once in each branch.
         vec_t      acc[NumRegs];
         psqt_vec_t psqt[NumPsqtRegs];
 #endif
@@ -474,7 +479,8 @@ class FeatureTransformer {
 
         StateInfo* st = computed_st;
 
-        // Now update the accumulators listed in states_to_update[], where the last element is a sentinel.
+        // Now update the accumulators listed in states_to_update[],
+        // where the last element is a sentinel.
 #ifdef VECTOR
 
         if (N == 1 && (removed[0].size() == 1 || removed[0].size() == 2) && added[0].size() == 1)
@@ -794,7 +800,7 @@ class FeatureTransformer {
         }
 
         // The accumulator of the refresh entry has been updated.
-        // Now copy its content to the actual accumulator we were refreshing
+        // Now copy its content to the actual accumulator we were refreshing.
 
         std::memcpy(accumulator.accumulation[Perspective], entry.accumulation,
                     sizeof(BiasType) * HalfDimensions);
@@ -827,7 +833,7 @@ class FeatureTransformer {
 
         if ((oldest_st->*accPtr).computed[Perspective])
         {
-            // Only update current position accumulator to minimize work.
+            // Only update current position accumulator to minimize work
             StateInfo* states_to_update[1] = {pos.state()};
             update_accumulator_incremental<Perspective, 1>(pos, oldest_st, states_to_update);
         }
@@ -846,8 +852,8 @@ class FeatureTransformer {
             if (next == nullptr)
                 return;
 
-            // Now update the accumulators listed in states_to_update[], where the last element is a sentinel.
-            // Currently we update 2 accumulators.
+            // Now update the accumulators listed in states_to_update[], where
+            // the last element is a sentinel. Currently we update two accumulators:
             //     1. for the current position
             //     2. the next accumulator after the computed one
             // The heuristic may change in the future.
