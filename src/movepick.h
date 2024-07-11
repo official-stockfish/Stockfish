@@ -160,14 +160,7 @@ class MovePicker {
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
-               Move);
-    MovePicker(const Position&,
-               Move,
-               Depth,
-               const ButterflyHistory*,
-               const CapturePieceToHistory*,
-               const PieceToHistory**,
-               const PawnHistory*);
+               Move killer = Move::none());
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
