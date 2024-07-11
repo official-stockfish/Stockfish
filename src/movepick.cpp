@@ -98,29 +98,12 @@ MovePicker::MovePicker(const Position&              p,
     ttMove(ttm),
     killer(km),
     depth(d) {
-    assert(d > 0);
 
-    stage = (pos.checkers() ? EVASION_TT : MAIN_TT) + !(ttm && pos.pseudo_legal(ttm));
-}
+    if (pos.checkers())
+        stage = EVASION_TT + !(ttm && pos.pseudo_legal(ttm));
 
-// Constructor for quiescence search
-MovePicker::MovePicker(const Position&              p,
-                       Move                         ttm,
-                       Depth                        d,
-                       const ButterflyHistory*      mh,
-                       const CapturePieceToHistory* cph,
-                       const PieceToHistory**       ch,
-                       const PawnHistory*           ph) :
-    pos(p),
-    mainHistory(mh),
-    captureHistory(cph),
-    continuationHistory(ch),
-    pawnHistory(ph),
-    ttMove(ttm),
-    depth(d) {
-    assert(d <= 0);
-
-    stage = (pos.checkers() ? EVASION_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
+    else
+        stage = (depth > 0 ? MAIN_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
 // Constructor for ProbCut: we generate captures with SEE greater than or equal
