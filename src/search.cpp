@@ -123,7 +123,7 @@ Value value_to_tt(Value v, int ply);
 Value value_from_tt(Value v, int ply, int r50c);
 void  update_pv(Move* pv, Move move, const Move* childPv);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
-void  update_refutations(Stack* ss, Move move);
+void  update_killer(Stack* ss, Move move);
 void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
 void update_quiet_stats(
@@ -608,9 +608,9 @@ Value Search::Worker::search(
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    bestMove             = Move::none();
-    (ss + 2)->killers[0] = (ss + 2)->killers[1] = Move::none();
-    (ss + 2)->cutoffCnt                         = 0;
+    bestMove            = Move::none();
+    (ss + 1)->killer    = Move::none();
+    (ss + 2)->cutoffCnt = 0;
     Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
     ss->statScore = 0;
 
@@ -934,7 +934,7 @@ moves_loop:  // When in check, search starts here
 
 
     MovePicker mp(pos, ttData.move, depth, &thisThread->mainHistory, &thisThread->captureHistory,
-                  contHist, &thisThread->pawnHistory, ss->killers);
+                  contHist, &thisThread->pawnHistory, ss->killer);
 
     value            = bestValue;
     moveCountPruning = false;
@@ -1157,7 +1157,7 @@ moves_loop:  // When in check, search starts here
         // Increase reduction for cut nodes (~4 Elo)
         if (cutNode)
             r += 2 - (ttData.depth >= depth && ss->ttPv)
-               + (!ss->ttPv && move != ttData.move && move != ss->killers[0]);
+               + (!ss->ttPv && move != ttData.move && move != ss->killer);
 
         // Increase reduction if ttMove is a capture (~3 Elo)
         if (ttCapture)
@@ -1801,7 +1801,7 @@ void update_all_stats(const Position& pos,
     // main killer move in previous ply when it gets refuted.
     if (prevSq != SQ_NONE
         && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit
-            || ((ss - 1)->currentMove == (ss - 1)->killers[0]))
+            || ((ss - 1)->currentMove == (ss - 1)->killer))
         && !pos.captured_piece())
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveMalus);
 
@@ -1832,14 +1832,10 @@ void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 }
 
 // Updates move sorting heuristics
-void update_refutations(Stack* ss, Move move) {
+void update_killer(Stack* ss, Move move) {
 
     // Update killers
-    if (ss->killers[0] != move)
-    {
-        ss->killers[1] = ss->killers[0];
-        ss->killers[0] = move;
-    }
+    ss->killer = move;
 }
 
 void update_quiet_histories(
@@ -1858,7 +1854,7 @@ void update_quiet_histories(
 void update_quiet_stats(
   const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
 
-    update_refutations(ss, move);
+    update_killer(ss, move);
     update_quiet_histories(pos, ss, workerThread, move, bonus);
 }
 
