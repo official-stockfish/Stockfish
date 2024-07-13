@@ -809,7 +809,7 @@ Value Search::Worker::search(
 
         pos.do_null_move(st, tt);
 
-        Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, !cutNode);
+        Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, false);
 
         pos.undo_null_move();
 
