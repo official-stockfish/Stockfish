@@ -128,16 +128,14 @@ void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
 void update_quiet_stats(
   const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
-void update_all_stats(const Position& pos,
-                      Stack*          ss,
-                      Search::Worker& workerThread,
-                      Move            bestMove,
-                      Square          prevSq,
-                      Move*           quietsSearched,
-                      int             quietCount,
-                      Move*           capturesSearched,
-                      int             captureCount,
-                      Depth           depth);
+void update_all_stats(const Position&      pos,
+                      Stack*               ss,
+                      Search::Worker&      workerThread,
+                      Move                 bestMove,
+                      Square               prevSq,
+                      ValueList<Move, 32>& quietsSearched,
+                      ValueList<Move, 32>& capturesSearched,
+                      Depth                depth);
 
 }  // namespace
 
@@ -554,7 +552,7 @@ Value Search::Worker::search(
     assert(0 < depth && depth < MAX_PLY);
     assert(!(PvNode && cutNode));
 
-    Move      pv[MAX_PLY + 1], capturesSearched[32], quietsSearched[32];
+    Move      pv[MAX_PLY + 1];
     StateInfo st;
     ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
 
@@ -563,18 +561,20 @@ Value Search::Worker::search(
     Depth extension, newDepth;
     Value bestValue, value, eval, maxValue, probCutBeta;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
-    bool  capture, moveCountPruning, ttCapture;
+    bool  capture, ttCapture;
     Piece movedPiece;
-    int   moveCount, captureCount, quietCount;
+
+    ValueList<Move, 32> capturesSearched;
+    ValueList<Move, 32> quietsSearched;
 
     // Step 1. Initialize node
     Worker* thisThread = this;
     ss->inCheck        = pos.checkers();
     priorCapture       = pos.captured_piece();
     Color us           = pos.side_to_move();
-    moveCount = captureCount = quietCount = ss->moveCount = 0;
-    bestValue                                             = -VALUE_INFINITE;
-    maxValue                                              = VALUE_INFINITE;
+    ss->moveCount      = 0;
+    bestValue          = -VALUE_INFINITE;
+    maxValue           = VALUE_INFINITE;
 
     // Check for the available remaining time
     if (is_mainthread())
@@ -936,8 +936,10 @@ moves_loop:  // When in check, search starts here
     MovePicker mp(pos, ttData.move, depth, &thisThread->mainHistory, &thisThread->captureHistory,
                   contHist, &thisThread->pawnHistory, ss->killer);
 
-    value            = bestValue;
-    moveCountPruning = false;
+    value = bestValue;
+
+    int  moveCount        = 0;
+    bool moveCountPruning = false;
 
     // Step 13. Loop through all pseudo-legal moves until no moves remain
     // or a beta cutoff occurs.
@@ -1334,9 +1336,9 @@ moves_loop:  // When in check, search starts here
         if (move != bestMove && moveCount <= 32)
         {
             if (capture)
-                capturesSearched[captureCount++] = move;
+                capturesSearched.push_back(move);
             else
-                quietsSearched[quietCount++] = move;
+                quietsSearched.push_back(move);
         }
     }
 
@@ -1358,8 +1360,7 @@ moves_loop:  // When in check, search starts here
     // If there is a move that produces search value greater than alpha,
     // we update the stats of searched moves.
     else if (bestMove)
-        update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, quietCount,
-                         capturesSearched, captureCount, depth);
+        update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth);
 
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
@@ -1765,16 +1766,14 @@ void update_pv(Move* pv, Move move, const Move* childPv) {
 
 
 // Updates stats at the end of search() when a bestMove is found
-void update_all_stats(const Position& pos,
-                      Stack*          ss,
-                      Search::Worker& workerThread,
-                      Move            bestMove,
-                      Square          prevSq,
-                      Move*           quietsSearched,
-                      int             quietCount,
-                      Move*           capturesSearched,
-                      int             captureCount,
-                      Depth           depth) {
+void update_all_stats(const Position&      pos,
+                      Stack*               ss,
+                      Search::Worker&      workerThread,
+                      Move                 bestMove,
+                      Square               prevSq,
+                      ValueList<Move, 32>& quietsSearched,
+                      ValueList<Move, 32>& capturesSearched,
+                      Depth                depth) {
 
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
     Piece                  moved_piece    = pos.moved_piece(bestMove);
@@ -1788,8 +1787,8 @@ void update_all_stats(const Position& pos,
         update_quiet_stats(pos, ss, workerThread, bestMove, quietMoveBonus);
 
         // Decrease stats for all non-best quiet moves
-        for (int i = 0; i < quietCount; ++i)
-            update_quiet_histories(pos, ss, workerThread, quietsSearched[i], -quietMoveMalus);
+        for (Move move : quietsSearched)
+            update_quiet_histories(pos, ss, workerThread, move, -quietMoveMalus);
     }
     else
     {
@@ -1807,11 +1806,11 @@ void update_all_stats(const Position& pos,
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveMalus);
 
     // Decrease stats for all non-best capture moves
-    for (int i = 0; i < captureCount; ++i)
+    for (Move move : capturesSearched)
     {
-        moved_piece = pos.moved_piece(capturesSearched[i]);
-        captured    = type_of(pos.piece_on(capturesSearched[i].to_sq()));
-        captureHistory[moved_piece][capturesSearched[i].to_sq()][captured] << -quietMoveMalus;
+        moved_piece = pos.moved_piece(move);
+        captured    = type_of(pos.piece_on(move.to_sq()));
+        captureHistory[moved_piece][move.to_sq()][captured] << -quietMoveMalus;
     }
 }
 
