@@ -194,7 +194,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
                 if (o.type == "string")
                 {
                     std::string defaultValue = o.defaultValue.empty() ? "<empty>" : o.defaultValue;
-                    os << " default " << o.defaultValue;
+                    os << " default " << defaultValue;
                 }
 
                 if (o.type == "spin")
