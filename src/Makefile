@@ -1057,9 +1057,8 @@ $(BDIR)%.o : %.cpp | $(BDIR)
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
 $(BDIR):
-	@if test -d "$@" ;then \
-    echo "Warning: Updating, writing files to existent $@ directory"; \
-  else mkdir -p $@; fi
+	@if test -d "$@" ;then echo "Updating, writing files to existent $@ directory"; \
+		else mkdir -p $@; fi
 
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
