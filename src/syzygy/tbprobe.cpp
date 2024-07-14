@@ -1344,7 +1344,7 @@ void Tablebases::init(const std::string& paths) {
     MaxCardinality = 0;
     TBFile::Paths  = paths;
 
-    if (paths.empty() || paths == "<empty>")
+    if (paths.empty())
         return;
 
     // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27
