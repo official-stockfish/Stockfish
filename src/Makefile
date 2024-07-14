@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+.DEFAULT_GOAL := help
 
 ### ==========================================================================
 ### Section 1. General Configuration
@@ -28,36 +29,26 @@ endif
 ### Target Windows OS
 ifeq ($(OS),Windows_NT)
 	ifneq ($(COMP),ndk)
-		target_windows = yes
+		target_windows := yes
 	endif
 else ifeq ($(COMP),mingw)
-	target_windows = yes
+	target_windows := yes
 	ifeq ($(WINE_PATH),)
 		WINE_PATH := $(shell which wine)
 	endif
 endif
 
-### Executable name
-ifeq ($(target_windows),yes)
-	EXE = stockfish.exe
-else
-	EXE = stockfish
-endif
-
 ### Installation dir definitions
-PREFIX = /usr/local
-BINDIR = $(PREFIX)/bin
-
-### Built-in benchmark for pgo-builds
-PGOBENCH = $(WINE_PATH) ./$(EXE) bench
+PREFIX := /usr/local
+BINDIR := $(PREFIX)/bin
 
 ### Source and object files
-SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
+SRCS := benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 	misc.cpp movegen.cpp movepick.cpp position.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/nnue_misc.cpp nnue/features/half_ka_v2_hm.cpp nnue/network.cpp engine.cpp score.cpp memory.cpp
 
-HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h \
+HEADERS := benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h \
 		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/layers/affine_transform.h \
 		nnue/layers/affine_transform_sparse_input.h nnue/layers/clipped_relu.h nnue/layers/simd.h \
 		nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h nnue/nnue_architecture.h \
@@ -65,9 +56,26 @@ HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h \
 		search.h syzygy/tbprobe.h thread.h thread_win32_osx.h timeman.h \
 		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h engine.h score.h numa.h memory.h
 
-OBJS = $(notdir $(SRCS:.cpp=.o))
+OBJS := $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy:nnue:nnue/features
+VPATH := syzygy:nnue:nnue/features
+
+BUILDIR ?= .
+DIR ?= $(BUILDIR)
+BDIR := $(DIR:/=)/
+
+OBJS := $(addprefix $(BDIR), $(OBJS)) 
+
+### Executable name
+EXE := $(BDIR)stockfish
+ifeq ($(target_windows),yes)
+	EXE := $(EXE).exe
+endif
+
+DEP := $(BDIR).depend
+
+### Built-in benchmark for pgo-builds
+PGOBENCH := $(WINE_PATH) $(EXE) bench
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -375,7 +383,6 @@ ifeq ($(ARCH),loongarch64)
 endif
 endif
 
-
 ### ==========================================================================
 ### Section 3. Low-level Configuration
 ### ==========================================================================
@@ -458,11 +465,14 @@ ifeq ($(COMP),clang)
 	comp=clang
 	CXX=clang++
 	ifeq ($(target_windows),yes)
-		CXX=x86_64-w64-mingw32-clang++
+		ifeq ($(shell command -v $(CXX) &>/dev/null),false)
+			CXX=x86_64-w64-mingw32-clang++
+		endif
 	endif
 
 	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-prototypes \
 	            -Wconditional-uninitialized
+	#$(warning CXXFLAGS $(CXXFLAGS))
 
 	ifeq ($(filter $(KERNEL),Darwin OpenBSD FreeBSD),)
 	ifeq ($(target_windows),)
@@ -794,7 +804,7 @@ help:
 	@echo ""
 	@echo "To compile stockfish, type: "
 	@echo ""
-	@echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx]"
+	@echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx] [DIR=build directory]"
 	@echo ""
 	@echo "Supported targets:"
 	@echo ""
@@ -854,13 +864,12 @@ help:
 	@echo ""
 	@echo "make -j profile-build ARCH=x86-64-avxvnni"
 	@echo "make -j profile-build ARCH=x86-64-avxvnni COMP=gcc COMPCXX=g++-12.0"
-	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang"
+	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang DIR=clang_build"
 	@echo ""
 ifneq ($(SUPPORTED_ARCH), true)
 	@echo "Specify a supported architecture with the ARCH option for more details"
 	@echo ""
 endif
-
 
 .PHONY: help analyze build profile-build strip install clean net \
 	objclean profileclean config-sanity \
@@ -872,8 +881,8 @@ endif
 analyze: net config-sanity objclean
 	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) $(OBJS)
 
-build: net config-sanity
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
+build: net config-sanity all
+#	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) all
 
 profile-build: net config-sanity objclean profileclean
 	@echo ""
@@ -896,19 +905,20 @@ strip:
 
 install:
 	-mkdir -p -m 755 $(BINDIR)
+	$(STRIP) $(EXE)
 	-cp $(EXE) $(BINDIR)
-	$(STRIP) $(BINDIR)/$(EXE)
 
 # clean all
 clean: objclean profileclean
-	@rm -f .depend *~ core
+	@rm -f $(DEP) $(BDIR){*~,core}
 
 # clean binaries and objects
 objclean:
-	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o
+	@rm -f $(EXE) $(BDIR){*.o,syzygy/*.o,nnue/*.o,nnue/features/*.o}
 
 # clean auxiliary profiling files
 profileclean:
+	@cd $(BDIR)
 	@rm -rf profdir
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
 	@rm -f stockfish.profdata *.profraw
@@ -916,6 +926,7 @@ profileclean:
 	@rm -f stockfish.*lt*
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
+	@cd - >/dev/null
 
 define fetch_network
 	@echo "Default net: $(nnuenet)"
@@ -974,15 +985,12 @@ net:
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
 
-# default target
-default:
-	help
 
 ### ==========================================================================
 ### Section 5. Private Targets
 ### ==========================================================================
 
-all: $(EXE) .depend
+all: $(EXE) $(DEP)
 
 config-sanity: net
 	@echo ""
@@ -1043,7 +1051,15 @@ config-sanity: net
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
 $(EXE): $(OBJS)
-	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	+$(CXX) $(LDFLAGS) $^ -o $@
+
+$(BDIR)%.o : %.cpp | $(BDIR)
+	$(CXX) -c $(CXXFLAGS) $< -o $@
+
+$(BDIR):
+	@if test -d "$@" ;then \
+    echo "Warning: Updating, writing files to existent $@ directory"; \
+  else mkdir -p $@; fi
 
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
@@ -1090,9 +1106,9 @@ icx-profile-use:
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
-.depend: $(SRCS)
+$(DEP): $(BDIR) $(SRCS)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
--include .depend
+-include $(DEP)
 endif
