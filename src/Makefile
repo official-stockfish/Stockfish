@@ -918,15 +918,14 @@ objclean:
 
 # clean auxiliary profiling files
 profileclean:
-	@cd $(BDIR)
-	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
-	@rm -f stockfish.profdata *.profraw
-	@rm -f stockfish.*args*
-	@rm -f stockfish.*lt*
-	@rm -f stockfish.res
-	@rm -f ./-lstdc++.res
-	@cd - >/dev/null
+	@cd $(BDIR) \
+	rm -rf profdir \
+	rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out \
+	rm -f stockfish.profdata *.profraw \
+	rm -f stockfish.*args* \
+	rm -f stockfish.*lt* \
+	rm -f stockfish.res ./-lstdc++.res \
+	cd - >/dev/null
 
 define fetch_network
 	@echo "Default net: $(nnuenet)"
@@ -1053,12 +1052,10 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) $(LDFLAGS) $^ -o $@
 
-$(BDIR)%.o : %.cpp | $(BDIR)
+$(BDIR)%.o : %.cpp |$(BDIR)
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-$(BDIR):
-	@if test -d "$@" ;then echo "Updating, writing files to existent $@ directory"; \
-		else mkdir -p $@; fi
+$(BDIR): ;@echo;echo "Creating build directory '$@'"; mkdir -p "$@"
 
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
