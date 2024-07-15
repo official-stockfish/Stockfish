@@ -191,13 +191,13 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
                 if (o.type == "check" || o.type == "combo")
                     os << " default " << o.defaultValue;
 
-                if (o.type == "string")
+                else if (o.type == "string")
                 {
                     std::string defaultValue = o.defaultValue.empty() ? "<empty>" : o.defaultValue;
                     os << " default " << defaultValue;
                 }
 
-                if (o.type == "spin")
+                else if (o.type == "spin")
                     os << " default " << int(stof(o.defaultValue)) << " min " << o.min << " max "
                        << o.max;
 
