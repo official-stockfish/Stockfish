@@ -802,73 +802,73 @@ endif
 
 help:
 	@echo ""
-	@echo "To compile stockfish, type: "
-	@echo ""
-	@echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx] [DIR=build directory]"
-	@echo ""
-	@echo "Supported targets:"
-	@echo ""
-	@echo "help                    > Display architecture details"
-	@echo "profile-build           > standard build with profile-guided optimization"
-	@echo "build                   > skip profile-guided optimization"
-	@echo "net                     > Download the default nnue nets"
-	@echo "strip                   > Strip executable"
-	@echo "install                 > Install executable"
-	@echo "clean                   > Clean up"
-	@echo ""
-	@echo "Supported archs:"
-	@echo ""
-	@echo "native                  > select the best architecture for the host processor (default)"
-	@echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support"
-	@echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide"
-	@echo "x86-64-avx512           > x86 64-bit with avx512 support"
-	@echo "x86-64-avxvnni          > x86 64-bit with vnni 256bit support"
-	@echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
-	@echo "x86-64-avx2             > x86 64-bit with avx2 support"
-	@echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
-	@echo "x86-64-modern           > deprecated, currently x86-64-sse41-popcnt"
-	@echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
-	@echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 compile and popcnt support"
-	@echo "x86-64                  > x86 64-bit generic (with sse2 support)"
-	@echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
-	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
-	@echo "x86-32                  > x86 32-bit generic (with mmx compile support)"
-	@echo "ppc-64                  > PPC 64-bit"
-	@echo "ppc-32                  > PPC 32-bit"
-	@echo "armv7                   > ARMv7 32-bit"
-	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
-	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
-	@echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support"
-	@echo "e2k                     > Elbrus 2000"
-	@echo "apple-silicon           > Apple silicon ARM64"
-	@echo "general-64              > unspecified 64-bit"
-	@echo "general-32              > unspecified 32-bit"
-	@echo "riscv64                 > RISC-V 64-bit"
-	@echo "loongarch64             > LoongArch 64-bit"
-	@echo ""
-	@echo "Supported compilers:"
-	@echo ""
-	@echo "gcc                     > GNU compiler (default)"
-	@echo "mingw                   > GNU compiler with MinGW under Windows"
-	@echo "clang                   > LLVM Clang compiler"
-	@echo "icx                     > Intel oneAPI DPC++/C++ Compiler"
-	@echo "ndk                     > Google NDK to cross-compile for Android"
-	@echo ""
-	@echo "Simple examples. If you don't know what to do, you likely want to run one of: "
-	@echo ""
-	@echo "make -j profile-build ARCH=x86-64-avx2    # typically a fast compile for common systems "
-	@echo "make -j profile-build ARCH=x86-64-sse41-popcnt  # A more portable compile for 64-bit systems "
-	@echo "make -j profile-build ARCH=x86-64         # A portable compile for 64-bit systems "
-	@echo ""
-	@echo "Advanced examples, for experienced users: "
-	@echo ""
-	@echo "make -j profile-build ARCH=x86-64-avxvnni"
-	@echo "make -j profile-build ARCH=x86-64-avxvnni COMP=gcc COMPCXX=g++-12.0"
-	@echo "make -j build ARCH=x86-64-ssse3 COMP=clang DIR=clang_build"
-	@echo ""
+	echo "To compile stockfish, type: "
+	echo ""
+	echo "make -j target [ARCH=arch] [COMP=compiler] [COMPCXX=cxx] [DIR=build directory]"
+	echo ""
+	echo "Supported targets:"
+	echo ""
+	echo "help                    > Display architecture details"
+	echo "profile-build           > standard build with profile-guided optimization"
+	echo "build                   > skip profile-guided optimization"
+	echo "net                     > Download the default nnue nets"
+	echo "strip                   > Strip executable"
+	echo "install                 > Install executable"
+	echo "clean                   > Clean up"
+	echo ""
+	echo "Supported archs:"
+	echo ""
+	echo "native                  > select the best architecture for the host processor (default)"
+	echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support"
+	echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide"
+	echo "x86-64-avx512           > x86 64-bit with avx512 support"
+	echo "x86-64-avxvnni          > x86 64-bit with vnni 256bit support"
+	echo "x86-64-bmi2             > x86 64-bit with bmi2 support"
+	echo "x86-64-avx2             > x86 64-bit with avx2 support"
+	echo "x86-64-sse41-popcnt     > x86 64-bit with sse41 and popcnt support"
+	echo "x86-64-modern           > deprecated, currently x86-64-sse41-popcnt"
+	echo "x86-64-ssse3            > x86 64-bit with ssse3 support"
+	echo "x86-64-sse3-popcnt      > x86 64-bit with sse3 compile and popcnt support"
+	echo "x86-64                  > x86 64-bit generic (with sse2 support)"
+	echo "x86-32-sse41-popcnt     > x86 32-bit with sse41 and popcnt support"
+	echo "x86-32-sse2             > x86 32-bit with sse2 support"
+	echo "x86-32                  > x86 32-bit generic (with mmx compile support)"
+	echo "ppc-64                  > PPC 64-bit"
+	echo "ppc-32                  > PPC 32-bit"
+	echo "armv7                   > ARMv7 32-bit"
+	echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
+	echo "armv8                   > ARMv8 64-bit with popcnt and neon"
+	echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support"
+	echo "e2k                     > Elbrus 2000"
+	echo "apple-silicon           > Apple silicon ARM64"
+	echo "general-64              > unspecified 64-bit"
+	echo "general-32              > unspecified 32-bit"
+	echo "riscv64                 > RISC-V 64-bit"
+	echo "loongarch64             > LoongArch 64-bit"
+	echo ""
+	echo "Supported compilers:"
+	echo ""
+	echo "gcc                     > GNU compiler (default)"
+	echo "mingw                   > GNU compiler with MinGW under Windows"
+	echo "clang                   > LLVM Clang compiler"
+	echo "icx                     > Intel oneAPI DPC++/C++ Compiler"
+	echo "ndk                     > Google NDK to cross-compile for Android"
+	echo ""
+	echo "Simple examples. If you don't know what to do, you likely want to run one of: "
+	echo ""
+	echo "make -j profile-build ARCH=x86-64-avx2    # typically a fast compile for common systems "
+	echo "make -j profile-build ARCH=x86-64-sse41-popcnt  # A more portable compile for 64-bit systems "
+	echo "make -j profile-build ARCH=x86-64         # A portable compile for 64-bit systems "
+	echo ""
+	echo "Advanced examples, for experienced users: "
+	echo ""
+	echo "make -j profile-build ARCH=x86-64-avxvnni"
+	echo "make -j profile-build ARCH=x86-64-avxvnni COMP=gcc COMPCXX=g++-12.0"
+	echo "make -j build ARCH=x86-64-ssse3 COMP=clang DIR=clang_build"
+	echo ""
 ifneq ($(SUPPORTED_ARCH), true)
 	@echo "Specify a supported architecture with the ARCH option for more details"
-	@echo ""
+	echo ""
 endif
 
 .PHONY: help analyze build profile-build strip install clean net \
@@ -918,13 +918,13 @@ objclean:
 
 # clean auxiliary profiling files
 profileclean:
-	@cd $(BDIR) \
-	rm -rf profdir \
-	rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out \
-	rm -f stockfish.profdata *.profraw \
-	rm -f stockfish.*args* \
-	rm -f stockfish.*lt* \
-	rm -f stockfish.res ./-lstdc++.res \
+	@cd $(BDIR) && \
+	rm -rf profdir; \
+	rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out; \
+	rm -f stockfish.profdata *.profraw; \
+	rm -f stockfish.*args*; \
+	rm -f stockfish.*lt*; \
+	rm -f stockfish.res ./-lstdc++.res; \
 	cd - >/dev/null
 
 define fetch_network
@@ -1075,16 +1075,16 @@ clang-profile-use:
 	all
 
 gcc-profile-make:
-	@mkdir -p profdir
+	@mkdir -p $(BDIR)profdir
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-generate=profdir' \
+	EXTRACXXFLAGS='-fprofile-generate=$(BDIR)profdir' \
 	EXTRACXXFLAGS+=$(EXTRAPROFILEFLAGS) \
 	EXTRALDFLAGS='-lgcov' \
 	all
 
 gcc-profile-use:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use=profdir -fno-peel-loops -fno-tracer' \
+	EXTRACXXFLAGS='-fprofile-use=$(BDIR)profdir -fno-peel-loops -fno-tracer' \
 	EXTRACXXFLAGS+=$(EXTRAPROFILEFLAGS) \
 	EXTRALDFLAGS='-lgcov' \
 	all
@@ -1102,7 +1102,7 @@ icx-profile-use:
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
-$(DEP): $(BDIR) $(SRCS)
+$(DEP): $(SRCS) |$(BDIR)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
 ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
