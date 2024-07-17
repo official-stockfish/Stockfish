@@ -14,8 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-.DEFAULT_GOAL := help
-
 ### ==========================================================================
 ### Section 1. General Configuration
 ### ==========================================================================
@@ -76,6 +74,8 @@ DEP := $(BDIR).depend
 
 ### Built-in benchmark for pgo-builds
 PGOBENCH := $(WINE_PATH) $(EXE) bench
+
+.DEFAULT_GOAL := help 
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -1030,8 +1030,8 @@ config-sanity: net
 	@test "$(optimize)" = "yes" || test "$(optimize)" = "no"
 	@test "$(SUPPORTED_ARCH)" = "true"
 	@test "$(arch)" = "any" || test "$(arch)" = "x86_64" || test "$(arch)" = "i386" || \
-	@test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
-	@test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64" || test "$(arch)" = "loongarch64"
+	test "$(arch)" = "ppc64" || test "$(arch)" = "ppc" || test "$(arch)" = "e2k" || \
+	test "$(arch)" = "armv7" || test "$(arch)" = "armv8" || test "$(arch)" = "arm64" || test "$(arch)" = "riscv64" || test "$(arch)" = "loongarch64"
 	@test "$(bits)" = "32" || test "$(bits)" = "64"
 	@test "$(prefetch)" = "yes" || test "$(prefetch)" = "no"
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
@@ -1105,6 +1105,8 @@ icx-profile-use:
 $(DEP): $(SRCS) |$(BDIR)
 	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
 
-ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
--include $(DEP)
+ifneq (, $(MAKECMDGOALS)) 
+	ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
+		-include $(DEP)
+	endif
 endif
