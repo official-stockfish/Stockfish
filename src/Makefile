@@ -1055,7 +1055,13 @@ $(EXE): $(OBJS)
 $(BDIR)%.o : %.cpp |$(BDIR)
 	$(CXX) -c $(CXXFLAGS) $< -o $@
 
-$(BDIR): ;@echo;echo "Creating build directory '$@'"; mkdir -p "$@"
+$(BDIR): ;@echo "Creating build directory '$@'";echo; mkdir -p "$@"
+
+ifneq ($(MAKECMDGOALS),) 
+ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
+-include $(DEP)
+endif
+endif
 
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
@@ -1103,10 +1109,5 @@ icx-profile-use:
 	all
 
 $(DEP): $(SRCS) |$(BDIR)
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
+	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > "$@" 2> /dev/null
 
-ifneq (, $(MAKECMDGOALS)) 
-	ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean config-sanity))
-		-include $(DEP)
-	endif
-endif
