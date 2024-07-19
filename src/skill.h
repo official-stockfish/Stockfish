@@ -25,15 +25,19 @@
 namespace Stockfish {
 namespace Search {
 
+// Skill structure is used to implement strength limit. If we have a UCI_Elo,
+// we convert it to an appropriate skill level, anchored to the Stash engine.
+// This method is based on a fit of the Elo results for games played between
+// Stockfish at various skill levels and various versions of the Stash engine.
+// Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
+// Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c2
 struct Skill {
-    // Add static constants for the lowest and highest Elo ratings
     static constexpr int LowestElo  = 1320;
     static constexpr int HighestElo = 3190;
 
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
         {
-            // Use the constants instead of hardcoded values
             double e = double(uci_elo - LowestElo) / (HighestElo - LowestElo);
             level = std::clamp((((37.2473 * e - 40.8525) * e + 22.2943) * e - 0.311438), 0.0, 19.0);
         }
