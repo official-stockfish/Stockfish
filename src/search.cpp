@@ -102,10 +102,12 @@ Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
 // Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
 // Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c2
 struct Skill {
+    static constexpr int LowestElo = 1320;
+    static constexpr int HighestElo = 3190;
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
         {
-            double e = double(uci_elo - 1320) / (3190 - 1320);
+            double e = double(uci_elo - LowestElo) / (HighestElo - LowestElo);
             level = std::clamp((((37.2473 * e - 40.8525) * e + 22.2943) * e - 0.311438), 0.0, 19.0);
         }
         else
