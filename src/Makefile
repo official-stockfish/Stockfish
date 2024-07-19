@@ -100,6 +100,7 @@ VPATH = syzygy:nnue:nnue/features
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
+# sve = yes/no        --- -DUSE_SVE          --- Use ARM scalable vector extensions
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -125,7 +126,7 @@ ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
                  x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
-                 armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64 loongarch64))
+                 armv7 armv7-neon armv8 armv8-dotprod armv8-sve apple-silicon general-64 general-32 riscv64 loongarch64))
    SUPPORTED_ARCH=true
 else
    SUPPORTED_ARCH=false
@@ -150,6 +151,7 @@ vnni256 = no
 vnni512 = no
 neon = no
 dotprod = no
+sve = no
 arm_version = 0
 STRIP = strip
 
@@ -332,6 +334,16 @@ ifeq ($(ARCH),armv8-dotprod)
 	popcnt = yes
 	neon = yes
 	dotprod = yes
+	arm_version = 8
+endif
+
+ifeq ($(ARCH),armv8-sve)
+	arch = armv8
+	prefetch = yes
+	popcnt = yes
+	neon = yes
+	dotprod = yes
+	sve = yes
 	arm_version = 8
 endif
 
@@ -716,7 +728,11 @@ ifeq ($(neon),yes)
 endif
 
 ifeq ($(dotprod),yes)
-	CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
+	ifeq ($(sve),yes)
+	     CXXFLAGS += -march=armv8.2-a+dotprod+sve -DUSE_NEON_DOTPROD -DUSE_SVE
+        else
+	     CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
+	endif
 endif
 
 ### 3.7 pext
@@ -829,6 +845,7 @@ help:
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
 	@echo "armv8                   > ARMv8 64-bit with popcnt and neon"
 	@echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support"
+	@echo "armv8-sve               > ARMv8 64-bit with popcnt, neon, dot product, and sve support"
 	@echo "e2k                     > Elbrus 2000"
 	@echo "apple-silicon           > Apple silicon ARM64"
 	@echo "general-64              > unspecified 64-bit"
@@ -1009,6 +1026,7 @@ config-sanity: net
 	@echo "vnni512: '$(vnni512)'"
 	@echo "neon: '$(neon)'"
 	@echo "dotprod: '$(dotprod)'"
+	@echo "sve: '$(sve)'"
 	@echo "arm_version: '$(arm_version)'"
 	@echo "target_windows: '$(target_windows)'"
 	@echo ""
@@ -1039,6 +1057,8 @@ config-sanity: net
 	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
+	@test "$(dotprod)" = "yes" || test "$(dotprod)" = "no"
+	@test "$(sve)" = "yes" || test "$(sve)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icx" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
