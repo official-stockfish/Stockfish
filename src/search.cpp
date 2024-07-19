@@ -42,6 +42,7 @@
 #include "nnue/nnue_common.h"
 #include "nnue/nnue_misc.h"
 #include "position.h"
+#include "skill.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
