@@ -189,7 +189,7 @@ void Search::Worker::start_searching() {
     {}  // Busy wait for a stop or a ponder reset
 
     // Stop the threads if not already stopped (also raise the stop if
-    // "ponderhit" just reset threads.ponder).
+    // "ponderhit" just reset threads.ponder)
     threads.stop = true;
 
     // Wait until all threads have finished
