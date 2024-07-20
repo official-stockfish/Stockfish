@@ -907,7 +907,7 @@ moves_loop:  // When in check, search starts here
 
 
     MovePicker mp(pos, ttData.move, depth, &thisThread->mainHistory, &thisThread->captureHistory,
-                  contHist, &thisThread->pawnHistory, ss->killer);
+                  contHist, &thisThread->pawnHistory);
 
     value = bestValue;
 
