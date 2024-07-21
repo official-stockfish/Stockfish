@@ -1948,8 +1948,12 @@ void syzygy_extend_pv(const OptionsMap&         options,
 
     std::list<StateInfo> sts;
 
+    // Step 0, do the rootMove, no correction allowed, as needed for MultiPV in TB.
+    auto& stRoot = sts.emplace_back();
+    pos.do_move(rootMove.pv[0], stRoot);
+    int ply = 1;
+
     // Step 1, walk the PV to the last position in TB with correct decisive score
-    int ply = 0;
     while (size_t(ply) < rootMove.pv.size())
     {
         Move& pvMove = rootMove.pv[ply];
