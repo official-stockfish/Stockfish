@@ -91,7 +91,9 @@ Engine::Engine(std::string path) :
     options["nodestime"] << Option(0, 0, 10000);
     options["UCI_Chess960"] << Option(false);
     options["UCI_LimitStrength"] << Option(false);
-    options["UCI_Elo"] << Option(1320, 1320, 3190);
+    options["UCI_Elo"] << Option(Stockfish::Search::Skill::LowestElo,
+                                 Stockfish::Search::Skill::LowestElo,
+                                 Stockfish::Search::Skill::HighestElo);
     options["UCI_ShowWDL"] << Option(false);
     options["SyzygyPath"] << Option("", [](const Option& o) {
         Tablebases::init(o);
