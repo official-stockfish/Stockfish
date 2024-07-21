@@ -79,12 +79,12 @@ case $uname_s in
       'aarch64')
         file_os='android'
         true_arch='armv8'
-        if check_flags 'sve' 'asimddp'; then
+        if check_flags 'sve2'; then
+          true_arch="armv9"
+        elif check_flags 'sve' 'asimddp'; then
           true_arch="$true_arch-sve"
-        else
-          if check_flags 'asimddp'; then
-            true_arch="$true_arch-dotprod"
-          fi
+        elif check_flags 'asimddp'; then
+          true_arch="$true_arch-dotprod"
         fi
         ;;
       'armv7'*)
