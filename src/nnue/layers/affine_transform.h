@@ -199,20 +199,20 @@ class AffineTransform {
             using vec_t = __m512i;
         #define vec_setzero _mm512_setzero_si512
         #define vec_set_32 _mm512_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
-        #define vec_hadd Simd::m512_hadd
+        #define vec_add_dpbusd_32 SIMD::m512_add_dpbusd_epi32
+        #define vec_hadd SIMD::m512_hadd
     #elif defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_setzero _mm256_setzero_si256
         #define vec_set_32 _mm256_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
-        #define vec_hadd Simd::m256_hadd
+        #define vec_add_dpbusd_32 SIMD::m256_add_dpbusd_epi32
+        #define vec_hadd SIMD::m256_hadd
     #elif defined(USE_SSSE3)
             using vec_t = __m128i;
         #define vec_setzero _mm_setzero_si128
         #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
-        #define vec_hadd Simd::m128_hadd
+        #define vec_add_dpbusd_32 SIMD::m128_add_dpbusd_epi32
+        #define vec_hadd SIMD::m128_hadd
     #endif
 
             static constexpr IndexType OutputSimdWidth = sizeof(vec_t) / sizeof(OutputType);
@@ -256,14 +256,14 @@ class AffineTransform {
             using vec_t = __m256i;
         #define vec_setzero _mm256_setzero_si256
         #define vec_set_32 _mm256_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
-        #define vec_hadd Simd::m256_hadd
+        #define vec_add_dpbusd_32 SIMD::m256_add_dpbusd_epi32
+        #define vec_hadd SIMD::m256_hadd
     #elif defined(USE_SSSE3)
             using vec_t = __m128i;
         #define vec_setzero _mm_setzero_si128
         #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
-        #define vec_hadd Simd::m128_hadd
+        #define vec_add_dpbusd_32 SIMD::m128_add_dpbusd_epi32
+        #define vec_hadd SIMD::m128_hadd
     #endif
 
             const auto inputVector = reinterpret_cast<const vec_t*>(input);

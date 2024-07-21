@@ -84,6 +84,23 @@ class SqrClippedReLU {
         }
         constexpr IndexType Start = NumChunks * 16;
 
+#elif defined(USE_SVE) && USE_SVE >= 2000
+        constexpr size_t    ChunkSize = SVERegisterSize / (8 * sizeof(InputType));
+        constexpr IndexType NumChunks = InputDimensions / ChunkSize;
+
+        const auto in  = reinterpret_cast<const vec_s32_t*>(input);
+        const auto out = reinterpret_cast<uint8_t*>(output);
+
+        for (IndexType i = 0; i < NumChunks; ++i)
+        {
+            vec_s16_t tmp16 = svqxtnb_s32(in[i]);
+            tmp16           = svmulh_s16_z(svptrue_b16(), tmp16, tmp16);
+            tmp16           = svasr_n_s16_z(svptrue_b16(), tmp16, 3);
+            vec_s8_t tmp8   = svqxtnb_s16(tmp16);
+            svst1b_u32(svptrue_b32(), &out[i * SVERegisterSize / 32], svreinterpret_u32_s8(tmp8));
+        }
+        constexpr IndexType Start = NumChunks * ChunkSize;
+
 #else
         constexpr IndexType Start = 0;
 #endif

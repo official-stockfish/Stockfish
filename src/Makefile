@@ -742,10 +742,15 @@ ifeq ($(neon),yes)
 endif
 
 ifeq ($(dotprod),yes)
-	ifeq ($(sve2),yes)
-		CXXFLAGS += -march=armv9-a+sve2 -DUSE_NEON_DOTPROD -DUSE_SVE=2000
-	else ifeq ($(sve),yes)
-	    CXXFLAGS += -march=armv8.2-a+dotprod+sve -DUSE_NEON_DOTPROD -DUSE_SVE=1000
+	ifeq ($(sve),yes)
+		SVE_VL := $(shell $(SHELL) ../scripts/sve-vl.sh)
+		CXXFLAGS += -msve-vector-bits=$(SVE_VL)
+
+		ifeq ($(sve2),yes)
+			CXXFLAGS += -march=armv9-a -DUSE_NEON_DOTPROD -DUSE_SVE=2000
+		else
+	    	CXXFLAGS += -march=armv8.2-a+dotprod+sve -DUSE_NEON_DOTPROD -DUSE_SVE=1000
+		endif
 	else
 	    CXXFLAGS += -march=armv8.2-a+dotprod -DUSE_NEON_DOTPROD
 	endif
@@ -1077,7 +1082,7 @@ config-sanity: net
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
 	@test "$(dotprod)" = "yes" || test "$(dotprod)" = "no"
-	@test "$(sve)" = "yes" || test "$(sve)" = "no"
+	@test "$(sve)" = "yes" && test ! -z "$(SVE_VL)" || test "$(sve)" = "no"
 	@test "$(sve2)" = "yes" || test "$(sve2)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icx" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"

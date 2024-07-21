@@ -42,7 +42,31 @@
 #elif defined(USE_SSE2)
     #include <emmintrin.h>
 
-#elif defined(USE_NEON)
+#endif
+
+#if defined(USE_SVE)
+    #include <arm_sve.h>
+
+// SVE vector types.
+
+static constexpr size_t SVERegisterSize = __ARM_FEATURE_SVE_BITS;
+static_assert(SVERegisterSize % 128 == 0);
+
+    #define __sve_vlst__ __attribute__((arm_sve_vector_bits(__ARM_FEATURE_SVE_BITS)))
+
+using vec_s8_t  = svint8_t    __sve_vlst__;
+using vec_u8_t  = svuint8_t   __sve_vlst__;
+using vec_s16_t = svint16_t  __sve_vlst__;
+using vec_u16_t = svuint16_t __sve_vlst__;
+using vec_s32_t = svint32_t  __sve_vlst__;
+using vec_u32_t = svuint32_t __sve_vlst__;
+using vec_s64_t = svint64_t  __sve_vlst__;
+using vec_u64_t = svuint64_t __sve_vlst__;
+using pred_t    = svbool_t      __sve_vlst__;
+
+#endif
+
+#if defined(USE_NEON)
     #include <arm_neon.h>
 #endif
 

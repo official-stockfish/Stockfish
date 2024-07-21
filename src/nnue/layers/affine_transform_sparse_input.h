@@ -204,27 +204,32 @@ class AffineTransformSparseInput {
         using invec_t  = __m512i;
         using outvec_t = __m512i;
         #define vec_set_32 _mm512_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m512_add_dpbusd_epi32
     #elif defined(USE_AVX2)
         using invec_t  = __m256i;
         using outvec_t = __m256i;
         #define vec_set_32 _mm256_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m256_add_dpbusd_epi32
     #elif defined(USE_SSSE3)
         using invec_t  = __m128i;
         using outvec_t = __m128i;
         #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m128_add_dpbusd_epi32
+    #elif defined(USE_SVE)
+        using invec_t  = vec_s8_t;
+        using outvec_t = vec_s32_t;
+        #define vec_set_32(n) svreinterpret_s8(svdup_n_u32(n))
+        #define vec_add_dpbusd_32 SIMD::sve_add_dpbusd_s32
     #elif defined(USE_NEON_DOTPROD)
         using invec_t  = int8x16_t;
         using outvec_t = int32x4_t;
         #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-        #define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::dotprod_m128_add_dpbusd_epi32
     #elif defined(USE_NEON)
         using invec_t  = int8x16_t;
         using outvec_t = int32x4_t;
         #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-        #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::neon_m128_add_dpbusd_epi32
     #endif
         static constexpr IndexType OutputSimdWidth = sizeof(outvec_t) / sizeof(OutputType);
 
