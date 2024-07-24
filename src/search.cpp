@@ -1409,7 +1409,6 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
-    assert(depth <= 0);
 
     // Check if we have an upcoming move that draws by repetition (~1 Elo)
     if (alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
