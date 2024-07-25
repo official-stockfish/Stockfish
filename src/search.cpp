@@ -127,6 +127,12 @@ Search::Worker::Worker(SharedState&                    sharedState,
     clear();
 }
 
+void Search::Worker::ensure_network_replicated() {
+    // Access once to force lazy initialization.
+    // We do this because we want to avoid initialization during search.
+    (void) (networks[numaAccessToken]);
+}
+
 void Search::Worker::start_searching() {
 
     // Non-main threads go directly to iterative_deepening()
