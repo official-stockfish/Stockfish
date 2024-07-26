@@ -74,12 +74,10 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 
 
 // Constructors of the MovePicker class. As arguments, we pass information
-// to help it return the (presumably) good moves first, to decide which
-// moves to return (in the quiescence search, for instance, we only want to
-// search captures, promotions, and some checks) and how important a good
-// move ordering is at the current node.
+// to decide which class of moves to emit, to help sorting the (presumably)
+// good moves first, and how important move ordering is at the current node.
 
-// MovePicker constructor for the main search
+// MovePicker constructor for the main search and for the quiescence search
 MovePicker::MovePicker(const Position&              p,
                        Move                         ttm,
                        Depth                        d,
@@ -102,8 +100,8 @@ MovePicker::MovePicker(const Position&              p,
         stage = (depth > 0 ? MAIN_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
-// Constructor for ProbCut: we generate captures with SEE greater than or equal
-// to the given threshold.
+// MovePicker constructor for ProbCut: we generate captures with Static Exchange
+// Evaluation (SEE) greater than or equal to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceToHistory* cph) :
     pos(p),
     captureHistory(cph),
@@ -115,9 +113,9 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
           + !(ttm && pos.capture_stage(ttm) && pos.pseudo_legal(ttm) && pos.see_ge(ttm, threshold));
 }
 
-// Assigns a numerical value to each move in a list, used
-// for sorting. Captures are ordered by Most Valuable Victim (MVV), preferring
-// captures with a good history. Quiets moves are ordered using the history tables.
+// Assigns a numerical value to each move in a list, used for sorting.
+// Captures are ordered by Most Valuable Victim (MVV), preferring captures
+// with a good history. Quiets moves are ordered using the history tables.
 template<GenType Type>
 void MovePicker::score() {
 
@@ -191,7 +189,7 @@ void MovePicker::score() {
 }
 
 // Returns the next move satisfying a predicate function.
-// It never returns the TT move.
+// This never returns the TT move, as it was emitted before.
 template<MovePicker::PickType T, typename Pred>
 Move MovePicker::select(Pred filter) {
 
@@ -208,9 +206,9 @@ Move MovePicker::select(Pred filter) {
     return Move::none();
 }
 
-// Most important method of the MovePicker class. It
-// returns a new pseudo-legal move every time it is called until there are no more
-// moves left, picking the move with the highest score from a list of generated moves.
+// This is the most important method of the MovePicker class. We emit one
+// new pseudo-legal move on every call until there are no more moves left,
+// picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move(bool skipQuiets) {
 
     auto quiet_threshold = [](Depth d) { return -3560 * d; };

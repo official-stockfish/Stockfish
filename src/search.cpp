@@ -20,18 +20,18 @@
 
 #include <algorithm>
 #include <array>
-#include <list>
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <initializer_list>
+#include <iostream>
+#include <list>
+#include <ratio>
 #include <string>
 #include <utility>
-#include <chrono>
-#include <iostream>
-#include <ratio>
 
 #include "evaluate.h"
 #include "misc.h"
@@ -1520,11 +1520,11 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     const PieceToHistory* contHist[] = {(ss - 1)->continuationHistory,
                                         (ss - 2)->continuationHistory};
 
+    Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
+
     // Initialize a MovePicker object for the current position, and prepare to search
     // the moves. We presently use two stages of move generator in quiescence search:
-    // first captures+checks, then captures only (but when in check, we simply search
-    // all evasions).
-    Square     prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
+    // captures, or evasions only when in check.
     MovePicker mp(pos, ttData.move, DEPTH_QS, &thisThread->mainHistory, &thisThread->captureHistory,
                   contHist, &thisThread->pawnHistory);
 
