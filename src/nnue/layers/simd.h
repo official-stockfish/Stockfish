@@ -19,23 +19,9 @@
 #ifndef STOCKFISH_SIMD_H_INCLUDED
 #define STOCKFISH_SIMD_H_INCLUDED
 
-#if defined(USE_AVX2)
-    #include <immintrin.h>
+#include "../nnue_common.h"
 
-#elif defined(USE_SSE41)
-    #include <smmintrin.h>
-
-#elif defined(USE_SSSE3)
-    #include <tmmintrin.h>
-
-#elif defined(USE_SSE2)
-    #include <emmintrin.h>
-
-#elif defined(USE_NEON)
-    #include <arm_neon.h>
-#endif
-
-namespace Stockfish::Simd {
+namespace Stockfish::SIMD {
 
 #if defined(USE_AVX512)
 
@@ -95,6 +81,14 @@ namespace Stockfish::Simd {
 
 #endif
 
+#if defined(USE_SVE)
+
+[[maybe_unused]] static void sve_add_dpbusd_s32(vec_s32_t& acc, vec_s8_t a, vec_s8_t b) {
+    acc = svdot_s32(acc, a, b);
+}
+
+#endif
+
 #if defined(USE_NEON_DOTPROD)
 
 [[maybe_unused]] static void
@@ -129,6 +123,7 @@ dotprod_m128_add_dpbusd_epi32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
     acc                = vpadalq_s16(acc, sum);
 }
 #endif
-}
+
+}  // namespace Stockfish::SIMD
 
 #endif  // STOCKFISH_SIMD_H_INCLUDED

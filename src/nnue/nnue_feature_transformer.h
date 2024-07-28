@@ -116,6 +116,46 @@ using psqt_vec_t = __m128i;
     #define NumRegistersSIMD (Is64Bit ? 16 : 8)
     #define MaxChunkSize 16
 
+#elif USE_SVE
+using vec_t      = vec_s16_t;
+using psqt_vec_t = vec_s32_t;
+    #define vec_load(ptr) (*(ptr))
+    #define vec_store(ptr, a) (*(ptr) = (a))
+    #define vec_add_16(a, b) svadd_s16_z(svptrue_b16(), a, b)
+    #define vec_sub_16(a, b) svsub_s16_z(svptrue_b16(), a, b)
+    #define vec_mulhi_16(a, b) svmulh_s16_z(svptrue_b16(), a, b)
+    #define vec_zero() svdup_n_s16(0)
+    #define vec_set_16(a) svdup_n_s16(a)
+    #define vec_max_16(a, b) svmax_s16_z(svptrue_b16(), a, b)
+    #define vec_min_16(a, b) svmin_s16_z(svptrue_b16(), a, b)
+    #define vec_slli_16(a, n) svlsl_n_s16_z(svptrue_b16(), a, n)
+    #define vec_packus_16 sve_vec_packus_16
+    #define vec_load_psqt(ptr) (*(ptr))
+    #define vec_store_psqt(ptr, a) (*(ptr) = (a))
+    #define vec_add_psqt_32(a, b) svadd_s32_z(svptrue_b32(), a, b)
+    #define vec_sub_psqt_32(a, b) svsub_s32_z(svptrue_b32(), a, b)
+    #define vec_zero_psqt() svdup_n_s32(0)
+    #define NumRegistersSIMD 16
+    #define MaxChunkSize (SVERegisterSize / 8)
+
+static inline vec_s16_t sve_vec_packus_16(vec_s16_t a, vec_s16_t b) {
+    vec_u8_t v1, v2;
+
+    #if USE_SVE >= 2000
+    v1 = svqxtunb_s16(a);
+    v2 = svqxtunb_s16(b);
+    #else  // This might be slow, consider falling back to Neon.
+    a  = svmin_n_s16_z(svptrue_b16(), a, std::numeric_limits<uint8_t>::max());
+    a  = svmax_n_s16_z(svptrue_b16(), a, std::numeric_limits<uint8_t>::min());
+    v1 = svreinterpret_u8_s16(a);
+    b  = svmin_n_s16_z(svptrue_b16(), b, std::numeric_limits<uint8_t>::max());
+    b  = svmax_n_s16_z(svptrue_b16(), b, std::numeric_limits<uint8_t>::min());
+    v2 = svreinterpret_u8_s16(b);
+    #endif
+
+    return svreinterpret_s16_u8(svuzp1_u8(v1, v2));
+}
+
 #elif USE_NEON
 using vec_t      = int16x8_t;
 using psqt_vec_t = int32x4_t;
@@ -367,7 +407,7 @@ class FeatureTransformer {
                     // multiplication, adding an extra shift to the left by 1, so
                     // we compensate by shifting less before the multiplication.
 
-    #if defined(USE_SSE2)
+    #if defined(USE_SSE2) || defined(USE_SVE)
                 constexpr int shift = 7;
     #else
                 constexpr int shift = 6;

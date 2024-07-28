@@ -135,19 +135,50 @@ class ClippedReLU {
         constexpr IndexType Start = NumChunks * SimdWidth;
 
 #elif defined(USE_NEON)
-        constexpr IndexType NumChunks = InputDimensions / (SimdWidth / 2);
-        const int8x8_t      Zero      = {0};
-        const auto          in        = reinterpret_cast<const int32x4_t*>(input);
-        const auto          out       = reinterpret_cast<int8x8_t*>(output);
-        for (IndexType i = 0; i < NumChunks; ++i)
+    #if defined(USE_SVE) && USE_SVE >= 2000
+        // Check SVE vector size, and fall back to Neon if it's too big for
+        // this layer.
+        constexpr bool   UseSVE = SVERegisterSize / 8 <= InputDimensions * sizeof(InputType);
+        constexpr size_t ChunkSize =
+          UseSVE ? SVERegisterSize / (8 * sizeof(InputType)) : SimdWidth / 2;
+    #else
+        constexpr size_t ChunkSize = SimdWidth / 2;
+    #endif
+
+        constexpr IndexType NumChunks = InputDimensions / ChunkSize;
+        static_assert(NumChunks > 0);
+
+    #if defined(USE_SVE) && USE_SVE >= 2000
+        if constexpr (UseSVE)
         {
-            int16x8_t  shifted;
-            const auto pack = reinterpret_cast<int16x4_t*>(&shifted);
-            pack[0]         = vqshrn_n_s32(in[i * 2 + 0], WeightScaleBits);
-            pack[1]         = vqshrn_n_s32(in[i * 2 + 1], WeightScaleBits);
-            out[i]          = vmax_s8(vqmovn_s16(shifted), Zero);
+            const auto in  = reinterpret_cast<const vec_s32_t*>(input);
+            const auto out = reinterpret_cast<uint8_t*>(output);
+
+            for (IndexType i = 0; i < NumChunks; ++i)
+            {
+                vec_s16_t tmp16 = svqshrnb_n_s32(in[i], WeightScaleBits);
+                vec_s8_t  tmp8  = svmax_n_s8_z(svptrue_b8(), svqxtnb_s16(tmp16), 0);
+                svst1b_u32(svptrue_b32(), &out[i * SVERegisterSize / 32],
+                           svreinterpret_u32_s8(tmp8));
+            }
         }
-        constexpr IndexType Start = NumChunks * (SimdWidth / 2);
+        else
+    #endif
+        {
+            const int8x8_t Zero = {0};
+            const auto     in   = reinterpret_cast<const int32x4_t*>(input);
+            const auto     out  = reinterpret_cast<int8x8_t*>(output);
+
+            for (IndexType i = 0; i < NumChunks; ++i)
+            {
+                int16x8_t  shifted;
+                const auto pack = reinterpret_cast<int16x4_t*>(&shifted);
+                pack[0]         = vqshrn_n_s32(in[i * 2 + 0], WeightScaleBits);
+                pack[1]         = vqshrn_n_s32(in[i * 2 + 1], WeightScaleBits);
+                out[i]          = vmax_s8(vqmovn_s16(shifted), Zero);
+            }
+        }
+        constexpr IndexType Start = NumChunks * ChunkSize;
 #else
         constexpr IndexType Start = 0;
 #endif
