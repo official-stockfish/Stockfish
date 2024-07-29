@@ -599,7 +599,7 @@ bool Position::pseudo_legal(const Move m) const {
             if (!(between_bb(square<KING>(us), lsb(checkers())) & to))
                 return false;
         }
-        // For king moves under check, we temporarily remove the king to detect
+        // For king moves under check, we remove the king to detect
         // invalid moves like b1a1 when the opponent's queen is on c1.
         else if (attackers_to(to, pieces() ^ from) & pieces(~us))
             return false;
