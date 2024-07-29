@@ -266,7 +266,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
         // En passant square will be considered only if
-        // a) side to move have a pawn threatening epSquare
+        // a) side to move has a pawn threatening epSquare
         // b) there is an enemy pawn in front of epSquare
         // c) there is no piece on epSquare or behind epSquare
         enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
@@ -599,8 +599,8 @@ bool Position::pseudo_legal(const Move m) const {
             if (!(between_bb(square<KING>(us), lsb(checkers())) & to))
                 return false;
         }
-        // In case of king moves under check we have to remove the king so as to catch
-        // invalid moves like b1a1 when opposite queen is on c1.
+        // For king moves under check, we temporarily remove the king to detect
+        // invalid moves like b1a1 when the opponent's queen is on c1.
         else if (attackers_to(to, pieces() ^ from) & pieces(~us))
             return false;
     }
@@ -656,7 +656,7 @@ bool Position::gives_check(Move m) const {
 }
 
 
-// Makes a move, and saves all information necessary
+// Makes a move, and saves all necessary information
 // to a StateInfo object. The move is assumed to be legal. Pseudo-legal
 // moves should be filtered out before this function is called.
 void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
@@ -666,8 +666,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
     Key k = st->key ^ Zobrist::side;
 
-    // Copy some fields of the old state to our new StateInfo object except the
-    // ones which are going to be recalculated from scratch anyway and then switch
+    // Copy relevant fields from the old state to the new StateInfo object,
+    // excluding those that will be recomputed from scratch anyway and then switch
     // our state pointer to point to the new (ready to be updated) state.
     std::memcpy(&newSt, st, offsetof(StateInfo, key));
     newSt.previous = st;
@@ -858,8 +858,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 }
 
 
-// Unmakes a move. When it returns, the position should
-// be restored to exactly the same state as before the move was made.
+// Unmakes a move, restoring the position to its exact state before the move was made.
 void Position::undo_move(Move m) {
 
     assert(m.is_ok());
@@ -1139,8 +1138,8 @@ bool Position::is_draw(int ply) const {
 }
 
 
-// Tests whether there has been at least one repetition
-// of positions since the last capture or pawn move.
+// Checks if there has been at least one position
+// repetition since the last capture or pawn move.
 bool Position::has_repeated() const {
 
     StateInfo* stc = st;
