@@ -345,8 +345,7 @@ class FeatureTransformer {
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
             const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(127 * 2); // Read more about why the "*2" is necessary here:
-                  // https://github.com/official-stockfish/Stockfish/pull/5282#issuecomment-2131582943
+            const vec_t One  = vec_set_16(127 * 2);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
