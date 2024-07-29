@@ -180,7 +180,7 @@ struct InfoIteration {
     size_t           currmovenumber;
 };
 
-// Skill structure is used to implement strength limit. If we have a UCI_Elo,
+// Skill structure is used to implement strength limit. If a UCI_Elo is set,
 // we convert it to an appropriate skill level, anchored to the Stash engine.
 // This method is based on a fit of the Elo results for games played between
 // Stockfish at various skill levels and various versions of the Stash engine.
