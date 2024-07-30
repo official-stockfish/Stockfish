@@ -405,7 +405,7 @@ class FeatureTransformer {
 // the output from the mulhi will occupy full 16 bits
 // meaning we cannot use packs to shrink it to
 // [0, 127] as already done implicitly, leading to
-// an additional instruction is required.
+// an additional instruction required.
                 sum0               = std::clamp<BiasType>(sum0, 0, 127 * 2);
                 sum1               = std::clamp<BiasType>(sum1, 0, 127 * 2);
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
