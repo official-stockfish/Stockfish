@@ -1138,8 +1138,8 @@ bool Position::is_draw(int ply) const {
 }
 
 
-// Checks if there has been at least one position
-// repetition since the last capture or pawn move.
+// Checks if there has been at least one repetition
+// of positions since the last capture or pawn move.
 bool Position::has_repeated() const {
 
     StateInfo* stc = st;
