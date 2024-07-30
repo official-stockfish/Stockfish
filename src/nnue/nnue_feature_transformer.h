@@ -393,8 +393,19 @@ class FeatureTransformer {
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
               
-              // Read more about why the "*2" is necessary here:
-              // https://github.com/official-stockfish/Stockfish/pull/5282#issuecomment-2131582943
+// Note that, we multiply the accumulator weights
+// and One value by two in order to use this trick.
+// This is because 127 == 0b0000000001111111.
+// Shifting left by 9, we get 0b1111111000000000.
+// However, this value is taken as an i16 in the
+// mulhi, leading the actual value to be -512.
+// If we use the mulhi_epu instead, we will have
+// to add the lower-side clip for the "sum1"s,
+// and if we attempt to remove the upper side clip,
+// the output from the mulhi will occupy full 16 bits
+// meaning we cannot use packs to shrink it to
+// [0, 127] as already done implicitly, leading to
+// an additional instruction is required.
                 sum0               = std::clamp<BiasType>(sum0, 0, 127 * 2);
                 sum1               = std::clamp<BiasType>(sum1, 0, 127 * 2);
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
