@@ -133,6 +133,8 @@ void UCIEngine::loop() {
             engine.flip();
         else if (token == "bench")
             bench(is);
+        else if (token == "benchmark")
+            benchmark(is);
         else if (token == "d")
             sync_cout << engine.visualize() << sync_endl;
         else if (token == "eval")
@@ -285,6 +287,69 @@ void UCIEngine::bench(std::istream& args) {
     engine.set_on_update_full([&](const auto& i) { on_update_full(i, options["UCI_ShowWDL"]); });
 }
 
+void UCIEngine::benchmark(std::istream& args) {
+    std::string token;
+    uint64_t    num, nodes = 0, cnt = 1;
+    uint64_t    nodesSearched = 0;
+    const auto& options       = engine.get_options();
+
+    engine.set_on_update_full([&](const auto& i) {
+        nodesSearched = i.nodes;
+        on_update_full(i, options["UCI_ShowWDL"]);
+    });
+
+    std::vector<std::string> list = Benchmark::setup_benchmark(args, get_hardware_concurrency());
+
+    num = count_if(list.begin(), list.end(),
+                   [](const std::string& s) { return s.find("go ") == 0; });
+
+    TimePoint totalTime = 0;
+
+    for (const auto& cmd : list)
+    {
+        std::istringstream is(cmd);
+        is >> std::skipws >> token;
+
+        if (token == "go")
+        {
+            std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
+                      << std::endl;
+
+            TimePoint elapsed = now();
+
+            if (token == "go")
+            {
+                Search::LimitsType limits = parse_limits(is);
+
+                engine.go(limits);
+                engine.wait_for_search_finished();
+
+                nodes += nodesSearched;
+                nodesSearched = 0;
+            }
+
+            totalTime += now() - elapsed;
+        }
+        else if (token == "setoption")
+            setoption(is);
+        else if (token == "position")
+            position(is);
+        else if (token == "ucinewgame")
+        {
+            engine.search_clear();  // search_clear may take a while
+        }
+    }
+
+    totalTime = std::max<TimePoint>(totalTime, 1);  // Ensure positivity to avoid a 'divide by zero'
+
+    dbg_print();
+
+    std::cerr << "\n==========================="
+              << "\nNodes/second    : " << 1000 * nodes / totalTime << std::endl;
+
+    // reset callback, to not capture a dangling reference to nodesSearched
+    engine.set_on_update_full([&](const auto& i) { on_update_full(i, options["UCI_ShowWDL"]); });
+}
 
 void UCIEngine::setoption(std::istringstream& is) {
     engine.wait_for_search_finished();
