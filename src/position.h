@@ -24,6 +24,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "bitboard.h"
 #include "nnue/nnue_accumulator.h"
@@ -32,6 +33,7 @@
 
 namespace Stockfish {
 
+class Position;
 class TranspositionTable;
 
 // StateInfo struct stores information needed to restore a Position object to
@@ -71,6 +73,12 @@ struct StateInfo {
 // 'draw by repetition' detection. Use a std::deque because pointers to
 // elements are not invalidated upon list resizing.
 using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
+
+
+/// A private type used to get a nice syntax for SEE comparisons. Never use this
+/// type directly or store a value into a variable of this type, instead use the 
+/// syntax "if (pos.see(move) >= threshold) ..." and similar for other comparisons.
+using SEE = std::pair<const Position&, Move>;
 
 
 // Position class stores information regarding the board representation as
@@ -144,6 +152,7 @@ class Position {
 
     // Static Exchange Evaluation
     bool see_ge(Move m, int threshold = 0) const;
+    inline const SEE see(Move m) const { return SEE(*this, m); }
 
     // Accessing hash keys
     Key key() const;
@@ -358,6 +367,14 @@ inline void Position::move_piece(Square from, Square to) {
 inline void Position::do_move(Move m, StateInfo& newSt) { do_move(m, newSt, gives_check(m)); }
 
 inline StateInfo* Position::state() const { return st; }
+
+// Syntactic sugar around Position::see_ge(), so that we can use the more readable
+// pos.see(move) >= threshold instead of pos.see_ge(move, threshold), and similar
+// readable code for the three other comparison operators.
+inline bool operator>=(const SEE& s, Value threshold) { return  s.first.see_ge(s.second, threshold);}
+inline bool operator> (const SEE& s, Value threshold) { return  (s >= threshold + 1); }
+inline bool operator< (const SEE& s, Value threshold) { return !(s >= threshold); }
+inline bool operator<=(const SEE& s, Value threshold) { return !(s >= threshold + 1); }
 
 }  // namespace Stockfish
 
