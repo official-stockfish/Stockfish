@@ -199,5 +199,44 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
     return ss.str();
 }
 
+int count_passed_pawns(const Position& pos, Color c) {
+    // Pseudo-code to count passed pawns for the given color
+    int count = 0;
+    // Logic to count passed pawns
+    return count;
+}
+
+int count_isolated_pawns(const Position& pos, Color c) {
+    // Pseudo-code to count isolated pawns for the given color
+    int count = 0;
+    // Logic to count isolated pawns
+    return count;
+}
+
+
+
+
+auto [psqt, positional] = networks.big.evaluate(pos, &caches.big);
+Value base = psqt + positional;
+base = pos.side_to_move() == WHITE ? base : -base;
+
+// Custom logic for pawn structure emphasis
+Value pawn_structure_bonus = 0;
+int white_passed_pawns = count_passed_pawns(pos, WHITE);
+int black_passed_pawns = count_passed_pawns(pos, BLACK);
+int white_isolated_pawns = count_isolated_pawns(pos, WHITE);
+int black_isolated_pawns = count_isolated_pawns(pos, BLACK);
+
+// Apply bonus/penalty based on the pawn structure
+pawn_structure_bonus += (white_passed_pawns - black_passed_pawns) * PASSED_PAWN_BONUS;
+pawn_structure_bonus -= (white_isolated_pawns - black_isolated_pawns) * ISOLATED_PAWN_PENALTY;
+
+// Adjust the final evaluation score
+base += pawn_structure_bonus;
+
+// Use this adjusted base value in further evaluation
+
+
+
 
 }  // namespace Stockfish::Eval::NNUE
