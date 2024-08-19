@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Constants used in NNUE evaluation function
+// Common constants and functions used in NNUE evaluation function
 
 #ifndef NNUE_COMMON_H_INCLUDED
 #define NNUE_COMMON_H_INCLUDED
@@ -28,55 +28,32 @@
 #include <iostream>
 #include <type_traits>
 
-#include "../misc.h"
-
-#if defined(USE_AVX2)
-    #include <immintrin.h>
-
-#elif defined(USE_SSE41)
-    #include <smmintrin.h>
-
-#elif defined(USE_SSSE3)
-    #include <tmmintrin.h>
-
-#elif defined(USE_SSE2)
-    #include <emmintrin.h>
-
-#elif defined(USE_NEON)
-    #include <arm_neon.h>
-#endif
+#include "misc.h"
 
 namespace Stockfish::Eval::NNUE {
 
 // Version of the evaluation file
 constexpr std::uint32_t Version = 0x7AF32F20u;
 
-// Constant used in evaluation value calculation
-constexpr int OutputScale     = 16;
-constexpr int WeightScaleBits = 6;
+using IndexType              = std::uint32_t;
+using TransformedFeatureType = std::uint8_t;
+
+// Types used in the feature transformer and accumulator cache entries
+using FeatureTransformerBiasType       = std::int16_t;
+using FeatureTransformerPSQTWeightType = std::int32_t;
 
 // Size of cache line (in bytes)
 constexpr std::size_t CacheLineSize = 64;
 
-constexpr const char        Leb128MagicString[]   = "COMPRESSED_LEB128";
-constexpr const std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
+// Padding to dimensions of input/output buffers across layers
+constexpr std::size_t DimensionPadding = 32;
 
-// SIMD width (in bytes)
-#if defined(USE_AVX2)
-constexpr std::size_t SimdWidth = 32;
+// Constant used in evaluation value calculation
+constexpr int OutputScale     = 16;
+constexpr int WeightScaleBits = 6;
 
-#elif defined(USE_SSE2)
-constexpr std::size_t SimdWidth = 16;
-
-#elif defined(USE_NEON)
-constexpr std::size_t SimdWidth = 16;
-#endif
-
-constexpr std::size_t MaxSimdWidth = 32;
-
-// Type of input feature after conversion
-using TransformedFeatureType = std::uint8_t;
-using IndexType              = std::uint32_t;
+constexpr const char  Leb128MagicString[]   = "COMPRESSED_LEB128";
+constexpr std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
 
 // Round n up to be a multiple of base
 template<typename IntType>
@@ -84,6 +61,26 @@ constexpr IntType ceil_to_multiple(IntType n, IntType base) {
     return (n + base - 1) / base * base;
 }
 
+template<std::size_t RegisterSize, int NumRegisters, std::size_t LaneSize, int NumLanes>
+constexpr int optimal_register_count() {
+    static_assert(RegisterSize > 0 && LaneSize > 0 && NumLanes > 0);
+    static_assert(RegisterSize >= LaneSize && RegisterSize % LaneSize == 0);
+    static_assert((NumLanes * LaneSize) % RegisterSize == 0);
+
+    // The exact number of registers that can fit in the whole input vectors.
+    constexpr int Ideal = (NumLanes * LaneSize) / RegisterSize;
+
+    if constexpr (Ideal <= NumRegisters)
+        return Ideal;
+
+    // Look for the largest divisor of the ideal register count that is
+    // smaller than NumRegisters.
+    for (int divisor = NumRegisters; divisor > 1; --divisor)
+        if (Ideal % divisor == 0)
+            return divisor;
+
+    return 1;
+}
 
 // Utility to read an integer (signed or unsigned, any size)
 // from a stream in little-endian order. We swap the byte order after the read if

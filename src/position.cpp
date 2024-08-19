@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     for (Bitboard b = pos.checkers(); b;)
         os << UCIEngine::square(pop_lsb(b)) << " ";
 
-    if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (Tablebases::MaxCardinality >= int(popcount(pos.pieces())) && !pos.can_castle(ANY_CASTLING))
     {
         StateInfo st;
         ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
@@ -1328,7 +1328,7 @@ bool Position::pos_is_ok() const {
 
 
     for (Piece pc : Pieces)
-        if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
+        if (pieceCount[pc] != int(popcount(pieces(color_of(pc), type_of(pc))))
             || pieceCount[pc] != std::count(board, board + SQUARE_NB, pc))
             assert(0 && "pos_is_ok: Pieces");
 

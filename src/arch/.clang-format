@@ -1,0 +1,5 @@
+BasedOnStyle: InheritParentConfig
+
+# Architecture specific files use a lot of preprocessor directives.
+# Do not indent them for better readability.
+IndentPPDirectives: None 

@@ -19,88 +19,10 @@
 #ifndef TYPES_H_INCLUDED
     #define TYPES_H_INCLUDED
 
-// When compiling with provided Makefile (e.g. for Linux and OSX), configuration
-// is done automatically. To get started type 'make help'.
-//
-// When Makefile is not used (e.g. with Microsoft Visual Studio) some switches
-// need to be set manually:
-//
-// -DNDEBUG      | Disable debugging mode. Always use this for release.
-//
-// -DNO_PREFETCH | Disable use of prefetch asm-instruction. You may need this to
-//               | run on some very old machines.
-//
-// -DUSE_POPCNT  | Add runtime support for use of popcnt asm-instruction. Works
-//               | only in 64-bit mode and requires hardware with popcnt support.
-//
-// -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
-//               | only in 64-bit mode and requires hardware with pext support.
-
     #include <cassert>
     #include <cstdint>
 
-    #if defined(_MSC_VER)
-        // Disable some silly and noisy warnings from MSVC compiler
-        #pragma warning(disable: 4127)  // Conditional expression is constant
-        #pragma warning(disable: 4146)  // Unary minus operator applied to unsigned type
-        #pragma warning(disable: 4800)  // Forcing value to bool 'true' or 'false'
-    #endif
-
-// Predefined macros hell:
-//
-// __GNUC__                Compiler is GCC, Clang or ICX
-// __clang__               Compiler is Clang or ICX
-// __INTEL_LLVM_COMPILER   Compiler is ICX
-// _MSC_VER                Compiler is MSVC
-// _WIN32                  Building on Windows (any)
-// _WIN64                  Building on Windows 64 bit
-
-    #if defined(__GNUC__) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) \
-      && defined(_WIN32) && !defined(__clang__)
-        #define ALIGNAS_ON_STACK_VARIABLES_BROKEN
-    #endif
-
-    #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
-
-    #if defined(_WIN64) && defined(_MSC_VER)  // No Makefile used
-        #include <intrin.h>                   // Microsoft header for _BitScanForward64()
-        #define IS_64BIT
-    #endif
-
-    #if defined(USE_POPCNT) && defined(_MSC_VER)
-        #include <nmmintrin.h>  // Microsoft header for _mm_popcnt_u64()
-    #endif
-
-    #if !defined(NO_PREFETCH) && defined(_MSC_VER)
-        #include <xmmintrin.h>  // Microsoft header for _mm_prefetch()
-    #endif
-
-    #if defined(USE_PEXT)
-        #include <immintrin.h>  // Header for _pext_u64() intrinsic
-        #define pext(b, m) _pext_u64(b, m)
-    #else
-        #define pext(b, m) 0
-    #endif
-
 namespace Stockfish {
-
-    #ifdef USE_POPCNT
-constexpr bool HasPopCnt = true;
-    #else
-constexpr bool HasPopCnt = false;
-    #endif
-
-    #ifdef USE_PEXT
-constexpr bool HasPext = true;
-    #else
-constexpr bool HasPext = false;
-    #endif
-
-    #ifdef IS_64BIT
-constexpr bool Is64Bit = true;
-    #else
-constexpr bool Is64Bit = false;
-    #endif
 
 using Key      = uint64_t;
 using Bitboard = uint64_t;

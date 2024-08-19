@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <string>
 
+#include "common.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -55,7 +56,6 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
@@ -75,11 +75,10 @@ struct Magic {
 
     // Compute the attack's index using the 'magic bitboards' approach
     unsigned index(Bitboard occupied) const {
-
 #ifdef USE_PEXT
-        return unsigned(pext(occupied, mask));
+            return unsigned(pext(occupied, mask));
 #else
-        if (Is64Bit)
+        if (is_64bit())
             return unsigned(((occupied & mask) * magic) >> shift);
 
         unsigned lo = unsigned(occupied) & unsigned(mask);
@@ -260,29 +259,6 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
     default :
         return PseudoAttacks[pt][s];
     }
-}
-
-
-// Counts the number of non-zero bits in a bitboard.
-inline int popcount(Bitboard b) {
-
-#ifndef USE_POPCNT
-
-    union {
-        Bitboard bb;
-        uint16_t u[4];
-    } v = {b};
-    return PopCnt16[v.u[0]] + PopCnt16[v.u[1]] + PopCnt16[v.u[2]] + PopCnt16[v.u[3]];
-
-#elif defined(_MSC_VER)
-
-    return int(_mm_popcnt_u64(b));
-
-#else  // Assumed gcc or compatible compiler
-
-    return __builtin_popcountll(b);
-
-#endif
 }
 
 // Returns the least significant bit in a non-zero bitboard.

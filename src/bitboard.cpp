@@ -16,17 +16,16 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "bitboard.h"
 
 #include <algorithm>
 #include <bitset>
 #include <initializer_list>
 
+#include "bitboard.h"
 #include "misc.h"
 
 namespace Stockfish {
 
-uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
@@ -49,7 +48,8 @@ Bitboard safe_destination(Square s, int step) {
     Square to = Square(s + step);
     return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
 }
-}
+
+}  // namespace
 
 // Returns an ASCII representation of a bitboard suitable
 // to be printed to standard output. Useful for debugging.
@@ -73,9 +73,6 @@ std::string Bitboards::pretty(Bitboard b) {
 // Initializes various bitboard tables. It is called at
 // startup and relies on global objects to be already zero-initialized.
 void Bitboards::init() {
-
-    for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCnt16[i] = uint8_t(std::bitset<16>(i).count());
 
     for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
         for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
@@ -167,7 +164,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         Magic& m = magics[s][pt - BISHOP];
         m.mask   = sliding_attack(pt, s, 0) & ~edges;
 #ifndef USE_PEXT
-        m.shift = (Is64Bit ? 64 : 32) - popcount(m.mask);
+            m.shift = (is_64bit() ? 64 : 32) - popcount(m.mask);
 #endif
         // Set the offset for the attacks table of the square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
@@ -184,7 +181,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
 #endif
             reference[size] = sliding_attack(pt, s, b);
 
-            if (HasPext)
+            if constexpr (use_pext())
                 m.attacks[pext(b, m.mask)] = reference[size];
 
             size++;
@@ -192,7 +189,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         } while (b);
 
 #ifndef USE_PEXT
-        PRNG rng(seeds[Is64Bit][rank_of(s)]);
+        PRNG rng(seeds[is_64bit()][rank_of(s)]);
 
         // Find a magic for square 's' picking up an (almost) random number
         // until we find the one that passes the verification test.
