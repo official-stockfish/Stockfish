@@ -96,8 +96,9 @@ void Bitboards::init() {
         for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
             PseudoAttacks[KNIGHT][s1] |= safe_destination(s1, step);
 
-        PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
-        PseudoAttacks[QUEEN][s1] |= PseudoAttacks[ROOK][s1]  = attacks_bb<ROOK>(s1, 0);
+        PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
+        PseudoAttacks[ROOK][s1] = attacks_bb<ROOK>(s1, 0);
+        PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] | PseudoAttacks[ROOK][s1];
 
         for (PieceType pt : {BISHOP, ROOK})
             for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
