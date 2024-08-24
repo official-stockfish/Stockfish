@@ -81,7 +81,10 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
-    auto cv = w.correctionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
+    const auto pcv =
+      w.pawnCorrectionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
+    const auto mcv = w.materialCorrectionHistory[pos.side_to_move()][material_index(pos)];
+    const auto cv  = (2 * pcv + mcv) / 3;
     v += 66 * cv / 512;
     return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
@@ -487,7 +490,8 @@ void Search::Worker::clear() {
     mainHistory.fill(0);
     captureHistory.fill(-700);
     pawnHistory.fill(-1188);
-    correctionHistory.fill(0);
+    pawnCorrectionHistory.fill(0);
+    materialCorrectionHistory.fill(0);
 
     for (bool inCheck : {false, true})
         for (StatsType c : {NoCaptures, Captures})
@@ -568,10 +572,9 @@ Value Search::Worker::search(
         // Step 2. Check for aborted search and immediate draw
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck)
-                   ? evaluate(networks[numaAccessToken], pos, refreshTable,
-                              thisThread->optimism[us])
-                   : value_draw(thisThread->nodes);
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(
+                     networks[numaAccessToken], pos, refreshTable, thisThread->optimism[us])
+                                                        : value_draw(thisThread->nodes);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
@@ -1390,7 +1393,8 @@ moves_loop:  // When in check, search starts here
     {
         auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
-        thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)] << bonus;
+        thisThread->pawnCorrectionHistory[us][pawn_structure_index<Correction>(pos)] << bonus;
+        thisThread->materialCorrectionHistory[us][material_index(pos)] << bonus;
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
