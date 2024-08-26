@@ -582,7 +582,21 @@ class NumaConfig {
         // still no way to set thread affinity spanning multiple processor groups.
         // See https://learn.microsoft.com/en-us/windows/win32/procthread/numa-support
         // We also do this is if need to force old API for some reason.
-        if (STARTUP_USE_OLD_AFFINITY_API)
+        //
+        // 2024-08-26: It appears that we need to actually always force this behaviour.
+        // While Windows allows this to work now, such assignments have bad interaction
+        // with the scheduler - in particular it still prefers scheduling on the thread's
+        // "primary" node, even if it means scheduling SMT processors first.
+        // See https://github.com/official-stockfish/Stockfish/issues/5551
+        // See https://learn.microsoft.com/en-us/windows/win32/procthread/processor-groups
+        //
+        //     Each process is assigned a primary group at creation, and by default all
+        //     of its threads' primary group is the same. Each thread's ideal processor
+        //     is in the thread's primary group, so threads will preferentially be
+        //     scheduled to processors on their primary group, but they are able to
+        //     be scheduled to processors on any other group.
+        //
+        // used to be guarded by if (STARTUP_USE_OLD_AFFINITY_API)
         {
             NumaConfig splitCfg = empty();
 
