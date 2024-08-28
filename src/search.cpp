@@ -63,45 +63,6 @@ void syzygy_extend_pv(const OptionsMap&            options,
 using Eval::evaluate;
 using namespace Search;
 
-int a1=122, a2=37, a3=66, a4=190, a5=108, a6=1596, a7=736, a8=268, a9=2044,
-
-b1=5, b2=13424, b3=125, b4=89, b5=700, b6=1188, b7=658, b8=1862,
-
-c1=10, c2=1664, c3=1471, c4=752, c5=494, c6=290, c7=13, c8=260, c9=14389, c10=21, c11=390, c12=202, c13=7,
-
-d1=184, d2=53, d3=390, d4=7, d5=285, d6=251, d7=182, d8=166, d9=168,
-
-e1=4165, e2=3853, e3=51, e4=143, e5=52, e6=135, e7=12, e8=24,
-
-f1=36, f2=54, f3=76, f4=293, f5=195, f6=107, f7=259, f8=260, f9=98, f10=16,
-
-g1=3994, g2=4664, g3=10898, g4=10, g5=35, g6=8, g7=14,
-
-h1=122, h2=39, h3=165, h4=8, h5=107, h6=98, h7=134, h8=91, h9=100, h10=94, h11=304, h12=116, h13=180, h14=25,
-
-i1=299, i2=4643, i3=83, i4=1274, i5=746, i6=1293, i7=52;
-
-TUNE(a1, a2, a3, a4, a5, a6, a7, a8, a9,
-     b1, b3, b4, b5, b6, b7, b8,
-     c1, c2, c3, c4, c5, c6, c7, c9, c10, c11, c13,
-     d1, d2, d3, d4, d5, d6, d7, d8, d9,
-     e1, e3, e4, e5, e6, e7, e8,
-     f1, f2, f3, f4, f5, f6, f7, f8, f9, f10,
-     g1, g2, g4, g5, g6, g7,
-     h1, h2, h3, h4, h5, h6, h7, h8, h10, h11,
-     i1, i2, i3, i4, i5, i6, i7);
-
-// for b2, c8, c12, e2, g3, h9, h12, h13, h14:
-TUNE(SetRange(1, 2*b2), b2);
-TUNE(SetRange(1, 2*c8), c8);
-TUNE(SetRange(1, 2*c12), c12);
-TUNE(SetRange(1, 2*e2), e2);
-TUNE(SetRange(1, 2*g3), g3);
-TUNE(SetRange(1, 2*h9), h9);
-TUNE(SetRange(1, 2*h12), h12);
-TUNE(SetRange(1, 2*h13), h13);
-TUNE(SetRange(1, 2*h14), h14);
-
 namespace {
 
 // Futility margin
