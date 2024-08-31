@@ -149,7 +149,7 @@ void Position::init() {
                             break;
                         i = (i == H1(key)) ? H2(key) : H1(key);  // Push victim to alternative slot
                     }
-                    count++;
+                    count += 1;
                 }
     assert(count == 3668);
 }

@@ -278,7 +278,7 @@ void Search::Worker::iterative_deepening() {
         pvLast         = 0;
 
         if (!threads.increaseDepth)
-            searchAgainCounter++;
+            searchAgainCounter += 1;
 
         // MultiPV loop. We perform a full root search for each PV line
         for (pvIdx = 0; pvIdx < multiPV; ++pvIdx)
@@ -286,7 +286,7 @@ void Search::Worker::iterative_deepening() {
             if (pvIdx == pvLast)
             {
                 pvFirst = pvLast;
-                for (pvLast++; pvLast < rootMoves.size(); pvLast++)
+                for (++pvLast; pvLast < rootMoves.size(); ++pvLast)
                     if (rootMoves[pvLast].tbRank != rootMoves[pvFirst].tbRank)
                         break;
             }
@@ -1128,7 +1128,7 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction for PvNodes (~0 Elo on STC, ~2 Elo on LTC)
         if (PvNode)
-            r--;
+            r -= 1;
 
         // These reduction adjustments have no proven non-linear scaling
 
@@ -1138,7 +1138,7 @@ moves_loop:  // When in check, search starts here
 
         // Increase reduction if ttMove is a capture (~3 Elo)
         if (ttCapture)
-            r++;
+            r += 1;
 
         // Increase reduction if next ply has a lot of fail high (~5 Elo)
         if ((ss + 1)->cutoffCnt > 3)
@@ -1545,7 +1545,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         givesCheck = pos.gives_check(move);
         capture    = pos.capture_stage(move);
 
-        moveCount++;
+        moveCount += 1;
 
         // Step 6. Pruning
         if (bestValue > VALUE_TB_LOSS_IN_MAX_PLY && pos.non_pawn_material(us))
@@ -1928,7 +1928,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         if (legalMoves[0].tbRank != rm.tbRank)
             break;
 
-        ply++;
+        ply += 1;
 
         auto& st = sts.emplace_back();
         pos.do_move(pvMove, st);
@@ -1937,7 +1937,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         if (config.rootInTB && pos.is_draw(ply))
         {
             pos.undo_move(pvMove);
-            ply--;
+            ply -= 1;
             break;
         }
 
@@ -1988,7 +1988,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         if (!config.rootInTB || config.cardinality > 0)
             break;
 
-        ply++;
+        ply += 1;
 
         Move& pvMove = legalMoves[0].pv[0];
         rootMove.pv.push_back(pvMove);

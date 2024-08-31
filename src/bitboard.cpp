@@ -180,7 +180,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[]) {
             if (HasPext)
                 m.attacks[pext(b, m.mask)] = reference[size];
 
-            size++;
+            size += 1;
             b = (b - m.mask) & m.mask;
         } while (b);
 
