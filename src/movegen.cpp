@@ -218,10 +218,8 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
     static_assert(Type != LEGAL, "Unsupported type in generate()");
     assert((Type == EVASIONS) == bool(pos.checkers()));
 
-    Color us = pos.side_to_move();
-
-    return us == WHITE ? generate_all<WHITE, Type>(pos, moveList)
-                       : generate_all<BLACK, Type>(pos, moveList);
+    return pos.side_to_move() == WHITE ? generate_all<WHITE, Type>(pos, moveList)
+                                       : generate_all<BLACK, Type>(pos, moveList);
 }
 
 // Explicit template instantiations

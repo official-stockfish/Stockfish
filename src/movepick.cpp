@@ -95,7 +95,6 @@ MovePicker::MovePicker(const Position&              p,
 
     if (pos.checkers())
         stage = EVASION_TT + !(ttm && pos.pseudo_legal(ttm));
-
     else
         stage = (depth > 0 ? MAIN_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
@@ -193,15 +192,12 @@ void MovePicker::score() {
 template<MovePicker::PickType T, typename Pred>
 Move MovePicker::select(Pred filter) {
 
-    while (cur < endMoves)
+    for (; cur < endMoves; ++cur)
     {
         if constexpr (T == Best)
             std::swap(*cur, *std::max_element(cur, endMoves));
-
         if (*cur != ttMove && filter())
             return *cur++;
-
-        cur++;
     }
     return Move::none();
 }
