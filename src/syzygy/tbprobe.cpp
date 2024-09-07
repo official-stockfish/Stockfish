@@ -616,7 +616,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         // to 64 bits we know that d->base64[l-1] >= s64 >= d->base64[l] so we
         // can find the symbol length iterating through base64[].
         while (buf64 < d->base64[len])
-            ++len;
+            len += 1;
 
         // All the symbols of a given length are consecutive integers (numerical
         // sequence property), so we can compute the offset of our symbol of
@@ -958,7 +958,7 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
     // the encoder will default on '111', so groupLen[] will be (3, 1).
     for (int i = 1; i < e.pieceCount; ++i)
         if (--firstLen > 0 || d->pieces[i] == d->pieces[i - 1])
-            d->groupLen[n]++;
+            d->groupLen[n] += 1;
         else
             d->groupLen[++n] = 1;
 

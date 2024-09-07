@@ -221,7 +221,7 @@ top:
     case EVASION_TT :
     case QSEARCH_TT :
     case PROBCUT_TT :
-        ++stage;
+        stage += 1;
         return ttMove;
 
     case CAPTURE_INIT :
@@ -232,7 +232,7 @@ top:
 
         score<CAPTURES>();
         partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
-        ++stage;
+        stage += 1;
         goto top;
 
     case GOOD_CAPTURE :
@@ -243,7 +243,7 @@ top:
             }))
             return *(cur - 1);
 
-        ++stage;
+        stage += 1;
         [[fallthrough]];
 
     case QUIET_INIT :
@@ -256,7 +256,7 @@ top:
             partial_insertion_sort(cur, endMoves, quiet_threshold(depth));
         }
 
-        ++stage;
+        stage += 1;
         [[fallthrough]];
 
     case GOOD_QUIET :
@@ -273,7 +273,7 @@ top:
         cur      = moves;
         endMoves = endBadCaptures;
 
-        ++stage;
+        stage += 1;
         [[fallthrough]];
 
     case BAD_CAPTURE :
@@ -284,7 +284,7 @@ top:
         cur      = beginBadQuiets;
         endMoves = endBadQuiets;
 
-        ++stage;
+        stage += 1;
         [[fallthrough]];
 
     case BAD_QUIET :
@@ -298,7 +298,7 @@ top:
         endMoves = generate<EVASIONS>(pos, cur);
 
         score<EVASIONS>();
-        ++stage;
+        stage += 1;
         [[fallthrough]];
 
     case EVASION :

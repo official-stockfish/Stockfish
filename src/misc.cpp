@@ -304,26 +304,25 @@ DebugExtremes extremes[MaxDebugSlots];
 
 void dbg_hit_on(bool cond, int slot) {
 
-    ++hit[slot][0];
-    if (cond)
-        ++hit[slot][1];
+    hit[slot][0] += 1;
+    hit[slot][1] += cond;
 }
 
 void dbg_mean_of(int64_t value, int slot) {
 
-    ++mean[slot][0];
+    mean[slot][0] += 1;
     mean[slot][1] += value;
 }
 
 void dbg_stdev_of(int64_t value, int slot) {
 
-    ++stdev[slot][0];
+    stdev[slot][0] += 1;
     stdev[slot][1] += value;
     stdev[slot][2] += value * value;
 }
 
 void dbg_extremes_of(int64_t value, int slot) {
-    ++extremes[slot][0];
+    extremes[slot][0] += 1;
 
     int64_t current_max = extremes[slot][1].load();
     while (current_max < value && !extremes[slot][1].compare_exchange_weak(current_max, value))
@@ -336,7 +335,7 @@ void dbg_extremes_of(int64_t value, int slot) {
 
 void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
 
-    ++correl[slot][0];
+    correl[slot][0] += 1;
     correl[slot][1] += value1;
     correl[slot][2] += value1 * value1;
     correl[slot][3] += value2;
