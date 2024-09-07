@@ -2025,6 +2025,8 @@ void SearchManager::pv(Search::Worker&           worker,
                        const TranspositionTable& tt,
                        Depth                     depth) {
 
+    if (depth == 1)
+        return;
     const auto nodes     = threads.nodes_searched();
     auto&      rootMoves = worker.rootMoves;
     auto&      pos       = worker.rootPos;
@@ -2036,7 +2038,7 @@ void SearchManager::pv(Search::Worker&           worker,
     {
         bool updated = rootMoves[i].score != -VALUE_INFINITE;
 
-        if (depth == 1 && !updated && i > 0)
+        if (!updated && i > 0)
             continue;
 
         Depth d = updated ? depth : std::max(1, depth - 1);
