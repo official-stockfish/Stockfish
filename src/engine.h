@@ -47,7 +47,7 @@ class Engine {
     using InfoFull  = Search::InfoFull;
     using InfoIter  = Search::InfoIteration;
 
-    Engine(std::string path = "");
+    Engine(std::optional<std::string> path = std::nullopt);
 
     // Cannot be movable due to components holding backreferences to fields
     Engine(const Engine&)            = delete;
