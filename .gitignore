@@ -1,12 +1,14 @@
+src/*
+!src/incbin/
+!src/nnue/
+!src/syzygy/
+!src/*.cpp
+!src/*.h
+!src/Makefile
+
 # Files from build
 **/*.o
 **/*.s
-src/.depend
-
-# Built binary
-src/stockfish*
-src/-lstdc++.res
 
 # Neural network for the NNUE evaluation
 **/*.nnue
-
