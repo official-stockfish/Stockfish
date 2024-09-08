@@ -167,7 +167,7 @@ void UCIEngine::loop() {
               << "\nit among your friends, making it available for download from your website, selling it (either by itself or as part of some bigger software package),"
               << "\nor using it as the starting point for a software project of your own. The only real limitation is that whenever you distribute Stockfish in some way, "
               << "\nyou MUST always include the license and the full source code (or a pointer to where the source code can be found) to generate the exact binary you are distributing. "
-              << "\nIf you make any changes to the source code, these changes must also be made available under GPL v3. For more information of the GPL v3, visit https://github.com/official-stockfish/Stockfish?tab=GPL-3.0-1-ov-file.\n"
+              << "\nIf you make any changes to the source code, these changes must also be made available under GPL v3. For more information about the GPL v3, visit https://github.com/official-stockfish/Stockfish?tab=GPL-3.0-1-ov-file.\n"
               << sync_endl;
         else if (!token.empty() && token[0] != '#')
             sync_cout << "Unknown command: '" << cmd << "'. Type help for more information."
