@@ -163,11 +163,7 @@ void UCIEngine::loop() {
         else if (token == "--license" || token == "license")
             sync_cout
               << "\nStockfish is free and distributed under the GNU General Public License version 3 (GPL v3)."
-              << "\nEssentially, this means you are free to do almost exactly what you want with the program, including distributing"
-              << "\nit among your friends, making it available for download from your website, selling it (either by itself or as part of some bigger software package),"
-              << "\nor using it as the starting point for a software project of your own. The only real limitation is that whenever you distribute Stockfish in some way, "
-              << "\nyou MUST always include the license and the full source code (or a pointer to where the source code can be found) to generate the exact binary you are distributing. "
-              << "\nIf you make any changes to the source code, these changes must also be made available under GPL v3. For more information about the GPL v3, visit https://github.com/official-stockfish/Stockfish?tab=GPL-3.0-1-ov-file.\n"
+              << "\nFor more information about the GPL v3, visit https://github.com/official-stockfish/Stockfish?tab=GPL-3.0-1-ov-file.\n"
               << sync_endl;
         else if (!token.empty() && token[0] != '#')
             sync_cout << "Unknown command: '" << cmd << "'. Type help for more information."
