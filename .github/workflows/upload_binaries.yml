@@ -59,6 +59,7 @@ jobs:
           mv "${{ matrix.config.simple_name }} ${{ matrix.binaries }}" stockfish-workflow
           cd stockfish-workflow
           cp -r src ../stockfish/
+          cp -r scripts ../stockfish/
           cp stockfish-$NAME-$BINARY$EXT ../stockfish/
           cp "Top CPU Contributors.txt" ../stockfish/
           cp Copying.txt ../stockfish/
