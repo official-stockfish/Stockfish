@@ -917,59 +917,9 @@ profileclean:
 	@rm -f stockfish.res
 	@rm -f ./-lstdc++.res
 
-define fetch_network
-	@echo "Default net: $(nnuenet)"
-	@if [ "x$(curl_or_wget)" = "x" ]; then \
-		echo "Neither curl nor wget is installed. Install one of these tools unless the net has been downloaded manually"; \
-	fi
-	@if [ "x$(shasum_command)" = "x" ]; then \
-		echo "shasum / sha256sum not found, skipping net validation"; \
-	elif test -f "$(nnuenet)"; then \
-		if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-			echo "Removing invalid network"; rm -f $(nnuenet); \
-		fi; \
-	fi;
-	@for nnuedownloadurl in "$(nnuedownloadurl1)" "$(nnuedownloadurl2)"; do \
-		if test -f "$(nnuenet)"; then \
-			echo "$(nnuenet) available : OK"; break; \
-		else \
-			if [ "x$(curl_or_wget)" != "x" ]; then \
-				echo "Downloading $${nnuedownloadurl}"; $(curl_or_wget) $${nnuedownloadurl} > $(nnuenet);\
-			else \
-				echo "No net found and download not possible"; exit 1;\
-			fi; \
-		fi; \
-		if [ "x$(shasum_command)" != "x" ]; then \
-			if [ "$(nnuenet)" != "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-				echo "Removing failed download"; rm -f $(nnuenet); \
-			fi; \
-		fi; \
-	done
-	@if ! test -f "$(nnuenet)"; then \
-		echo "Failed to download $(nnuenet)."; \
-	fi;
-	@if [ "x$(shasum_command)" != "x" ]; then \
-		if [ "$(nnuenet)" = "nn-"`$(shasum_command) $(nnuenet) | cut -c1-12`".nnue" ]; then \
-			echo "Network validated"; break; \
-		fi; \
-	fi;
-endef
-
-# set up shell variables for the net stuff
-define netvariables
-$(eval nnuenet := $(shell grep $(1) evaluate.h | grep define | sed 's/.*\(nn-[a-z0-9]\{12\}.nnue\).*/\1/'))
-$(eval nnuedownloadurl1 := https://tests.stockfishchess.org/api/nn/$(nnuenet))
-$(eval nnuedownloadurl2 := https://github.com/official-stockfish/networks/raw/master/$(nnuenet))
-$(eval curl_or_wget := $(shell if hash curl 2>/dev/null; then echo "curl -skL"; elif hash wget 2>/dev/null; then echo "wget -qO-"; fi))
-$(eval shasum_command := $(shell if hash shasum 2>/dev/null; then echo "shasum -a 256 "; elif hash sha256sum 2>/dev/null; then echo "sha256sum "; fi))
-endef
-
 # evaluation network (nnue)
 net:
-	$(call netvariables, EvalFileDefaultNameBig)
-	$(call fetch_network)
-	$(call netvariables, EvalFileDefaultNameSmall)
-	$(call fetch_network)
+	@$(SHELL) ../scripts/net.sh
 
 format:
 	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
