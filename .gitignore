@@ -7,8 +7,8 @@ src/*
 !src/Makefile
 
 # Files from build
-**/*.o
-**/*.s
+*.o
+*.s
 
 # Neural network for the NNUE evaluation
-**/*.nnue
+*.nnue
