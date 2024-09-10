@@ -36,6 +36,16 @@
 
 namespace Stockfish::Eval::NNUE {
 
+// Definitions of the network types
+template<IndexType _L1, int _L2, int _L3, Accumulator<_L1> StateInfo::*_accPtr>
+struct NetworkType {
+    static constexpr IndexType L1 = _L1;
+    static constexpr int       L2 = _L2;
+    static constexpr int       L3 = _L3;
+
+    static constexpr Accumulator<L1> StateInfo::*accPtr = _accPtr;
+};
+
 enum class EmbeddedNNUEType {
     BIG,
     SMALL,
@@ -43,9 +53,11 @@ enum class EmbeddedNNUEType {
 
 using NetworkOutput = std::tuple<Value, Value>;
 
-template<typename Arch, typename Transformer>
+template<typename Type>
 class Network {
-    static constexpr IndexType FTDimensions = Arch::TransformedFeatureDimensions;
+    using Transformer = FeatureTransformer<Type>;
+    using Cache       = AccumulatorCaches::Cache<Type::L1>;
+    using Arch        = NetworkArchitecture<Type>;
 
    public:
     Network(EvalFile file, EmbeddedNNUEType type) :
@@ -61,16 +73,12 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    NetworkOutput evaluate(const Position&                         pos,
-                           AccumulatorCaches::Cache<FTDimensions>* cache) const;
+    NetworkOutput evaluate(const Position& pos, Cache* cache) const;
 
-
-    void hint_common_access(const Position&                         pos,
-                            AccumulatorCaches::Cache<FTDimensions>* cache) const;
+    void hint_common_access(const Position& pos, Cache* cache) const;
 
     void          verify(std::string evalfilePath) const;
-    NnueEvalTrace trace_evaluate(const Position&                         pos,
-                                 AccumulatorCaches::Cache<FTDimensions>* cache) const;
+    NnueEvalTrace trace_evaluate(const Position& pos, Cache* cache) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);
@@ -103,19 +111,13 @@ class Network {
     friend struct AccumulatorCaches::Cache;
 };
 
-// Definitions of the network types
-using SmallFeatureTransformer =
-  FeatureTransformer<TransformedFeatureDimensionsSmall, &StateInfo::accumulatorSmall>;
-using SmallNetworkArchitecture =
-  NetworkArchitecture<TransformedFeatureDimensionsSmall, L2Small, L3Small>;
+using NetworkTypeBig =
+  NetworkType<TransformedFeatureDimensionsBig, L2Big, L3Big, &StateInfo::accumulatorBig>;
+using NetworkTypeSmall =
+  NetworkType<TransformedFeatureDimensionsSmall, L2Small, L3Small, &StateInfo::accumulatorSmall>;
 
-using BigFeatureTransformer =
-  FeatureTransformer<TransformedFeatureDimensionsBig, &StateInfo::accumulatorBig>;
-using BigNetworkArchitecture = NetworkArchitecture<TransformedFeatureDimensionsBig, L2Big, L3Big>;
-
-using NetworkBig   = Network<BigNetworkArchitecture, BigFeatureTransformer>;
-using NetworkSmall = Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
-
+using NetworkBig   = Network<NetworkTypeBig>;
+using NetworkSmall = Network<NetworkTypeSmall>;
 
 struct Networks {
     Networks(NetworkBig&& nB, NetworkSmall&& nS) :
