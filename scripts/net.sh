@@ -1,7 +1,7 @@
 #!/bin/sh
 
-wget_or_curl=$( (command -v wget > /dev/null 2>&1 && echo "wget -q") || \
-                (command -v curl > /dev/null 2>&1 && echo "curl -L -s -k"))
+wget_or_curl=$( (command -v wget > /dev/null 2>&1 && echo "wget -qO-") || \
+                (command -v curl > /dev/null 2>&1 && echo "curl -skL"))
 
 if [ -z "$wget_or_curl" ]; then
   >&2 printf "%s\n" "Neither wget or curl is installed." \
@@ -51,7 +51,7 @@ fetch_network() {
     "https://tests.stockfishchess.org/api/nn/$_filename" \
     "https://github.com/official-stockfish/networks/raw/master/$_filename"; do
     echo "Downloading from $url ..."
-    if $wget_or_curl "$url"; then
+    if $wget_or_curl "$url" > "$_filename"; then
       if validate_network "$_filename"; then
         echo "Successfully validated $_filename"
       else
