@@ -282,8 +282,8 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
     {
         th->run_custom_job([&]() {
             th->worker->limits = limits;
-            th->worker->nodes = th->worker->tbHits = th->worker->nmpMinPly =
-              th->worker->bestMoveChanges          = 0;
+            th->worker->nodes = th->worker->tbHits = th->worker->bestMoveChanges = 0;
+            th->worker->verification = false;
             th->worker->rootDepth = th->worker->completedDepth = 0;
             th->worker->rootMoves                              = rootMoves;
             th->worker->rootPos.set(pos.fen(), pos.is_chess960(), &th->worker->rootState);
