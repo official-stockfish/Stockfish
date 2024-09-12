@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify perft numbers (positions from www.chessprogramming.org/Perft_Results)
+# verify perft numbers (positions from https://www.chessprogramming.org/Perft_Results)
 
 error()
 {
