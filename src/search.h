@@ -277,13 +277,18 @@ class Worker {
     void ensure_network_replicated();
 
     // Public because they need to be updatable by the stats
-    ButterflyHistory          mainHistory;
-    ButterflyHistory          rootHistory;
-    CapturePieceToHistory     captureHistory;
-    ContinuationHistory       continuationHistory[2][2];
-    PawnHistory               pawnHistory;
-    PawnCorrectionHistory     pawnCorrectionHistory;
-    MaterialCorrectionHistory materialCorrectionHistory;
+    ButterflyHistory mainHistory;
+    ButterflyHistory rootHistory;
+
+    CapturePieceToHistory captureHistory;
+    ContinuationHistory   continuationHistory[2][2];
+    PawnHistory           pawnHistory;
+
+    PawnCorrectionHistory       pawnCorrectionHistory;
+    MaterialCorrectionHistory   materialCorrectionHistory;
+    MajorPieceCorrectionHistory majorPieceCorrectionHistory;
+    MinorPieceCorrectionHistory minorPieceCorrectionHistory;
+    NonPawnCorrectionHistory    nonPawnCorrectionHistory[COLOR_NB];
 
    private:
     void iterative_deepening();

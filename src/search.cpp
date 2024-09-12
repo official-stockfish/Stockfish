@@ -46,7 +46,6 @@
 #include "thread.h"
 #include "timeman.h"
 #include "tt.h"
-#include "types.h"
 #include "uci.h"
 #include "ucioption.h"
 
@@ -81,11 +80,16 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
-    const auto pcv =
-      w.pawnCorrectionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
-    const auto mcv = w.materialCorrectionHistory[pos.side_to_move()][material_index(pos)];
-    const auto cv  = (2 * pcv + mcv) / 3;
-    v += 74 * cv / 512;
+    const Color us    = pos.side_to_move();
+    const auto  pcv   = w.pawnCorrectionHistory[us][pawn_structure_index<Correction>(pos)];
+    const auto  mcv   = w.materialCorrectionHistory[us][material_index(pos)];
+    const auto  macv  = w.majorPieceCorrectionHistory[us][major_piece_index(pos)];
+    const auto  micv  = w.minorPieceCorrectionHistory[us][minor_piece_index(pos)];
+    const auto  wnpcv = w.nonPawnCorrectionHistory[WHITE][us][non_pawn_index<WHITE>(pos)];
+    const auto  bnpcv = w.nonPawnCorrectionHistory[BLACK][us][non_pawn_index<BLACK>(pos)];
+    const auto  cv =
+      (98198 * pcv + 68968 * mcv + 54353 * macv + 85174 * micv + 85581 * (wnpcv + bnpcv)) / 2097152;
+    v += cv;
     return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
@@ -500,6 +504,10 @@ void Search::Worker::clear() {
     pawnHistory.fill(-1152);
     pawnCorrectionHistory.fill(0);
     materialCorrectionHistory.fill(0);
+    majorPieceCorrectionHistory.fill(0);
+    minorPieceCorrectionHistory.fill(0);
+    nonPawnCorrectionHistory[WHITE].fill(0);
+    nonPawnCorrectionHistory[BLACK].fill(0);
 
     for (bool inCheck : {false, true})
         for (StatsType c : {NoCaptures, Captures})
@@ -1403,6 +1411,10 @@ moves_loop:  // When in check, search starts here
                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
         thisThread->pawnCorrectionHistory[us][pawn_structure_index<Correction>(pos)] << bonus;
         thisThread->materialCorrectionHistory[us][material_index(pos)] << bonus;
+        thisThread->majorPieceCorrectionHistory[us][major_piece_index(pos)] << bonus;
+        thisThread->minorPieceCorrectionHistory[us][minor_piece_index(pos)] << bonus;
+        thisThread->nonPawnCorrectionHistory[WHITE][us][non_pawn_index<WHITE>(pos)] << bonus;
+        thisThread->nonPawnCorrectionHistory[BLACK][us][non_pawn_index<BLACK>(pos)] << bonus;
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
