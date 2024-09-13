@@ -143,7 +143,7 @@ jobs:
           FROM ${{ matrix.config.base_image }}
           WORKDIR /app
           RUN apk update && apk add make g++
-          CMD ["sh", "script.sh"]
+          CMD ["sh", "src/script.sh"]
           EOF
 
       - name: Download required macOS packages
@@ -176,7 +176,7 @@ jobs:
             $COMPCXX -v
           else
             echo "$COMPCXX -v" > script.sh
-            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           fi
 
       - name: Test help target
@@ -342,8 +342,8 @@ jobs:
       - name: Test riscv64 build
         if: matrix.config.run_riscv64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
       # ppc64 tests
@@ -351,8 +351,8 @@ jobs:
       - name: Test ppc64 build
         if: matrix.config.run_ppc64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
       # Other tests
