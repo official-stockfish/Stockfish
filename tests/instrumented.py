@@ -254,7 +254,7 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command("go depth 5")
 
         def callback(output):
-            regex = "info depth \d+ seldepth \d+ multipv \d+ score cp \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
+            regex = r"info depth \d+ seldepth \d+ multipv \d+ score cp \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
             if output.startswith("info depth") and not re.match(regex, output):
                 assert False
             if output.startswith("bestmove"):
@@ -274,7 +274,7 @@ class TestInteractive(metaclass=OrderedClassMembers):
         def callback(output):
             nonlocal depth
 
-            regex = f"info depth {depth} seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
+            regex = rf"info depth {depth} seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
 
             if output.startswith("info depth"):
                 if not re.match(regex, output):

@@ -1,5 +1,5 @@
 import subprocess
-from typing import List, Callable, Any
+from typing import List
 import os
 import collections
 import time
@@ -10,10 +10,11 @@ from functools import wraps
 from contextlib import redirect_stdout
 import io
 import tarfile
-import urllib.request
 import pathlib
 import concurrent.futures
 import tempfile
+import shutil
+import requests
 
 CYAN_COLOR = "\033[36m"
 GRAY_COLOR = "\033[2m"
@@ -90,15 +91,20 @@ class Syzygy:
     def download_syzygy():
         if not os.path.isdir(os.path.join(PATH, "syzygy")):
             url = "https://api.github.com/repos/niklasf/python-chess/tarball/9b9aa13f9f36d08aadfabff872882f4ab1494e95"
-            tarball_path = "/tmp/python-chess.tar.gz"
+            file = "niklasf-python-chess-9b9aa13"
 
-            urllib.request.urlretrieve(url, tarball_path)
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                tarball_path = os.path.join(tmpdirname, f"{file}.tar.gz")
 
-            with tarfile.open(tarball_path, "r:gz") as tar:
-                tar.extractall("/tmp")
+                response = requests.get(url, stream=True)
+                with open(tarball_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
 
-            os.rename("/tmp/niklasf-python-chess-9b9aa13", os.path.join(PATH, "syzygy"))
+                with tarfile.open(tarball_path, "r:gz") as tar:
+                    tar.extractall(tmpdirname)
 
+                shutil.move(os.path.join(tmpdirname, file), os.path.join(PATH, "syzygy"))
 
 class OrderedClassMembers(type):
     @classmethod
