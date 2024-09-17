@@ -75,4 +75,4 @@ jobs:
           export CXXFLAGS="-O1 -fno-inline"
           make clean
           make -j4 ARCH=x86-64-sse41-popcnt ${{ matrix.sanitizers.make_option }} debug=yes optimize=no build > /dev/null
-          ../tests/instrumented.sh --${{ matrix.sanitizers.instrumented_option }}
+          python3 ../tests/instrumented.py --${{ matrix.sanitizers.instrumented_option }} ./stockfish
