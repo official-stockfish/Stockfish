@@ -43,6 +43,9 @@ struct StateInfo {
     // Copied when making a move
     Key    materialKey;
     Key    pawnKey;
+    Key    majorPieceKey;
+    Key    minorPieceKey;
+    Key    nonPawnKey[COLOR_NB];
     Value  nonPawnMaterial[COLOR_NB];
     int    castlingRights;
     int    rule50;
@@ -53,6 +56,7 @@ struct StateInfo {
     Key        key;
     Bitboard   checkersBB;
     StateInfo* previous;
+    StateInfo* next;
     Bitboard   blockersForKing[COLOR_NB];
     Bitboard   pinners[COLOR_NB];
     Bitboard   checkSquares[PIECE_TYPE_NB];
@@ -150,13 +154,16 @@ class Position {
     Key key_after(Move m) const;
     Key material_key() const;
     Key pawn_key() const;
+    Key major_piece_key() const;
+    Key minor_piece_key() const;
+    Key non_pawn_key(Color c) const;
 
     // Other properties of the position
     Color side_to_move() const;
     int   game_ply() const;
     bool  is_chess960() const;
     bool  is_draw(int ply) const;
-    bool  has_game_cycle(int ply) const;
+    bool  upcoming_repetition(int ply) const;
     bool  has_repeated() const;
     int   rule50_count() const;
     Value non_pawn_material(Color c) const;
@@ -297,6 +304,12 @@ inline Key Position::pawn_key() const { return st->pawnKey; }
 
 inline Key Position::material_key() const { return st->materialKey; }
 
+inline Key Position::major_piece_key() const { return st->majorPieceKey; }
+
+inline Key Position::minor_piece_key() const { return st->minorPieceKey; }
+
+inline Key Position::non_pawn_key(Color c) const { return st->nonPawnKey[c]; }
+
 inline Value Position::non_pawn_material(Color c) const { return st->nonPawnMaterial[c]; }
 
 inline Value Position::non_pawn_material() const {
@@ -315,8 +328,8 @@ inline bool Position::capture(Move m) const {
 }
 
 // Returns true if a move is generated from the capture stage, having also
-// queen promotions covered, i.e. consistency with the capture stage move generation
-// is needed to avoid the generation of duplicate moves.
+// queen promotions covered, i.e. consistency with the capture stage move
+// generation is needed to avoid the generation of duplicate moves.
 inline bool Position::capture_stage(Move m) const {
     assert(m.is_ok());
     return capture(m) || m.promotion_type() == QUEEN;

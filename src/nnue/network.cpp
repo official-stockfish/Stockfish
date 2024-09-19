@@ -18,11 +18,10 @@
 
 #include "network.h"
 
-#include <cmath>
 #include <cstdlib>
-#include <cstring>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
@@ -30,6 +29,7 @@
 #include "../cluster.h"
 #include "../evaluate.h"
 #include "../incbin/incbin.h"
+#include "../memory.h"
 #include "../misc.h"
 #include "../position.h"
 #include "../types.h"
@@ -86,23 +86,6 @@ namespace Stockfish::Eval::NNUE {
 
 namespace Detail {
 
-// Initialize the evaluation function parameters
-template<typename T>
-void initialize(AlignedPtr<T>& pointer) {
-
-    pointer.reset(reinterpret_cast<T*>(std_aligned_alloc(alignof(T), sizeof(T))));
-    std::memset(pointer.get(), 0, sizeof(T));
-}
-
-template<typename T>
-void initialize(LargePagePtr<T>& pointer) {
-
-    static_assert(alignof(T) <= 4096,
-                  "aligned_large_pages_alloc() may fail for such a big alignment requirement of T");
-    pointer.reset(reinterpret_cast<T*>(aligned_large_pages_alloc(sizeof(T))));
-    std::memset(pointer.get(), 0, sizeof(T));
-}
-
 // Read evaluation function parameters
 template<typename T>
 bool read_parameters(std::istream& stream, T& reference) {
@@ -124,6 +107,42 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 }  // namespace Detail
 
+template<typename Arch, typename Transformer>
+Network<Arch, Transformer>::Network(const Network<Arch, Transformer>& other) :
+    evalFile(other.evalFile),
+    embeddedType(other.embeddedType) {
+
+    if (other.featureTransformer)
+        featureTransformer = make_unique_large_page<Transformer>(*other.featureTransformer);
+
+    network = make_unique_aligned<Arch[]>(LayerStacks);
+
+    if (!other.network)
+        return;
+
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+        network[i] = other.network[i];
+}
+
+template<typename Arch, typename Transformer>
+Network<Arch, Transformer>&
+Network<Arch, Transformer>::operator=(const Network<Arch, Transformer>& other) {
+    evalFile     = other.evalFile;
+    embeddedType = other.embeddedType;
+
+    if (other.featureTransformer)
+        featureTransformer = make_unique_large_page<Transformer>(*other.featureTransformer);
+
+    network = make_unique_aligned<Arch[]>(LayerStacks);
+
+    if (!other.network)
+        return *this;
+
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+        network[i] = other.network[i];
+
+    return *this;
+}
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::load(const std::string& rootDirectory, std::string evalfilePath) {
@@ -187,42 +206,31 @@ bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename
 
 
 template<typename Arch, typename Transformer>
-Value Network<Arch, Transformer>::evaluate(const Position& pos,
-                                           bool            adjusted,
-                                           int*            complexity,
-                                           bool            psqtOnly) const {
+NetworkOutput
+Network<Arch, Transformer>::evaluate(const Position&                         pos,
+                                     AccumulatorCaches::Cache<FTDimensions>* cache) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
 
     constexpr uint64_t alignment = CacheLineSize;
-    constexpr int      delta     = 24;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize
-       + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType
+      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions, nullptr>::BufferSize
+                                   + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize];
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer<FTDimensions, nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
-    const int  bucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    const auto psqt   = featureTransformer->transform(pos, transformedFeatures, bucket, psqtOnly);
-    const auto positional = !psqtOnly ? (network[bucket]->propagate(transformedFeatures)) : 0;
-
-    if (complexity)
-        *complexity = !psqtOnly ? std::abs(psqt - positional) / OutputScale : 0;
-
-    // Give more value to positional evaluation when adjusted flag is set
-    if (adjusted)
-        return static_cast<Value>(((1024 - delta) * psqt + (1024 + delta) * positional)
-                                  / (1024 * OutputScale));
-    else
-        return static_cast<Value>((psqt + positional) / OutputScale);
+    const int  bucket     = (pos.count<ALL_PIECES>() - 1) / 4;
+    const auto psqt       = featureTransformer->transform(pos, cache, transformedFeatures, bucket);
+    const auto positional = network[bucket].propagate(transformedFeatures);
+    return {static_cast<Value>(psqt / OutputScale), static_cast<Value>(positional / OutputScale)};
 }
 
 
@@ -252,31 +260,39 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
     }
 
     if (Cluster::is_root())
-        sync_cout << "info string NNUE evaluation using " << evalfilePath << sync_endl;
+    {
+        size_t size = sizeof(*featureTransformer) + sizeof(Arch) * LayerStacks;
+        sync_cout << "info string NNUE evaluation using " << evalfilePath << " ("
+                  << size / (1024 * 1024) << "MiB, (" << featureTransformer->InputDimensions << ", "
+                  << network[0].TransformedFeatureDimensions << ", " << network[0].FC_0_OUTPUTS
+                  << ", " << network[0].FC_1_OUTPUTS << ", 1))" << sync_endl;
+    }
 }
 
 
 template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::hint_common_access(const Position& pos, bool psqtOnl) const {
-    featureTransformer->hint_common_access(pos, psqtOnl);
+void Network<Arch, Transformer>::hint_common_access(
+  const Position& pos, AccumulatorCaches::Cache<FTDimensions>* cache) const {
+    featureTransformer->hint_common_access(pos, cache);
 }
 
-
 template<typename Arch, typename Transformer>
-NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(const Position& pos) const {
+NnueEvalTrace
+Network<Arch, Transformer>::trace_evaluate(const Position&                         pos,
+                                           AccumulatorCaches::Cache<FTDimensions>* cache) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
     constexpr uint64_t alignment = CacheLineSize;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize
-       + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType
+      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions, nullptr>::BufferSize
+                                   + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize];
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer<FTDimensions, nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
@@ -286,8 +302,8 @@ NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(const Position& pos) co
     for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
     {
         const auto materialist =
-          featureTransformer->transform(pos, transformedFeatures, bucket, false);
-        const auto positional = network[bucket]->propagate(transformedFeatures);
+          featureTransformer->transform(pos, cache, transformedFeatures, bucket);
+        const auto positional = network[bucket].propagate(transformedFeatures);
 
         t.psqt[bucket]       = static_cast<Value>(materialist / OutputScale);
         t.positional[bucket] = static_cast<Value>(positional / OutputScale);
@@ -340,9 +356,8 @@ void Network<Arch, Transformer>::load_internal() {
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::initialize() {
-    Detail::initialize(featureTransformer);
-    for (std::size_t i = 0; i < LayerStacks; ++i)
-        Detail::initialize(network[i]);
+    featureTransformer = make_unique_large_page<Transformer>();
+    network            = make_unique_aligned<Arch[]>(LayerStacks);
 }
 
 
@@ -409,7 +424,7 @@ bool Network<Arch, Transformer>::read_parameters(std::istream& stream,
         return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
     {
-        if (!Detail::read_parameters(stream, *(network[i])))
+        if (!Detail::read_parameters(stream, network[i]))
             return false;
     }
     return stream && stream.peek() == std::ios::traits_type::eof();
@@ -425,7 +440,7 @@ bool Network<Arch, Transformer>::write_parameters(std::ostream&      stream,
         return false;
     for (std::size_t i = 0; i < LayerStacks; ++i)
     {
-        if (!Detail::write_parameters(stream, *(network[i])))
+        if (!Detail::write_parameters(stream, network[i]))
             return false;
     }
     return bool(stream);

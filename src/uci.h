@@ -19,54 +19,82 @@
 #ifndef UCI_H_INCLUDED
 #define UCI_H_INCLUDED
 
+#include <cstdint>
 #include <iostream>
 #include <string>
+#include <string_view>
 
+#include "engine.h"
 #include "misc.h"
-#include "nnue/network.h"
-#include "position.h"
 #include "search.h"
-#include "thread.h"
-#include "tt.h"
-#include "ucioption.h"
 
 namespace Stockfish {
 
+class Position;
 class Move;
+class Score;
 enum Square : int;
 using Value = int;
 
-class UCI {
+class UCIEngine {
    public:
-    UCI(int argc, char** argv);
+    UCIEngine(int argc, char** argv);
 
     void loop();
 
     static int         to_cp(Value v, const Position& pos);
-    static std::string to_score(Value v, const Position& pos);
+    static std::string format_score(const Score& s);
     static std::string square(Square s);
     static std::string move(Move m, bool chess960);
     static std::string wdl(Value v, const Position& pos);
-    static Move        to_move(const Position& pos, std::string& str);
+    static std::string to_lower(std::string str);
+    static Move        to_move(const Position& pos, std::string str);
 
-    static Search::LimitsType parse_limits(const Position& pos, std::istream& is);
+    static Search::LimitsType parse_limits(std::istream& is);
 
-    const std::string& working_directory() const { return cli.workingDirectory; }
+    auto& engine_options() { return engine.get_options(); }
 
-    OptionsMap           options;
-    Eval::NNUE::Networks networks;
+    static std::string formatUpdateFull(const Engine::InfoFull& info, bool showWDL) {
+        std::stringstream ss;
+
+        ss << "info";
+        ss << " depth " << info.depth                 //
+           << " seldepth " << info.selDepth           //
+           << " multipv " << info.multiPV             //
+           << " score " << format_score(info.score);  //
+
+        if (showWDL)
+            ss << " wdl " << info.wdl;
+
+        if (!info.bound.empty())
+            ss << " " << info.bound;
+
+        ss << " nodes " << info.nodes        //
+           << " nps " << info.nps            //
+           << " hashfull " << info.hashfull  //
+           << " tbhits " << info.tbHits      //
+           << " time " << info.timeMs        //
+           << " pv " << info.pv;             //
+
+        return ss.str();
+    }
 
    private:
-    TranspositionTable tt;
-    ThreadPool         threads;
-    CommandLine        cli;
+    Engine      engine;
+    CommandLine cli;
 
-    void go(Position& pos, std::istringstream& is, StateListPtr& states);
-    void bench(Position& pos, std::istream& args, StateListPtr& states);
-    void position(Position& pos, std::istringstream& is, StateListPtr& states);
-    void trace_eval(Position& pos);
-    void search_clear();
-    void setoption(std::istringstream& is);
+    static void print_info_string(const std::string& str);
+
+    void          go(std::istringstream& is);
+    void          bench(std::istream& args);
+    void          position(std::istringstream& is);
+    void          setoption(std::istringstream& is);
+    std::uint64_t perft(const Search::LimitsType&);
+
+    static void on_update_no_moves(const Engine::InfoShort& info);
+    static void on_update_full(const Engine::InfoFull& info, bool showWDL);
+    static void on_iter(const Engine::InfoIter& info);
+    static void on_bestmove(std::string_view bestmove, std::string_view ponder);
 };
 
 }  // namespace Stockfish

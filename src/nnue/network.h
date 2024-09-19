@@ -23,45 +23,54 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 
-#include "../misc.h"
+#include "../memory.h"
 #include "../position.h"
 #include "../types.h"
+#include "nnue_accumulator.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
 
 namespace Stockfish::Eval::NNUE {
 
-
 enum class EmbeddedNNUEType {
     BIG,
     SMALL,
 };
 
+using NetworkOutput = std::tuple<Value, Value>;
 
 template<typename Arch, typename Transformer>
 class Network {
+    static constexpr IndexType FTDimensions = Arch::TransformedFeatureDimensions;
+
    public:
     Network(EvalFile file, EmbeddedNNUEType type) :
         evalFile(file),
         embeddedType(type) {}
 
+    Network(const Network& other);
+    Network(Network&& other) = default;
+
+    Network& operator=(const Network& other);
+    Network& operator=(Network&& other) = default;
+
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-
-    Value evaluate(const Position& pos,
-                   bool            adjusted   = false,
-                   int*            complexity = nullptr,
-                   bool            psqtOnly   = false) const;
+    NetworkOutput evaluate(const Position&                         pos,
+                           AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
 
-    void hint_common_access(const Position& pos, bool psqtOnl) const;
+    void hint_common_access(const Position&                         pos,
+                            AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
     void          verify(std::string evalfilePath) const;
-    NnueEvalTrace trace_evaluate(const Position& pos) const;
+    NnueEvalTrace trace_evaluate(const Position&                         pos,
+                                 AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);
@@ -82,13 +91,16 @@ class Network {
     LargePagePtr<Transformer> featureTransformer;
 
     // Evaluation function
-    AlignedPtr<Arch> network[LayerStacks];
+    AlignedPtr<Arch[]> network;
 
     EvalFile         evalFile;
     EmbeddedNNUEType embeddedType;
 
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
+
+    template<IndexType Size>
+    friend struct AccumulatorCaches::Cache;
 };
 
 // Definitions of the network types

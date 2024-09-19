@@ -78,7 +78,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
        << std::setw(16) << pos.key() << std::setfill(' ') << std::dec << "\nCheckers: ";
 
     for (Bitboard b = pos.checkers(); b;)
-        os << UCI::square(pop_lsb(b)) << " ";
+        os << UCIEngine::square(pop_lsb(b)) << " ";
 
     if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
@@ -334,8 +334,10 @@ void Position::set_check_info() const {
 // The function is only used when a new position is set up
 void Position::set_state() const {
 
-    st->key = st->materialKey  = 0;
-    st->pawnKey                = Zobrist::noPawns;
+    st->key = st->materialKey = 0;
+    st->majorPieceKey = st->minorPieceKey = 0;
+    st->nonPawnKey[WHITE] = st->nonPawnKey[BLACK] = 0;
+    st->pawnKey                                   = Zobrist::noPawns;
     st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
     st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
@@ -350,8 +352,27 @@ void Position::set_state() const {
         if (type_of(pc) == PAWN)
             st->pawnKey ^= Zobrist::psq[pc][s];
 
-        else if (type_of(pc) != KING)
-            st->nonPawnMaterial[color_of(pc)] += PieceValue[pc];
+        else
+        {
+            st->nonPawnKey[color_of(pc)] ^= Zobrist::psq[pc][s];
+
+            if (type_of(pc) != KING)
+            {
+                st->nonPawnMaterial[color_of(pc)] += PieceValue[pc];
+
+                if (type_of(pc) == QUEEN || type_of(pc) == ROOK)
+                    st->majorPieceKey ^= Zobrist::psq[pc][s];
+
+                else
+                    st->minorPieceKey ^= Zobrist::psq[pc][s];
+            }
+
+            else
+            {
+                st->majorPieceKey ^= Zobrist::psq[pc][s];
+                st->minorPieceKey ^= Zobrist::psq[pc][s];
+            }
+        }
     }
 
     if (st->epSquare != SQ_NONE)
@@ -431,8 +452,8 @@ string Position::fen() const {
     if (!can_castle(ANY_CASTLING))
         ss << '-';
 
-    ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ") << st->rule50
-       << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
+    ss << (ep_square() == SQ_NONE ? " - " : " " + UCIEngine::square(ep_square()) + " ")
+       << st->rule50 << " " << 1 + (gamePly - (sideToMove == BLACK)) / 2;
 
     return ss.str();
 }
@@ -671,6 +692,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
     // our state pointer to point to the new (ready to be updated) state.
     std::memcpy(&newSt, st, offsetof(StateInfo, key));
     newSt.previous = st;
+    st->next       = &newSt;
     st             = &newSt;
 
     // Increment ply counters. In particular, rule50 will be reset to zero later on
@@ -680,11 +702,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
     ++st->pliesFromNull;
 
     // Used by NNUE
-    st->accumulatorBig.computed[WHITE]             = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorBig.computedPSQT[WHITE]       = st->accumulatorBig.computedPSQT[BLACK] =
-        st->accumulatorSmall.computed[WHITE]       = st->accumulatorSmall.computed[BLACK] =
-          st->accumulatorSmall.computedPSQT[WHITE] = st->accumulatorSmall.computedPSQT[BLACK] =
-            false;
+    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
+      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     auto& dp     = st->dirtyPiece;
     dp.dirty_num = 1;
@@ -709,6 +728,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
         do_castling<true>(us, from, to, rfrom, rto);
 
         k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
+        st->majorPieceKey ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
+        st->nonPawnKey[us] ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
         captured = NO_PIECE;
     }
 
@@ -734,7 +755,16 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
             st->pawnKey ^= Zobrist::psq[captured][capsq];
         }
         else
+        {
             st->nonPawnMaterial[them] -= PieceValue[captured];
+            st->nonPawnKey[them] ^= Zobrist::psq[captured][capsq];
+
+            if (type_of(pc) == QUEEN || type_of(pc) == ROOK)
+                st->majorPieceKey ^= Zobrist::psq[captured][capsq];
+
+            else
+                st->minorPieceKey ^= Zobrist::psq[captured][capsq];
+        }
 
         dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
         dp.piece[1]  = captured;
@@ -744,7 +774,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
         // Update board and piece lists
         remove_piece(capsq);
 
-        // Update material hash key and prefetch access to materialTable
         k ^= Zobrist::psq[captured][capsq];
         st->materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
 
@@ -793,7 +822,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
         else if (m.type_of() == PROMOTION)
         {
-            Piece promotion = make_piece(us, m.promotion_type());
+            Piece     promotion     = make_piece(us, m.promotion_type());
+            PieceType promotionType = type_of(promotion);
 
             assert(relative_rank(us, to) == RANK_8);
             assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
@@ -814,6 +844,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
             st->materialKey ^=
               Zobrist::psq[promotion][pieceCount[promotion] - 1] ^ Zobrist::psq[pc][pieceCount[pc]];
 
+            if (promotionType == QUEEN || promotionType == ROOK)
+                st->majorPieceKey ^= Zobrist::psq[promotion][to];
+
+            else
+                st->minorPieceKey ^= Zobrist::psq[promotion][to];
+
             // Update material
             st->nonPawnMaterial[us] += PieceValue[promotion];
         }
@@ -823,6 +859,23 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
         // Reset rule 50 draw counter
         st->rule50 = 0;
+    }
+
+    else
+    {
+        st->nonPawnKey[us] ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+
+        if (type_of(pc) == KING)
+        {
+            st->majorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+            st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+        }
+
+        else if (type_of(pc) == QUEEN || type_of(pc) == ROOK)
+            st->majorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+
+        else
+            st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
     }
 
     // Set capture piece
@@ -967,15 +1020,13 @@ void Position::do_null_move(StateInfo& newSt, TranspositionTable& tt) {
     std::memcpy(&newSt, st, offsetof(StateInfo, accumulatorBig));
 
     newSt.previous = st;
+    st->next       = &newSt;
     st             = &newSt;
 
-    st->dirtyPiece.dirty_num                 = 0;
-    st->dirtyPiece.piece[0]                  = NO_PIECE;  // Avoid checks in UpdateAccumulator()
-    st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-        st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] =
-          st->accumulatorSmall.computedPSQT[WHITE] = st->accumulatorSmall.computedPSQT[BLACK] =
-            false;
+    st->dirtyPiece.dirty_num               = 0;
+    st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
+    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
+      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     if (st->epSquare != SQ_NONE)
     {
@@ -1163,9 +1214,9 @@ bool Position::has_repeated() const {
 }
 
 
-// Tests if the position has a move which draws by repetition,
-// or an earlier position has a move that directly reaches the current position.
-bool Position::has_game_cycle(int ply) const {
+// Tests if the position has a move which draws by repetition.
+// This function accurately matches the outcome of is_draw() over all legal moves.
+bool Position::upcoming_repetition(int ply) const {
 
     int j;
 
@@ -1176,10 +1227,16 @@ bool Position::has_game_cycle(int ply) const {
 
     Key        originalKey = st->key;
     StateInfo* stp         = st->previous;
+    Key        other       = originalKey ^ stp->key ^ Zobrist::side;
 
     for (int i = 3; i <= end; i += 2)
     {
-        stp = stp->previous->previous;
+        stp = stp->previous;
+        other ^= stp->key ^ stp->previous->key ^ Zobrist::side;
+        stp = stp->previous;
+
+        if (other != 0)
+            continue;
 
         Key moveKey = originalKey ^ stp->key;
         if ((j = H1(moveKey), cuckoo[j] == moveKey) || (j = H2(moveKey), cuckoo[j] == moveKey))
@@ -1195,12 +1252,6 @@ bool Position::has_game_cycle(int ply) const {
 
                 // For nodes before or at the root, check that the move is a
                 // repetition rather than a move to the current position.
-                // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
-                // the same location, so we have to select which square to check.
-                if (color_of(piece_on(empty(s1) ? s2 : s1)) != side_to_move())
-                    continue;
-
-                // For repetitions before or at the root, require one more
                 if (stp->repetition)
                     return true;
             }

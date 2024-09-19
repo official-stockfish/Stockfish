@@ -10,7 +10,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EMU: ${{ matrix.config.emu }}
       EXT: ${{ matrix.config.ext }}
@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Download required linux packages
         if: runner.os == 'Linux'
@@ -62,7 +63,7 @@ jobs:
           if [ $COMP == ndk ]; then
             export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           fi
-          $COMPILER -v
+          $COMPCXX -v
 
       - name: Test help target
         run: make help
@@ -91,4 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-          path: .
+          path: |
+            .
+            !.git
+            !.output

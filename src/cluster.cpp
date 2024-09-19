@@ -29,10 +29,10 @@
     #include <vector>
 
     #include "cluster.h"
+    #include "search.h"
     #include "thread.h"
     #include "timeman.h"
     #include "tt.h"
-    #include "search.h"
 
 namespace Stockfish {
 namespace Cluster {
@@ -278,7 +278,7 @@ void signals_poll(ThreadPool& threads) {
 
 /// Provide basic info related the cluster performance, in particular, the number of signals send,
 /// signals per sounds (sps), the number of gathers, the number of positions gathered (per node and per second, gpps)
-/// The number of TT saves and TT saves per second. If gpps equals approximately TTSavesps the gather loop has enough bandwidth.
+/// The number of TT saves and TT saves per second.read(). If gpps equals approximately TTSavesps the gather loop has enough bandwidth.
 void cluster_info(const ThreadPool& threads, Depth depth, TimePoint elapsed) {
 
     // TimePoint elapsed = Time.elapsed() + 1;
@@ -297,7 +297,7 @@ void cluster_info(const ThreadPool& threads, Depth depth, TimePoint elapsed) {
 void save(TranspositionTable& TT,
           ThreadPool&         threads,
           Search::Worker*     thread,
-          TTEntry*            tte,
+          TTWriter&           ttw,
           Key                 k,
           Value               v,
           bool                PvHit,
@@ -308,7 +308,9 @@ void save(TranspositionTable& TT,
           uint8_t             generation8) {
 
     // Standard save to the TT
-    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+    ttw.write(k, v, PvHit, b, d, m, ev, generation8);
+
+    auto* tte = ttw.entry;
 
     // If the entry is of sufficient depth to be worth communicating, take action.
     if (d > 3)
@@ -364,13 +366,15 @@ void save(TranspositionTable& TT,
                         for (size_t i = irank * recvBuffPerRankSize;
                              i < (irank + 1) * recvBuffPerRankSize; ++i)
                         {
-                            auto&&   e = TTSendRecvBuffs[sendRecvPosted % 2][i];
-                            bool     found;
-                            TTEntry* replace_tte;
-                            replace_tte = TT.probe(e.first, found);
-                            replace_tte->save(e.first, e.second.value(), e.second.is_pv(),
-                                              e.second.bound(), e.second.depth(), e.second.move(),
-                                              e.second.eval(), TT.generation());
+                            auto&& e = TTSendRecvBuffs[sendRecvPosted % 2][i];
+                            // bool     found;
+                            // TTEntry* replace_tte;
+                            // replace_tte = TT.probe(e.first, found);
+                            auto [ttHit, ttData, ttWriter] = TT.probe(e.first);
+                            ttWriter.write(e.first, e.second.read().value, e.second.read().is_pv,
+                                           e.second.read().bound, e.second.read().depth,
+                                           e.second.read().move, e.second.read().eval,
+                                           TT.generation());
                         }
                 }
 

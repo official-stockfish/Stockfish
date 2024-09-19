@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <string_view>
+#include <tuple>
 
 #include "../evaluate.h"
 #include "../position.h"
@@ -42,13 +43,13 @@ namespace Stockfish::Eval::NNUE {
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
 
-void hint_common_parent_position(const Position& pos, const Networks& networks) {
-
-    int simpleEvalAbs = std::abs(simple_eval(pos, pos.side_to_move()));
-    if (simpleEvalAbs > Eval::SmallNetThreshold)
-        networks.small.hint_common_access(pos, simpleEvalAbs > Eval::PsqtOnlyThreshold);
+void hint_common_parent_position(const Position&    pos,
+                                 const Networks&    networks,
+                                 AccumulatorCaches& caches) {
+    if (Eval::use_smallnet(pos))
+        networks.small.hint_common_access(pos, &caches.small);
     else
-        networks.big.hint_common_access(pos, false);
+        networks.big.hint_common_access(pos, &caches.big);
 }
 
 namespace {
@@ -58,7 +59,7 @@ void format_cp_compact(Value v, char* buffer, const Position& pos) {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    int cp = std::abs(UCI::to_cp(v, pos));
+    int cp = std::abs(UCIEngine::to_cp(v, pos));
     if (cp >= 10000)
     {
         buffer[1] = '0' + cp / 10000;
@@ -92,7 +93,7 @@ void format_cp_compact(Value v, char* buffer, const Position& pos) {
 // Converts a Value into pawns, always keeping two decimals
 void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& pos) {
 
-    const double pawns = std::abs(0.01 * UCI::to_cp(v, pos));
+    const double pawns = std::abs(0.01 * UCIEngine::to_cp(v, pos));
 
     stream << (v < 0   ? '-'
                : v > 0 ? '+'
@@ -104,7 +105,8 @@ void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& p
 
 // Returns a string with the value of each piece on a board,
 // and a table for (PSQT, Layers) values bucket by bucket.
-std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
+std::string
+trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::AccumulatorCaches& caches) {
 
     std::stringstream ss;
 
@@ -130,8 +132,9 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    Value base = networks.big.evaluate(pos);
-    base       = pos.side_to_move() == WHITE ? base : -base;
+    auto [psqt, positional] = networks.big.evaluate(pos, &caches.big);
+    Value base              = psqt + positional;
+    base                    = pos.side_to_move() == WHITE ? base : -base;
 
     for (File f = FILE_A; f <= FILE_H; ++f)
         for (Rank r = RANK_1; r <= RANK_8; ++r)
@@ -145,18 +148,15 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
                 auto st = pos.state();
 
                 pos.remove_piece(sq);
-                st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-                  st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-                    false;
+                st->accumulatorBig.computed[WHITE] = st->accumulatorBig.computed[BLACK] = false;
 
-                Value eval = networks.big.evaluate(pos);
-                eval       = pos.side_to_move() == WHITE ? eval : -eval;
-                v          = base - eval;
+                std::tie(psqt, positional) = networks.big.evaluate(pos, &caches.big);
+                Value eval                 = psqt + positional;
+                eval                       = pos.side_to_move() == WHITE ? eval : -eval;
+                v                          = base - eval;
 
                 pos.put_piece(pc, sq);
-                st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-                  st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-                    false;
+                st->accumulatorBig.computed[WHITE] = st->accumulatorBig.computed[BLACK] = false;
             }
 
             writeSquare(f, r, pc, v);
@@ -167,7 +167,7 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
         ss << board[row] << '\n';
     ss << '\n';
 
-    auto t = networks.big.trace_evaluate(pos);
+    auto t = networks.big.trace_evaluate(pos, &caches.big);
 
     ss << " NNUE network contributions "
        << (pos.side_to_move() == WHITE ? "(White to move)" : "(Black to move)") << std::endl
@@ -178,16 +178,16 @@ std::string trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket)
     {
-        ss << "|  " << bucket << "        ";
-        ss << " |  ";
+        ss << "|  " << bucket << "        "  //
+           << " |  ";
         format_cp_aligned_dot(t.psqt[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |  ";
         format_cp_aligned_dot(t.positional[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |  ";
         format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss, pos);
-        ss << "  "
+        ss << "  "  //
            << " |";
         if (bucket == t.correctBucket)
             ss << " <-- this bucket is used";

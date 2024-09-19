@@ -10,7 +10,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
@@ -25,6 +25,8 @@ jobs:
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install fixed GCC on Linux
         if: runner.os == 'Linux'
@@ -50,7 +52,7 @@ jobs:
         run: make net
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Test help target
         run: make help
@@ -59,7 +61,7 @@ jobs:
         run: git --version
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Show g++ cpu info
         if: runner.os != 'macOS'
@@ -86,4 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-          path: .
+          path: |
+             .
+             !.git
+             !.output

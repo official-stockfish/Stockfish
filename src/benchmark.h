@@ -23,11 +23,9 @@
 #include <string>
 #include <vector>
 
-namespace Stockfish {
+namespace Stockfish::Benchmark {
 
-class Position;
-
-std::vector<std::string> setup_bench(const Position&, std::istream&);
+std::vector<std::string> setup_bench(const std::string&, std::istream&);
 
 }  // namespace Stockfish
 

@@ -24,6 +24,7 @@
 #include <istream>
 #include <string>
 
+#include "misc.h"
 #include "tt.h"
 
 namespace Stockfish {
@@ -67,7 +68,7 @@ class TTCache: public std::array<KeyedTTEntry, N> {
 
     struct Compare {
         inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
-            return lhs.second.depth() > rhs.second.depth();
+            return lhs.second.read().depth > rhs.second.read().depth;
         }
     };
     Compare compare;
@@ -96,7 +97,7 @@ inline bool is_root() { return rank() == 0; }
 void        save(TranspositionTable&,
                  ThreadPool&,
                  Search::Worker* thread,
-                 TTEntry*        tte,
+                 TTWriter&       ttw,
                  Key             k,
                  Value           v,
                  bool            PvHit,
@@ -128,16 +129,16 @@ constexpr bool is_root() { return true; }
 inline void    save(TranspositionTable&,
                     ThreadPool&,
                     Search::Worker*,
-                    TTEntry* tte,
-                    Key      k,
-                    Value    v,
-                    bool     PvHit,
-                    Bound    b,
-                    Depth    d,
-                    Move     m,
-                    Value    ev,
-                    uint8_t  generation8) {
-    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+                    TTWriter& ttw,
+                    Key       k,
+                    Value     v,
+                    bool      PvHit,
+                    Bound     b,
+                    Depth     d,
+                    Move      m,
+                    Value     ev,
+                    uint8_t   generation8) {
+    ttw.write(k, v, PvHit, b, d, m, ev, generation8);
 }
 inline void pick_moves(MoveInfo&, std::string&) {}
 inline void ttSendRecvBuff_resize(size_t) {}
@@ -146,8 +147,8 @@ uint64_t    tb_hits(const ThreadPool&);
 uint64_t    TT_saves(const ThreadPool&);
 inline void cluster_info(const ThreadPool&, Depth, TimePoint) {}
 inline void signals_init() {}
-inline void signals_poll(ThreadPool& threads) {}
-inline void signals_sync(ThreadPool& threads) {}
+inline void signals_poll([[maybe_unused]] ThreadPool& threads) {}
+inline void signals_sync([[maybe_unused]] ThreadPool& threads) {}
 
 #endif /* USE_MPI */
 
