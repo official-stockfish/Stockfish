@@ -1021,6 +1021,8 @@ config-sanity: net
 	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
+	@test "$(lsx)" = "yes" || test "$(lsx)" = "no"
+	@test "$(lasx)" = "yes" || test "$(lasx)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icx" || test "$(comp)" = "mingw" || test "$(comp)" = "clang" \
 	|| test "$(comp)" = "armv7a-linux-androideabi16-clang"  || test "$(comp)" = "aarch64-linux-android21-clang"
 
