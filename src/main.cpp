@@ -37,11 +37,13 @@ int main(int argc, char* argv[]) {
     Bitboards::init();
     Position::init();
 
-    UCIEngine uci(argc, argv);
+    {
+        UCIEngine uci(argc, argv);
 
-    Tune::init(uci.engine_options());
+        Tune::init(uci.engine_options());
 
-    uci.loop();
+        uci.loop();
+    }
 
     Cluster::finalize();
 
