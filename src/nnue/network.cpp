@@ -98,7 +98,7 @@ bool read_parameters(std::istream& stream, T& reference) {
 
 // Write evaluation function parameters
 template<typename T>
-bool write_parameters(std::ostream& stream, const T& reference) {
+bool write_parameters(std::ostream& stream, T& reference) {
 
     write_little_endian<std::uint32_t>(stream, T::get_hash_value());
     return reference.write_parameters(stream);
@@ -174,7 +174,7 @@ void Network<Arch, Transformer>::load(const std::string& rootDirectory, std::str
 
 
 template<typename Arch, typename Transformer>
-bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename) const {
+bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename) {
     std::string actualFilename;
     std::string msg;
 
@@ -210,17 +210,14 @@ Network<Arch, Transformer>::evaluate(const Position&                         pos
                                      AccumulatorCaches::Cache<FTDimensions>* cache) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
-
-    constexpr uint64_t alignment = CacheLineSize;
-
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType
       transformedFeaturesUnaligned[FeatureTransformer<FTDimensions, nullptr>::BufferSize
-                                   + alignment / sizeof(TransformedFeatureType)];
+                                   + CacheLineSize / sizeof(TransformedFeatureType)];
 
-    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
+    auto* transformedFeatures = align_ptr_up<CacheLineSize>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType
+    alignas(CacheLineSize) TransformedFeatureType
       transformedFeatures[FeatureTransformer<FTDimensions, nullptr>::BufferSize];
 #endif
 
@@ -360,7 +357,7 @@ void Network<Arch, Transformer>::initialize() {
 template<typename Arch, typename Transformer>
 bool Network<Arch, Transformer>::save(std::ostream&      stream,
                                       const std::string& name,
-                                      const std::string& netDescription) const {
+                                      const std::string& netDescription) {
     if (name.empty() || name == "None")
         return false;
 
@@ -410,7 +407,7 @@ bool Network<Arch, Transformer>::write_header(std::ostream&      stream,
 
 template<typename Arch, typename Transformer>
 bool Network<Arch, Transformer>::read_parameters(std::istream& stream,
-                                                 std::string&  netDescription) const {
+                                                 std::string&  netDescription) {
     std::uint32_t hashValue;
     if (!read_header(stream, &hashValue, &netDescription))
         return false;
@@ -429,7 +426,7 @@ bool Network<Arch, Transformer>::read_parameters(std::istream& stream,
 
 template<typename Arch, typename Transformer>
 bool Network<Arch, Transformer>::write_parameters(std::ostream&      stream,
-                                                  const std::string& netDescription) const {
+                                                  const std::string& netDescription) {
     if (!write_header(stream, Network::hash, netDescription))
         return false;
     if (!Detail::write_parameters(stream, *featureTransformer))
@@ -444,12 +441,8 @@ bool Network<Arch, Transformer>::write_parameters(std::ostream&      stream,
 
 // Explicit template instantiation
 
-template class Network<
-  NetworkArchitecture<TransformedFeatureDimensionsBig, L2Big, L3Big>,
-  FeatureTransformer<TransformedFeatureDimensionsBig, &StateInfo::accumulatorBig>>;
+template class Network<BigNetworkArchitecture, BigFeatureTransformer>;
 
-template class Network<
-  NetworkArchitecture<TransformedFeatureDimensionsSmall, L2Small, L3Small>,
-  FeatureTransformer<TransformedFeatureDimensionsSmall, &StateInfo::accumulatorSmall>>;
+template class Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
 
 }  // namespace Stockfish::Eval::NNUE

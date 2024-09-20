@@ -59,7 +59,7 @@ class Network {
     Network& operator=(Network&& other) = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
-    bool save(const std::optional<std::string>& filename) const;
+    bool save(const std::optional<std::string>& filename);
 
     NetworkOutput evaluate(const Position&                         pos,
                            AccumulatorCaches::Cache<FTDimensions>* cache) const;
@@ -78,14 +78,14 @@ class Network {
 
     void initialize();
 
-    bool                       save(std::ostream&, const std::string&, const std::string&) const;
+    bool                       save(std::ostream&, const std::string&, const std::string&);
     std::optional<std::string> load(std::istream&);
 
     bool read_header(std::istream&, std::uint32_t*, std::string*) const;
     bool write_header(std::ostream&, std::uint32_t, const std::string&) const;
 
-    bool read_parameters(std::istream&, std::string&) const;
-    bool write_parameters(std::ostream&, const std::string&) const;
+    bool read_parameters(std::istream&, std::string&);
+    bool write_parameters(std::ostream&, const std::string&);
 
     // Input feature converter
     LargePagePtr<Transformer> featureTransformer;
