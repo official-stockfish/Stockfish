@@ -275,6 +275,9 @@ void Engine::trace_eval() const {
     sync_cout << "\n" << Eval::trace(p, *networks) << sync_endl;
 }
 
+uint64_t Engine::nodes() const { return Cluster::nodes_searched(threads); }
+
+
 const OptionsMap& Engine::get_options() const { return options; }
 OptionsMap&       Engine::get_options() { return options; }
 

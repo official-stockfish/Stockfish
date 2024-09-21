@@ -94,6 +94,8 @@ class Engine {
 
     void trace_eval() const;
 
+    uint64_t nodes() const;
+
     const OptionsMap& get_options() const;
     OptionsMap&       get_options();
 

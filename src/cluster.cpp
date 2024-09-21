@@ -343,9 +343,8 @@ void save(TranspositionTable& TT,
                 // Save all received entries to TT, and store our TTCaches, ready for the next round of communication
                 for (size_t irank = 0; irank < size_t(size()); ++irank)
                 {
-                    if (irank
-                        == size_t(
-                          rank()))  // this is our part, fill the part of the buffer for sending
+                    // this is our part, fill the part of the buffer for sending
+                    if (irank == size_t(rank()))
                     {
                         // Copy from the thread caches to the right spot in the buffer
                         size_t i = irank * recvBuffPerRankSize;
@@ -367,9 +366,9 @@ void save(TranspositionTable& TT,
                              i < (irank + 1) * recvBuffPerRankSize; ++i)
                         {
                             auto&& e = TTSendRecvBuffs[sendRecvPosted % 2][i];
-                            // bool     found;
-                            // TTEntry* replace_tte;
-                            // replace_tte = TT.probe(e.first, found);
+                            if (!e.second.is_occupied())
+                                continue;
+
                             auto [ttHit, ttData, ttWriter] = TT.probe(e.first);
                             ttWriter.write(e.first, e.second.read().value, e.second.read().is_pv,
                                            e.second.read().bound, e.second.read().depth,

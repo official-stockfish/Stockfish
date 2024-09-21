@@ -253,7 +253,7 @@ void UCIEngine::bench(std::istream& args) {
 
                 if (limits.perft && Cluster::is_root())
                 {
-                    nodesSearched = perft(limits);
+                    nodes += perft(limits);
                 }
                 else
                 {
@@ -261,9 +261,7 @@ void UCIEngine::bench(std::istream& args) {
                     engine.wait_for_search_finished();
                 }
 
-                // @TODO count cluster correctly
-                nodes += nodesSearched;
-                nodesSearched = 0;
+                nodes += engine.nodes();
             }
             else if (Cluster::is_root())
                 engine.trace_eval();
