@@ -244,8 +244,8 @@ void UCIEngine::bench(std::istream& args) {
         if (token == "go" || token == "eval")
         {
             if (Cluster::is_root())
-                std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
-                          << std::endl;
+                sync_cout << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
+                          << sync_endl;
 
             if (token == "go")
             {
