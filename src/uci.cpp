@@ -110,8 +110,11 @@ void UCIEngine::loop() {
             engine.set_ponderhit(false);
 
         else if (token == "uci" && Cluster::is_root())
+        {
             sync_cout << "id name " << engine_info(true) << "\n"
                       << engine.get_options() << sync_endl;
+            sync_cout << "uciok" << sync_endl;
+        }
         else if (token == "setoption")
             setoption(is);
         else if (token == "go")
