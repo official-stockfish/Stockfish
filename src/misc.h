@@ -28,6 +28,7 @@
 #include <iosfwd>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #define stringify2(x) #x
@@ -35,6 +36,7 @@
 
 namespace Stockfish {
 
+std::string engine_version_info();
 std::string engine_info(bool to_uci = false);
 std::string compiler_info();
 
@@ -79,8 +81,8 @@ inline TimePoint now() {
       .count();
 }
 
-inline std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
-    std::vector<std::string> res;
+inline std::vector<std::string_view> split(std::string_view s, std::string_view delimiter) {
+    std::vector<std::string_view> res;
 
     if (s.empty())
         return res;
@@ -102,7 +104,7 @@ inline std::vector<std::string> split(const std::string& s, const std::string& d
 }
 
 void remove_whitespace(std::string& s);
-bool is_whitespace(const std::string& s);
+bool is_whitespace(std::string_view s);
 
 enum SyncCout {
     IO_LOCK,
