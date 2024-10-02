@@ -135,6 +135,8 @@ enum StatsType {
 // see https://www.chessprogramming.org/Butterfly_Boards (~11 elo)
 using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
+using LowPlyHistory = Stats<int16_t, 7183, COLOR_NB, 4, int(SQUARE_NB) * int(SQUARE_NB)>;
+
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
 using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
@@ -195,11 +197,11 @@ class MovePicker {
                Move,
                Depth,
                const ButterflyHistory*,
-               const ButterflyHistory*,
+               const LowPlyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
-               bool);
+               int);
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
@@ -213,7 +215,7 @@ class MovePicker {
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
-    const ButterflyHistory*      rootHistory;
+    const LowPlyHistory*         lowPlyHistory;
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
@@ -222,7 +224,7 @@ class MovePicker {
     int                          stage;
     int                          threshold;
     Depth                        depth;
-    bool                         rootNode;
+    int                          ply;
     ExtMove                      moves[MAX_MOVES];
 };
 
