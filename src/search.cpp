@@ -895,6 +895,11 @@ Value Search::Worker::search(
 
             pos.undo_move(move);
 
+            // If a stop occurred, the return value of the search cannot be trusted, and we
+            // must return immediately without updating any histories nor the transposition table.
+            if (threads.stop.load(std::memory_order_relaxed))
+                return VALUE_ZERO;
+
             if (value >= probCutBeta)
             {
                 thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
