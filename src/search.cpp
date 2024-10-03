@@ -1831,7 +1831,7 @@ void update_quiet_histories(const Position& pos,
     Color us = pos.side_to_move();
     workerThread.mainHistory[us][move.from_to()] << bonus;
     if (ss->ply < 4)
-        workerThread.lowPlyHistory[us][ss->ply][move.from_to()] << bonus;
+        workerThread.lowPlyHistory[ss->ply][move.from_to()] << bonus;
 
     update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(), bonus);
 
