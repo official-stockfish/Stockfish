@@ -135,6 +135,8 @@ enum StatsType {
 // see https://www.chessprogramming.org/Butterfly_Boards (~11 elo)
 using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
+// LowPlyHistory is adressed by play and move's from and to squares, used
+// to improve move ordering near the root
 using LowPlyHistory = Stats<int16_t, 7183, 4, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
