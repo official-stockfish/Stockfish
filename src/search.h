@@ -61,18 +61,19 @@ namespace Search {
 // shallower and deeper in the tree during the search. Each search thread has
 // its own array of Stack objects, indexed by the current ply.
 struct Stack {
-    Move*           pv;
-    PieceToHistory* continuationHistory;
-    int             ply;
-    Move            currentMove;
-    Move            excludedMove;
-    Value           staticEval;
-    int             statScore;
-    int             moveCount;
-    bool            inCheck;
-    bool            ttPv;
-    bool            ttHit;
-    int             cutoffCnt;
+    Move*                     pv;
+    PieceToHistory*           continuationHistory;
+    PieceToCorrectionHistory* continuationCorrectionHistory;
+    int                       ply;
+    Move                      currentMove;
+    Move                      excludedMove;
+    Value                     staticEval;
+    int                       statScore;
+    int                       moveCount;
+    bool                      inCheck;
+    bool                      ttPv;
+    bool                      ttHit;
+    int                       cutoffCnt;
 };
 
 
@@ -284,11 +285,12 @@ class Worker {
     ContinuationHistory   continuationHistory[2][2];
     PawnHistory           pawnHistory;
 
-    PawnCorrectionHistory       pawnCorrectionHistory;
-    MaterialCorrectionHistory   materialCorrectionHistory;
-    MajorPieceCorrectionHistory majorPieceCorrectionHistory;
-    MinorPieceCorrectionHistory minorPieceCorrectionHistory;
-    NonPawnCorrectionHistory    nonPawnCorrectionHistory[COLOR_NB];
+    PawnCorrectionHistory         pawnCorrectionHistory;
+    MaterialCorrectionHistory     materialCorrectionHistory;
+    MajorPieceCorrectionHistory   majorPieceCorrectionHistory;
+    MinorPieceCorrectionHistory   minorPieceCorrectionHistory;
+    NonPawnCorrectionHistory      nonPawnCorrectionHistory[COLOR_NB];
+    ContinuationCorrectionHistory continuationCorrectionHistory;
 
    private:
     void iterative_deepening();

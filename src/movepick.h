@@ -145,6 +145,9 @@ using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_T
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
 using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 
+// PieceToCorrectionHistory is addressed by a move's [piece][to]
+using PieceToCorrectionHistory = Stats<int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
+
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
 // PieceToHistory instead of ButterflyBoards.
@@ -178,6 +181,10 @@ using MinorPieceCorrectionHistory =
 // NonPawnCorrectionHistory is addressed by color and non-pawn material positions
 using NonPawnCorrectionHistory =
   Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+
+// ContinuationCorrectionHistory is the combined correction history of a given pair of moves
+using ContinuationCorrectionHistory =
+  Stats<PieceToCorrectionHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
 
 // The MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which emits one
