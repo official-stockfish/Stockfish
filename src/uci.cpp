@@ -432,10 +432,7 @@ void UCIEngine::benchmark(std::istream& args) {
         threadBinding = "none";
 
     std::cerr << "==========================="
-              << "\nVersion                    : "
-              << engine_version_info()
-              // "\nCompiled by                : "
-              << compiler_info()
+              << "\nVersion                    : " << engine_version_info() << compiler_info()
               << "Large pages                : " << (has_large_pages() ? "yes" : "no")
               << "\nUser invocation            : " << BenchmarkCommand << " "
               << setup.originalInvocation << "\nFilled invocation          : " << BenchmarkCommand
