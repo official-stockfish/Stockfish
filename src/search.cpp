@@ -1610,11 +1610,11 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                     continue;
                 }
 
-                // if static exchange evaluation is low enough
+                // If static exchange evaluation is low enough
                 // we can prune this move. (~2 Elo)
                 if (!pos.see_ge(move, alpha - futilityBase))
                 {
-                    bestValue = (futilityBase > alpha) ? alpha : std::max(bestValue, futilityBase);
+                    bestValue = std::min(alpha, futilityBase);
                     continue;
                 }
             }
