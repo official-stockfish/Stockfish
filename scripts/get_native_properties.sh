@@ -54,6 +54,20 @@ set_arch_x86_64() {
   fi
 }
 
+set_arch_ppc_64() {
+  if $(grep -q -w "altivec" /proc/cpuinfo); then
+    power=$(grep -oP -m 1 'cpu\t+: POWER\K\d+' /proc/cpuinfo)
+    if [ "0$power" -gt 7 ]; then
+      # VSX started with POWER8
+      true_arch='ppc-64-vsx'
+    else
+      true_arch='ppc-64-altivec'
+    fi
+  else
+    true_arch='ppc-64'
+  fi
+}
+
 # Check the system type
 uname_s=$(uname -s)
 uname_m=$(uname -m)
@@ -86,6 +100,10 @@ case $uname_s in
       'i686')
         file_os='ubuntu'
         true_arch='x86-32'
+        ;;
+      'ppc64'*)
+        file_os='ubuntu'
+        set_arch_ppc_64
         ;;
       'aarch64')
         file_os='android'

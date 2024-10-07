@@ -98,6 +98,8 @@ VPATH = syzygy:nnue:nnue/features
 # avx512 = yes/no     --- -mavx512bw         --- Use Intel Advanced Vector Extensions 512
 # vnni256 = yes/no    --- -mavx256vnni       --- Use Intel Vector Neural Network Instructions 512 with 256bit operands
 # vnni512 = yes/no    --- -mavx512vnni       --- Use Intel Vector Neural Network Instructions 512
+# altivec = yes/no    --- -maltivec          --- Use PowerPC Altivec SIMD extension
+# vsx = yes/no        --- -mvsx              --- Use POWER VSX SIMD extension
 # neon = yes/no       --- -DUSE_NEON         --- Use ARM SIMD architecture
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
 # lsx = yes/no        --- -mlsx              --- Use Loongson SIMD eXtension
@@ -126,7 +128,7 @@ endif
 ifeq ($(ARCH), $(filter $(ARCH), \
                  x86-64-vnni512 x86-64-vnni256 x86-64-avx512 x86-64-avxvnni x86-64-bmi2 \
                  x86-64-avx2 x86-64-sse41-popcnt x86-64-modern x86-64-ssse3 x86-64-sse3-popcnt \
-                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-32 e2k \
+                 x86-64 x86-32-sse41-popcnt x86-32-sse2 x86-32 ppc-64 ppc-64-altivec ppc-64-vsx ppc-32 e2k \
                  armv7 armv7-neon armv8 armv8-dotprod apple-silicon general-64 general-32 riscv64 \
                  loongarch64 loongarch64-lsx loongarch64-lasx))
    SUPPORTED_ARCH=true
@@ -151,6 +153,8 @@ avxvnni = no
 avx512 = no
 vnni256 = no
 vnni512 = no
+altivec = no
+vsx = no
 neon = no
 dotprod = no
 arm_version = 0
@@ -358,6 +362,20 @@ ifeq ($(ARCH),ppc-64)
 	arch = ppc64
 	popcnt = yes
 	prefetch = yes
+endif
+
+ifeq ($(ARCH),ppc-64-altivec)
+	arch = ppc64
+	popcnt = yes
+	prefetch = yes
+	altivec = yes
+endif
+
+ifeq ($(ARCH),ppc-64-vsx)
+	arch = ppc64
+	popcnt = yes
+	prefetch = yes
+	vsx = yes
 endif
 
 ifeq ($(findstring e2k,$(ARCH)),e2k)
@@ -650,7 +668,7 @@ else
 endif
 
 ifeq ($(popcnt),yes)
-	ifeq ($(arch),$(filter $(arch),ppc64 armv7 armv8 arm64))
+	ifeq ($(arch),$(filter $(arch),ppc64 ppc64-altivec ppc64-vsx armv7 armv8 arm64))
 		CXXFLAGS += -DUSE_POPCNT
 	else
 		CXXFLAGS += -msse3 -mpopcnt -DUSE_POPCNT
@@ -717,6 +735,20 @@ endif
 ifeq ($(mmx),yes)
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mmmx
+	endif
+endif
+
+ifeq ($(altivec),yes)
+	CXXFLAGS += -maltivec
+	ifeq ($(COMP),gcc)
+		CXXFLAGS += -mabi=altivec
+	endif
+endif
+
+ifeq ($(vsx),yes)
+	CXXFLAGS += -mvsx
+	ifeq ($(COMP),gcc)
+		CXXFLAGS += -DNO_WARN_X86_INTRINSICS -DUSE_SSE2
 	endif
 endif
 
@@ -852,6 +884,8 @@ help:
 	@echo "x86-32-sse2             > x86 32-bit with sse2 support"
 	@echo "x86-32                  > x86 32-bit generic (with mmx compile support)"
 	@echo "ppc-64                  > PPC 64-bit"
+	@echo "ppc-64-altivec          > PPC 64-bit with altivec support"
+	@echo "ppc-64-vsx              > PPC 64-bit with vsx support"
 	@echo "ppc-32                  > PPC 32-bit"
 	@echo "armv7                   > ARMv7 32-bit"
 	@echo "armv7-neon              > ARMv7 32-bit with popcnt and neon"
@@ -987,6 +1021,8 @@ config-sanity: net
 	@echo "avx512: '$(avx512)'"
 	@echo "vnni256: '$(vnni256)'"
 	@echo "vnni512: '$(vnni512)'"
+	@echo "altivec: '$(altivec)'"
+	@echo "vsx: '$(vsx)'"
 	@echo "neon: '$(neon)'"
 	@echo "dotprod: '$(dotprod)'"
 	@echo "arm_version: '$(arm_version)'"
@@ -1020,6 +1056,8 @@ config-sanity: net
 	@test "$(avx512)" = "yes" || test "$(avx512)" = "no"
 	@test "$(vnni256)" = "yes" || test "$(vnni256)" = "no"
 	@test "$(vnni512)" = "yes" || test "$(vnni512)" = "no"
+	@test "$(altivec)" = "yes" || test "$(altivec)" = "no"
+	@test "$(vsx)" = "yes" || test "$(vsx)" = "no"
 	@test "$(neon)" = "yes" || test "$(neon)" = "no"
 	@test "$(lsx)" = "yes" || test "$(lsx)" = "no"
 	@test "$(lasx)" = "yes" || test "$(lasx)" = "no"
