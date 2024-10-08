@@ -42,7 +42,7 @@ uint64_t perft(Position& pos, Depth depth) {
     for (const auto& m : MoveList<LEGAL>(pos))
     {
         if (Root && depth <= 1)
-            cnt = 1, nodes++;
+            cnt = 1, nodes += 1;
         else
         {
             pos.do_move(m, st);

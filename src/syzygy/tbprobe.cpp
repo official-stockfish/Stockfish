@@ -516,7 +516,7 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
     if (file_dtz.is_open())
     {
         file_dtz.close();
-        foundDTZFiles++;
+        foundDTZFiles += 1;
     }
 
     TBFile file(code + ".rtbw");  // KRK -> KRvK
@@ -525,7 +525,7 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
         return;
 
     file.close();
-    foundWDLFiles++;
+    foundWDLFiles += 1;
 
     MaxCardinality = std::max(int(pieces.size()), MaxCardinality);
 
@@ -616,7 +616,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
         // to 64 bits we know that d->base64[l-1] >= s64 >= d->base64[l] so we
         // can find the symbol length iterating through base64[].
         while (buf64 < d->base64[len])
-            ++len;
+            len += 1;
 
         // All the symbols of a given length are consecutive integers (numerical
         // sequence property), so we can compute the offset of our symbol of
@@ -958,7 +958,7 @@ void set_groups(T& e, PairsData* d, int order[], File f) {
     // the encoder will default on '111', so groupLen[] will be (3, 1).
     for (int i = 1; i < e.pieceCount; ++i)
         if (--firstLen > 0 || d->pieces[i] == d->pieces[i - 1])
-            d->groupLen[n]++;
+            d->groupLen[n] += 1;
         else
             d->groupLen[++n] = 1;
 
@@ -1148,7 +1148,7 @@ void set(T& e, uint8_t* data) {
     assert(e.hasPawns == bool(*data & HasPawns));
     assert((e.key != e.key2) == bool(*data & Split));
 
-    data++;  // First byte stores flags
+    data += 1;  // First byte stores flags
 
     const int  sides   = T::Sides == 2 && (e.key != e.key2) ? 2 : 1;
     const File maxFile = e.hasPawns ? FILE_D : FILE_A;
@@ -1160,7 +1160,7 @@ void set(T& e, uint8_t* data) {
     for (File f = FILE_A; f <= maxFile; ++f)
     {
 
-        for (int i = 0; i < sides; i++)
+        for (int i = 0; i < sides; ++i)
             *e.get(i, f) = PairsData();
 
         int order[][2] = {{*data & 0xF, pp ? *(data + 1) & 0xF : 0xF},
@@ -1168,7 +1168,7 @@ void set(T& e, uint8_t* data) {
         data += 1 + pp;
 
         for (int k = 0; k < e.pieceCount; ++k, ++data)
-            for (int i = 0; i < sides; i++)
+            for (int i = 0; i < sides; ++i)
                 e.get(i, f)->pieces[k] = Piece(i ? *data >> 4 : *data & 0xF);
 
         for (int i = 0; i < sides; ++i)
@@ -1178,27 +1178,27 @@ void set(T& e, uint8_t* data) {
     data += uintptr_t(data) & 1;  // Word alignment
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i < sides; i++)
+        for (int i = 0; i < sides; ++i)
             data = set_sizes(e.get(i, f), data);
 
     data = set_dtz_map(e, data, maxFile);
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i < sides; i++)
+        for (int i = 0; i < sides; ++i)
         {
             (d = e.get(i, f))->sparseIndex = (SparseEntry*) data;
             data += d->sparseIndexSize * sizeof(SparseEntry);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i < sides; i++)
+        for (int i = 0; i < sides; ++i)
         {
             (d = e.get(i, f))->blockLength = (uint16_t*) data;
             data += d->blockLengthSize * sizeof(uint16_t);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
-        for (int i = 0; i < sides; i++)
+        for (int i = 0; i < sides; ++i)
         {
             data = (uint8_t*) ((uintptr_t(data) + 0x3F) & ~0x3F);  // 64 byte alignment
             (d = e.get(i, f))->data = data;
@@ -1286,7 +1286,7 @@ WDLScore search(Position& pos, ProbeState* result) {
         if (!pos.capture(move) && (!CheckZeroingMoves || type_of(pos.moved_piece(move)) != PAWN))
             continue;
 
-        moveCount++;
+        moveCount += 1;
 
         pos.do_move(move, st);
         value = -search<false>(pos, result);
@@ -1372,7 +1372,7 @@ void Tablebases::init(const std::string& paths) {
     // diagonal, the other one shall not be above the a1-h8 diagonal.
     std::vector<std::pair<int, Square>> bothOnDiagonal;
     code = 0;
-    for (int idx = 0; idx < 10; idx++)
+    for (int idx = 0; idx < 10; ++idx)
         for (Square s1 = SQ_A1; s1 <= SQ_D4; ++s1)
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1))  // SQ_B1 is mapped to 0
             {
@@ -1398,7 +1398,7 @@ void Tablebases::init(const std::string& paths) {
     // are Binomial[k][n] ways to choose k elements from a set of n elements.
     Binomial[0][0] = 1;
 
-    for (int n = 1; n < 64; n++)               // Squares
+    for (int n = 1; n < 64; ++n)               // Squares
         for (int k = 0; k < 6 && k <= n; ++k)  // Pieces
             Binomial[k][n] =
               (k > 0 ? Binomial[k - 1][n - 1] : 0) + (k < n ? Binomial[k][n - 1] : 0);
