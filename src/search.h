@@ -285,7 +285,6 @@ class Worker {
     PawnHistory           pawnHistory;
 
     PawnCorrectionHistory       pawnCorrectionHistory;
-    MaterialCorrectionHistory   materialCorrectionHistory;
     MajorPieceCorrectionHistory majorPieceCorrectionHistory;
     MinorPieceCorrectionHistory minorPieceCorrectionHistory;
     NonPawnCorrectionHistory    nonPawnCorrectionHistory[COLOR_NB];
