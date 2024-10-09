@@ -312,8 +312,8 @@ void Search::Worker::iterative_deepening() {
             selDepth = 0;
 
             // Reset aspiration window starting size
+            delta     = 5 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 13797;
             Value avg = rootMoves[pvIdx].averageScore;
-            delta     = 5 + avg * avg / 11797;
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
@@ -1065,7 +1065,7 @@ moves_loop:  // When in check, search starts here
             // (alpha, beta), then that move is singular and should be extended. To
             // verify this we do a reduced search on the position excluding the ttMove
             // and if the result is lower than ttValue minus a margin, then we will
-            //  extend the ttMove. Recursive singular search is avoided.
+            // extend the ttMove. Recursive singular search is avoided.
 
             // Note: the depth margin and singularBeta margin are known for having
             // non-linear scaling. Their values are optimized to time controls of
@@ -1264,6 +1264,10 @@ moves_loop:  // When in check, search starts here
 
             rm.averageScore =
               rm.averageScore != -VALUE_INFINITE ? (value + rm.averageScore) / 2 : value;
+
+            rm.meanSquaredScore = rm.meanSquaredScore != -VALUE_INFINITE * VALUE_INFINITE
+                                  ? (value * std::abs(value) + rm.meanSquaredScore) / 2
+                                  : value * std::abs(value);
 
             // PV move or new best move?
             if (moveCount == 1 || value > alpha)
