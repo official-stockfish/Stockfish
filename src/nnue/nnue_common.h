@@ -197,7 +197,7 @@ inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) 
             }
 
             std::uint8_t byte = buf[buf_pos++];
-            --bytes_left;
+            bytes_left -= 1;
             result |= (byte & 0x7f) << shift;
             shift += 7;
 
@@ -236,7 +236,7 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
         {
             byte = value & 0x7f;
             value >>= 7;
-            ++byte_count;
+            byte_count += 1;
         } while ((byte & 0x40) == 0 ? value != 0 : value != -1);
     }
 

@@ -342,8 +342,8 @@ inline void Position::put_piece(Piece pc, Square s) {
     board[s] = pc;
     byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
     byColorBB[color_of(pc)] |= s;
-    pieceCount[pc]++;
-    pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
+    pieceCount[pc] += 1;
+    pieceCount[make_piece(color_of(pc), ALL_PIECES)] += 1;
 }
 
 inline void Position::remove_piece(Square s) {
@@ -353,8 +353,8 @@ inline void Position::remove_piece(Square s) {
     byTypeBB[type_of(pc)] ^= s;
     byColorBB[color_of(pc)] ^= s;
     board[s] = NO_PIECE;
-    pieceCount[pc]--;
-    pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
+    pieceCount[pc] -= 1;
+    pieceCount[make_piece(color_of(pc), ALL_PIECES)] -= 1;
 }
 
 inline void Position::move_piece(Square from, Square to) {
