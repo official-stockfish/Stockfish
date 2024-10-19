@@ -1120,10 +1120,7 @@ moves_loop:  // When in check, search starts here
                 // If we are on a cutNode but the ttMove is not assumed to fail high
                 // over current beta (~1 Elo)
                 else if (cutNode)
-                {
                     extension = -2;
-                    depth--;
-                }
             }
 
             // Extension for capturing the previous moved piece (~1 Elo at LTC)
@@ -1240,7 +1237,7 @@ moves_loop:  // When in check, search starts here
             (ss + 1)->pv[0] = Move::none();
 
             // Extend move from transposition table if we are about to dive into qsearch.
-            if (move == ttData.move && ss->ply <= thisThread->rootDepth * 2)
+            if (move == ttData.move && ss->statScore > 0 && ss->ply <= thisThread->rootDepth * 2)
                 newDepth = std::max(newDepth, 1);
 
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);
