@@ -1,5 +1,5 @@
 import subprocess
-from typing import List
+from typing import List, Dict
 import os
 import collections
 import time
@@ -9,102 +9,19 @@ import fnmatch
 from functools import wraps
 from contextlib import redirect_stdout
 import io
-import tarfile
-import pathlib
 import concurrent.futures
 import tempfile
-import shutil
-import requests
+import statistics
 
 CYAN_COLOR = "\033[36m"
 GRAY_COLOR = "\033[2m"
 RED_COLOR = "\033[31m"
 GREEN_COLOR = "\033[32m"
+YELLOW_COLOR = "\033[33m"
 RESET_COLOR = "\033[0m"
 WHITE_BOLD = "\033[1m"
 
 MAX_TIMEOUT = 60 * 5
-
-PATH = pathlib.Path(__file__).parent.resolve()
-
-
-class Valgrind:
-    @staticmethod
-    def get_valgrind_command():
-        return [
-            "valgrind",
-            "--error-exitcode=42",
-            "--errors-for-leak-kinds=all",
-            "--leak-check=full",
-        ]
-
-    @staticmethod
-    def get_valgrind_thread_command():
-        return ["valgrind", "--error-exitcode=42", "--fair-sched=try"]
-
-
-class TSAN:
-    @staticmethod
-    def set_tsan_option():
-        with open(f"tsan.supp", "w") as f:
-            f.write(
-                """
-race:Stockfish::TTEntry::read
-race:Stockfish::TTEntry::save
-race:Stockfish::TranspositionTable::probe
-race:Stockfish::TranspositionTable::hashfull
-"""
-            )
-
-        os.environ["TSAN_OPTIONS"] = "suppressions=./tsan.supp"
-
-    @staticmethod
-    def unset_tsan_option():
-        os.environ.pop("TSAN_OPTIONS", None)
-        os.remove(f"tsan.supp")
-
-
-class EPD:
-    @staticmethod
-    def create_bench_epd():
-        with open(f"{os.path.join(PATH,'bench_tmp.epd')}", "w") as f:
-            f.write(
-                """
-Rn6/1rbq1bk1/2p2n1p/2Bp1p2/3Pp1pP/1N2P1P1/2Q1NPB1/6K1 w - - 2 26
-rnbqkb1r/ppp1pp2/5n1p/3p2p1/P2PP3/5P2/1PP3PP/RNBQKBNR w KQkq - 0 3
-3qnrk1/4bp1p/1p2p1pP/p2bN3/1P1P1B2/P2BQ3/5PP1/4R1K1 w - - 9 28
-r4rk1/1b2ppbp/pq4pn/2pp1PB1/1p2P3/1P1P1NN1/1PP3PP/R2Q1RK1 w - - 0 13
-"""
-            )
-
-    @staticmethod
-    def delete_bench_epd():
-        os.remove(f"{os.path.join(PATH,'bench_tmp.epd')}")
-
-
-class Syzygy:
-    @staticmethod
-    def get_syzygy_path():
-        return os.path.abspath("syzygy")
-
-    @staticmethod
-    def download_syzygy():
-        if not os.path.isdir(os.path.join(PATH, "syzygy")):
-            url = "https://api.github.com/repos/niklasf/python-chess/tarball/9b9aa13f9f36d08aadfabff872882f4ab1494e95"
-            file = "niklasf-python-chess-9b9aa13"
-
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                tarball_path = os.path.join(tmpdirname, f"{file}.tar.gz")
-
-                response = requests.get(url, stream=True)
-                with open(tarball_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-                with tarfile.open(tarball_path, "r:gz") as tar:
-                    tar.extractall(tmpdirname)
-
-                shutil.move(os.path.join(tmpdirname, file), os.path.join(PATH, "syzygy"))
 
 class OrderedClassMembers(type):
     @classmethod
@@ -117,12 +34,10 @@ class OrderedClassMembers(type):
         ]
         return type.__new__(self, name, bases, classdict)
 
-
 class TimeoutException(Exception):
     def __init__(self, message: str, timeout: int):
         self.message = message
         self.timeout = timeout
-
 
 def timeout_decorator(timeout: float):
     def decorator(func):
@@ -138,21 +53,44 @@ def timeout_decorator(timeout: float):
                         timeout,
                     )
             return result
-
         return wrapper
-
     return decorator
 
+class TestResult:
+    def __init__(self, name: str, status: str, duration: float, error_message: str = None):
+        self.name = name
+        self.status = status
+        self.duration = duration
+        self.error_message = error_message
+
+class TestSuiteResult:
+    def __init__(self, name: str):
+        self.name = name
+        self.results: List[TestResult] = []
+        self.start_time = time.time()
+        self.end_time = None
+
+    def add_result(self, result: TestResult):
+        self.results.append(result)
+
+    def finish(self):
+        self.end_time = time.time()
+
+    @property
+    def duration(self):
+        return self.end_time - self.start_time if self.end_time else 0
+
+    @property
+    def passed_tests(self):
+        return sum(1 for result in self.results if result.status == "PASS")
+
+    @property
+    def failed_tests(self):
+        return sum(1 for result in self.results if result.status == "FAIL")
 
 class MiniTestFramework:
     def __init__(self):
-        self.passed_test_suites = 0
-        self.failed_test_suites = 0
-        self.passed_tests = 0
-        self.failed_tests = 0
-
-    def has_failed(self) -> bool:
-        return self.failed_test_suites > 0
+        self.test_suite_results: List[TestSuiteResult] = []
 
     def run(self, classes: List[type]) -> bool:
         self.start_time = time.time()
@@ -163,47 +101,46 @@ class MiniTestFramework:
                 os.chdir(tmpdirname)
 
                 try:
-                    if self.__run(test_class):
-                        self.failed_test_suites += 1
-                    else:
-                        self.passed_test_suites += 1
+                    self.__run(test_class)
                 finally:
                     os.chdir(original_cwd)
 
-        self.__print_summary(round(time.time() - self.start_time, 2))
+        self.end_time = time.time()
+        self.__print_summary()
         return self.has_failed()
 
-    def __run(self, test_class) -> bool:
+    def has_failed(self) -> bool:
+        return any(suite.failed_tests > 0 for suite in self.test_suite_results)
+
+    def __run(self, test_class) -> None:
         test_instance = test_class()
         test_name = test_instance.__class__.__name__
         test_methods = [m for m in test_instance.__ordered__ if m.startswith("test_")]
 
         print(f"\nTest Suite: {test_name}")
 
+        suite_result = TestSuiteResult(test_name)
+
         if hasattr(test_instance, "beforeAll"):
             test_instance.beforeAll()
 
-        fails = 0
-
         for method in test_methods:
-            fails += self.__run_test_method(test_instance, method)
+            result = self.__run_test_method(test_instance, method)
+            suite_result.add_result(result)
 
         if hasattr(test_instance, "afterAll"):
             test_instance.afterAll()
 
-        self.failed_tests += fails
+        suite_result.finish()
+        self.test_suite_results.append(suite_result)
 
-        return fails > 0
-
-    def __run_test_method(self, test_instance, method: str) -> int:
-        print(f"    Running {method}... \r", end="", flush=True)
+    def __run_test_method(self, test_instance, method: str) -> TestResult:
+        print(f"    Running {method}... ", end="", flush=True)
 
         buffer = io.StringIO()
-        fails = 0
+        start_time = time.time()
 
         try:
-            t0 = time.time()
-
             with redirect_stdout(buffer):
                 if hasattr(test_instance, "beforeEach"):
                     test_instance.beforeEach()
@@ -213,60 +150,76 @@ class MiniTestFramework:
                 if hasattr(test_instance, "afterEach"):
                     test_instance.afterEach()
 
-            duration = time.time() - t0
-
-            self.print_success(f" {method} ({duration * 1000:.2f}ms)")
-            self.passed_tests += 1
+            duration = time.time() - start_time
+            self.print_success(f"{method} ({duration:.2f}s)")
+            return TestResult(method, "PASS", duration)
         except Exception as e:
+            duration = time.time() - start_time
             if isinstance(e, TimeoutException):
-                self.print_failure(
-                    f" {method} (hit execution limit of {e.timeout} seconds)"
-                )
+                self.print_failure(f"{method} (hit execution limit of {e.timeout} seconds)")
+                error_message = f"Timeout: {e.message}"
+            elif isinstance(e, AssertionError):
+                self.print_failure(f"{method} ({duration:.2f}s)")
+                error_message = str(e)
+            else:
+                self.print_failure(f"{method} ({duration:.2f}s)")
+                error_message = traceback.format_exc()
 
-            if isinstance(e, AssertionError):
-                self.__handle_assertion_error(t0, method)
-
-            fails += 1
+            self.__print_error(error_message)
+            return TestResult(method, "FAIL", duration, error_message)
         finally:
             self.__print_buffer_output(buffer)
 
-        return fails
-
-    def __handle_assertion_error(self, start_time, method: str):
-        duration = time.time() - start_time
-        self.print_failure(f" {method} ({duration * 1000:.2f}ms)")
-        traceback_output = "".join(traceback.format_tb(sys.exc_info()[2]))
-
+    def __print_error(self, error_message: str):
         colored_traceback = "\n".join(
             f"  {CYAN_COLOR}{line}{RESET_COLOR}"
-            for line in traceback_output.splitlines()
+            for line in error_message.splitlines()
         )
-
         print(colored_traceback)
 
     def __print_buffer_output(self, buffer: io.StringIO):
         output = buffer.getvalue()
         if output:
             indented_output = "\n".join(f"    {line}" for line in output.splitlines())
-            print(f"    {RED_COLOR}⎯⎯⎯⎯⎯OUTPUT⎯⎯⎯⎯⎯{RESET_COLOR}")
+            print(f"    {YELLOW_COLOR}⎯⎯⎯⎯⎯OUTPUT⎯⎯⎯⎯⎯{RESET_COLOR}")
             print(f"{GRAY_COLOR}{indented_output}{RESET_COLOR}")
-            print(f"    {RED_COLOR}⎯⎯⎯⎯⎯OUTPUT⎯⎯⎯⎯⎯{RESET_COLOR}")
+            print(f"    {YELLOW_COLOR}⎯⎯⎯⎯⎯OUTPUT⎯⎯⎯⎯⎯{RESET_COLOR}")
 
-    def __print_summary(self, duration: float):
+    def __print_summary(self):
+        total_duration = self.end_time - self.start_time
+        total_tests = sum(len(suite.results) for suite in self.test_suite_results)
+        total_passed = sum(suite.passed_tests for suite in self.test_suite_results)
+        total_failed = sum(suite.failed_tests for suite in self.test_suite_results)
+
         print(f"\n{WHITE_BOLD}Test Summary{RESET_COLOR}\n")
-        print(
-            f"    Test Suites: {GREEN_COLOR}{self.passed_test_suites} passed{RESET_COLOR}, {RED_COLOR}{self.failed_test_suites} failed{RESET_COLOR}, {self.passed_test_suites + self.failed_test_suites} total"
-        )
-        print(
-            f"    Tests:       {GREEN_COLOR}{self.passed_tests} passed{RESET_COLOR}, {RED_COLOR}{self.failed_tests} failed{RESET_COLOR}, {self.passed_tests + self.failed_tests} total"
-        )
-        print(f"    Time:        {duration}s\n")
+        print(f"    Total Duration: {total_duration:.2f}s")
+        print(f"    Test Suites: {len(self.test_suite_results)} total")
+        print(f"    Tests: {GREEN_COLOR}{total_passed} passed{RESET_COLOR}, {RED_COLOR}{total_failed} failed{RESET_COLOR}, {total_tests} total")
 
-    def print_failure(self, add: str):
-        print(f"    {RED_COLOR}✗{RESET_COLOR}{add}", flush=True)
+        if total_failed > 0:
+            print(f"\n{WHITE_BOLD}Failed Tests:{RESET_COLOR}")
+            for suite in self.test_suite_results:
+                for result in suite.results:
+                    if result.status == "FAIL":
+                        print(f"    {RED_COLOR}{suite.name}.{result.name}{RESET_COLOR} ({result.duration:.2f}s)")
 
-    def print_success(self, add: str):
-        print(f"    {GREEN_COLOR}✓{RESET_COLOR}{add}", flush=True)
+        print(f"\n{WHITE_BOLD}Test Suite Details:{RESET_COLOR}")
+        for suite in self.test_suite_results:
+            print(f"\n    {suite.name}:")
+            print(f"        Duration: {suite.duration:.2f}s")
+            print(f"        Tests: {GREEN_COLOR}{suite.passed_tests} passed{RESET_COLOR}, {RED_COLOR}{suite.failed_tests} failed{RESET_COLOR}, {len(suite.results)} total")
+            
+            test_durations = [result.duration for result in suite.results]
+            if test_durations:
+                print(f"        Fastest test: {min(test_durations):.2f}s")
+                print(f"        Slowest test: {max(test_durations):.2f}s")
+                print(f"        Average test duration: {statistics.mean(test_durations):.2f}s")
+
+    def print_failure(self, message: str):
+        print(f"{RED_COLOR}✗ {message}{RESET_COLOR}", flush=True)
+
+    def print_success(self, message: str):
+        print(f"{GREEN_COLOR}✓ {message}{RESET_COLOR}", flush=True)
 
 
 class Stockfish:
