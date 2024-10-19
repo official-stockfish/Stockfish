@@ -25,18 +25,14 @@
 #include "uci.h"
 #include "tune.h"
 
-using namespace Stockfish;
-
 int main(int argc, char* argv[]) {
+    std::cout << Stockfish::engine_info() << std::endl;
 
-    std::cout << engine_info() << std::endl;
+    Stockfish::Bitboards::init();
+    Stockfish::Position::init();
 
-    Bitboards::init();
-    Position::init();
-
-    UCIEngine uci(argc, argv);
-
-    Tune::init(uci.engine_options());
+    Stockfish::UCIEngine uci(argc, argv);
+    Stockfish::Tune::init(uci.engine_options());
 
     uci.loop();
 
