@@ -660,7 +660,7 @@ Value Search::Worker::search(
             return ttData.value;
     }
 
-    probCutBeta = beta + 359;
+    probCutBeta = beta + 399;
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && std::abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
         && std::abs(ttData.value) < VALUE_TB_WIN_IN_MAX_PLY)
