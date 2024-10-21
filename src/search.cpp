@@ -929,7 +929,7 @@ Value Search::Worker::search(
                 {
                     movedPiece = pos.moved_piece(negMove);
                     captured    = pos.piece_on(negMove.to_sq());
-                    captureHistory[movedPiece][negMove.to_sq()][type_of(captured)] << -stat_malus(depth - 2);
+                    captureHistory[movedPiece][negMove.to_sq()][type_of(captured)] << -stat_malus(depth - 3);
                 }
                 
                 return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
