@@ -660,12 +660,6 @@ Value Search::Worker::search(
             return ttData.value;
     }
 
-    probCutBeta = beta + 399;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
-        && std::abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
-        && std::abs(ttData.value) < VALUE_TB_WIN_IN_MAX_PLY)
-        return probCutBeta;
-
     // Step 5. Tablebases probe
     if (!rootNode && !excludedMove && tbConfig.cardinality)
     {
@@ -875,6 +869,8 @@ Value Search::Worker::search(
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
         Piece      captured;
 
+        ValueList<Move, 16> capturesSearchedPc;
+        int count = 0;
         while ((move = mp.next_move()) != Move::none())
         {
             assert(move.is_ok());
@@ -908,8 +904,15 @@ Value Search::Worker::search(
 
             // If the qsearch held, perform the regular search
             if (value >= probCutBeta)
+            {
                 value =
                   -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, depth - 4, !cutNode);
+                if (value < probCutBeta && count < 16)
+                {
+                    capturesSearchedPc.push_back(move);
+                    count++;
+                }
+            }
 
             pos.undo_move(move);
 
@@ -921,6 +924,14 @@ Value Search::Worker::search(
                 // Save ProbCut data into transposition table
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                depth - 3, move, unadjustedStaticEval, tt.generation());
+
+                for (Move negMove : capturesSearchedPc)
+                {
+                    movedPiece = pos.moved_piece(negMove);
+                    captured    = pos.piece_on(negMove.to_sq());
+                    captureHistory[movedPiece][negMove.to_sq()][type_of(captured)] << -stat_malus(depth - 2);
+                }
+                
                 return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
                                                                  : value;
             }
@@ -932,6 +943,11 @@ Value Search::Worker::search(
 moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea (~4 Elo)
+    probCutBeta = beta + 379;
+    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
+        && std::abs(beta) < VALUE_TB_WIN_IN_MAX_PLY
+        && std::abs(ttData.value) < VALUE_TB_WIN_IN_MAX_PLY)
+        return probCutBeta;
 
     const PieceToHistory* contHist[] = {(ss - 1)->continuationHistory,
                                         (ss - 2)->continuationHistory,
@@ -1005,6 +1021,8 @@ moves_loop:  // When in check, search starts here
             if (capture || givesCheck)
             {
                 Piece capturedPiece = pos.piece_on(move.to_sq());
+                //if (capture)
+                //    dbg_mean_of(thisThread->captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)]);
                 int   captHist =
                   thisThread->captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)];
 
