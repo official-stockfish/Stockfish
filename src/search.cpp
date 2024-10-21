@@ -869,8 +869,6 @@ Value Search::Worker::search(
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
         Piece      captured;
 
-        ValueList<Move, 16> capturesSearchedPc;
-        int count = 0;
         while ((move = mp.next_move()) != Move::none())
         {
             assert(move.is_ok());
@@ -904,34 +902,19 @@ Value Search::Worker::search(
 
             // If the qsearch held, perform the regular search
             if (value >= probCutBeta)
-            {
                 value =
                   -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, depth - 4, !cutNode);
-                if (value < probCutBeta && count < 16)
-                {
-                    capturesSearchedPc.push_back(move);
-                    count++;
-                }
-            }
 
             pos.undo_move(move);
 
             if (value >= probCutBeta)
             {
                 thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
-                  << stat_bonus(depth - 3);
+                  << stat_bonus(depth - 2);
 
                 // Save ProbCut data into transposition table
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                depth - 3, move, unadjustedStaticEval, tt.generation());
-
-                for (Move negMove : capturesSearchedPc)
-                {
-                    movedPiece = pos.moved_piece(negMove);
-                    captured    = pos.piece_on(negMove.to_sq());
-                    captureHistory[movedPiece][negMove.to_sq()][type_of(captured)] << -stat_malus(depth - 3);
-                }
-                
                 return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
                                                                  : value;
             }
@@ -1021,8 +1004,6 @@ moves_loop:  // When in check, search starts here
             if (capture || givesCheck)
             {
                 Piece capturedPiece = pos.piece_on(move.to_sq());
-                //if (capture)
-                //    dbg_mean_of(thisThread->captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)]);
                 int   captHist =
                   thisThread->captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)];
 
@@ -1814,35 +1795,35 @@ void update_all_stats(const Position&      pos,
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
 
-    int quietMoveBonus = stat_bonus(depth);
-    int quietMoveMalus = stat_malus(depth);
+    int bonus = stat_bonus(depth);
+    int malus = stat_malus(depth);
 
     if (!pos.capture_stage(bestMove))
     {
-        update_quiet_histories(pos, ss, workerThread, bestMove, quietMoveBonus);
+        update_quiet_histories(pos, ss, workerThread, bestMove, bonus);
 
         // Decrease stats for all non-best quiet moves
         for (Move move : quietsSearched)
-            update_quiet_histories(pos, ss, workerThread, move, -quietMoveMalus);
+            update_quiet_histories(pos, ss, workerThread, move, -malus);
     }
     else
     {
         // Increase stats for the best move in case it was a capture move
         captured = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[moved_piece][bestMove.to_sq()][captured] << quietMoveBonus;
+        captureHistory[moved_piece][bestMove.to_sq()][captured] << bonus;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveMalus);
+        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
     {
         moved_piece = pos.moved_piece(move);
         captured    = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[moved_piece][move.to_sq()][captured] << -quietMoveMalus;
+        captureHistory[moved_piece][move.to_sq()][captured] << -malus;
     }
 }
 
