@@ -49,6 +49,13 @@
 #include "uci.h"
 #include "ucioption.h"
 
+#define WRITE_TRUE_ONCE(var, x) \
+    do \
+    { \
+        assert(!(var) || !!(x)); \
+        (var) = (x); \
+    } while (0)
+
 namespace Stockfish {
 
 namespace TB = Tablebases;
@@ -996,7 +1003,7 @@ moves_loop:  // When in check, search starts here
         if (!rootNode && pos.non_pawn_material(us) && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~8 Elo)
-            moveCountPruning = moveCount >= futility_move_count(improving, depth);
+            WRITE_TRUE_ONCE(moveCountPruning, moveCount >= futility_move_count(improving, depth));
 
             // Reduced depth of the next LMR search
             int lmrDepth = newDepth - r;
