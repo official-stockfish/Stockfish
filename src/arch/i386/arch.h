@@ -63,6 +63,10 @@
 #define NO_PDEP_PEXT 1
 #endif
 
+#if defined(__BMI2__) && !defined(NO_PDEP_PEXT)
+#define USE_PEXT 1
+#endif
+
 // Enable AVX-512 on AMD Zen 5 only.
 #if defined(__AVX512F__) && !defined(__znver5__)
 #define NO_AVX512 1
@@ -82,13 +86,6 @@ enum class PrefetchHint {
 
 // Register size is equal to address bits.
 inline constexpr bool ArchImpl::Is64Bit = sizeof(void*) == 8;
-
-#if defined(__BMI2__) && !defined(NO_PDEP_PEXT)
-#define USE_PEXT 1
-inline constexpr bool ArchImpl::UsePEXT = true;
-#else
-inline constexpr bool ArchImpl::UsePEXT = false;
-#endif
 
 template<int Hint>
 inline void ArchImpl::prefetch([[maybe_unused]] const void* m) {

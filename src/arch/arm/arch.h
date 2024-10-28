@@ -78,7 +78,6 @@ inline void vdotq_s32_v(int32x4_t& acc, int8x16_t in, int8x16_t col) {
 namespace Stockfish {
 
 inline constexpr bool ArchImpl::Is64Bit = __ARM_ARCH >= 8;
-inline constexpr bool ArchImpl::UsePEXT = false;
 
 template<int Hint>
 inline void ArchImpl::prefetch([[maybe_unused]] const void* m) {}

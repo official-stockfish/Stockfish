@@ -41,8 +41,6 @@ inline constexpr bool ArchImpl::Is64Bit = true;
 inline constexpr bool ArchImpl::Is64Bit = false;
 #endif
 
-inline constexpr bool ArchImpl::UsePEXT = false;
-
 template<int Hint>
 inline void ArchImpl::prefetch(const void* m) {
     __dcbt(m);

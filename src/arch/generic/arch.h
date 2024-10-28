@@ -30,8 +30,6 @@ namespace Stockfish {
 // it is always 64-bit if address size is 64-bit.
 inline constexpr bool ArchImpl::Is64Bit = sizeof(void*) == 8;
 
-inline constexpr bool ArchImpl::UsePEXT = false;
-
 template<int Hint>
 inline void ArchImpl::prefetch([[maybe_unused]] const void* m) {}
 

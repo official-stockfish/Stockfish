@@ -105,8 +105,6 @@ enum class PrefetchHint;
 struct ArchImpl {
     static const bool Is64Bit;
 
-    static const bool UsePEXT;  // used in Bitboard
-
     // Clang apparently does not follow SFIANE in if constexpr statements,
     // therefore annotate arguments with maybe_unused attribute to avoid
     // warnings.
@@ -122,8 +120,6 @@ struct ArchImpl {
 };
 
 constexpr bool is_64bit() { return ArchImpl::Is64Bit; }
-
-constexpr bool use_pext() { return ArchImpl::UsePEXT; }
 
 // 64-bit builtin popcount is sometimes slower than using table, especially on
 // 32-bit environment. Therefore we provide two versions of it and leave it

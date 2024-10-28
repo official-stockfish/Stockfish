@@ -164,7 +164,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         Magic& m = magics[s][pt - BISHOP];
         m.mask   = sliding_attack(pt, s, 0) & ~edges;
 #ifndef USE_PEXT
-            m.shift = (is_64bit() ? 64 : 32) - popcount(m.mask);
+        m.shift = (is_64bit() ? 64 : 32) - popcount(m.mask);
 #endif
         // Set the offset for the attacks table of the square. We have individual
         // table sizes for each square with "Fancy Magic Bitboards".
@@ -176,13 +176,12 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         Bitboard b = 0;
         do
         {
+            reference[size] = sliding_attack(pt, s, b);
 #ifndef USE_PEXT
             occupancy[size] = b;
+#else
+            m.attacks[pext(b, m.mask)] = reference[size];
 #endif
-            reference[size] = sliding_attack(pt, s, b);
-
-            if constexpr (use_pext())
-                m.attacks[pext(b, m.mask)] = reference[size];
 
             size++;
             b = (b - m.mask) & m.mask;
