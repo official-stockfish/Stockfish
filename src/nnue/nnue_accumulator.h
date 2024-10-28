@@ -21,16 +21,13 @@
 #ifndef NNUE_ACCUMULATOR_H_INCLUDED
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
+#include <array>
 #include <cstdint>
 
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE {
-
-using BiasType       = std::int16_t;
-using PSQTWeightType = std::int32_t;
-using IndexType      = std::uint32_t;
 
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
@@ -56,6 +53,8 @@ struct AccumulatorCaches {
 
     template<IndexType Size>
     struct alignas(CacheLineSize) Cache {
+        using BiasType       = FeatureTransformerBiasType;
+        using PSQTWeightType = FeatureTransformerPSQTWeightType;
 
         struct alignas(CacheLineSize) Entry {
             BiasType       accumulation[Size];

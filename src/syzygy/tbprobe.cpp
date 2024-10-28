@@ -709,7 +709,7 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 }
 
 // A temporary fix for the compiler bug with AVX-512. (#4450)
-#ifdef USE_AVX512
+#ifdef __AVX512F__
     #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
         #define CLANG_AVX512_BUG_FIX __attribute__((optnone))
     #endif
@@ -1729,7 +1729,7 @@ Config Tablebases::rank_root_moves(const OptionsMap&  options,
         config.probeDepth  = 0;
     }
 
-    if (config.cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (config.cardinality >= int(popcount(pos.pieces())) && !pos.can_castle(ANY_CASTLING))
     {
         // Rank moves using DTZ tables
         config.rootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ);

@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 
+#include "common.h"
 #include "evaluate.h"
 #include "misc.h"
 #include "nnue/network.h"
@@ -45,7 +46,7 @@ namespace Stockfish {
 namespace NN = Eval::NNUE;
 
 constexpr auto StartFEN  = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr int  MaxHashMB = Is64Bit ? 33554432 : 2048;
+constexpr int  MaxHashMB = is_64bit() ? 33554432 : 2048;
 
 Engine::Engine(std::optional<std::string> path) :
     binaryDirectory(path ? CommandLine::get_binary_directory(*path) : ""),
