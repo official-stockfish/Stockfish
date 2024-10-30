@@ -212,7 +212,8 @@ class MovePicker {
                const PawnHistory*,
                int);
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
-    Move next_move(bool skipQuiets = false);
+    Move next_move();
+    void skip_quiet_moves();
 
    private:
     template<PickType T, typename Pred>
@@ -234,6 +235,7 @@ class MovePicker {
     int                          threshold;
     Depth                        depth;
     int                          ply;
+    bool                         skipQuiets = false;
     ExtMove                      moves[MAX_MOVES];
 };
 
