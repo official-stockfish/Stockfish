@@ -149,7 +149,7 @@ void Position::init() {
                             break;
                         i = (i == H1(key)) ? H2(key) : H1(key);  // Push victim to alternative slot
                     }
-                    count++;
+                    count += 1;
                 }
     assert(count == 3668);
 }
@@ -697,7 +697,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
     // Increment ply counters. In particular, rule50 will be reset to zero later on
     // in case of a capture or a pawn move.
-    ++gamePly;
+    gamePly += 1;
     ++st->rule50;
     ++st->pliesFromNull;
 
@@ -836,7 +836,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
             dp.piece[dp.dirty_num] = promotion;
             dp.from[dp.dirty_num]  = SQ_NONE;
             dp.to[dp.dirty_num]    = to;
-            dp.dirty_num++;
+            dp.dirty_num += 1;
 
             // Update hash keys
             k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
@@ -972,7 +972,7 @@ void Position::undo_move(Move m) {
 
     // Finally point our state pointer back to the previous state
     st = st->previous;
-    --gamePly;
+    gamePly -= 1;
 
     assert(pos_is_ok());
 }

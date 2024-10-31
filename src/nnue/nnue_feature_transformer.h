@@ -746,9 +746,9 @@ class FeatureTransformer {
                     acc[k] = vec_add_16(acc[k], column[k]);
             }
 
-            for (IndexType k = 0; k < NumRegs; k++)
+            for (IndexType k = 0; k < NumRegs; ++k)
                 vec_store(&entryTile[k], acc[k]);
-            for (IndexType k = 0; k < NumRegs; k++)
+            for (IndexType k = 0; k < NumRegs; ++k)
                 vec_store(&accTile[k], acc[k]);
         }
 
