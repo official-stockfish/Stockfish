@@ -538,7 +538,12 @@ Value Search::Worker::search(
 
     // Dive into quiescence search when the depth reaches zero
     if (depth <= 0)
-        return qsearch < PvNode ? PV : NonPV > (pos, ss, alpha, beta);
+        return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
+
+    Worker* thisThread = this;
+    // Check for the available remaining time
+    if (is_mainthread())
+        main_manager()->check_time(*thisThread);
 
     // Limit the depth if extensions made it too large
     depth = std::min(depth, MAX_PLY - 1);
@@ -572,17 +577,12 @@ Value Search::Worker::search(
     ValueList<Move, 32> quietsSearched;
 
     // Step 1. Initialize node
-    Worker* thisThread = this;
-    ss->inCheck        = pos.checkers();
-    priorCapture       = pos.captured_piece();
-    Color us           = pos.side_to_move();
-    ss->moveCount      = 0;
-    bestValue          = -VALUE_INFINITE;
-    maxValue           = VALUE_INFINITE;
-
-    // Check for the available remaining time
-    if (is_mainthread())
-        main_manager()->check_time(*thisThread);
+    ss->inCheck   = pos.checkers();
+    priorCapture  = pos.captured_piece();
+    Color us      = pos.side_to_move();
+    ss->moveCount = 0;
+    bestValue     = -VALUE_INFINITE;
+    maxValue      = VALUE_INFINITE;
 
     // Used to send selDepth info to GUI (selDepth counts from 1, ply from 0)
     if (PvNode && thisThread->selDepth < ss->ply + 1)
@@ -782,6 +782,12 @@ Value Search::Worker::search(
     if (eval < alpha - 469 - 307 * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
+
+        // If a stop occurred, the return value of the search cannot be trusted, and we
+        // must return immediately without updating any histories nor the transposition table.
+        if (threads.stop.load(std::memory_order_relaxed))
+            return VALUE_ZERO;
+
         if (value < alpha && std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY)
             return value;
     }
@@ -818,6 +824,11 @@ Value Search::Worker::search(
 
         pos.undo_null_move();
 
+        // If a stop occurred, the return value of the search cannot be trusted, and we
+        // must return immediately without updating any histories nor the transposition table.
+        if (threads.stop.load(std::memory_order_relaxed))
+            return VALUE_ZERO;
+
         // Do not return unproven mate or TB scores
         if (nullValue >= beta && nullValue < VALUE_TB_WIN_IN_MAX_PLY)
         {
@@ -831,6 +842,11 @@ Value Search::Worker::search(
             thisThread->nmpMinPly = ss->ply + 3 * (depth - R) / 4;
 
             Value v = search<NonPV>(pos, ss, beta - 1, beta, depth - R, false);
+
+            // If a stop occurred, the return value of the search cannot be trusted, and we
+            // must return immediately without updating any histories nor the transposition table.
+            if (threads.stop.load(std::memory_order_relaxed))
+                return VALUE_ZERO;
 
             thisThread->nmpMinPly = 0;
 
@@ -907,6 +923,11 @@ Value Search::Worker::search(
                   -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, depth - 4, !cutNode);
 
             pos.undo_move(move);
+
+            // If a stop occurred, the return value of the search cannot be trusted, and we
+            // must return immediately without updating any histories nor the transposition table.
+            if (threads.stop.load(std::memory_order_relaxed))
+                return VALUE_ZERO;
 
             if (value >= probCutBeta)
             {
@@ -1086,6 +1107,11 @@ moves_loop:  // When in check, search starts here
                 value =
                   search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
                 ss->excludedMove = Move::none();
+
+                // If a stop occurred, the return value of the search cannot be trusted, and we
+                // must return immediately without updating any histories nor the transposition table.
+                if (threads.stop.load(std::memory_order_relaxed))
+                    return VALUE_ZERO;
 
                 if (value < singularBeta)
                 {
@@ -1467,6 +1493,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     assert(alpha >= -VALUE_INFINITE && alpha < beta && beta <= VALUE_INFINITE);
     assert(PvNode || (alpha == beta - 1));
 
+    Worker* thisThread = this;
+    if (is_mainthread())
+        main_manager()->check_time(*thisThread);
+
     // Check if we have an upcoming move that draws by repetition (~1 Elo)
     if (alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
     {
@@ -1493,17 +1523,16 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         ss->pv[0]    = Move::none();
     }
 
-    Worker* thisThread = this;
-    bestMove           = Move::none();
-    ss->inCheck        = pos.checkers();
-    moveCount          = 0;
+    bestMove    = Move::none();
+    ss->inCheck = pos.checkers();
+    moveCount   = 0;
 
     // Used to send selDepth info to GUI (selDepth counts from 1, ply from 0)
     if (PvNode && thisThread->selDepth < ss->ply + 1)
         thisThread->selDepth = ss->ply + 1;
 
-    // Step 2. Check for an immediate draw or maximum ply reached
-    if (pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
+    // Step 2. Check for aborted search, an immediate draw, or maximum ply reached
+    if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply) || ss->ply >= MAX_PLY)
         return (ss->ply >= MAX_PLY && !ss->inCheck)
                ? evaluate(networks[numaAccessToken], pos, refreshTable, thisThread->optimism[us])
                : VALUE_DRAW;
@@ -1659,6 +1688,11 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         pos.do_move(move, st, givesCheck);
         value = -qsearch<nodeType>(pos, ss + 1, -beta, -alpha);
         pos.undo_move(move);
+
+        // If a stop occurred, the return value of the search cannot be trusted, and we
+        // must return immediately without updating any histories nor the transposition table.
+        if (threads.stop.load(std::memory_order_relaxed))
+            return VALUE_ZERO;
 
         assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
@@ -1907,7 +1941,18 @@ void SearchManager::check_time(Search::Worker& worker) {
         return;
 
     // When using nodes, ensure checking rate is not lower than 0.1% of nodes
-    callsCnt = worker.limits.nodes ? std::min(512, int(worker.limits.nodes / 1024)) : 512;
+    if (worker.limits.nodes)
+    {
+        callsCnt = std::min(512, int(worker.limits.nodes / 1024));
+
+        if (worker.threads.nodes_searched() + 1024 >= worker.limits.nodes)
+        {
+            callsCnt = 1;
+        }
+    }
+
+    else
+        callsCnt = 512;
 
     static TimePoint lastInfoTime = now();
 
