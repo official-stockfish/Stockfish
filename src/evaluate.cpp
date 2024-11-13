@@ -65,7 +65,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 
     Value nnue = (125 * psqt + 131 * positional) / 128;
 
-    // Re-evaluate with the big-net if the small-net's NNUE evaluation is below a certain threshold.
+    // Re-evaluate the position when higher eval accuracy is worth the time spent
     if (smallNet && (std::abs(nnue) < 236))
     {
         std::tie(psqt, positional) = networks.big.evaluate(pos, &caches.big);
