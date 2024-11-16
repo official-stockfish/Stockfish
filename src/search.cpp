@@ -1674,10 +1674,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                 if (PvNode)  // Update pv even in fail-high case
                     update_pv(ss->pv, move, (ss + 1)->pv);
 
-                if (value < beta)  // Update alpha here!
-                    alpha = value;
-                else
-                    break;  // Fail high
+                break;
             }
         }
     }
