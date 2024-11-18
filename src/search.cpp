@@ -538,7 +538,7 @@ Value Search::Worker::search(
 
     // Dive into quiescence search when the depth reaches zero
     if (depth <= 0)
-        return qsearch < PvNode ? PV : NonPV > (pos, ss, alpha, beta);
+        return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
 
     // Limit the depth if extensions made it too large
     depth = std::min(depth, MAX_PLY - 1);
@@ -910,8 +910,7 @@ Value Search::Worker::search(
 
             if (value >= probCutBeta)
             {
-                thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
-                  << stat_bonus(depth - 2);
+                thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)] << 1300;
 
                 // Save ProbCut data into transposition table
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
