@@ -94,7 +94,7 @@ Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos, St
         cntcv = int((*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]);
 
     const auto cv =
-      (6384 * pcv + 3583 * macv + 6492 * micv + 6725 * (wnpcv + bnpcv) + cntcv * 5880) / 131072;
+      (6384 * pcv + 3583 * macv + 6492 * micv + 6725 * (wnpcv + bnpcv) + 5880 * cntcv) / 131072;
     v += cv;
     return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
@@ -765,7 +765,7 @@ Value Search::Worker::search(
         thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()] << bonus;
         if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
             thisThread->pawnHistory[pawn_structure_index(pos)][pos.piece_on(prevSq)][prevSq]
-              << bonus / 2;
+              << bonus;
     }
 
     // Set up the improving flag, which is true if current static evaluation is
