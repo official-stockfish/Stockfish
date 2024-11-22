@@ -354,7 +354,7 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command(
             "position fen r1b2r1k/pp1p2pp/2p5/2B1q3/8/8/P1PN2PP/R4RK1 w - - 0 18"
         )
-        self.stockfish.send_command("go infinite")
+        self.stockfish.send_command("go")
         self.stockfish.contains("score mate -1")
 
         self.stockfish.starts_with("bestmove")
