@@ -593,10 +593,9 @@ Value Search::Worker::search(
         // Step 2. Check for aborted search and immediate draw
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck)
-                   ? evaluate(networks[numaAccessToken], pos, refreshTable,
-                              thisThread->optimism[us])
-                   : value_draw(thisThread->nodes);
+            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(
+                     networks[numaAccessToken], pos, refreshTable, thisThread->optimism[us])
+                                                        : value_draw(thisThread->nodes);
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
@@ -889,8 +888,7 @@ Value Search::Worker::search(
             // Prefetch the TT entry for the resulting position
             prefetch(tt.first_entry(pos.key_after(move)));
 
-            ss->currentMove   = move;
-            ss->capturedPiece = captured;
+            ss->currentMove = move;
             ss->continuationHistory =
               &this->continuationHistory[ss->inCheck][true][pos.moved_piece(move)][move.to_sq()];
             ss->continuationCorrectionHistory =
@@ -1139,8 +1137,7 @@ moves_loop:  // When in check, search starts here
         prefetch(tt.first_entry(pos.key_after(move)));
 
         // Update the current move (this must be done after singular extension search)
-        ss->currentMove   = move;
-        ss->capturedPiece = pos.piece_on(move.to_sq());
+        ss->currentMove = move;
         ss->continuationHistory =
           &thisThread->continuationHistory[ss->inCheck][capture][movedPiece][move.to_sq()];
         ss->continuationCorrectionHistory =
@@ -1405,7 +1402,8 @@ moves_loop:  // When in check, search starts here
     else if (priorCapture && prevSq != SQ_NONE)
     {
         // bonus for prior countermoves that caused the fail low
-        Piece capturedPiece = (ss - 1)->capturedPiece;
+        Piece capturedPiece = pos.captured_piece();
+        assert(capturedPiece != NO_PIECE);
         thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
           << stat_bonus(depth) * 2;
     }
@@ -1654,8 +1652,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         prefetch(tt.first_entry(pos.key_after(move)));
 
         // Update the current move
-        ss->currentMove   = move;
-        ss->capturedPiece = pos.piece_on(move.to_sq());
+        ss->currentMove = move;
         ss->continuationHistory =
           &thisThread
              ->continuationHistory[ss->inCheck][capture][pos.moved_piece(move)][move.to_sq()];

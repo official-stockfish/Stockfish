@@ -66,7 +66,6 @@ struct Stack {
     CorrectionHistory<PieceTo>* continuationCorrectionHistory;
     int                         ply;
     Move                        currentMove;
-    Piece                       capturedPiece;
     Move                        excludedMove;
     Value                       staticEval;
     int                         statScore;
