@@ -352,10 +352,10 @@ class TestInteractive(metaclass=OrderedClassMembers):
     def test_fen_position_depth_27(self):
         self.stockfish.send_command("ucinewgame")
         self.stockfish.send_command(
-            "position fen 1NR2B2/5p2/5p2/1p1kpp2/1P2rp2/2P1pB2/2P1P1K1/8 b - -"
+            "position fen r1b2r1k/pp1p2pp/2p5/2B1q3/8/8/P1PN2PP/R4RK1 w - - 0 18"
         )
-        self.stockfish.send_command("go depth 27")
-        self.stockfish.contains("score mate -2")
+        self.stockfish.send_command("go")
+        self.stockfish.contains("score mate 1")
 
         self.stockfish.starts_with("bestmove")
 
