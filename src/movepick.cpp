@@ -18,11 +18,9 @@
 
 #include "movepick.h"
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <limits>
-#include <utility>
 
 #include "bitboard.h"
 #include "position.h"
@@ -306,13 +304,11 @@ top:
         [[fallthrough]];
 
     case EVASION :
+    case QCAPTURE :
         return select([]() { return true; });
 
     case PROBCUT :
         return select([&]() { return pos.see_ge(*cur, threshold); });
-
-    case QCAPTURE :
-        return select([]() { return true; });
     }
 
     assert(false);
