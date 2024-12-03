@@ -1180,7 +1180,10 @@ moves_loop:  // When in check, search starts here
             r -= 1879;
 
         if (capture)
-            ss->statScore = 0;
+            ss->statScore =
+              7 * int(PieceValue[pos.captured_piece()])
+              + thisThread->captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())]
+              - 5000;
         else
             ss->statScore = 2 * thisThread->mainHistory[us][move.from_to()]
                           + (*contHist[0])[movedPiece][move.to_sq()]
