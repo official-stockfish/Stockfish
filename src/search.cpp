@@ -847,8 +847,8 @@ Value Search::Worker::search(
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
 
-    // For cutNodes, if depth is high enough, decrease depth by 2 if there is no ttMove,
-    // or by 1 if there is a ttMove with an upper bound.
+    // For cutNodes, if depth is high enough, decrease depth if there is no ttMove,
+    // or if there is a ttMove with an upper bound.
     if (cutNode && depth >= 7 && (!ttData.move || ttData.bound == BOUND_UPPER))
         depth -= 1 + !ttData.move;
 
@@ -1228,7 +1228,7 @@ moves_loop:  // When in check, search starts here
             if (!ttData.move)
                 r += 2037;
 
-            // Note that if expected reduction is high, we reduce search depth by 1 here (~9 Elo)
+            // Note that if expected reduction is high, we reduce search depth here (~9 Elo)
             value =
               -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, newDepth - (r > 2983), !cutNode);
         }
@@ -1401,7 +1401,7 @@ moves_loop:  // When in check, search starts here
 
     else if (priorCapture && prevSq != SQ_NONE)
     {
-        // bonus for prior countermoves that caused the fail low
+        // Bonus for prior countermoves that caused the fail low
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
         thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
