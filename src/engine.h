@@ -39,8 +39,6 @@
 
 namespace Stockfish {
 
-enum Square : int;
-
 class Engine {
    public:
     using InfoShort = Search::InfoShort;
@@ -116,7 +114,6 @@ class Engine {
 
     Position     pos;
     StateListPtr states;
-    Square       capSq;
 
     OptionsMap                               options;
     ThreadPool                               threads;
