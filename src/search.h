@@ -313,6 +313,8 @@ class Worker {
     TimePoint elapsed() const;
     TimePoint elapsed_time() const;
 
+    Value evaluate(const Position&);
+
     LimitsType limits;
 
     size_t                pvIdx, pvLast;
