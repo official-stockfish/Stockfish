@@ -1012,7 +1012,7 @@ void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Squ
 
 // Used to do a "null move": it flips
 // the side to move without executing any move on the board.
-void Position::do_null_move(StateInfo& newSt, TranspositionTable& tt) {
+void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
 
     assert(!checkers());
     assert(&newSt != st);
@@ -1071,10 +1071,7 @@ Key Position::key_after(Move m) const {
     Piece  captured = piece_on(to);
     Key    k        = st->key ^ Zobrist::side;
 
-    if (captured)
-        k ^= Zobrist::psq[captured][to];
-
-    k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+    k ^= Zobrist::psq[captured][to] ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
 
     return (captured || type_of(pc) == PAWN) ? k : adjust_key50<true>(k);
 }
