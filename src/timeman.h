@@ -39,8 +39,7 @@ class TimeManagement {
     void init(Search::LimitsType& limits,
               Color               us,
               int                 ply,
-              const OptionsMap&   options,
-              double&             originalTimeAdjust);
+              const OptionsMap&   options);
 
     TimePoint optimum() const;
     TimePoint maximum() const;
