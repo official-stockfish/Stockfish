@@ -1198,7 +1198,8 @@ moves_loop:  // When in check, search starts here
             // beyond the first move depth.
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
-            Depth d = std::max(1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
+            Depth d = std::max(
+              1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
 
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
 
@@ -1216,8 +1217,8 @@ moves_loop:  // When in check, search starts here
                     value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, newDepth, !cutNode);
 
                 // Post LMR continuation history updates (~1 Elo)
-                int bonus = (value >= beta) * stat_bonus(newDepth);
-                update_continuation_histories(ss, movedPiece, move.to_sq(), bonus * 1427 / 1024);
+                int bonus = (value >= beta) * 2048;
+                update_continuation_histories(ss, movedPiece, move.to_sq(), bonus);
             }
         }
 
