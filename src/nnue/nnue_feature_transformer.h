@@ -256,21 +256,20 @@ class FeatureTransformer {
 #endif
     }
 
-    void permute_weights([[maybe_unused]] void (*order_fn)(uint64_t*)) const {
+    void permute_weights([[maybe_unused]] void (*order_fn)(uint64_t*)) {
 #if defined(USE_AVX2)
     #if defined(USE_AVX512)
         constexpr IndexType di = 16;
     #else
         constexpr IndexType di = 8;
     #endif
-        uint64_t* b = reinterpret_cast<uint64_t*>(const_cast<BiasType*>(&biases[0]));
+        uint64_t* b = reinterpret_cast<uint64_t*>(&biases[0]);
         for (IndexType i = 0; i < HalfDimensions * sizeof(BiasType) / sizeof(uint64_t); i += di)
             order_fn(&b[i]);
 
         for (IndexType j = 0; j < InputDimensions; ++j)
         {
-            uint64_t* w =
-              reinterpret_cast<uint64_t*>(const_cast<WeightType*>(&weights[j * HalfDimensions]));
+            uint64_t* w = reinterpret_cast<uint64_t*>(&weights[j * HalfDimensions]);
             for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(uint64_t);
                  i += di)
                 order_fn(&w[i]);
@@ -278,17 +277,16 @@ class FeatureTransformer {
 #endif
     }
 
-    inline void scale_weights(bool read) const {
+    inline void scale_weights(bool read) {
         for (IndexType j = 0; j < InputDimensions; ++j)
         {
-            WeightType* w = const_cast<WeightType*>(&weights[j * HalfDimensions]);
+            WeightType* w = &weights[j * HalfDimensions];
             for (IndexType i = 0; i < HalfDimensions; ++i)
                 w[i] = read ? w[i] * 2 : w[i] / 2;
         }
 
-        BiasType* b = const_cast<BiasType*>(biases);
         for (IndexType i = 0; i < HalfDimensions; ++i)
-            b[i] = read ? b[i] * 2 : b[i] / 2;
+            biases[i] = read ? biases[i] * 2 : biases[i] / 2;
     }
 
     // Read network parameters
@@ -304,7 +302,7 @@ class FeatureTransformer {
     }
 
     // Write network parameters
-    bool write_parameters(std::ostream& stream) const {
+    bool write_parameters(std::ostream& stream) {
 
         permute_weights(order_packs);
         scale_weights(false);
