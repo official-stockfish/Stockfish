@@ -18,7 +18,6 @@
 
 #include "movepick.h"
 
-#include <array>
 #include <cassert>
 #include <limits>
 
