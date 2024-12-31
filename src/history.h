@@ -76,9 +76,12 @@ class StatsEntry {
     T entry;
 
    public:
-    void operator=(const T& v) { entry = v; }
-    T*   operator&() { return &entry; }
-    T*   operator->() { return &entry; }
+    StatsEntry& operator=(const T& v) {
+        entry = v;
+        return *this;
+    }
+    T* operator&() { return &entry; }
+    T* operator->() { return &entry; }
     operator const T&() const { return entry; }
 
     void operator<<(int bonus) {
@@ -92,28 +95,53 @@ class StatsEntry {
     }
 };
 
+template<typename T, int D, std::size_t Size, std::size_t... Sizes>
+struct StatsHelper;
+
 // Stats is a generic N-dimensional array used to store various statistics.
 // The first template parameter T is the base type of the array, and the second
 // template parameter D limits the range of updates in [-D, D] when we update
 // values with the << operator, while the last parameters (Size and Sizes)
 // encode the dimensions of the array.
-template<typename T, int D, int Size, int... Sizes>
-struct Stats: public std::array<Stats<T, D, Sizes...>, Size> {
-    using stats = Stats<T, D, Size, Sizes...>;
+template<typename T, int D, std::size_t Size, std::size_t... Sizes>
+class Stats {
+    using child_type = typename StatsHelper<T, D, Size, Sizes...>::child_type;
+    using array_type = std::array<child_type, Size>;
+    array_type data;
+
+   public:
+    using size_type = typename array_type::size_type;
+
+    auto&       operator[](size_type index) { return data[index]; }
+    const auto& operator[](size_type index) const { return data[index]; }
+
+    auto begin() { return data.begin(); }
+    auto end() { return data.end(); }
+    auto begin() const { return data.cbegin(); }
+    auto end() const { return data.cend(); }
+    auto cbegin() const { return data.cbegin(); }
+    auto cend() const { return data.cend(); }
 
     void fill(const T& v) {
-
-        // For standard-layout 'this' points to the first struct member
-        assert(std::is_standard_layout_v<stats>);
-
-        using entry = StatsEntry<T, D>;
-        entry* p    = reinterpret_cast<entry*>(this);
-        std::fill(p, p + sizeof(*this) / sizeof(entry), v);
+        for (auto& ele : data)
+        {
+            if constexpr (sizeof...(Sizes) == 0)
+                ele = v;
+            else
+                ele.fill(v);
+        }
     }
 };
 
-template<typename T, int D, int Size>
-struct Stats<T, D, Size>: public std::array<StatsEntry<T, D>, Size> {};
+template<typename T, int D, std::size_t Size, std::size_t... Sizes>
+struct StatsHelper {
+    using child_type = Stats<T, D, Sizes...>;
+};
+
+template<typename T, int D, std::size_t Size>
+struct StatsHelper<T, D, Size> {
+    using child_type = StatsEntry<T, D>;
+};
 
 // In stats table, D=0 means that the template parameter is not used
 enum StatsParams {
