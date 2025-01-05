@@ -305,13 +305,11 @@ class FeatureTransformer {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-        std::unique_ptr<BiasType[]>   biasesToWrite{new BiasType[HalfDimensions]};
-        std::unique_ptr<WeightType[]> weightsToWrite{
-          new WeightType[HalfDimensions * InputDimensions]};
+        auto biasesToWrite  = std::make_unique<BiasType[]>(HalfDimensions);
+        auto weightsToWrite = std::make_unique<WeightType[]>(HalfDimensions * InputDimensions);
 
-        std::memcpy(biasesToWrite.get(), biases, sizeof(BiasType) * HalfDimensions);
-        std::memcpy(weightsToWrite.get(), weights,
-                    sizeof(WeightType) * HalfDimensions * InputDimensions);
+        std::copy(std::begin(biases), std::end(biases), biasesToWrite.get());
+        std::copy(std::begin(weights), std::end(weights), weightsToWrite.get());
 
         permute_weights(weightsToWrite.get(), biasesToWrite.get(), order_packs);
         scale_weights(weightsToWrite.get(), biasesToWrite.get(), false);
