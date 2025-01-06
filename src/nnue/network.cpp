@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ bool read_parameters(std::istream& stream, T& reference) {
 
 // Write evaluation function parameters
 template<typename T>
-bool write_parameters(std::ostream& stream, const T& reference) {
+bool write_parameters(std::ostream& stream, T& reference) {
 
     write_little_endian<std::uint32_t>(stream, T::get_hash_value());
     return reference.write_parameters(stream);
