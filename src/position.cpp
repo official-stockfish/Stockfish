@@ -119,6 +119,9 @@ void Position::init() {
     for (Piece pc : Pieces)
         for (Square s = SQ_A1; s <= SQ_H8; ++s)
             Zobrist::psq[pc][s] = rng.rand<Key>();
+    // pawns on these squares will promote
+    std::fill_n(Zobrist::psq[W_PAWN] + SQ_A8, 8, 0);
+    std::fill_n(Zobrist::psq[B_PAWN], 8, 0);
 
     for (File f = FILE_A; f <= FILE_H; ++f)
         Zobrist::enpassant[f] = rng.rand<Key>();
@@ -844,8 +847,8 @@ void Position::do_move(Move                      m,
             dp.dirty_num++;
 
             // Update hash keys
-            k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
-            st->pawnKey ^= Zobrist::psq[pc][to];
+            // Zobrist::psq[pc][to] is zero, so we don't need to clear it
+            k ^= Zobrist::psq[promotion][to];
             st->materialKey ^=
               Zobrist::psq[promotion][pieceCount[promotion] - 1] ^ Zobrist::psq[pc][pieceCount[pc]];
 
