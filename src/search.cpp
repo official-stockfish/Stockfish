@@ -911,8 +911,6 @@ Value Search::Worker::search(
                 return is_decisive(value) ? value : value - (probCutBeta - beta);
             }
         }
-
-        Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
     }
 
 moves_loop:  // When in check, search starts here
