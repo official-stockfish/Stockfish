@@ -124,8 +124,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_add_16(a, b) vaddq_s16(a, b)
     #define vec_sub_16(a, b) vsubq_s16(a, b)
     #define vec_mulhi_16(a, b) vqdmulhq_s16(a, b)
-    #define vec_zero() \
-        vec_t { 0 }
+    #define vec_zero() vec_t{0}
     #define vec_set_16(a) vdupq_n_s16(a)
     #define vec_max_16(a, b) vmaxq_s16(a, b)
     #define vec_min_16(a, b) vminq_s16(a, b)
@@ -135,8 +134,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
-    #define vec_zero_psqt() \
-        psqt_vec_t { 0 }
+    #define vec_zero_psqt() psqt_vec_t{0}
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
@@ -189,7 +187,7 @@ static constexpr int BestRegisterCount() {
 
 // Input feature converter
 template<IndexType                                 TransformedFeatureDimensions,
-         Accumulator<TransformedFeatureDimensions> StateInfo::*accPtr>
+         Accumulator<TransformedFeatureDimensions> StateInfo::* accPtr>
 class FeatureTransformer {
 
     // Number of output dimensions for one side
@@ -470,7 +468,7 @@ class FeatureTransformer {
 
     // It computes the accumulator of the next position, or updates the
     // current position's accumulator if CurrentOnly is true.
-    template<Color Perspective, bool CurrentOnly>
+    template<Color Perspective>
     void update_accumulator_incremental(const Position& pos, StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         assert(computed->next != nullptr);
@@ -489,16 +487,10 @@ class FeatureTransformer {
         // feature set's update cost calculation to be correct and never allow
         // updates with more added/removed features than MaxActiveDimensions.
         FeatureSet::IndexList removed, added;
+        FeatureSet::append_changed_indices<Perspective>(ksq, computed->next->dirtyPiece, removed,
+                                                        added);
 
-        if constexpr (CurrentOnly)
-            for (StateInfo* st = pos.state(); st != computed; st = st->previous)
-                FeatureSet::append_changed_indices<Perspective>(ksq, st->dirtyPiece, removed,
-                                                                added);
-        else
-            FeatureSet::append_changed_indices<Perspective>(ksq, computed->next->dirtyPiece,
-                                                            removed, added);
-
-        StateInfo* next = CurrentOnly ? pos.state() : computed->next;
+        StateInfo* next = computed->next;
         assert(!(next->*accPtr).computed[Perspective]);
 
 #ifdef VECTOR
@@ -660,8 +652,8 @@ class FeatureTransformer {
 
         (next->*accPtr).computed[Perspective] = true;
 
-        if (!CurrentOnly && next != pos.state())
-            update_accumulator_incremental<Perspective, false>(pos, next);
+        if (next != pos.state())
+            update_accumulator_incremental<Perspective>(pos, next);
     }
 
     template<Color Perspective>
@@ -839,7 +831,7 @@ class FeatureTransformer {
         StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
 
         if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
-            update_accumulator_incremental<Perspective, true>(pos, oldest);
+            update_accumulator_incremental<Perspective>(pos, oldest);
         else
             update_accumulator_refresh_cache<Perspective>(pos, cache);
     }
@@ -853,7 +845,7 @@ class FeatureTransformer {
         if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
-            update_accumulator_incremental<Perspective, false>(pos, oldest);
+            update_accumulator_incremental<Perspective>(pos, oldest);
         else
             update_accumulator_refresh_cache<Perspective>(pos, cache);
     }
