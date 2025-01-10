@@ -861,7 +861,6 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
         {
@@ -874,10 +873,6 @@ Value Search::Worker::search(
                 continue;
 
             assert(pos.capture_stage(move));
-
-            movedPiece = pos.moved_piece(move);
-            captured   = pos.piece_on(move.to_sq());
-
 
             // Prefetch the TT entry for the resulting position
             prefetch(tt.first_entry(pos.key_after(move)));
@@ -903,8 +898,6 @@ Value Search::Worker::search(
 
             if (value >= probCutBeta)
             {
-                thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)] << 1226;
-
                 // Save ProbCut data into transposition table
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                depth - 3, move, unadjustedStaticEval, tt.generation());
