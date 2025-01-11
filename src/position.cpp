@@ -493,14 +493,23 @@ void Position::update_slider_blockers(Color c) const {
 // Slider attacks use the occupied bitboard to indicate occupancy.
 Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
-    return (pawn_attacks_bb(BLACK, s) & pieces(WHITE, PAWN))
-         | (pawn_attacks_bb(WHITE, s) & pieces(BLACK, PAWN))
-         | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
-         | (attacks_bb<ROOK>(s, occupied) & pieces(ROOK, QUEEN))
+    return (attacks_bb<ROOK>(s, occupied) & pieces(ROOK, QUEEN))
          | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
-         | (attacks_bb<KING>(s) & pieces(KING));
+         | (pawn_attacks_bb(BLACK, s) & pieces(WHITE, PAWN))
+         | (pawn_attacks_bb(WHITE, s) & pieces(BLACK, PAWN))
+         | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT)) | (attacks_bb<KING>(s) & pieces(KING));
 }
 
+bool Position::attackers_to_exist(Square s, Bitboard occupied, Color c) const {
+
+    return ((attacks_bb<ROOK>(s) & pieces(c, ROOK, QUEEN))
+            && (attacks_bb<ROOK>(s, occupied) & pieces(c, ROOK, QUEEN)))
+        || ((attacks_bb<BISHOP>(s) & pieces(c, BISHOP, QUEEN))
+            && (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN)))
+        || (((pawn_attacks_bb(~c, s) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
+             | (attacks_bb<KING>(s) & pieces(KING)))
+            & pieces(c));
+}
 
 // Tests whether a pseudo-legal move is legal
 bool Position::legal(Move m) const {
@@ -542,7 +551,7 @@ bool Position::legal(Move m) const {
         Direction step = to > from ? WEST : EAST;
 
         for (Square s = to; s != from; s += step)
-            if (attackers_to(s) & pieces(~us))
+            if (attackers_to_exist(s, pieces(), ~us))
                 return false;
 
         // In case of Chess960, verify if the Rook blocks some checks.
@@ -553,7 +562,7 @@ bool Position::legal(Move m) const {
     // If the moving piece is a king, check whether the destination square is
     // attacked by the opponent.
     if (type_of(piece_on(from)) == KING)
-        return !(attackers_to(to, pieces() ^ from) & pieces(~us));
+        return !(attackers_to_exist(to, pieces() ^ from, ~us));
 
     // A non-king move is legal if and only if it is not pinned or it
     // is moving along the ray towards or away from the king.
@@ -622,7 +631,7 @@ bool Position::pseudo_legal(const Move m) const {
         }
         // In case of king moves under check we have to remove the king so as to catch
         // invalid moves like b1a1 when opposite queen is on c1.
-        else if (attackers_to(to, pieces() ^ from) & pieces(~us))
+        else if (attackers_to_exist(to, pieces() ^ from, ~us))
             return false;
     }
 
@@ -1308,7 +1317,7 @@ bool Position::pos_is_ok() const {
         return true;
 
     if (pieceCount[W_KING] != 1 || pieceCount[B_KING] != 1
-        || attackers_to(square<KING>(~sideToMove)) & pieces(sideToMove))
+        || attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
         assert(0 && "pos_is_ok: Kings");
 
     if ((pieces(PAWN) & (Rank1BB | Rank8BB)) || pieceCount[W_PAWN] > 8 || pieceCount[B_PAWN] > 8)
