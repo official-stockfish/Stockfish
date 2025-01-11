@@ -466,8 +466,7 @@ class FeatureTransformer {
         return st;
     }
 
-    // It computes the accumulator of the next position, or updates the
-    // current position's accumulator if CurrentOnly is true.
+    // Computes the accumulator of the next position.
     template<Color Perspective>
     void update_accumulator_incremental(const Position& pos, StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
