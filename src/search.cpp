@@ -864,7 +864,6 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
         {
@@ -877,10 +876,6 @@ Value Search::Worker::search(
                 continue;
 
             assert(pos.capture_stage(move));
-
-            movedPiece = pos.moved_piece(move);
-            captured   = pos.piece_on(move.to_sq());
-
 
             // Prefetch the TT entry for the resulting position
             prefetch(tt.first_entry(pos.key_after(move)));
