@@ -848,7 +848,7 @@ Value Search::Worker::search(
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 174 - 56 * improving;
-    if (depth > 3 //&& ttHit //1 changes bench to 1180821
+    if (depth > 3 && ttHit //1 changes bench to 1180821
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
         // probCut there and in further interactions with transposition table cutoff
@@ -1143,7 +1143,7 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction if position is or has been on the PV (~7 Elo)
         if (ss->ttPv)
-            r -= 1037 + (/*ttHit &&*/ ttData.value >  alpha) * 965  //3a  changes bench to 1327627
+            r -= 1037 + (ttHit && ttData.value >  alpha) * 965  //3a  changes bench to 1327627
                       + (ttHit && ttData.depth >= depth) * 960; //3b ok
 
         // Decrease reduction for PvNodes (~0 Elo on STC, ~2 Elo on LTC)
@@ -1221,7 +1221,7 @@ moves_loop:  // When in check, search starts here
         else if (!PvNode || moveCount > 1)
         {
             // Increase reduction if ttMove is not present (~6 Elo)
-            if (/*ttHit && */ !ttData.move)  //6 changes bench to 1425435
+            if (ttHit && !ttData.move)  //6 changes bench to 1425435
                 r += 2111;
 
             // Note that if expected reduction is high, we reduce search depth by 1 here (~9 Elo)
