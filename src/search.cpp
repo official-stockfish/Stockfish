@@ -848,7 +848,7 @@ Value Search::Worker::search(
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 174 - 56 * improving;
-    if (depth > 3
+    if (depth > 3 //&& ttHit //1 changes bench to 1180821
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
         // probCut there and in further interactions with transposition table cutoff
@@ -910,7 +910,7 @@ moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea (~4 Elo)
     probCutBeta = beta + 412;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
+    if (ttHit && (ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta //2 ok
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
 
@@ -1143,7 +1143,8 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction if position is or has been on the PV (~7 Elo)
         if (ss->ttPv)
-            r -= 1037 + (ttData.value > alpha) * 965 + (ttData.depth >= depth) * 960;
+            r -= 1037 + (/*ttHit &&*/ ttData.value >  alpha) * 965  //3a  changes bench to 1327627
+                      + (ttHit && ttData.depth >= depth) * 960; //3b ok
 
         // Decrease reduction for PvNodes (~0 Elo on STC, ~2 Elo on LTC)
         if (PvNode)
@@ -1157,7 +1158,7 @@ moves_loop:  // When in check, search starts here
 
         // Increase reduction for cut nodes (~4 Elo)
         if (cutNode)
-            r += 2355 - (ttData.depth >= depth && ss->ttPv) * 1141;
+            r += 2355 - (ttHit && ttData.depth >= depth && ss->ttPv) * 1141; //4 ok
 
         // Increase reduction if ttMove is a capture but the current move is not a capture (~3 Elo)
         if (ttCapture && !capture)
@@ -1168,7 +1169,7 @@ moves_loop:  // When in check, search starts here
             r += 940 + allNode * 887;
 
         // For first picked move (ttMove) reduce reduction (~3 Elo)
-        else if (move == ttData.move)
+        else if (ttHit && move == ttData.move)  //5 ok
             r -= 1960;
 
         if (capture)
@@ -1220,7 +1221,7 @@ moves_loop:  // When in check, search starts here
         else if (!PvNode || moveCount > 1)
         {
             // Increase reduction if ttMove is not present (~6 Elo)
-            if (!ttData.move)
+            if (/*ttHit && */ !ttData.move)  //6 changes bench to 1425435
                 r += 2111;
 
             // Note that if expected reduction is high, we reduce search depth by 1 here (~9 Elo)
@@ -1516,7 +1517,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     pvHit        = ttHit && ttData.is_pv;
 
     // At non-PV nodes we check for an early TT cutoff
-    if (!PvNode && ttData.depth >= DEPTH_QS
+    if (!PvNode && ttHit && ttData.depth >= DEPTH_QS  //7 ok
         && is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER)))
         return ttData.value;
