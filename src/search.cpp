@@ -922,7 +922,7 @@ moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea (~4 Elo)
     probCutBeta = beta + 417;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
+    if (ttHit && (ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
 

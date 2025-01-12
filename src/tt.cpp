@@ -238,7 +238,14 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
             > tte[i].depth8 - tte[i].relative_age(generation8) * 2)
             replace = &tte[i];
 
+#if !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     return {false, TTData(), TTWriter(replace)};
+#if !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 }
 
 
