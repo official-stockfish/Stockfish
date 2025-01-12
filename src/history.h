@@ -28,6 +28,7 @@
 #include <limits>
 #include <type_traits>  // IWYU pragma: keep
 
+#include "misc.h"
 #include "position.h"
 
 namespace Stockfish {
@@ -92,57 +93,6 @@ class StatsEntry {
         entry += clampedBonus - entry * std::abs(clampedBonus) / D;
 
         assert(std::abs(entry) <= D);
-    }
-};
-
-template<typename T, std::size_t Size, std::size_t... Sizes>
-class MultiArray;
-
-namespace Detail {
-
-template<typename T, std::size_t Size, std::size_t... Sizes>
-struct MultiArrayHelper {
-    using child_type = MultiArray<T, Sizes...>;
-};
-
-template<typename T, std::size_t Size>
-struct MultiArrayHelper<T, Size> {
-    using child_type = T;
-};
-
-}
-
-// MultiArray is a generic N-dimensional array used by various statistics.
-// The template parameters (Size and Sizes) encode the dimensions of the array.
-template<typename T, std::size_t Size, std::size_t... Sizes>
-class MultiArray {
-    using child_type = typename Detail::MultiArrayHelper<T, Size, Sizes...>::child_type;
-    using array_type = std::array<child_type, Size>;
-    array_type data;
-
-   public:
-    using size_type = typename array_type::size_type;
-
-    auto&       operator[](size_type index) { return data[index]; }
-    const auto& operator[](size_type index) const { return data[index]; }
-
-    auto begin() { return data.begin(); }
-    auto end() { return data.end(); }
-    auto begin() const { return data.cbegin(); }
-    auto end() const { return data.cend(); }
-    auto cbegin() const { return data.cbegin(); }
-    auto cend() const { return data.cend(); }
-
-    template<typename U>
-    void fill(const U& v) {
-        static_assert(std::is_assignable_v<T, U>, "Cannot assign fill value to entry type");
-        for (auto& ele : data)
-        {
-            if constexpr (sizeof...(Sizes) == 0)
-                ele = v;
-            else
-                ele.fill(v);
-        }
     }
 };
 
