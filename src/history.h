@@ -101,25 +101,25 @@ enum StatsType {
     Captures
 };
 
-template<int D>
-using HistoryEntry = StatsEntry<std::int16_t, D>;
+template<typename T, int D, std::size_t... Sizes>
+using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
 
 // ButterflyHistory records how often quiet moves have been successful or unsuccessful
 // during the current search, and is used for reduction and move ordering decisions.
 // It uses 2 tables (one for each color) indexed by the move's from and to squares,
 // see https://www.chessprogramming.org/Butterfly_Boards (~11 elo)
-using ButterflyHistory = MultiArray<HistoryEntry<7183>, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
+using ButterflyHistory = Stats<std::int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // LowPlyHistory is adressed by play and move's from and to squares, used
 // to improve move ordering near the root
 using LowPlyHistory =
-  MultiArray<HistoryEntry<7183>, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
+  Stats<std::int16_t, 7183, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-using CapturePieceToHistory = MultiArray<HistoryEntry<10692>, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
+using CapturePieceToHistory = Stats<std::int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-using PieceToHistory = MultiArray<HistoryEntry<30000>, PIECE_NB, SQUARE_NB>;
+using PieceToHistory = Stats<std::int16_t, 30000, PIECE_NB, SQUARE_NB>;
 
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
@@ -128,7 +128,7 @@ using PieceToHistory = MultiArray<HistoryEntry<30000>, PIECE_NB, SQUARE_NB>;
 using ContinuationHistory = MultiArray<PieceToHistory, PIECE_NB, SQUARE_NB>;
 
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
-using PawnHistory = MultiArray<HistoryEntry<8192>, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
+using PawnHistory = Stats<std::int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
 // Correction histories record differences between the static evaluation of
 // positions and their search score. It is used to improve the static evaluation
@@ -143,18 +143,16 @@ enum CorrHistType {
     Continuation,  // Combined history of move pairs
 };
 
-using CorrHistEntry = StatsEntry<std::int16_t, CORRECTION_HISTORY_LIMIT>;
-
 namespace Detail {
 
 template<CorrHistType _>
 struct CorrHistTypedef {
-    using type = MultiArray<CorrHistEntry, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
 };
 
 template<>
 struct CorrHistTypedef<PieceTo> {
-    using type = MultiArray<CorrHistEntry, PIECE_NB, SQUARE_NB>;
+    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
 };
 
 template<>
