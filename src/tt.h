@@ -51,6 +51,10 @@ struct TTData {
     Depth depth;
     Bound bound;
     bool  is_pv;
+
+    TTData() {}; // Prevent the default constructor from initializing to 0
+    TTData(Move m, Value v, Value ev, Depth d, Bound b, bool pv) :
+        move(m), value(v), eval(ev), depth(d), bound(b), is_pv(pv) {};
 };
 
 
