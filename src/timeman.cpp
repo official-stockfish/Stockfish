@@ -114,27 +114,33 @@ void TimeManagement::init(Search::LimitsType& limits,
         double optConstant  = std::min(0.00308 + 0.000319 * logTimeInSec, 0.00506);
         double maxConstant  = std::max(3.39 + 3.01 * logTimeInSec, 2.93);
 
-        // Calculate optScale with a 20% cap for the first 40 plies
+        // Adjust the base constant: 0.20 for the first 20 plies, otherwise 0.88
+        double baseConstant = ply < 20 ? 0.20 : 0.88;
+
+        // Calculate optScale with the adjusted base constant
         optScale = std::min(
             0.0122 + std::pow(ply + 2.95, 0.462) * optConstant,
-            std::min(0.213 * limits.time[us] / timeLeft, ply < 40 ? 0.20 : 1.0)
+            baseConstant * limits.time[us] / timeLeft
         ) * originalTimeAdjust;
     
-        // Calculate maxScale with a 40% cap for the first 40 plies
-        maxScale = std::min(6.64, std::min(maxConstant + ply / 12.0, ply < 40 ? 0.40 : 1.0));
+        // Calculate maxScale (unchanged)
+        maxScale = std::min(6.64, maxConstant + ply / 12.0);
     }
 
     // x moves in y seconds (+ z increment)
     else
     {
-        // Calculate optScale with a 20% cap for the first 40 plies
+        // Adjust the base constant: 0.20 for the first 20 plies, otherwise 0.88
+        double baseConstant = ply < 20 ? 0.20 : 0.88;
+
+        // Calculate optScale with the adjusted base constant
         optScale = std::min(
-            (0.88 + ply / 116.4) / mtg,
-            std::min(0.88 * limits.time[us] / timeLeft, ply < 40 ? 0.20 : 1.0)
+            (baseConstant + ply / 116.4) / mtg,
+            baseConstant * limits.time[us] / timeLeft
         );
 
-        // Calculate maxScale with a 40% cap for the first 40 plies
-        maxScale = std::min(6.3, std::min(1.5 + 0.11 * mtg, ply < 40 ? 0.40 : 1.0));
+        // Calculate maxScale (unchanged)
+        maxScale = std::min(6.3, 1.5 + 0.11 * mtg);
     }
 
     // Limit the maximum possible time for this move
