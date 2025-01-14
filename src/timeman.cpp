@@ -103,20 +103,20 @@ void TimeManagement::init(Search::LimitsType& limits,
     // x basetime (+ z increment)
     // If there is a healthy increment, timeLeft can exceed the actual available
     // game time for the current move, so also cap to a percentage of available game time.
+    // Define baseConstant outside the if-else to avoid duplication
+    double baseConstant = std::min(0.20 + 0.20 * (ply / 20), 0.88);
+    
     if (limits.movestogo == 0)
     {
         // Extra time according to timeLeft
         if (originalTimeAdjust < 0)
             originalTimeAdjust = 0.3285 * std::log10(timeLeft) - 0.4830;
-
+    
         // Calculate time constants based on current time left.
         double logTimeInSec = std::log10(scaledTime / 1000.0);
         double optConstant  = std::min(0.00308 + 0.000319 * logTimeInSec, 0.00506);
         double maxConstant  = std::max(3.39 + 3.01 * logTimeInSec, 2.93);
-
-        // Adjust the base constant: 0.20 for the first 20 plies, otherwise 0.88
-        double baseConstant = ply < 20 ? 0.20 : 0.88;
-
+    
         // Calculate optScale with the adjusted base constant
         optScale = std::min(
             0.0122 + std::pow(ply + 2.95, 0.462) * optConstant,
@@ -126,19 +126,14 @@ void TimeManagement::init(Search::LimitsType& limits,
         // Calculate maxScale (unchanged)
         maxScale = std::min(6.64, maxConstant + ply / 12.0);
     }
-
-    // x moves in y seconds (+ z increment)
     else
     {
-        // Adjust the base constant: 0.20 for the first 20 plies, otherwise 0.88
-        double baseConstant = ply < 20 ? 0.20 : 0.88;
-
         // Calculate optScale with the adjusted base constant
         optScale = std::min(
             (baseConstant + ply / 116.4) / mtg,
             baseConstant * limits.time[us] / timeLeft
         );
-
+    
         // Calculate maxScale (unchanged)
         maxScale = std::min(6.3, 1.5 + 0.11 * mtg);
     }
