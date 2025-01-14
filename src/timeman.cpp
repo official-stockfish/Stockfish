@@ -104,7 +104,7 @@ void TimeManagement::init(Search::LimitsType& limits,
     // If there is a healthy increment, timeLeft can exceed the actual available
     // game time for the current move, so also cap to a percentage of available game time.
     // Define baseConstant outside the if-else to avoid duplication
-    double baseConstant = std::min(0.20 + 0.20 * (ply / 20), 0.88);
+    double baseConstant = std::min(0.35 + 0.1 * (ply / 10), 0.88);
     
     if (limits.movestogo == 0)
     {
