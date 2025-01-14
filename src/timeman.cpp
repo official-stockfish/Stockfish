@@ -128,6 +128,13 @@ void TimeManagement::init(Search::LimitsType& limits,
         maxScale = std::min(6.3, 1.5 + 0.11 * mtg);
     }
 
+    // Apply a cap for the first 20 moves to use no more than 20% of the remaining time
+    if (ply < 40) { // ply is double the number of full moves
+        double maxAllowedScale = 0.20; // 20% of the remaining time
+        optScale = std::min(optScale, maxAllowedScale);
+        maxScale = std::min(maxScale, maxAllowedScale);
+    }
+
     // Limit the maximum possible time for this move
     optimumTime = TimePoint(optScale * timeLeft);
     maximumTime =
@@ -138,3 +145,4 @@ void TimeManagement::init(Search::LimitsType& limits,
 }
 
 }  // namespace Stockfish
+
