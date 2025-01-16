@@ -247,10 +247,14 @@ void Search::Worker::iterative_deepening() {
           &this->continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
         (ss - i)->continuationCorrectionHistory = &this->continuationCorrectionHistory[NO_PIECE][0];
         (ss - i)->staticEval                    = VALUE_NONE;
+        (ss - i)->reduction                     = 0;
     }
 
     for (int i = 0; i <= MAX_PLY + 2; ++i)
-        (ss + i)->ply = i;
+    {
+        (ss + i)->ply       = i;
+        (ss + i)->reduction = 0;
+    }
 
     ss->pv = pv;
 
@@ -567,6 +571,8 @@ Value Search::Worker::search(
     Value bestValue, value, eval, maxValue, probCutBeta;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
     bool  capture, ttCapture;
+    int   priorReduction = ss->reduction;
+    ss->reduction        = 0;
     Piece movedPiece;
 
     ValueList<Move, 32> capturesSearched;
@@ -771,6 +777,11 @@ Value Search::Worker::search(
     improving = ss->staticEval > (ss - 2)->staticEval;
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2;
+
+    if (priorReduction >= 3 && ss->staticEval + (ss - 1)->staticEval < 0)
+    {
+        depth++;
+    }
 
     // Step 7. Razoring (~1 Elo)
     // If eval is really low, check with qsearch if we can exceed alpha. If the
@@ -1187,10 +1198,16 @@ moves_loop:  // When in check, search starts here
             // beyond the first move depth.
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
+
+
             Depth d = std::max(
               1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
 
-            value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
+            (ss + 1)->reduction = newDepth - d;
+
+            value               = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
+            (ss + 1)->reduction = 0;
+
 
             // Do a full-depth search when reduced LMR search fails high
             if (value > alpha && d < newDepth)
