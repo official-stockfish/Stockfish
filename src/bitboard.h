@@ -202,7 +202,7 @@ inline int distance<File>(Square x, Square y) {
 
 template<>
 inline int distance<Rank>(Square x, Square y) {
-    return std::abs(rank_of(x) - rank_of(y));
+    return rank_of(Square(std::abs(x - y)));
 }
 
 template<>
