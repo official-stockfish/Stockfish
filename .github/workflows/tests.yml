@@ -13,15 +13,15 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - name: Ubuntu 20.04 GCC
-            os: ubuntu-20.04
+          - name: Ubuntu 22.04 GCC
+            os: ubuntu-22.04
             compiler: g++
             comp: gcc
             run_32bit_tests: true
             run_64bit_tests: true
             shell: bash
-          - name: Ubuntu 20.04 Clang
-            os: ubuntu-20.04
+          - name: Ubuntu 22.04 Clang
+            os: ubuntu-22.04
             compiler: clang++
             comp: clang
             run_32bit_tests: true
