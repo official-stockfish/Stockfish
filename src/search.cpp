@@ -781,10 +781,8 @@ Value Search::Worker::search(
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2;
 
-    if (priorReduction >= 3 && ss->staticEval + (ss - 1)->staticEval < 0)
-    {
+    if (priorReduction >= 3 && !opponentWorsening)
         depth++;
-    }
 
     // Step 7. Razoring (~1 Elo)
     // If eval is really low, skip search entirely and return the qsearch value.
