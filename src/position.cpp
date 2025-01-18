@@ -1023,11 +1023,6 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     st->next       = &newSt;
     st             = &newSt;
 
-    st->dirtyPiece.dirty_num               = 0;
-    st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
-    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
-
     if (st->epSquare != SQ_NONE)
     {
         st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
@@ -1035,8 +1030,12 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     }
 
     st->key ^= Zobrist::side;
-    ++st->rule50;
     prefetch(tt.first_entry(key()));
+
+    st->dirtyPiece.dirty_num               = 0;
+    st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
+    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
+      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     st->pliesFromNull = 0;
 
