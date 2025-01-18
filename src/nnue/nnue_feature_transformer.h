@@ -155,15 +155,15 @@ class Packing {
     static constexpr auto packus_epi16_order = []() -> std::array<std::size_t, 8> {
 #if defined(USE_AVX512)
         // _mm512_packus_epi16 after permutation:
-        //  0     2     4     6     // Vector 0
-        //     1     3     5     7  // Vector 1
-        //  0  1  2  3  4  5  6  7  // Packed Result
+        // |   0   |   2   |   4   |   6   | // Vector 0
+        // |   1   |   3   |   5   |   7   | // Vector 1
+        // | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | // Packed Result
         return {0, 2, 4, 6, 1, 3, 5, 7};
 #elif defined(USE_AVX2)
         // _mm256_packus_epi16 after permutation:
-        // 0   2   // Vector 0      // 4   6   // Vector 2
-        //   1   3 // Vector 1      //   5   7 // Vector 3
-        // 0 1 2 3 // Packed Result // 4 5 6 7 // Packed Result
+        // |   0   |   2   |  |   4   |   6   | // Vector 0, 2
+        // |   1   |   3   |  |   5   |   7   | // Vector 1, 3
+        // | 0 | 1 | 2 | 3 |  | 4 | 5 | 6 | 7 | // Packed Result
         return {0, 2, 1, 3, 4, 6, 5, 7};
 #else
         return {0, 1, 2, 3, 4, 5, 6, 7};
@@ -175,7 +175,7 @@ class Packing {
     static constexpr std::size_t epi16_chunk_size = 8;
 
    public:
-    static constexpr std::size_t process_chunk = epi16_chunk_size * packus_epi16_order.size();
+    static constexpr std::size_t num_elements = epi16_chunk_size * packus_epi16_order.size();
 
     static constexpr auto permute_for_packus_epi16 = [](auto* const values) {
         std::array<std::remove_pointer_t<decltype(values)>,
@@ -208,6 +208,8 @@ class Packing {
 
         std::copy(std::begin(buffer), std::end(buffer), values);
     };
+
+    ~Packing() = delete;
 };
 
 
@@ -295,13 +297,13 @@ class FeatureTransformer {
 
     template<typename Function>
     void permute_weights(Function order_fn) {
-        for (IndexType i = 0; i < HalfDimensions; i += Packing::process_chunk)
+        for (IndexType i = 0; i < HalfDimensions; i += Packing::num_elements)
             order_fn(&biases[i]);
 
         for (IndexType j = 0; j < InputDimensions; ++j)
         {
             auto* w = &weights[j * HalfDimensions];
-            for (IndexType i = 0; i < HalfDimensions; i += Packing::process_chunk)
+            for (IndexType i = 0; i < HalfDimensions; i += Packing::num_elements)
                 order_fn(&w[i]);
         }
     }
