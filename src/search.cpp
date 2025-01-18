@@ -59,11 +59,11 @@ int a1 = 112, a2 = 26, a3 = 6922, a4 = 3837, a5 = 6238, a6 = 7490, a7 = 6270, a8
     a35 = 297, a36 = 14, a37 = 310, a38 = 97, a39 = 20, a40 = 440, a41 = 215, a42 = 7, a43 = 5,
     a44 = 7, a45 = 174, a46 = 55, a47 = 1226, a48 = 412, a49 = 7, a50 = 271, a51 = 243, a52 = 37,
     a53 = 152, a54 = 141, a55 = 156, a56 = 3901, a57 = 3459, a58 = 47, a59 = 137, a60 = 47,
-    a61 = 142, a62 = 12, a63 = 25, a64 = 4, a65 = 33, a66 = 52, a67 = 74, a68 = 259, a69 = 194,
-    a70 = 90, a71 = 266, a72 = 272, a73 = 107, a74 = 15, a75 = 4126, a76 = 1037, a77 = 965,
+    a61 = 142, a62 = 12, a63 = 25, a64 = 5, a65 = 33, a66 = 52, a67 = 74, a68 = 249, a69 = 194,
+    a70 = 94, a71 = 287, a72 = 249, a73 = 99, a74 = 15, a75 = 4126, a76 = 1037, a77 = 965,
     a78 = 960, a79 = 1018, a80 = 307, a81 = 34112, a83 = 2355, a84 = 1141, a85 = 1087, a86 = 8,
     a87 = 990, a88 = 3, a89 = 940, a90 = 887, a91 = 1960, a92 = 7, a93 = 4666, a94 = 3874,
-    a95 = 1451, a96 = 40, a97 = 10, a99 = 2111, a100 = 3444, a101 = 13, a102 = 118, a103 = 5,
+    a95 = 1451, a96 = 40, a97 = 10, a99 = 2111, a100 = 3444, a101 = 14, a102 = 118, a103 = 5,
     a104 = 37, a105 = 169, a106 = 8, a107 = 128, a108 = 102, a109 = 115, a110 = 82, a111 = 106,
     a112 = 318, a113 = 436, a114 = 207, a115 = 1195, a116 = 307, a117 = 165, a118 = 114, a119 = 163,
     a120 = 146, a121 = 301, a122 = 5228, a123 = 80, a124 = 768, a125 = 108, a126 = 1168,
@@ -794,7 +794,7 @@ Value Search::Worker::search(
     if (!PvNode && !excludedMove && ttData.depth > depth - (ttData.value <= beta)
         && is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
-        && (cutNode == (ttData.value >= beta) || depth > 8))
+        && (cutNode == (ttData.value >= beta) || depth > 9))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
         if (ttData.move && ttData.value >= beta)
