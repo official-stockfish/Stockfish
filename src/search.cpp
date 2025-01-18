@@ -77,7 +77,7 @@ constexpr int futility_move_count(bool improving, Depth depth) {
     return (3 + depth * depth) / (2 - improving);
 }
 
-int correction_value(const Worker& w, const Position& pos, Stack* ss) {
+int correction_value(const Worker& w, const Position& pos, const Stack* ss) {
     const Color us    = pos.side_to_move();
     const auto  m     = (ss - 1)->currentMove;
     const auto  pcv   = w.pawnCorrectionHistory[us][pawn_structure_index<Correction>(pos)];
@@ -510,7 +510,7 @@ void Search::Worker::clear() {
 
     for (auto& to : continuationCorrectionHistory)
         for (auto& h : to)
-            h->fill(0);
+            h.fill(0);
 
     for (bool inCheck : {false, true})
         for (StatsType c : {NoCaptures, Captures})
@@ -636,7 +636,7 @@ Value Search::Worker::search(
     if (!PvNode && !excludedMove && ttData.depth > depth - (ttData.value <= beta)
         && is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
-        && (cutNode == (ttData.value >= beta) || depth > a25))
+        && (cutNode == (ttData.value >= beta) || depth > 8))
     {
         // If ttMove is quiet, update move sorting heuristics on TT hit (~2 Elo)
         if (ttData.move && ttData.value >= beta)
@@ -836,24 +836,22 @@ Value Search::Worker::search(
     }
 
     // Step 10. Internal iterative reductions (~9 Elo)
-    // For PV nodes without a ttMove, we decrease depth.
-    if (PvNode && !ttData.move)
-        depth -= 3;
+    // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
+    // This heuristic is known to scale non-linearly, current version was tested at VVLTC.
+    // Further improvements need to be tested at similar time control if they make IIR
+    // more aggressive.
+    if ((PvNode || (cutNode && depth >= 7)) && !ttData.move)
+        depth -= 2;
 
     // Use qsearch if depth <= 0
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
 
-    // For cutNodes, if depth is high enough, decrease depth by 2 if there is no ttMove,
-    // or by 1 if there is a ttMove with an upper bound.
-    if (cutNode && depth >= a44 && (!ttData.move || ttData.bound == BOUND_UPPER))
-        depth -= 1 + !ttData.move;
-
     // Step 11. ProbCut (~10 Elo)
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + a45 - a46 * improving;
-    if (!PvNode && depth > 3
+    if (depth > 3
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
         // probCut there and in further interactions with transposition table cutoff
@@ -864,7 +862,6 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
         {
@@ -877,10 +874,6 @@ Value Search::Worker::search(
                 continue;
 
             assert(pos.capture_stage(move));
-
-            movedPiece = pos.moved_piece(move);
-            captured   = pos.piece_on(move.to_sq());
-
 
             // Prefetch the TT entry for the resulting position
             prefetch(tt.first_entry(pos.key_after(move)));
@@ -906,16 +899,14 @@ Value Search::Worker::search(
 
             if (value >= probCutBeta)
             {
-                thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)] << a47;
-
                 // Save ProbCut data into transposition table
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                depth - 3, move, unadjustedStaticEval, tt.generation());
-                return is_decisive(value) ? value : value - (probCutBeta - beta);
+
+                if (!is_decisive(value))
+                    return value - (probCutBeta - beta);
             }
         }
-
-        Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
     }
 
 moves_loop:  // When in check, search starts here
@@ -1083,11 +1074,16 @@ moves_loop:  // When in check, search starts here
 
                 if (value < singularBeta)
                 {
-                    int doubleMargin = a68 * PvNode - a69 * !ttCapture;
-                    int tripleMargin = a70 + a71 * PvNode - a72 * !ttCapture + a73 * ss->ttPv;
+                    int corrValAdj   = std::abs(correctionValue) / a140;
+                    int doubleMargin = a68 * PvNode - a69 * !ttCapture - corrValAdj;
+                    int tripleMargin =
+                      a70 + a71 * PvNode - a72 * !ttCapture + a73 * ss->ttPv - corrValAdj;
+                    int quadMargin =
+                      a141 + a142 * PvNode - a143 * !ttCapture + a144 * ss->ttPv - corrValAdj;
 
                     extension = 1 + (value < singularBeta - doubleMargin)
-                              + (value < singularBeta - tripleMargin);
+                              + (value < singularBeta - tripleMargin)
+                              + (value < singularBeta - quadMargin);
 
                     depth += ((!PvNode) && (depth < a74));
                 }
@@ -1414,10 +1410,6 @@ moves_loop:  // When in check, search starts here
           << stat_bonus(depth) * 2;
     }
 
-    // Bonus when search fails low and there is a TT move
-    else if (ttData.move && !allNode)
-        thisThread->mainHistory[us][ttData.move.from_to()] << stat_bonus(depth) * a116 / 1024;
-
     if (PvNode)
         bestValue = std::min(bestValue, maxValue);
 
@@ -1441,7 +1433,7 @@ moves_loop:  // When in check, search starts here
             || (bestValue > ss->staticEval && bestMove)))     // positive correction & no fail low
     {
         const auto       m             = (ss - 1)->currentMove;
-        static constexpr int nonPawnWeight = a117;
+        constexpr int nonPawnWeight = a117;
 
         auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);

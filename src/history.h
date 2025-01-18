@@ -28,6 +28,7 @@
 #include <limits>
 #include <type_traits>  // IWYU pragma: keep
 
+#include "misc.h"
 #include "position.h"
 
 namespace Stockfish {
@@ -66,12 +67,16 @@ inline int non_pawn_index(const Position& pos) {
     return pos.non_pawn_key(c) & (CORRECTION_HISTORY_SIZE - 1);
 }
 
-// StatsEntry stores the stat table value. It is usually a number but could
-// be a move or even a nested history. We use a class instead of a naked value
-// to directly call history update operator<<() on the entry so to use stats
-// tables at caller sites as simple multi-dim arrays.
+// StatsEntry is the container of various numerical statistics. We use a class
+// instead of a naked value to directly call history update operator<<() on
+// the entry. The first template parameter T is the base type of the array,
+// and the second template parameter D limits the range of updates in [-D, D]
+// when we update values with the << operator
 template<typename T, int D>
 class StatsEntry {
+
+    static_assert(std::is_arithmetic<T>::value, "Not an arithmetic type");
+    static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
     T entry;
 
@@ -80,13 +85,9 @@ class StatsEntry {
         entry = v;
         return *this;
     }
-    T* operator&() { return &entry; }
-    T* operator->() { return &entry; }
     operator const T&() const { return entry; }
 
     void operator<<(int bonus) {
-        static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
-
         // Make sure that bonus is in range [-D, D]
         int clampedBonus = std::clamp(bonus, -D, D);
         entry += clampedBonus - entry * std::abs(clampedBonus) / D;
@@ -95,87 +96,39 @@ class StatsEntry {
     }
 };
 
-template<typename T, int D, std::size_t Size, std::size_t... Sizes>
-struct StatsHelper;
-
-// Stats is a generic N-dimensional array used to store various statistics.
-// The first template parameter T is the base type of the array, and the second
-// template parameter D limits the range of updates in [-D, D] when we update
-// values with the << operator, while the last parameters (Size and Sizes)
-// encode the dimensions of the array.
-template<typename T, int D, std::size_t Size, std::size_t... Sizes>
-class Stats {
-    using child_type = typename StatsHelper<T, D, Size, Sizes...>::child_type;
-    using array_type = std::array<child_type, Size>;
-    array_type data;
-
-   public:
-    using size_type = typename array_type::size_type;
-
-    auto&       operator[](size_type index) { return data[index]; }
-    const auto& operator[](size_type index) const { return data[index]; }
-
-    auto begin() { return data.begin(); }
-    auto end() { return data.end(); }
-    auto begin() const { return data.cbegin(); }
-    auto end() const { return data.cend(); }
-    auto cbegin() const { return data.cbegin(); }
-    auto cend() const { return data.cend(); }
-
-    void fill(const T& v) {
-        for (auto& ele : data)
-        {
-            if constexpr (sizeof...(Sizes) == 0)
-                ele = v;
-            else
-                ele.fill(v);
-        }
-    }
-};
-
-template<typename T, int D, std::size_t Size, std::size_t... Sizes>
-struct StatsHelper {
-    using child_type = Stats<T, D, Sizes...>;
-};
-
-template<typename T, int D, std::size_t Size>
-struct StatsHelper<T, D, Size> {
-    using child_type = StatsEntry<T, D>;
-};
-
-// In stats table, D=0 means that the template parameter is not used
-enum StatsParams {
-    NOT_USED = 0
-};
 enum StatsType {
     NoCaptures,
     Captures
 };
 
+template<typename T, int D, std::size_t... Sizes>
+using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
+
 // ButterflyHistory records how often quiet moves have been successful or unsuccessful
 // during the current search, and is used for reduction and move ordering decisions.
 // It uses 2 tables (one for each color) indexed by the move's from and to squares,
 // see https://www.chessprogramming.org/Butterfly_Boards (~11 elo)
-using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
+using ButterflyHistory = Stats<std::int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // LowPlyHistory is adressed by play and move's from and to squares, used
 // to improve move ordering near the root
-using LowPlyHistory = Stats<int16_t, 7183, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
+using LowPlyHistory =
+  Stats<std::int16_t, 7183, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
+using CapturePieceToHistory = Stats<std::int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-using PieceToHistory = Stats<int16_t, 30000, PIECE_NB, SQUARE_NB>;
+using PieceToHistory = Stats<std::int16_t, 30000, PIECE_NB, SQUARE_NB>;
 
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
 // PieceToHistory instead of ButterflyBoards.
 // (~63 elo)
-using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
+using ContinuationHistory = MultiArray<PieceToHistory, PIECE_NB, SQUARE_NB>;
 
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
-using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
+using PawnHistory = Stats<std::int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
 // Correction histories record differences between the static evaluation of
 // positions and their search score. It is used to improve the static evaluation
@@ -190,23 +143,27 @@ enum CorrHistType {
     Continuation,  // Combined history of move pairs
 };
 
+namespace Detail {
+
 template<CorrHistType _>
 struct CorrHistTypedef {
-    using type = Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
 };
 
 template<>
 struct CorrHistTypedef<PieceTo> {
-    using type = Stats<int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
+    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
 };
 
 template<>
 struct CorrHistTypedef<Continuation> {
-    using type = Stats<CorrHistTypedef<PieceTo>::type, NOT_USED, PIECE_NB, SQUARE_NB>;
+    using type = MultiArray<CorrHistTypedef<PieceTo>::type, PIECE_NB, SQUARE_NB>;
 };
 
+}
+
 template<CorrHistType T>
-using CorrectionHistory = typename CorrHistTypedef<T>::type;
+using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 
 }  // namespace Stockfish
 
