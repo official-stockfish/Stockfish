@@ -799,8 +799,6 @@ Value Search::Worker::search(
         && eval >= beta && (!ttData.move || ttCapture) && !is_loss(beta) && !is_win(eval))
         return beta + (eval - beta) / 3;
 
-    improving |= ss->staticEval >= beta + 97;
-
     // Step 9. Null move search with verification search (~35 Elo)
     if (cutNode && (ss - 1)->currentMove != Move::null() && eval >= beta
         && ss->staticEval >= beta - 20 * depth + 440 - 30 * improving && !excludedMove && pos.non_pawn_material(us)
@@ -841,6 +839,8 @@ Value Search::Worker::search(
                 return nullValue;
         }
     }
+
+    improving |= ss->staticEval >= beta + 97;
 
     // Step 10. Internal iterative reductions (~9 Elo)
     // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
