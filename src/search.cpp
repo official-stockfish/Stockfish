@@ -918,7 +918,7 @@ moves_loop:  // When in check, search starts here
                                         (ss - 2)->continuationHistory,
                                         (ss - 3)->continuationHistory,
                                         (ss - 4)->continuationHistory,
-                                        nullptr,
+                                        (ss - 5)->continuationHistory,
                                         (ss - 6)->continuationHistory};
 
 
@@ -1831,8 +1831,8 @@ void update_all_stats(const Position&      pos,
 // Updates histories of the move pairs formed by moves
 // at ply -1, -2, -3, -4, and -6 with current move.
 void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
-    static constexpr std::array<ConthistBonus, 5> conthist_bonuses = {
-      {{1, 1025}, {2, 621}, {3, 325}, {4, 512}, {6, 534}}};
+    static constexpr std::array<ConthistBonus, 6> conthist_bonuses = {
+      {{1, 1025}, {2, 621}, {3, 325}, {4, 512}, {5, 122}, {6, 534}}};
 
     for (const auto [i, weight] : conthist_bonuses)
     {
