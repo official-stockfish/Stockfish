@@ -52,6 +52,164 @@
 
 namespace Stockfish {
 
+int a1 = 112, a2 = 26, a3 = 6922, a4 = 3837, a5 = 6238, a6 = 7490, a7 = 6270, a8 = 154, a9 = 102,
+    a10 = 1661, a11 = 831, a12 = 269, a13 = 2666, a14 = 97, a15 = 5, a16 = 12991, a17 = 141,
+    a18 = 83, a19 = 63, a20 = 108, a21 = 631, a22 = 1210, a23 = 479, a24 = 2143, a25 = 9, a26 = 746,
+    a27 = 1042, a28 = 10, a29 = 1881, a30 = 1413, a31 = 616, a32 = 1151, a33 = 1107, a34 = 462,
+    a35 = 297, a36 = 14, a37 = 310, a38 = 97, a39 = 20, a40 = 440, a41 = 215, a42 = 7, a43 = 5,
+    a44 = 7, a45 = 174, a46 = 55, a47 = 1226, a48 = 412, a49 = 7, a50 = 271, a51 = 243, a52 = 37,
+    a53 = 152, a54 = 141, a55 = 156, a56 = 3901, a57 = 3459, a58 = 47, a59 = 137, a60 = 47,
+    a61 = 142, a62 = 12, a63 = 25, a64 = 4, a65 = 33, a66 = 52, a67 = 74, a68 = 259, a69 = 194,
+    a70 = 90, a71 = 266, a72 = 272, a73 = 107, a74 = 15, a75 = 4126, a76 = 1037, a77 = 965,
+    a78 = 960, a79 = 1018, a80 = 307, a81 = 34112, a83 = 2355, a84 = 1141, a85 = 1087, a86 = 8,
+    a87 = 990, a88 = 3, a89 = 940, a90 = 887, a91 = 1960, a92 = 7, a93 = 4666, a94 = 3874,
+    a95 = 1451, a96 = 40, a97 = 10, a99 = 2111, a100 = 3444, a101 = 13, a102 = 118, a103 = 5,
+    a104 = 37, a105 = 169, a106 = 8, a107 = 128, a108 = 102, a109 = 115, a110 = 82, a111 = 106,
+    a112 = 318, a113 = 436, a114 = 207, a115 = 1195, a116 = 307, a117 = 165, a118 = 114, a119 = 163,
+    a120 = 146, a121 = 301, a122 = 5228, a123 = 80, a124 = 768, a125 = 108, a126 = 1168,
+    a127 = 1216, a128 = 1062, a129 = 1272, a130 = 966, a131 = 1205, a132 = 1025, a133 = 621,
+    a134 = 325, a135 = 512, a136 = 534, a137 = 879, a138 = 888, a139 = 634, a140 = 262144,
+    a141 = 394, a142 = 287, a143 = 249, a144 = 99, a145 = 262144, a146 = 262144;
+
+TUNE(a1,
+     a2,
+     a3,
+     a4,
+     a5,
+     a6,
+     a7,
+     a8,
+     a9,
+     a10,
+     a11,
+     a12,
+     a13,
+     a14,
+     a15,
+     a16,
+     a17,
+     a18,
+     a19,
+     a20,
+     a21,
+     a22,
+     a23,
+     a24,
+     a25,
+     a26,
+     a27,
+     a28,
+     a29,
+     a30,
+     a31,
+     a32,
+     a33,
+     a34,
+     a35,
+     a36,
+     a37,
+     a38,
+     a39,
+     a40,
+     a41,
+     a42,
+     a43,
+     a44,
+     a45,
+     a46,
+     a47,
+     a48,
+     a49,
+     a50,
+     a51,
+     a52,
+     a53,
+     a54,
+     a55,
+     a56,
+     a57,
+     a58,
+     a59,
+     a60,
+     a61,
+     a62,
+     a63,
+     a64,
+     a65,
+     a66,
+     a67,
+     a68,
+     a69,
+     a70,
+     a71,
+     a72,
+     a73,
+     a74,
+     a75,
+     a76,
+     a77,
+     a78,
+     a79,
+     a80,
+     a81,
+     a83,
+     a84,
+     a85,
+     a86,
+     a87,
+     a88,
+     a89,
+     a90,
+     a91,
+     a92,
+     a93,
+     a94,
+     a95,
+     a96,
+     a97,
+     a99,
+     a100,
+     a101,
+     a102,
+     a103,
+     a104,
+     a105,
+     a106,
+     a107,
+     a108,
+     a109,
+     a110,
+     a111,
+     a112,
+     a113,
+     a114,
+     a115,
+     a116,
+     a117,
+     a118,
+     a119,
+     a120,
+     a121,
+     a122,
+     a123,
+     a124,
+     a125,
+     a126,
+     a127,
+     a128,
+     a129,
+     a130,
+     a131,
+     a132,
+     a133,
+     a134,
+     a135,
+     a136,
+     a137,
+     a138,
+     a139);
+TUNE(a140, a141, a142, a143, a144, a145, a146);
+
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -516,7 +674,7 @@ void Search::Worker::clear() {
         for (StatsType c : {NoCaptures, Captures})
             for (auto& to : continuationHistory[inCheck][c])
                 for (auto& h : to)
-                    h->fill(-a23);
+                    h.fill(-a23);
 
     for (size_t i = 1; i < reductions.size(); ++i)
         reductions[i] = int(a24 / 100.0 * std::log(i));
@@ -775,12 +933,9 @@ Value Search::Worker::search(
     // Step 7. Razoring (~1 Elo)
     // If eval is really low, check with qsearch if we can exceed alpha. If the
     // search suggests we cannot exceed alpha, return a speculative fail low.
-    if (eval < alpha - a34 - a35 * depth * depth)
-    {
-        value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
-        if (value < alpha && !is_decisive(value))
-            return value;
-    }
+    // For PvNodes, we must have a guard against mates being returned.
+    if (!PvNode && eval < alpha - a34 - a35 * depth * depth)
+        return qsearch<NonPV>(pos, ss, alpha - 1, alpha);
 
     // Step 8. Futility pruning: child node (~40 Elo)
     // The depth condition is important for mate finding.
@@ -1074,12 +1229,12 @@ moves_loop:  // When in check, search starts here
 
                 if (value < singularBeta)
                 {
-                    int corrValAdj   = std::abs(correctionValue) / a140;
-                    int doubleMargin = a68 * PvNode - a69 * !ttCapture - corrValAdj;
-                    int tripleMargin =
-                      a70 + a71 * PvNode - a72 * !ttCapture + a73 * ss->ttPv - corrValAdj;
-                    int quadMargin =
-                      a141 + a142 * PvNode - a143 * !ttCapture + a144 * ss->ttPv - corrValAdj;
+                    int doubleMargin =
+                      a68 * PvNode - a69 * !ttCapture - std::abs(correctionValue) / a140;
+                    int tripleMargin = a70 + a71 * PvNode - a72 * !ttCapture + a73 * ss->ttPv
+                                     - std::abs(correctionValue) / a145;
+                    int quadMargin = a141 + a142 * PvNode - a143 * !ttCapture + a144 * ss->ttPv
+                                   - std::abs(correctionValue) / a146;
 
                     extension = 1 + (value < singularBeta - doubleMargin)
                               + (value < singularBeta - tripleMargin)
@@ -1432,8 +1587,8 @@ moves_loop:  // When in check, search starts here
         && ((bestValue < ss->staticEval && bestValue < beta)  // negative correction & no fail high
             || (bestValue > ss->staticEval && bestMove)))     // positive correction & no fail low
     {
-        const auto       m             = (ss - 1)->currentMove;
-        constexpr int nonPawnWeight = a117;
+        const auto    m             = (ss - 1)->currentMove;
+        const int nonPawnWeight = a117;
 
         auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
@@ -1837,7 +1992,7 @@ void update_all_stats(const Position&      pos,
 // Updates histories of the move pairs formed by moves
 // at ply -1, -2, -3, -4, and -6 with current move.
 void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
-    static constexpr std::array<ConthistBonus, 5> conthist_bonuses = {
+    static const std::array<ConthistBonus, 5> conthist_bonuses = {
       {{1, a132}, {2, a133}, {3, a134}, {4, a135}, {6, a136}}};
 
     for (const auto [i, weight] : conthist_bonuses)
