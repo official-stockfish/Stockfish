@@ -1952,6 +1952,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
 
     auto t_start      = std::chrono::steady_clock::now();
     int  moveOverhead = int(options["Move Overhead"]);
+    bool rule50       = bool(options["Syzygy50MoveRule"]);
 
     // Do not use more than moveOverhead / 2 time, if time management is active
     auto time_abort = [&t_start, &moveOverhead, &limits]() -> bool {
@@ -1989,7 +1990,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         pos.do_move(pvMove, st);
 
         // Do not allow for repetitions or drawing moves along the PV in TB regime
-        if (config.rootInTB && pos.is_draw(ply))
+        if (config.rootInTB && ((rule50 && pos.is_draw(ply)) || pos.has_repeated()))
         {
             pos.undo_move(pvMove);
             ply--;
@@ -2008,7 +2009,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
     // Step 2, now extend the PV to mate, as if the user explored syzygy-tables.info
     // using top ranked moves (minimal DTZ), which gives optimal mates only for simple
     // endgames e.g. KRvK.
-    while (!pos.is_draw(0))
+    while (!((rule50 && pos.is_draw(0)) || pos.has_repeated()))
     {
         if (time_abort())
             break;
@@ -2061,7 +2062,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
     // We adjust the score to match the found PV. Note that a TB loss score can be
     // displayed if the engine did not find a drawing move yet, but eventually search
     // will figure it out (e.g. 1kq5/q2r4/5K2/8/8/8/8/7Q w - - 96 1 )
-    if (pos.is_draw(0))
+    if (rule50 && pos.is_draw(0))
         v = VALUE_DRAW;
 
     // Undo the PV moves
