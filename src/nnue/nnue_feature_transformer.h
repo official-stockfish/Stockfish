@@ -148,7 +148,8 @@ using psqt_vec_t = int32x4_t;
 
 // Returns the inverse of a permutation
 template<std::size_t Len>
-constexpr std::array<std::size_t, Len> inverse_order(const std::array<std::size_t, Len>& order) {
+constexpr std::array<std::size_t, Len>
+invert_permutation(const std::array<std::size_t, Len>& order) {
     std::array<std::size_t, Len> inverse{};
     for (std::size_t i = 0; i < order.size(); i++)
         inverse[order[i]] = i;
@@ -157,10 +158,13 @@ constexpr std::array<std::size_t, Len> inverse_order(const std::array<std::size_
 
 // Divide a byte region of size TotalSize to chunks of size
 // BlockSize, and permute the blocks by a given order
-template<std::size_t TotalSize, std::size_t BlockSize, std::size_t OrderSize>
-void permute(void* const data, const std::array<std::size_t, OrderSize>& order) {
+template<std::size_t BlockSize, typename T, std::size_t N, std::size_t OrderSize>
+void permute(T (&data)[N], const std::array<std::size_t, OrderSize>& order) {
+    constexpr std::size_t TotalSize = N * sizeof(T);
+
     static_assert(TotalSize % (BlockSize * OrderSize) == 0,
                   "ChunkSize * OrderSize must perfectly divide TotalSize");
+
     constexpr std::size_t ProcessChunkSize = BlockSize * OrderSize;
 
     std::array<std::byte, ProcessChunkSize> buffer{};
@@ -187,9 +191,9 @@ void permute(void* const data, const std::array<std::size_t, OrderSize>& order) 
 template<IndexType TransformedFeatureWidth, IndexType HalfDimensions>
 class SIMDTiling {
 #ifdef VECTOR
-        // We use __m* types as template arguments, which causes GCC to emit warnings
-        // about losing some attribute information. This is irrelevant to us as we
-        // only take their size, so the following pragma are harmless.
+    // We use __m* types as template arguments, which causes GCC to emit warnings
+    // about losing some attribute information. This is irrelevant to us as we
+    // only take their size, so the following pragma are harmless.
     #if defined(__GNUC__)
         #pragma GCC diagnostic push
         #pragma GCC diagnostic ignored "-Wignored-attributes"
@@ -281,7 +285,7 @@ class FeatureTransformer {
 #endif
     }();
 
-    static constexpr auto InversePackusEpi16Order = inverse_order(PackusEpi16Order);
+    static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
@@ -289,13 +293,13 @@ class FeatureTransformer {
     }
 
     void permute_weights() {
-        permute<sizeof(biases), 16>(biases, PackusEpi16Order);
-        permute<sizeof(weights), 16>(weights, PackusEpi16Order);
+        permute<16>(biases, PackusEpi16Order);
+        permute<16>(weights, PackusEpi16Order);
     }
 
     void unpermute_weights() {
-        permute<sizeof(biases), 16>(biases, InversePackusEpi16Order);
-        permute<sizeof(weights), 16>(weights, InversePackusEpi16Order);
+        permute<16>(biases, InversePackusEpi16Order);
+        permute<16>(weights, InversePackusEpi16Order);
     }
 
     inline void scale_weights(bool read) {
