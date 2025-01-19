@@ -738,7 +738,6 @@ Value Search::Worker::search(
     else if (excludedMove)
     {
         // Providing the hint that this node's accumulator will be used often
-        // brings significant Elo gain.
         Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
         unadjustedStaticEval = eval = ss->staticEval;
     }
