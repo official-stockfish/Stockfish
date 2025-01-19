@@ -981,7 +981,7 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction if position is or has been on the PV (~7 Elo)
         if (ss->ttPv)
-            r -= 1037 + (ttData.value > alpha) * 965 + (ttData.depth >= depth) * 960;
+            r -= 1037 + (ttData.value > alpha) * 965 + (ttData.depth >= depth) * 960 + 16 * depth;
 
         // Step 14. Pruning at shallow depth (~120 Elo).
         // Depth conditions are important for mate finding.
@@ -1408,7 +1408,7 @@ moves_loop:  // When in check, search starts here
 
     else if (priorCapture && prevSq != SQ_NONE)
     {
-        // bonus for prior countermoves that caused the fail low
+        // Bonus for prior countermoves that caused the fail low
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
         thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
