@@ -1072,8 +1072,7 @@ moves_loop:  // When in check, search starts here
                 && is_valid(ttData.value) && !is_decisive(ttData.value)
                 && (ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 3)
             {
-                Value singularBeta =
-                  ttData.value - (53 + 84 * (ss->ttPv && !PvNode)) * depth / 64;
+                Value singularBeta  = ttData.value - (53 + 84 * (ss->ttPv && !PvNode)) * depth / 64;
                 Depth singularDepth = newDepth / 2;
 
                 ss->excludedMove = move;
@@ -1214,8 +1213,8 @@ moves_loop:  // When in check, search starts here
             {
                 // Adjust full-depth search based on LMR results - if the result was
                 // good enough search deeper, if it was bad enough search shallower.
-                const bool doDeeperSearch = value > (bestValue + 43 + 2 * newDepth);  // (~1 Elo)
-                const bool doShallowerSearch = value < bestValue + 9;                // (~2 Elo)
+                const bool doDeeperSearch    = value > (bestValue + 43 + 2 * newDepth);  // (~1 Elo)
+                const bool doShallowerSearch = value < bestValue + 9;                    // (~2 Elo)
 
                 newDepth += doDeeperSearch - doShallowerSearch;
 
@@ -1387,10 +1386,9 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonusScale =
-          (119 * (depth > 5) + 39 * !allNode + 193 * ((ss - 1)->moveCount > 8)
-           + 143 * (!ss->inCheck && bestValue <= ss->staticEval - 107)
-           + 110 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 81));
+        int bonusScale = (119 * (depth > 5) + 39 * !allNode + 193 * ((ss - 1)->moveCount > 8)
+                          + 143 * (!ss->inCheck && bestValue <= ss->staticEval - 107)
+                          + 110 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 81));
 
         // Proportional to "how much damage we have to undo"
         bonusScale += std::min(-(ss - 1)->statScore / 100, 316);
@@ -1402,8 +1400,7 @@ moves_loop:  // When in check, search starts here
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       scaledBonus * 512 / 1024);
 
-        thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()]
-          << scaledBonus * 219 / 1024;
+        thisThread->mainHistory[~us][((ss - 1)->currentMove).from_to()] << scaledBonus * 219 / 1024;
 
         if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
             thisThread->pawnHistory[pawn_structure_index(pos)][pos.piece_on(prevSq)][prevSq]
@@ -1441,8 +1438,8 @@ moves_loop:  // When in check, search starts here
         && ((bestValue < ss->staticEval && bestValue < beta)  // negative correction & no fail high
             || (bestValue > ss->staticEval && bestMove)))     // positive correction & no fail low
     {
-        const auto    m             = (ss - 1)->currentMove;
-        const int nonPawnWeight = 185;
+        const auto m             = (ss - 1)->currentMove;
+        const int  nonPawnWeight = 185;
 
         auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
