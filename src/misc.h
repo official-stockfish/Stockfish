@@ -120,11 +120,8 @@ void sync_cout_start();
 void sync_cout_end();
 
 // True if and only if the binary is compiled on a little-endian machine
-static inline const union {
-    uint32_t i;
-    char     c[4];
-} Le                                    = {0x01020304};
-static inline const bool IsLittleEndian = (Le.c[0] == 4);
+static inline const std::uint16_t Le             = 1;
+static inline const bool          IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
 
 
 template<typename T, std::size_t MaxSize>
