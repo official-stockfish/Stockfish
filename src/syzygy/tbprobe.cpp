@@ -1620,7 +1620,7 @@ bool Tablebases::root_probe(Position&          pos,
             WDLScore wdl = -probe_wdl(pos, &result);
             dtz          = dtz_before_zeroing(wdl);
         }
-        else if (pos.is_draw(1))
+        else if ((rule50 && pos.is_draw(1)) || pos.is_repetition(1))
         {
             // In case a root move leads to a draw by repetition or 50-move rule,
             // we set dtz to zero. Note: since we are only 1 ply from the root,
