@@ -1949,6 +1949,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
 
     auto t_start      = std::chrono::steady_clock::now();
     int  moveOverhead = int(options["Move Overhead"]);
+    bool rule50       = bool(options["Syzygy50MoveRule"]);
 
     // Do not use more than moveOverhead / 2 time, if time management is active
     auto time_abort = [&t_start, &moveOverhead, &limits]() -> bool {
@@ -1986,7 +1987,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         pos.do_move(pvMove, st);
 
         // Do not allow for repetitions or drawing moves along the PV in TB regime
-        if (config.rootInTB && pos.is_draw(ply))
+        if (config.rootInTB && ((rule50 && pos.is_draw(ply)) || pos.is_repetition(ply)))
         {
             pos.undo_move(pvMove);
             ply--;
@@ -2005,7 +2006,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
     // Step 2, now extend the PV to mate, as if the user explored syzygy-tables.info
     // using top ranked moves (minimal DTZ), which gives optimal mates only for simple
     // endgames e.g. KRvK.
-    while (!pos.is_draw(0))
+    while (!(rule50 && pos.is_draw(0)))
     {
         if (time_abort())
             break;
@@ -2048,7 +2049,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         pos.do_move(pvMove, st);
     }
 
-    // Finding a draw in this function is an exceptional case, that cannot happen
+    // Finding a draw in this function is an exceptional case, that cannot happen when rule50 is false or
     // during engine game play, since we have a winning score, and play correctly
     // with TB support. However, it can be that a position is draw due to the 50 move
     // rule if it has been been reached on the board with a non-optimal 50 move counter
