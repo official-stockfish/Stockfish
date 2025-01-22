@@ -1142,8 +1142,8 @@ moves_loop:  // When in check, search starts here
 
         // These reduction adjustments have proven non-linear scaling.
         // They are optimized to time controls of 180 + 1.8 and longer,
-        // so changing them or adding conditions that are similar requires
-        // tests at these types of time controls.
+        // so moving them or changing them or adding conditions that are 
+        // similar requires tests at these types of time controls.
 
         // Decrease reduction if position is or has been on the PV (~7 Elo)
         if (ss->ttPv)
