@@ -138,7 +138,7 @@ enum CorrHistType {
     Pawn,          // By color and pawn structure
     Major,         // By color and positions of major pieces (Queen, Rook) and King
     Minor,         // By color and positions of minor pieces (Knight, Bishop) and King
-    NonPawn,       // By color and non-pawn material positions
+    NonPawn,       // By Non-pawn material positions and color
     PieceTo,       // By [piece][to] move
     Continuation,  // Combined history of move pairs
 };
@@ -148,6 +148,11 @@ namespace Detail {
 template<CorrHistType _>
 struct CorrHistTypedef {
     using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+};
+
+template<>
+struct CorrHistTypedef<NonPawn> {
+    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, CORRECTION_HISTORY_SIZE, COLOR_NB>;
 };
 
 template<>
