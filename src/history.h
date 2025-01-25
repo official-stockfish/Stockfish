@@ -54,10 +54,6 @@ inline int pawn_structure_index(const Position& pos) {
     return pos.pawn_key() & ((T == Normal ? PAWN_HISTORY_SIZE : CORRECTION_HISTORY_SIZE) - 1);
 }
 
-inline int major_piece_index(const Position& pos) {
-    return pos.major_piece_key() & (CORRECTION_HISTORY_SIZE - 1);
-}
-
 inline int minor_piece_index(const Position& pos) {
     return pos.minor_piece_key() & (CORRECTION_HISTORY_SIZE - 1);
 }
@@ -136,7 +132,6 @@ using PawnHistory = Stats<std::int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUAR
 // see https://www.chessprogramming.org/Static_Evaluation_Correction_History
 enum CorrHistType {
     Pawn,          // By color and pawn structure
-    Major,         // By color and positions of major pieces (Queen, Rook) and King
     Minor,         // By color and positions of minor pieces (Knight, Bishop) and King
     NonPawn,       // By Non-pawn material positions and color
     PieceTo,       // By [piece][to] move

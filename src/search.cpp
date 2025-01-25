@@ -515,7 +515,6 @@ void Search::Worker::clear() {
     captureHistory.fill(-631);
     pawnHistory.fill(-1210);
     pawnCorrectionHistory.fill(0);
-    majorPieceCorrectionHistory.fill(0);
     minorPieceCorrectionHistory.fill(0);
     nonPawnCorrectionHistory[WHITE].fill(0);
     nonPawnCorrectionHistory[BLACK].fill(0);
