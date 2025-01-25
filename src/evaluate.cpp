@@ -34,6 +34,9 @@
 #include "types.h"
 #include "uci.h"
 #include "nnue/nnue_accumulator.h"
+#include "simd_ops.h"
+#include "cache_optimizer.h"
+#include "nnue/optimized_layers.h"
 
 namespace Stockfish {
 
@@ -88,6 +91,19 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 
     return v;
+}
+
+template<Color Us>
+Score evaluate(const Position& pos) {
+    CacheOptimizer::prefetchL1(&pos);
+    
+    constexpr Color Them = ~Us;
+    
+    CacheAlignedArray<int32_t> accumulator(NNUE_DIMENSIONS);
+    
+    Score score = NNUE::evaluate(pos, accumulator.get());
+    
+    return score;
 }
 
 // Like evaluate(), but instead of returning a value, it returns
