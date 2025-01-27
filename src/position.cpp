@@ -335,6 +335,7 @@ void Position::set_check_info() const {
 void Position::set_state() const {
 
     st->key = st->materialKey = 0;
+    st->minorPieceKey         = 0;
     st->nonPawnKey[WHITE] = st->nonPawnKey[BLACK] = 0;
     st->pawnKey                                   = Zobrist::noPawns;
     st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
