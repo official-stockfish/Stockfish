@@ -383,7 +383,7 @@ void Position::set_state() const {
 
     for (Piece pc : Pieces)
         for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
-            st->materialKey ^= Zobrist::psq[pc][cnt];
+            st->materialKey ^= Zobrist::psq[pc][8 + cnt];
 }
 
 
@@ -783,7 +783,7 @@ void Position::do_move(Move                      m,
         remove_piece(capsq);
 
         k ^= Zobrist::psq[captured][capsq];
-        st->materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
+        st->materialKey ^= Zobrist::psq[captured][8 + pieceCount[captured]];
 
         // Reset rule 50 counter
         st->rule50 = 0;
@@ -850,7 +850,7 @@ void Position::do_move(Move                      m,
             // Zobrist::psq[pc][to] is zero, so we don't need to clear it
             k ^= Zobrist::psq[promotion][to];
             st->materialKey ^=
-              Zobrist::psq[promotion][pieceCount[promotion] - 1] ^ Zobrist::psq[pc][pieceCount[pc]];
+              Zobrist::psq[promotion][8 + pieceCount[promotion] - 1] ^ Zobrist::psq[pc][8 + pieceCount[pc]];
 
             if (promotionType <= BISHOP)
                 st->minorPieceKey ^= Zobrist::psq[promotion][to];
