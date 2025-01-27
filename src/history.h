@@ -142,11 +142,6 @@ namespace Detail {
 
 template<CorrHistType>
 struct CorrHistTypedef {
-    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
-};
-
-template<>
-struct CorrHistTypedef<NonPawn> {
     using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, CORRECTION_HISTORY_SIZE, COLOR_NB>;
 };
 
