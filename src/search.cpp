@@ -600,8 +600,8 @@ Value Search::Worker::search(
     Value bestValue, value, eval, maxValue, probCutBeta;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
     bool  capture, ttCapture;
-    int   priorReduction = ss->reduction;
-    ss->reduction        = 0;
+    int   priorReduction = (ss - 1)->reduction;
+    (ss - 1)->reduction  = 0;
     Piece movedPiece;
 
     ValueList<Move, 32> capturesSearched;
@@ -1215,10 +1215,10 @@ moves_loop:  // When in check, search starts here
             Depth d = std::max(
               1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
 
-            (ss + 1)->reduction = newDepth - d;
+            ss->reduction = newDepth - d;
 
-            value               = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
-            (ss + 1)->reduction = 0;
+            value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
+            ss->reduction = 0;
 
 
             // Do a full-depth search when reduced LMR search fails high
