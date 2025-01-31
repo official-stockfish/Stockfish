@@ -1147,8 +1147,6 @@ bool Position::see_ge(Move m, int threshold) const {
 
         else if ((bb = stmAttackers & pieces(QUEEN)))
         {
-            if ((swap = QueenValue - swap) < res)
-                break;
             occupied ^= least_significant_square_bb(bb);
 
             attackers |= (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
