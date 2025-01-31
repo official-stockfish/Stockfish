@@ -1137,8 +1137,9 @@ bool Position::see_ge(Move m, int threshold) const {
 
         else if ((bb = stmAttackers & pieces(QUEEN)))
         {
-            if ((swap = QueenValue - swap) < res)
-                break;
+            swap = QueenValue - swap;
+            //  implies that the previous recapture was done by a higher rated piece than a Queen (King is excluded)
+            assert(swap >= res);
             occupied ^= least_significant_square_bb(bb);
 
             attackers |= (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
