@@ -125,7 +125,6 @@ void Position::init() {
 
     for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
         Zobrist::castling[cr] = rng.rand<Key>();
-
     Zobrist::side    = rng.rand<Key>();
     Zobrist::noPawns = rng.rand<Key>();
 
@@ -220,6 +219,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             ++sq;
         }
     }
+    //Piece square table always initialize to 0.
+    psqt_corrections.fill(0);
+    psqt_correction_value[WHITE] = 0;
+    psqt_correction_value[BLACK] = 0;
+
 
     // 2. Active color
     ss >> token;
@@ -1326,6 +1330,49 @@ bool Position::pos_is_ok() const {
         }
 
     return true;
+}
+
+int Position::psqt_correction() const{
+    return psqt_correction_value[side_to_move()];
+}
+
+
+constexpr int PSQT_LEARNING_RATE[PIECE_TYPE_NB] = {0,2,5,6,10,18,19,0};
+
+template<PieceType t,Color c>
+void Position::update_psqt_helper(Value error){
+    int pc = this->count<t>(c);
+
+    Bitboard currentpieces = pieces(c,t);
+    Piece p = make_piece(c,t);
+    int v = PSQT_LEARNING_RATE[t]*error/1024;
+    while (currentpieces){
+        Square s = pop_lsb(currentpieces);
+        // Do something with square s and piece p.
+        //int update = v-std::abs(v)*psqt_corrections[sideToMove][p][s]/65536;
+        psqt_corrections[sideToMove][p][s] += v;
+        //psqt_correction_value[sideToMove] += v;
+        //MultiArray<int16_t,COLOR_NB,PIECE_NB,SQUARE_NB> psqt_corrections;
+    }
+    psqt_correction_value[sideToMove] += v*pc;
+
+}
+
+
+void Position::update_psqt_correction(Value error){
+    update_psqt_helper<PAWN,WHITE>(error);
+    update_psqt_helper<KNIGHT,WHITE>(error);
+    update_psqt_helper<BISHOP,WHITE>(error);
+    update_psqt_helper<ROOK,WHITE>(error);
+    update_psqt_helper<QUEEN,WHITE>(error);
+    update_psqt_helper<KING,WHITE>(error);
+
+    update_psqt_helper<PAWN,BLACK>(error);
+    update_psqt_helper<KNIGHT,BLACK>(error);
+    update_psqt_helper<BISHOP,BLACK>(error);
+    update_psqt_helper<ROOK,BLACK>(error);
+    update_psqt_helper<QUEEN,BLACK>(error);
+    update_psqt_helper<KING,BLACK>(error);
 }
 
 }  // namespace Stockfish

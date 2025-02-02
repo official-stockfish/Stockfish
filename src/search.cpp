@@ -52,6 +52,9 @@
 
 namespace Stockfish {
 
+constexpr int PSQT_LIMIT = 2048;
+//constexpr int PSQT_CORRECTION_LIMIT = 2000000;
+
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -93,8 +96,10 @@ int correction_value(const Worker& w, const Position& pos, const Stack* ss) {
     const auto  cntcv =
       m.is_ok() ? (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                  : 0;
-
-    return (7000 * pcv + 6300 * micv + 7550 * (wnpcv + bnpcv) + 6320 * cntcv);
+    const auto psqtcv = pos.psqt_correction();
+    //dbg_mean_of(std::abs(psqtcv));
+    //dbg_mean_of(std::abs(pcv),1);
+    return (7000 * pcv + 6300 * micv + 7550 * (wnpcv + bnpcv) + 6320 * cntcv + psqtcv);
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation
@@ -1442,8 +1447,23 @@ moves_loop:  // When in check, search starts here
         thisThread->nonPawnCorrectionHistory[BLACK][non_pawn_index<BLACK>(pos)][us]
           << bonus * nonPawnWeight / 128;
 
+
         if (m.is_ok())
             (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()] << bonus;
+
+            //pos.update_psqt_correction(int(bestValue - ss->staticEval) * depth);
+        pos.update_psqt_correction(std::clamp(int(bestValue - (ss->staticEval ))* depth,-PSQT_LIMIT,PSQT_LIMIT));
+        /*
+        if (depth <= 8)
+        {
+        if (is_win(bestValue))
+            pos.update_psqt_correction(PSQT_DECISIVE_UPDATE* depth);
+        else if (is_loss(bestValue))
+            pos.update_psqt_correction(-PSQT_DECISIVE_UPDATE* depth);
+        else
+            pos.update_psqt_correction(int(bestValue - (ss->staticEval )) * depth);
+        }
+        */
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);

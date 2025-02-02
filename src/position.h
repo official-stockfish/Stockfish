@@ -31,6 +31,7 @@
 #include "types.h"
 
 namespace Stockfish {
+//constexpr int CORRECTION_PSQT_LIMIT = 16384;
 
 class TranspositionTable;
 
@@ -178,6 +179,11 @@ class Position {
     void put_piece(Piece pc, Square s);
     void remove_piece(Square s);
 
+    int psqt_correction() const;
+    void update_psqt_correction(Value error);
+    template<PieceType t,Color c>
+    void update_psqt_helper(Value error);
+
    private:
     // Initialization helpers (used while setting up a position)
     void set_castling_right(Color c, Square rfrom);
@@ -192,11 +198,13 @@ class Position {
     Key adjust_key50(Key k) const;
 
     // Data members
+    MultiArray<int,COLOR_NB,PIECE_NB,SQUARE_NB> psqt_corrections;
     Piece      board[SQUARE_NB];
     Bitboard   byTypeBB[PIECE_TYPE_NB];
     Bitboard   byColorBB[COLOR_NB];
     int        pieceCount[PIECE_NB];
     int        castlingRightsMask[SQUARE_NB];
+    int        psqt_correction_value[COLOR_NB];
     Square     castlingRookSquare[CASTLING_RIGHT_NB];
     Bitboard   castlingPath[CASTLING_RIGHT_NB];
     StateInfo* st;
@@ -341,6 +349,8 @@ inline void Position::put_piece(Piece pc, Square s) {
     byColorBB[color_of(pc)] |= s;
     pieceCount[pc]++;
     pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
+    psqt_correction_value[WHITE] += psqt_corrections[WHITE][pc][s];
+    psqt_correction_value[BLACK] += psqt_corrections[BLACK][pc][s];
 }
 
 inline void Position::remove_piece(Square s) {
@@ -352,6 +362,9 @@ inline void Position::remove_piece(Square s) {
     board[s] = NO_PIECE;
     pieceCount[pc]--;
     pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
+    //MultiArray<int16_t,COLOR_NB,SQUARE_NB,PIECE_NB> psqt_corrections;
+    psqt_correction_value[WHITE] -= psqt_corrections[WHITE][pc][s];
+    psqt_correction_value[BLACK] -= psqt_corrections[BLACK][pc][s];
 }
 
 inline void Position::move_piece(Square from, Square to) {
@@ -363,6 +376,8 @@ inline void Position::move_piece(Square from, Square to) {
     byColorBB[color_of(pc)] ^= fromTo;
     board[from] = NO_PIECE;
     board[to]   = pc;
+    psqt_correction_value[WHITE] += psqt_corrections[WHITE][pc][to] - psqt_corrections[WHITE][pc][from];
+    psqt_correction_value[BLACK] += psqt_corrections[BLACK][pc][to] - psqt_corrections[BLACK][pc][from];
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
