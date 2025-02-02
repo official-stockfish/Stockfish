@@ -155,9 +155,10 @@ void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
 
     clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
 
-    table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+    table        = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+    shallowTable = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
 
-    if (!table)
+    if (!table || !shallowTable)
     {
         std::cerr << "Failed to allocate " << mbSize << "MB for transposition table." << std::endl;
         exit(EXIT_FAILURE);
@@ -182,6 +183,7 @@ void TranspositionTable::clear(ThreadPool& threads) {
             const size_t len    = i + 1 != threadCount ? stride : clusterCount - start;
 
             std::memset(&table[start], 0, len * sizeof(Cluster));
+            std::memset(&shallowTable[start], 0, len * sizeof(Cluster));
         });
     }
 
@@ -243,9 +245,34 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
             TTWriter(replace)};
 }
 
+std::tuple<bool, TTData, TTWriter> TranspositionTable::shallowProbe(const Key key) const {
+    TTEntry* const tte   = first_shallow_entry(key);
+    const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
+
+    for (int i = 0; i < ClusterSize; ++i)
+        if (tte[i].key16 == key16)
+            // This gap is the main place for read races.
+            // After `read()` completes that copy is final, but may be self-inconsistent.
+            return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i])};
+
+    // Find an entry to be replaced according to the replacement strategy
+    TTEntry* replace = tte;
+    for (int i = 1; i < ClusterSize; ++i)
+        if (replace->depth8 - replace->relative_age(generation8) * 2
+            > tte[i].depth8 - tte[i].relative_age(generation8) * 2)
+            replace = &tte[i];
+
+    return {false,
+            TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
+            TTWriter(replace)};
+}
 
 TTEntry* TranspositionTable::first_entry(const Key key) const {
     return &table[mul_hi64(key, clusterCount)].entry[0];
+}
+
+TTEntry* TranspositionTable::first_shallow_entry(const Key key) const {
+    return &shallowTable[mul_hi64(key, clusterCount)].entry[0];
 }
 
 }  // namespace Stockfish

@@ -259,6 +259,8 @@ class NullSearchManager: public ISearchManager {
     void check_time(Search::Worker&) override {}
 };
 
+using MoveValuePair = std::pair<Move, Value>;
+inline MoveValuePair operator-(const MoveValuePair& p) { return {p.first, -p.second}; }
 
 // Search::Worker is the class that does the actual search.
 // It is instantiated once per thread, and it is responsible for keeping track
@@ -297,11 +299,18 @@ class Worker {
 
     // This is the main search function, for both PV and non-PV nodes
     template<NodeType nodeType>
-    Value search(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode);
+    MoveValuePair search(Position& pos,
+                         Stack*    ss,
+                         Value     alpha,
+                         Value     beta,
+                         Depth     depth,
+                         bool      cutNode,
+                         bool      opponentMove,
+                         bool      shallowSearch);
 
     // Quiescence search function, which is called by the main search
     template<NodeType nodeType>
-    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta);
+    MoveValuePair qsearch(Position& pos, Stack* ss, Value alpha, Value beta, bool shallowSearch);
 
     Depth reduction(bool i, Depth d, int mn, int delta) const;
 

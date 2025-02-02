@@ -93,7 +93,13 @@ class TranspositionTable {
     uint8_t generation() const;  // The current age, used when writing new data to the TT
     std::tuple<bool, TTData, TTWriter>
     probe(const Key key) const;  // The main method, whose retvals separate local vs global objects
+    std::tuple<bool, TTData, TTWriter>
+    shallowProbe(const Key key) const;  // The main method, whose retvals separate local vs global objects
+
     TTEntry* first_entry(const Key key)
+      const;  // This is the hash function; its only external use is memory prefetching.
+
+    TTEntry* first_shallow_entry(const Key key)
       const;  // This is the hash function; its only external use is memory prefetching.
 
    private:
@@ -101,6 +107,7 @@ class TranspositionTable {
 
     size_t   clusterCount;
     Cluster* table = nullptr;
+    Cluster* shallowTable = nullptr;
 
     uint8_t generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
 };
