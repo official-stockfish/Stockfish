@@ -999,6 +999,12 @@ moves_loop:  // When in check, search starts here
 
         Depth r = reduction(improving, depth, moveCount, delta);
 
+        // Increase reduction for ttPv nodes (*Scaler)
+        // Smaller or even negative value is better for short time controls
+        // Bigger value is better for long time controls
+        if (ss->ttPv)
+            r += 1024;
+
         // Step 14. Pruning at shallow depth.
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
@@ -1156,7 +1162,7 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction for PvNodes (*Scaler)
         if (ss->ttPv)
-            r -= 1037 + (ttData.value > alpha) * 965 + (ttData.depth >= depth) * 960;
+            r -= 2061 + (ttData.value > alpha) * 965 + (ttData.depth >= depth) * 960;
 
         if (PvNode)
             r -= 1018;
