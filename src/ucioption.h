@@ -54,12 +54,13 @@ class Option {
 
     friend std::ostream& operator<<(std::ostream&, const OptionsMap&);
 
+    int operator<<(const Option&) = delete;
+
    private:
     friend class OptionsMap;
     friend class Engine;
     friend class Tune;
 
-    void operator<<(const Option&);
 
     std::string       defaultValue, currentValue, type;
     int               min, max;
@@ -82,8 +83,9 @@ class OptionsMap {
 
     void setoption(std::istringstream&);
 
-    Option  operator[](const std::string&) const;
-    Option& operator[](const std::string&);
+    const Option& operator[](const std::string&) const;
+
+    void add(const std::string&, const Option& option);
 
     std::size_t count(const std::string&) const;
 
