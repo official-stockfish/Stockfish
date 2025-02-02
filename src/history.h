@@ -132,21 +132,16 @@ using PawnHistory = Stats<std::int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUAR
 // see https://www.chessprogramming.org/Static_Evaluation_Correction_History
 enum CorrHistType {
     Pawn,          // By color and pawn structure
-    Minor,         // By color and positions of minor pieces (Knight, Bishop) and King
-    NonPawn,       // By Non-pawn material positions and color
+    Minor,         // By color and positions of minor pieces (Knight, Bishop)
+    NonPawn,       // By non-pawn material positions and color
     PieceTo,       // By [piece][to] move
     Continuation,  // Combined history of move pairs
 };
 
 namespace Detail {
 
-template<CorrHistType _>
+template<CorrHistType>
 struct CorrHistTypedef {
-    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
-};
-
-template<>
-struct CorrHistTypedef<NonPawn> {
     using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, CORRECTION_HISTORY_SIZE, COLOR_NB>;
 };
 
