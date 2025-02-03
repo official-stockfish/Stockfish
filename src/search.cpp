@@ -869,8 +869,8 @@ Value Search::Worker::search(
 
     // Step 10. Internal iterative reductions
     // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
-    // (* Scaler) Especially if they make IIR more aggressive.
-    if (((PvNode || cutNode) && depth >= 7 - 3 * PvNode) && !ttData.move)
+    // (*Scaler) Especially if they make IIR less aggressive.
+    if (depth >= 7 - 3 * PvNode && !allNode && !ttData.move)
         depth--;
 
     // Step 11. ProbCut
@@ -1083,7 +1083,7 @@ moves_loop:  // When in check, search starts here
             // and if the result is lower than ttValue minus a margin, then we will
             // extend the ttMove. Recursive singular search is avoided.
 
-            // (* Scaler) Generally, higher singularBeta (i.e closer to ttValue)
+            // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
             // and lower extension margins scale well.
 
             if (!rootNode && move == ttData.move && !excludedMove
@@ -1165,8 +1165,13 @@ moves_loop:  // When in check, search starts here
 
         // These reduction adjustments have no proven non-linear scaling
 
-        r += 316 - moveCount * 32;
+        // Base reduction offset to compensate for other tweaks
+        r += 316;
 
+        // Reduce reduction on later moves
+        r -= moveCount * 32;
+
+        // Reduce reduction when correction magnitude is high
         r -= std::abs(correctionValue) / 31568;
 
         // Increase reduction for cut nodes
@@ -1207,7 +1212,6 @@ moves_loop:  // When in check, search starts here
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
 
-
             Depth d = std::max(
               1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
 
@@ -1215,7 +1219,6 @@ moves_loop:  // When in check, search starts here
 
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
             ss->reduction = 0;
-
 
             // Do a full-depth search when reduced LMR search fails high
             if (value > alpha && d < newDepth)
@@ -1396,11 +1399,35 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonusScale = (118 * (depth > 5) + 36 * !allNode + 161 * ((ss - 1)->moveCount > 8)
-                          + 133 * (!ss->inCheck && bestValue <= ss->staticEval - 107)
-                          + 120 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 84)
-                          + 81 * ((ss - 1)->isTTMove) + 100 * (ss->cutoffCnt <= 3)
-                          + std::min(-(ss - 1)->statScore / 108, 320));
+        int bonusScale = 0;
+
+        if (depth > 5)
+            bonusScale += 118;
+
+        if (!allNode)
+            bonusScale += 36;
+
+        if ((ss - 1)->moveCount > 8)
+            bonusScale += 161;
+
+        if ((ss - 1)->isTTMove)
+            bonusScale += 81;
+
+        if (ss->cutoffCnt <= 3)
+            bonusScale += 100;
+
+        // Increase bonus when bestValue is lower than what
+        // the static evaluation of the current position suggests
+        if (!ss->inCheck && bestValue <= ss->staticEval - 107)
+            bonusScale += 133;
+
+        // Increase bonus when bestValue is higher than what
+        // the static evaluation of the previous ply suggests
+        if (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 84)
+            bonusScale += 120;
+
+        // If the previous move has a bad history, increase bonus accordingly
+        bonusScale += std::min(-(ss - 1)->statScore / 108, 320);
 
         bonusScale = std::max(bonusScale, 0);
 
