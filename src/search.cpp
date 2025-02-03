@@ -1186,7 +1186,7 @@ moves_loop:  // When in check, search starts here
             r += 940 + allNode * 887;
 
         // For first picked move (ttMove) reduce reduction
-        else if (move == ttData.move)
+        else if (ss->isTTMove)
             r -= 1960;
 
         if (capture)
@@ -1260,7 +1260,7 @@ moves_loop:  // When in check, search starts here
             (ss + 1)->pv[0] = Move::none();
 
             // Extend move from transposition table if we are about to dive into qsearch.
-            if (move == ttData.move && thisThread->rootDepth > 8)
+            if (ss->isTTMove && thisThread->rootDepth > 8)
                 newDepth = std::max(newDepth, 1);
 
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);
