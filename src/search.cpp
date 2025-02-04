@@ -65,7 +65,7 @@ using namespace Search;
 namespace {
 
 // (*Scalers):
-// The values with Scaler asterisks have proven non-linear scaling.
+// Search features marked by "(*Scaler)" have proven non-linear scaling.
 // They are optimized to time controls of 180 + 1.8 and longer,
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
@@ -867,9 +867,9 @@ Value Search::Worker::search(
 
     improving |= ss->staticEval >= beta + 97;
 
-    // Step 10. Internal iterative reductions
-    // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
-    // (* Scaler) Especially if they make IIR more aggressive.
+    // Step 10. Internal iterative reductions (*Scaler)
+    // For deep enough nodes without ttMoves, we reduce search depth.
+    // Making the reduction less aggressive or less frequent scales well.
     if (((PvNode || cutNode) && depth >= 7 - 4 * PvNode) && !ttData.move)
         depth -= 2;
 
@@ -879,10 +879,10 @@ Value Search::Worker::search(
     probCutBeta = beta + 174 - 56 * improving;
     if (depth >= 3
         && !is_decisive(beta)
-        // If value from transposition table is lower than probCutBeta, don't attempt
-        // probCut there and in further interactions with transposition table cutoff
-        // depth is set to depth - 3 because probCut search has depth set to depth - 4
-        // but we also do a move before it. So effective depth is equal to depth - 3.
+        // If value from transposition table is lower than probCutBeta, don't attempt probCut.
+        // When writing to the transposition table we use the probCutDepth plus 1 since we just
+        // made a move.
+        
         && !(is_valid(ttData.value) && ttData.value < probCutBeta))
     {
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
@@ -1081,8 +1081,8 @@ moves_loop:  // When in check, search starts here
             // and if the result is lower than ttValue minus a margin, then we will
             // extend the ttMove. Recursive singular search is avoided.
 
-            // (* Scaler) Generally, higher singularBeta (i.e closer to ttValue)
-            // and lower extension margins scale well.
+            // (*Scaler) Generally, tweaks that make extensions more frequent scale well.
+            // This includes higher values of singularBeta (i.e closer to ttValue) and lower extension margins.
 
             if (!rootNode && move == ttData.move && !excludedMove
                 && depth >= 5 - (thisThread->completedDepth > 33) + ss->ttPv
