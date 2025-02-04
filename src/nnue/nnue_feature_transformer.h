@@ -481,16 +481,25 @@ class FeatureTransformer {
         // of the estimated gain in terms of features to be added/subtracted.
         StateInfo* st   = pos.state();
         int        gain = FeatureSet::refresh_cost(st);
-        while (st->previous && !(st->*accPtr).computed[Perspective])
+        StateInfo*     last_common = nullptr;
+        constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
+        while (!(st->*accPtr).computed[Perspective])
         {
             // This governs when a full feature refresh is needed and how many
             // updates are better than just one full refresh.
             if (FeatureSet::requires_refresh(st, Perspective)
-                || (gain -= FeatureSet::update_cost(st) + 1) < 0)
+                || (gain -= FeatureSet::update_cost(st) + 1) < 0 || !st->previous)
             {
-                break;
+                assert(!last_common);
+                return last_common;  // this will be nullptr if !Big
             }
+
             st = st->previous;
+            if (Big && st->commonParentPos)
+            {
+                last_common = st;
+                gain        = FeatureSet::refresh_cost(st);  // reset "gain"
+            }
         }
         return st;
     }
@@ -862,7 +871,7 @@ class FeatureTransformer {
             return;
         StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
 
-        if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
+        if (oldest && (oldest->*accPtr).computed[Perspective] && oldest != pos.state())
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
             update_accumulator_incremental<Perspective>(pos, oldest);
