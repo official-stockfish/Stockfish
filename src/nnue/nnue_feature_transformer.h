@@ -477,9 +477,14 @@ class FeatureTransformer {
    private:
     template<Color Perspective>
     inline StateInfo* try_find_computed_accumulator(StateInfo* st) const {
-        // Look for a usable accumulator of an earlier position. We keep track
-        // of the estimated gain in terms of features to be added/subtracted.
-        int        gain = FeatureSet::refresh_cost(st);
+        // Look for a usable already computed accumulator of an earlier position. We
+        // keep track of the estimated gain in terms of features to be added/subtracted.
+        // returns either
+        //   (1) a StateInfo* to a state with already computed accumulator
+        //   (2) nullptr if no suitable computed accumulator can be found
+        //   (3) a StateInfo* to a "common parent position" with *uncomputed* accumulator
+        //       (case (3) will never return the same pointer as the argument)
+        int            gain        = FeatureSet::refresh_cost(st);
         StateInfo*     last_common = nullptr;
         constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
         while (!(st->*accPtr).computed[Perspective])
@@ -873,10 +878,12 @@ class FeatureTransformer {
         if (oldest == nullptr)
             update_accumulator_refresh_cache<Perspective>(pos, cache);
         else if ((oldest->*accPtr).computed[Perspective])
+        {
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
             update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), state,
                                                         oldest);
+        }
         else
         {
             // this means that oldest points to a "common parent position", so we think
