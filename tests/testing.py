@@ -97,14 +97,17 @@ class Syzygy:
                 tarball_path = os.path.join(tmpdirname, f"{file}.tar.gz")
 
                 response = requests.get(url, stream=True)
-                with open(tarball_path, 'wb') as f:
+                with open(tarball_path, "wb") as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
 
                 with tarfile.open(tarball_path, "r:gz") as tar:
                     tar.extractall(tmpdirname)
 
-                shutil.move(os.path.join(tmpdirname, file), os.path.join(PATH, "syzygy"))
+                shutil.move(
+                    os.path.join(tmpdirname, file), os.path.join(PATH, "syzygy")
+                )
+
 
 class OrderedClassMembers(type):
     @classmethod
@@ -307,7 +310,10 @@ class Stockfish:
                 text=True,
             )
 
-            self.process.stdout
+            if self.process.returncode != 0:
+                print(self.process.stdout)
+                print(self.process.stderr)
+                print(f"Process failed with return code {self.process.returncode}")
 
             return
 
