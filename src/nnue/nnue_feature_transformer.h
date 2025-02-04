@@ -476,10 +476,9 @@ class FeatureTransformer {
 
    private:
     template<Color Perspective>
-    StateInfo* try_find_computed_accumulator(const Position& pos) const {
+    inline StateInfo* try_find_computed_accumulator(StateInfo* st) const {
         // Look for a usable accumulator of an earlier position. We keep track
         // of the estimated gain in terms of features to be added/subtracted.
-        StateInfo* st   = pos.state();
         int        gain = FeatureSet::refresh_cost(st);
         StateInfo*     last_common = nullptr;
         constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
@@ -867,11 +866,12 @@ class FeatureTransformer {
     template<Color Perspective>
     void update_accumulator(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        if ((pos.state()->*accPtr).computed[Perspective])
+        StateInfo* state  = pos.state();
+        if ((state->*accPtr).computed[Perspective])
             return;
-        StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
+        StateInfo* oldest = try_find_computed_accumulator<Perspective>(state);
 
-        if (oldest && (oldest->*accPtr).computed[Perspective] && oldest != pos.state())
+        if (oldest && (oldest->*accPtr).computed[Perspective] && oldest != state)
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
             update_accumulator_incremental<Perspective>(pos, oldest);
