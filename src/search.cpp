@@ -746,7 +746,7 @@ Value Search::Worker::search(
         }
     }
 
-    // Step 6. Static evaluation of the position
+    // Step 6a. Static evaluation of the position
     Value      unadjustedStaticEval = VALUE_NONE;
     const auto correctionValue      = correction_value(*thisThread, pos, ss);
     if (ss->inCheck)
@@ -788,7 +788,7 @@ Value Search::Worker::search(
                        unadjustedStaticEval, tt.generation());
     }
 
-    // Use static evaluation difference to improve quiet move ordering
+    // Step 6b. Use static evaluation difference to improve quiet move ordering
     if (((ss - 1)->currentMove).is_ok() && !(ss - 1)->inCheck && !priorCapture)
     {
         int bonus = std::clamp(-10 * int((ss - 1)->staticEval + ss->staticEval), -1906, 1450) + 638;
@@ -798,14 +798,22 @@ Value Search::Worker::search(
               << bonus * 1195 / 1024;
     }
 
-    // Set up the improving flag, which is true if current static evaluation is
-    // bigger than the previous static evaluation at our turn (if we were in
-    // check at our previous move we go back until we weren't in check) and is
-    // false otherwise. The improving flag is used in various pruning heuristics.
+    // Step 6c. Set up improving and opponentWorsening flags.
+    // These flags represent how the static evaluation has changed recently
+    // and are used in various pruning heuristics.
+    // They are true respectively if the static evaluation is better for us
+    // than it was at our last turn (two plies ago) and the opponent's
+    // last turn (one ply ago). Because evaluations are flipped with the side to move
+    // the opponent's static evaluation is negated. For prior static evals,
+    // we go back to when the player to move was last not in check.
     improving = ss->staticEval > (ss - 2)->staticEval;
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 5;
 
+    // Step 6d. Retroactive LMR adjustments
+    // Aftering beginning an LMR search, we adjust the reduced depth based on
+    // how the opponent's move affected the static evaluation now that it has been played,
+    // so that good moves get more effort.
     if (priorReduction >= 3 && !opponentWorsening)
         depth++;
 
