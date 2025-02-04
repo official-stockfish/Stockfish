@@ -514,7 +514,6 @@ class FeatureTransformer {
         }
 
         const Square ksq = pos.square<KING>(Perspective);
-        StateInfo* const target_state = pos.state();
         assert(!(next->*accPtr).computed[Perspective]);
 
         // The size must be enough to contain the largest possible update.
@@ -689,6 +688,7 @@ class FeatureTransformer {
 
         (next->*accPtr).computed[Perspective] = true;
 
+        StateInfo* const target_state = pos.state();
         if (next != target_state)
             /*update_accumulator_incremental<Perspective, Backwards>(ksq, target_state, next);*/
             update_accumulator_incremental<Perspective, Backwards>(pos, next);
