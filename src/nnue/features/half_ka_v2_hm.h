@@ -138,7 +138,7 @@ class HalfKAv2_hm {
     // Returns the cost of updating one perspective, the most costly one.
     // Assumes no refresh needed.
     static int update_cost(const StateInfo* st);
-    static int refresh_cost(const Position& pos);
+    static int refresh_cost(const StateInfo* st);
 
     // Returns whether the change stored in this StateInfo means
     // that a full accumulator refresh is required.
