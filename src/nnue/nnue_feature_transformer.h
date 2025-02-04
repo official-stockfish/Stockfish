@@ -505,7 +505,9 @@ class FeatureTransformer {
 
     // Given a computed accumulator, computes the accumulator of the next position.
     template<Color Perspective, bool Backwards = false>
-    void update_accumulator_incremental(const Position& pos, StateInfo* computed) const {
+    void update_accumulator_incremental(const Square     ksq,
+                                        StateInfo*       target_state,
+                                        const StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         constexpr bool Forward = !Backwards;
 
@@ -521,7 +523,6 @@ class FeatureTransformer {
             next = computed->next;
         }
 
-        const Square ksq = pos.square<KING>(Perspective);
         assert(!(next->*accPtr).computed[Perspective]);
 
         // The size must be enough to contain the largest possible update.
@@ -696,10 +697,8 @@ class FeatureTransformer {
 
         (next->*accPtr).computed[Perspective] = true;
 
-        StateInfo* const target_state = pos.state();
         if (next != target_state)
-            /*update_accumulator_incremental<Perspective, Backwards>(ksq, target_state, next);*/
-            update_accumulator_incremental<Perspective, Backwards>(pos, next);
+            update_accumulator_incremental<Perspective, Backwards>(ksq, target_state, next);
     }
 
 
@@ -874,7 +873,8 @@ class FeatureTransformer {
         if (oldest && (oldest->*accPtr).computed[Perspective] && oldest != state)
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
-            update_accumulator_incremental<Perspective>(pos, oldest);
+            update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), state,
+                                                        oldest);
         else
             update_accumulator_refresh_cache<Perspective>(pos, cache);
     }
