@@ -870,13 +870,13 @@ class FeatureTransformer {
             return;
         StateInfo* oldest = try_find_computed_accumulator<Perspective>(state);
 
-        if (oldest && (oldest->*accPtr).computed[Perspective] && oldest != state)
+        if (oldest == nullptr)
+            update_accumulator_refresh_cache<Perspective>(pos, cache);
+        else if ((oldest->*accPtr).computed[Perspective])
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
             update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), state,
                                                         oldest);
-        else
-            update_accumulator_refresh_cache<Perspective>(pos, cache);
     }
 
     template<IndexType Size>
