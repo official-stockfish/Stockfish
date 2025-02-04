@@ -348,6 +348,7 @@ void Position::set_state() const {
         Square s  = pop_lsb(b);
         Piece  pc = piece_on(s);
         st->key ^= Zobrist::psq[pc][s];
+        ++st->pieceCount;
 
         if (type_of(pc) == PAWN)
             st->pawnKey ^= Zobrist::psq[pc][s];
@@ -709,6 +710,7 @@ void Position::do_move(Move                      m,
     // Used by NNUE
     st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
       st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
+    st->commonParentPos = false;
 
     auto& dp     = st->dirtyPiece;
     dp.dirty_num = 1;
@@ -739,6 +741,7 @@ void Position::do_move(Move                      m,
 
     if (captured)
     {
+        --st->pieceCount;
         Square capsq = to;
 
         // If the captured piece is a pawn, update pawn hash key, otherwise
@@ -1027,6 +1030,7 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
     st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
       st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
+    st->commonParentPos = false;
 
     st->pliesFromNull = 0;
 
