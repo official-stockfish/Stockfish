@@ -877,6 +877,14 @@ class FeatureTransformer {
             // accumulators up to the current position.
             update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), state,
                                                         oldest);
+        else
+        {
+            // this means that oldest points to a "common parent position", so we think
+            // computing computing its accumulator now will pay off later
+            update_accumulator_refresh_cache<Perspective>(pos, cache);
+            update_accumulator_incremental<Perspective, true>(pos.square<KING>(Perspective), oldest,
+                                                              state);
+        }
     }
 
     template<IndexType Size>
