@@ -483,16 +483,16 @@ class FeatureTransformer {
         //   (1) a StateInfo* to a state with already computed accumulator
         //   (2) nullptr if no suitable computed accumulator can be found
         //   (3) a StateInfo* to a "common parent position" with *uncomputed* accumulator
-        //       (case (3) will never return the same pointer as the argument)
+        // Note that this will never return the StateInfo* that is passed as argument,
+        // even it its accumulator has already been computed
         int            gain        = FeatureSet::refresh_cost(st);
         StateInfo*     last_common = nullptr;
         constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
-        while (!(st->*accPtr).computed[Perspective])
-        {
+        do {
             // This governs when a full feature refresh is needed and how many
             // updates are better than just one full refresh.
             if (FeatureSet::requires_refresh(st, Perspective)
-                || (gain -= FeatureSet::update_cost(st) + 1) < 0 || !st->previous)
+                || (gain -= FeatureSet::update_cost(st)) < 0 || !st->previous)
             {
                 assert(!last_common);
                 return last_common;  // this will be nullptr if !Big
@@ -504,7 +504,7 @@ class FeatureTransformer {
                 last_common = st;
                 gain        = FeatureSet::refresh_cost(st);  // reset "gain"
             }
-        }
+        } while (!(st->*accPtr).computed[Perspective]);
         return st;
     }
 
