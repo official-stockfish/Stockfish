@@ -485,7 +485,7 @@ class FeatureTransformer {
                                         const StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         constexpr bool Forward = !Backwards;
-        dbg_hit_on(Forward, 1);
+        /*dbg_hit_on(Forward, 1);*/
 
         StateInfo* next;
         if constexpr (Backwards)
@@ -683,7 +683,7 @@ class FeatureTransformer {
                                           AccumulatorCaches::Cache<HalfDimensions>* cache) const {
         assert(cache != nullptr);
         #define HIT2 "accumulator refresh";
-        dbg_hit_on(true, 2);
+        /*dbg_hit_on(true, 2);*/
 
         Square                ksq   = pos.square<KING>(Perspective);
         auto&                 entry = (*cache)[ksq][Perspective];
@@ -848,7 +848,7 @@ class FeatureTransformer {
             return; // nothing to do
 
         [[maybe_unused]] // only used when !Big
-        int gain = FeatureSet::refresh_cost(pos.state());
+        int gain = FeatureSet::refresh_cost(pos);
         // Look for a usable already computed accumulator of an earlier position.
         // When computing the small accumulator, we keep track of the estimated gain in
         // terms of features to be added/subtracted.
@@ -872,7 +872,7 @@ class FeatureTransformer {
         refresh:
         // compute accumulator from scratch for this position
         update_accumulator_refresh_cache<Perspective>(pos, cache);
-        if (Big)
+        if (Big && st != pos.state())
             // when computing a big accumulator from scratch we can use it to
             // efficiently compute the accumulator backwards, until we get to a king
             // move. We expect that we will need these accumulators later anyway, so

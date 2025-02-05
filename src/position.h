@@ -49,7 +49,6 @@ struct StateInfo {
     int    castlingRights;
     int16_t    rule50;
     int16_t    pliesFromNull;
-    int    pieceCount;
     Square epSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
@@ -64,7 +63,6 @@ struct StateInfo {
     int        repetition;
 
     // Used by NNUE
-    bool                                                                   commonParentPos;
     DirtyPiece                                                             dirtyPiece;
     Eval::NNUE::Accumulator<Eval::NNUE::TransformedFeatureDimensionsBig>   accumulatorBig;
     Eval::NNUE::Accumulator<Eval::NNUE::TransformedFeatureDimensionsSmall> accumulatorSmall;
