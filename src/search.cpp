@@ -808,6 +808,10 @@ Value Search::Worker::search(
 
     if (priorReduction >= 3 && !opponentWorsening)
         depth++;
+    if (priorReduction >= 1 && depth >= 2 && !(ss - 1)->inCheck && ss->staticEval + (ss - 1)->staticEval > 200 && pos.non_pawn_material(~us))
+    {
+        depth--;
+    }
 
     // Step 7. Razoring
     // If eval is really low, skip search entirely and return the qsearch value.
