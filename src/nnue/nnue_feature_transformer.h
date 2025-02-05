@@ -470,12 +470,6 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
-    void hint_common_access(const Position&                           pos,
-                            AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        update_accumulator<WHITE>(pos, cache);
-        update_accumulator<BLACK>(pos, cache);
-    }
-
    private:
 
     // Given a computed accumulator, computes the accumulator of the next position.
