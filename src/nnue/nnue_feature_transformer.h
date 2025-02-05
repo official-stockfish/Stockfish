@@ -250,6 +250,7 @@ class FeatureTransformer {
 
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
+    static constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
 
    private:
     using Tiling = SIMDTiling<TransformedFeatureDimensions, HalfDimensions>;
@@ -476,55 +477,6 @@ class FeatureTransformer {
     }
 
    private:
-    template<Color Perspective>
-    inline StateInfo* try_find_computed_accumulator(StateInfo* st) const {
-        // Look for a usable already computed accumulator of an earlier position. We
-        // keep track of the estimated gain in terms of features to be added/subtracted.
-        // returns either
-        //   (1) a StateInfo* to a state with already computed accumulator
-        //   (2) nullptr if no suitable computed accumulator can be found
-        //   (3) a StateInfo* to a "common parent position" with *uncomputed* accumulator
-        // Note that this will never return the StateInfo* that is passed as argument,
-        // even it its accumulator has already been computed
-        int            gain        = FeatureSet::refresh_cost(st);
-        StateInfo*     last_common = nullptr;
-        constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
-        dbg_hit_on(Big, 0);
-        int cost = 0, refresh_cost = gain, lc_cost = 0;
-        do {
-            // This governs when a full feature refresh is needed and how many
-            // updates are better than just one full refresh.
-            if (FeatureSet::requires_refresh(st, Perspective)
-                || (gain -= FeatureSet::update_cost(st)) < 0 || !st->previous)
-            {
-                if (Big) {
-                    dbg_sum_of(lc_cost, 0);
-                    dbg_sum_of(refresh_cost, 1);
-                    dbg_sum_of(refresh_cost + lc_cost, 2);
-                    dbg_hit_on(last_common == nullptr, 3);
-                    if (!last_common)
-                        dbg_mean_of(refresh_cost - gain);
-                    dbg_hit_on(FeatureSet::requires_refresh(st, Perspective), 4);
-                }
-                return last_common;  // this will be nullptr if !Big
-            }
-
-            cost += FeatureSet::update_cost(st) + 1;
-            st = st->previous;
-            if (Big && st->commonParentPos)
-            {
-                lc_cost = cost;
-                last_common = st;
-                gain        = FeatureSet::refresh_cost(st);  // reset "gain"
-            }
-        } while (!(st->*accPtr).computed[Perspective]);
-
-        if (Big) {
-            dbg_sum_of(cost, 0);
-            dbg_sum_of(cost, 2);
-        }
-        return st;
-    }
 
     // Given a computed accumulator, computes the accumulator of the next position.
     template<Color Perspective, bool Backwards = false>
@@ -891,28 +843,43 @@ class FeatureTransformer {
     template<Color Perspective>
     void update_accumulator(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        StateInfo* state  = pos.state();
-        if ((state->*accPtr).computed[Perspective])
-            return;
-        StateInfo* oldest = try_find_computed_accumulator<Perspective>(state);
+        StateInfo* st  = pos.state();
+        if ((st->*accPtr).computed[Perspective])
+            return; // nothing to do
 
-        if (oldest == nullptr)
-            update_accumulator_refresh_cache<Perspective>(pos, cache);
-        else if ((oldest->*accPtr).computed[Perspective])
-        {
-            // Start from the oldest computed accumulator, update all the
-            // accumulators up to the current position.
-            update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), state,
-                                                        oldest);
-        }
-        else
-        {
-            // this means that oldest points to a "common parent position", so we think
-            // computing computing its accumulator now will pay off later
-            update_accumulator_refresh_cache<Perspective>(pos, cache);
-            update_accumulator_incremental<Perspective, true>(pos.square<KING>(Perspective), oldest,
-                                                              state);
-        }
+        [[maybe_unused]] // only used when !Big
+        int gain = FeatureSet::refresh_cost(pos.state());
+        // Look for a usable already computed accumulator of an earlier position.
+        // When computing the small accumulator, we keep track of the estimated gain in
+        // terms of features to be added/subtracted.
+        // When computing the big accumulator, we expect to be able to reuse any
+        // accumulators, so we always try to do an incremental update.
+        do {
+            if (FeatureSet::requires_refresh(st, Perspective)
+                || (!Big && (gain -= FeatureSet::update_cost(st) < 0))
+                || !st->previous)
+                goto refresh;
+            st = st->previous;
+        } while (!(st->*accPtr).computed[Perspective]);
+
+
+        // Start from the oldest computed accumulator, update all the
+        // accumulators up to the current position.
+        update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective),
+                                                    pos.state(), st);
+        return;
+
+        refresh:
+        // compute accumulator from scratch for this position
+        update_accumulator_refresh_cache<Perspective>(pos, cache);
+        if (Big)
+            // when computing a big accumulator from scratch we can use it to
+            // efficiently compute the accumulator backwards, until we get to a king
+            // move. We expect that we will need these accumulators later anyway, so
+            // computing them now will save some work.
+            update_accumulator_incremental<Perspective, true>(
+                pos.square<KING>(Perspective), st, pos.state()
+            );
     }
 
     template<IndexType Size>
