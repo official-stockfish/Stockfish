@@ -28,6 +28,7 @@
 #include <iosfwd>
 #include <type_traits>
 #include <utility>
+#include "../misc.h"
 
 #include "../position.h"
 #include "../types.h"
@@ -488,23 +489,40 @@ class FeatureTransformer {
         int            gain        = FeatureSet::refresh_cost(st);
         StateInfo*     last_common = nullptr;
         constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
+        dbg_hit_on(Big, 0);
+        int cost = 0, refresh_cost = gain, lc_cost = 0;
         do {
             // This governs when a full feature refresh is needed and how many
             // updates are better than just one full refresh.
             if (FeatureSet::requires_refresh(st, Perspective)
                 || (gain -= FeatureSet::update_cost(st)) < 0 || !st->previous)
             {
-                assert(!last_common);
+                if (Big) {
+                    dbg_sum_of(lc_cost, 0);
+                    dbg_sum_of(refresh_cost, 1);
+                    dbg_sum_of(refresh_cost + lc_cost, 2);
+                    dbg_hit_on(last_common == nullptr, 3);
+                    if (!last_common)
+                        dbg_mean_of(refresh_cost - gain);
+                    dbg_hit_on(FeatureSet::requires_refresh(st, Perspective), 4);
+                }
                 return last_common;  // this will be nullptr if !Big
             }
 
+            cost += FeatureSet::update_cost(st) + 1;
             st = st->previous;
             if (Big && st->commonParentPos)
             {
+                lc_cost = cost;
                 last_common = st;
                 gain        = FeatureSet::refresh_cost(st);  // reset "gain"
             }
         } while (!(st->*accPtr).computed[Perspective]);
+
+        if (Big) {
+            dbg_sum_of(cost, 0);
+            dbg_sum_of(cost, 2);
+        }
         return st;
     }
 
@@ -515,6 +533,7 @@ class FeatureTransformer {
                                         const StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         constexpr bool Forward = !Backwards;
+        dbg_hit_on(Forward, 1);
 
         StateInfo* next;
         if constexpr (Backwards)
@@ -711,6 +730,8 @@ class FeatureTransformer {
     void update_accumulator_refresh_cache(const Position&                           pos,
                                           AccumulatorCaches::Cache<HalfDimensions>* cache) const {
         assert(cache != nullptr);
+        #define HIT2 "accumulator refresh";
+        dbg_hit_on(true, 2);
 
         Square                ksq   = pos.square<KING>(Perspective);
         auto&                 entry = (*cache)[ksq][Perspective];

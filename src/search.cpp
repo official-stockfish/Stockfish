@@ -568,7 +568,7 @@ Value Search::Worker::search(
     constexpr bool rootNode = nodeType == Root;
     const bool     allNode  = !(PvNode || cutNode);
 
-    pos.state()->commonParentPos = true;
+
     // Dive into quiescence search when the depth reaches zero
     if (depth <= 0)
     {
@@ -746,6 +746,7 @@ Value Search::Worker::search(
             }
         }
     }
+    pos.state()->commonParentPos = true;
 
     // Step 6. Static evaluation of the position
     Value      unadjustedStaticEval = VALUE_NONE;
