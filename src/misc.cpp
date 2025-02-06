@@ -304,7 +304,6 @@ struct DebugExtremes: public DebugInfo<3> {
 
 std::array<DebugInfo<2>, MaxDebugSlots>  hit;
 std::array<DebugInfo<2>, MaxDebugSlots>  mean;
-std::array<DebugInfo<1>, MaxDebugSlots>  sum;
 std::array<DebugInfo<3>, MaxDebugSlots>  stdev;
 std::array<DebugInfo<6>, MaxDebugSlots>  correl;
 std::array<DebugExtremes, MaxDebugSlots> extremes;
@@ -322,10 +321,6 @@ void dbg_mean_of(int64_t value, int slot) {
 
     ++mean.at(slot)[0];
     mean.at(slot)[1] += value;
-}
-
-void dbg_sum_of(int64_t value, int slot) {
-    sum.at(slot)[0] += value;
 }
 
 void dbg_stdev_of(int64_t value, int slot) {
@@ -372,12 +367,6 @@ void dbg_print() {
         if ((n = mean[i][0]))
         {
             std::cerr << "Mean #" << i << ": Total " << n << " Mean " << E(mean[i][1]) << std::endl;
-        }
-
-    for (int i = 0; i < MaxDebugSlots; ++i)
-        if ((n = sum[i][0]))
-        {
-            std::cerr << "Sum #" << i << ": Total " << n << std::endl;
         }
 
     for (int i = 0; i < MaxDebugSlots; ++i)

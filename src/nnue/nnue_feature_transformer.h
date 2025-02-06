@@ -28,7 +28,6 @@
 #include <iosfwd>
 #include <type_traits>
 #include <utility>
-#include "../misc.h"
 
 #include "../position.h"
 #include "../types.h"
@@ -479,7 +478,6 @@ class FeatureTransformer {
                                         const StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         constexpr bool Forward = !Backwards;
-        /*dbg_hit_on(Forward, 1);*/
 
         StateInfo* next;
         if constexpr (Backwards)
@@ -677,7 +675,6 @@ class FeatureTransformer {
                                           AccumulatorCaches::Cache<HalfDimensions>* cache) const {
         assert(cache != nullptr);
         #define HIT2 "accumulator refresh";
-        /*dbg_hit_on(true, 2);*/
 
         Square                ksq   = pos.square<KING>(Perspective);
         auto&                 entry = (*cache)[ksq][Perspective];

@@ -68,14 +68,11 @@ struct PipeDeleter {
 std::optional<std::string> read_file_to_string(const std::string& path);
 
 void dbg_hit_on(bool cond, int slot = 0);
-void dbg_sum_of(int64_t value, int slot = 0);
 void dbg_mean_of(int64_t value, int slot = 0);
 void dbg_stdev_of(int64_t value, int slot = 0);
 void dbg_extremes_of(int64_t value, int slot = 0);
 void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
 void dbg_print();
-
-
 
 using TimePoint = std::chrono::milliseconds::rep;  // A value in milliseconds
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
