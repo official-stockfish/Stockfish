@@ -71,7 +71,7 @@ inline int non_pawn_index(const Position& pos) {
 template<typename T, int D>
 class StatsEntry {
 
-    static_assert(std::is_arithmetic<T>::value, "Not an arithmetic type");
+    static_assert(std::is_arithmetic_v<T>, "Not an arithmetic type");
     static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
     T entry;
