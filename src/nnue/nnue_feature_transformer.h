@@ -125,8 +125,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_add_16(a, b) vaddq_s16(a, b)
     #define vec_sub_16(a, b) vsubq_s16(a, b)
     #define vec_mulhi_16(a, b) vqdmulhq_s16(a, b)
-    #define vec_zero() \
-        vec_t { 0 }
+    #define vec_zero() vec_t{0}
     #define vec_set_16(a) vdupq_n_s16(a)
     #define vec_max_16(a, b) vmaxq_s16(a, b)
     #define vec_min_16(a, b) vminq_s16(a, b)
@@ -136,8 +135,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
-    #define vec_zero_psqt() \
-        psqt_vec_t { 0 }
+    #define vec_zero_psqt() psqt_vec_t{0}
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
@@ -244,7 +242,7 @@ class SIMDTiling {
 
 // Input feature converter
 template<IndexType                                 TransformedFeatureDimensions,
-         Accumulator<TransformedFeatureDimensions> StateInfo::*accPtr>
+         Accumulator<TransformedFeatureDimensions> StateInfo::* accPtr>
 class FeatureTransformer {
 
     // Number of output dimensions for one side
@@ -470,27 +468,23 @@ class FeatureTransformer {
     }  // end of function transform()
 
    private:
+    enum IncUpdateDirection {
+        FORWARD,
+        BACKWARDS
+    };
 
-    // Given a computed accumulator, computes the accumulator of the next position.
-    template<Color Perspective, bool Backwards = false>
+    // Given a computed accumulator, computes the accumulator of another position.
+    template<Color Perspective, IncUpdateDirection Direction = FORWARD>
     void update_accumulator_incremental(const Square     ksq,
                                         StateInfo*       target_state,
                                         const StateInfo* computed) const {
+        constexpr bool Forward   = Direction == FORWARD;
+        constexpr bool Backwards = Direction == BACKWARDS;
         assert((computed->*accPtr).computed[Perspective]);
-        constexpr bool Forward = !Backwards;
 
-        StateInfo* next;
-        if constexpr (Backwards)
-        {
-            assert(computed->previous != nullptr);
-            next = computed->previous;
-        }
-        else
-        {
-            assert(computed->next != nullptr);
-            next = computed->next;
-        }
+        StateInfo* next = Forward ? computed->next : computed->previous;
 
+        assert(next != nullptr);
         assert(!(next->*accPtr).computed[Perspective]);
 
         // The size must be enough to contain the largest possible update.
@@ -500,11 +494,11 @@ class FeatureTransformer {
         // In this case, the maximum size of both feature addition and removal
         // is 2, since we are incrementally updating one move at a time.
         FeatureSet::IndexList removed, added;
-        if constexpr (Backwards)
+        if constexpr (Forward)
+            FeatureSet::append_changed_indices<Perspective>(ksq, next->dirtyPiece, removed, added);
+        else
             FeatureSet::append_changed_indices<Perspective>(ksq, computed->dirtyPiece, added,
                                                             removed);
-        else
-            FeatureSet::append_changed_indices<Perspective>(ksq, next->dirtyPiece, removed, added);
 
         if (removed.size() == 0 && added.size() == 0)
         {
@@ -666,7 +660,7 @@ class FeatureTransformer {
         (next->*accPtr).computed[Perspective] = true;
 
         if (next != target_state)
-            update_accumulator_incremental<Perspective, Backwards>(ksq, target_state, next);
+            update_accumulator_incremental<Perspective, Direction>(ksq, target_state, next);
     }
 
 
@@ -674,7 +668,6 @@ class FeatureTransformer {
     void update_accumulator_refresh_cache(const Position&                           pos,
                                           AccumulatorCaches::Cache<HalfDimensions>* cache) const {
         assert(cache != nullptr);
-        #define HIT2 "accumulator refresh";
 
         Square                ksq   = pos.square<KING>(Perspective);
         auto&                 entry = (*cache)[ksq][Perspective];
@@ -834,21 +827,21 @@ class FeatureTransformer {
     template<Color Perspective>
     void update_accumulator(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        StateInfo* st  = pos.state();
+        StateInfo* st = pos.state();
         if ((st->*accPtr).computed[Perspective])
-            return; // nothing to do
+            return;  // nothing to do
 
-        [[maybe_unused]] // only used when !Big
+        [[maybe_unused]]  // only used when !Big
         int gain = FeatureSet::refresh_cost(pos);
         // Look for a usable already computed accumulator of an earlier position.
         // When computing the small accumulator, we keep track of the estimated gain in
         // terms of features to be added/subtracted.
         // When computing the big accumulator, we expect to be able to reuse any
         // accumulators, so we always try to do an incremental update.
-        do {
+        do
+        {
             if (FeatureSet::requires_refresh(st, Perspective)
-                || (!Big && (gain -= FeatureSet::update_cost(st) < 0))
-                || !st->previous)
+                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous)
                 goto refresh;
             st = st->previous;
         } while (!(st->*accPtr).computed[Perspective]);
@@ -856,11 +849,10 @@ class FeatureTransformer {
 
         // Start from the oldest computed accumulator, update all the
         // accumulators up to the current position.
-        update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective),
-                                                    pos.state(), st);
+        update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), pos.state(), st);
         return;
 
-        refresh:
+refresh:
         // compute accumulator from scratch for this position
         update_accumulator_refresh_cache<Perspective>(pos, cache);
         if (Big && st != pos.state())
@@ -868,9 +860,8 @@ class FeatureTransformer {
             // efficiently compute the accumulator backwards, until we get to a king
             // move. We expect that we will need these accumulators later anyway, so
             // computing them now will save some work.
-            update_accumulator_incremental<Perspective, true>(
-                pos.square<KING>(Perspective), st, pos.state()
-            );
+            update_accumulator_incremental<Perspective, BACKWARDS>(pos.square<KING>(Perspective),
+                                                                   st, pos.state());
     }
 
     template<IndexType Size>
