@@ -41,6 +41,11 @@ using BiasType       = std::int16_t;
 using WeightType     = std::int16_t;
 using PSQTWeightType = std::int32_t;
 
+enum IncUpdateDirection {
+    FORWARD,
+    BACKWARDS
+};
+
 // If vector instructions are enabled, we update and refresh the
 // accumulator tile by tile such that each tile fits in the CPU's
 // vector registers.
@@ -468,18 +473,14 @@ class FeatureTransformer {
     }  // end of function transform()
 
    private:
-    enum IncUpdateDirection {
-        FORWARD,
-        BACKWARDS
-    };
 
     // Given a computed accumulator, computes the accumulator of another position.
     template<Color Perspective, IncUpdateDirection Direction = FORWARD>
     void update_accumulator_incremental(const Square     ksq,
                                         StateInfo*       target_state,
                                         const StateInfo* computed) const {
-        constexpr bool Forward   = Direction == FORWARD;
-        constexpr bool Backwards = Direction == BACKWARDS;
+        [[maybe_unused]] constexpr bool Forward   = Direction == FORWARD;
+        [[maybe_unused]] constexpr bool Backwards = Direction == BACKWARDS;
         assert((computed->*accPtr).computed[Perspective]);
 
         StateInfo* next = Forward ? computed->next : computed->previous;
@@ -843,6 +844,7 @@ class FeatureTransformer {
             if (FeatureSet::requires_refresh(st, Perspective)
                 || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous)
                 goto refresh;
+            assert (st->previous->next == st);
             st = st->previous;
         } while (!(st->*accPtr).computed[Perspective]);
 
