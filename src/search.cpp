@@ -362,6 +362,10 @@ void Search::Worker::iterative_deepening() {
                 Depth adjustedDepth =
                   std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
                 rootDelta = beta - alpha;
+
+                // for multithreaded search we want to have a computed accumulator at the root
+                // of the tree, otherwise the threads can get in each other's way
+                networks[numaAccessToken].big.precompute_accumulator(rootPos, &refreshTable.big);
                 bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
                 // Bring the best move to the front. It is critical that sorting

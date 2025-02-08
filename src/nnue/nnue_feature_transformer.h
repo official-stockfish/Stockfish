@@ -472,6 +472,14 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
+    void ensure_computed(const Position&                           pos,
+                    AccumulatorCaches::Cache<HalfDimensions>* cache) const {
+        if ((pos.state()->*accPtr).computed[BLACK])
+            update_accumulator_refresh_cache<BLACK>(pos, cache);
+        if ((pos.state()->*accPtr).computed[WHITE])
+            update_accumulator_refresh_cache<WHITE>(pos, cache);
+    }
+
    private:
 
     // Given a computed accumulator, computes the accumulator of another position.
