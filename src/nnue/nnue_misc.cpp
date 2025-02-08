@@ -30,7 +30,6 @@
 #include <string_view>
 #include <tuple>
 
-#include "../evaluate.h"
 #include "../position.h"
 #include "../types.h"
 #include "../uci.h"
