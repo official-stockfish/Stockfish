@@ -850,7 +850,7 @@ class FeatureTransformer {
         do
         {
             if (FeatureSet::requires_refresh(st, Perspective)
-                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous)
+                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous || st->previous->next != st)
                 goto refresh;
             assert (st->previous->next == st);
             st = st->previous;
