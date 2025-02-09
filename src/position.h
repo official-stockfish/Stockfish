@@ -19,7 +19,6 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
-#include <stdint.h> 
 #include <cassert>
 #include <deque>
 #include <iosfwd>
@@ -48,8 +47,8 @@ struct StateInfo {
     Key    nonPawnKey[COLOR_NB];
     Value  nonPawnMaterial[COLOR_NB];
     int    castlingRights;
-    int16_t    rule50;
-    int16_t    pliesFromNull;
+    int    rule50;
+    int    pliesFromNull;
     Square epSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
