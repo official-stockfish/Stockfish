@@ -1171,7 +1171,7 @@ moves_loop:  // When in check, search starts here
 
         // Increase reduction for cut nodes
         if (cutNode)
-            r += 2608 - (ttData.depth >= depth && ss->ttPv) * 1159;
+            r += 2608 - (ttData.depth >= depth && ss->ttPv) * 1159 + 1024 * !ttData.move;
 
         // Increase reduction if ttMove is a capture but the current move is not a capture
         if (ttCapture && !capture)
