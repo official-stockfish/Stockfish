@@ -41,7 +41,6 @@
 #include "nnue/network.h"
 #include "nnue/nnue_accumulator.h"
 #include "nnue/nnue_common.h"
-#include "nnue/nnue_misc.h"
 #include "position.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"
@@ -759,7 +758,6 @@ Value Search::Worker::search(
     else if (excludedMove)
     {
         // Providing the hint that this node's accumulator will be used often
-        Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
         unadjustedStaticEval = eval = ss->staticEval;
     }
     else if (ss->ttHit)
@@ -768,8 +766,6 @@ Value Search::Worker::search(
         unadjustedStaticEval = ttData.eval;
         if (!is_valid(unadjustedStaticEval))
             unadjustedStaticEval = evaluate(pos);
-        else if (PvNode)
-            Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
 
         ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, correctionValue);
 
