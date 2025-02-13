@@ -155,6 +155,10 @@ struct MultiArrayHelper<T, Size> {
     using ChildType = T;
 };
 
+template<typename To, typename From>
+constexpr bool is_strictly_assignable_v =
+  std::is_assignable_v<To&, From> && (std::is_same_v<To, From> || !std::is_convertible_v<From, To>);
+
 }
 
 // MultiArray is a generic N-dimensional array.
@@ -212,7 +216,8 @@ class MultiArray {
 
     template<typename U>
     void fill(const U& v) {
-        static_assert(std::is_assignable_v<T, U>, "Cannot assign fill value to entry type");
+        static_assert(Detail::is_strictly_assignable_v<T, U>,
+                      "Cannot assign fill value to entry type");
         for (auto& ele : data_)
         {
             if constexpr (sizeof...(Sizes) == 0)
