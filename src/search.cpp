@@ -97,6 +97,34 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
     return 6995 * pcv + 6593 * micv + 7753 * (wnpcv + bnpcv) + 6049 * cntcv;
 }
 
+
+inline int fastsigmoid2ndderivativeconstant(int x, int y)
+{ // Returns (some constant of) (second derivative of sigmoid)
+
+    return -345600*x/(x*x+3*y*y);
+}
+
+int risk_tolerance(Value v, const Position& pos){
+    int material = pos.count<PAWN>() + 3 * pos.count<KNIGHT>() + 3 * pos.count<BISHOP>()
+                 + 5 * pos.count<ROOK>() + 9 * pos.count<QUEEN>();
+    int m = std::clamp(material,17,78);
+    int a = ((-m*3220/256 + 2361)*m/256 - 586)*m/256 + 421; //A crude approximation of a.
+    int b = ((m*7761/256 - 2674)*m/256 + 314)*m/256 +51; //A crude approximation of b.
+    // The win rate is: 1/(1+exp((a-v)/b))
+    // The loss rate is 1/(1+exp((v+a)/b))
+
+    // The risk utility is therefore d/dv^2 (1/(1+exp(-(v-a)/b)) -1/(1+exp(-(-v-a)/b)))
+    // -3x/(x^2+3) = -96(ab) / (a^2+3b^2) (multiplied by 256)
+    // winning risk is the risk you take to win.
+    // The losing risk is the risk you take to avoid losing.
+    int winning_risk = fastsigmoid2ndderivativeconstant(v-a,b);
+    int losing_risk = -fastsigmoid2ndderivativeconstant(-v-a,b);
+
+    return (winning_risk+losing_risk)*60/b;
+
+
+}
+
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(const Value v, const int cv) {
@@ -1171,6 +1199,9 @@ moves_loop:  // When in check, search starts here
         r += 316 - moveCount * 32;
 
         r -= std::abs(correctionValue) / 31568;
+
+        if (PvNode && !is_decisive(bestValue))
+            r -= risk_tolerance(bestValue,pos);
 
         // Increase reduction for cut nodes
         if (cutNode)
