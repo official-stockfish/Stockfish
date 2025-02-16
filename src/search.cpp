@@ -124,12 +124,6 @@ void update_correction_history(const Position& pos,
           << bonus * 138 / 128;
 }
 
-// History and stats update bonus, based on depth
-int stat_bonus(Depth d) { return std::min(158 * d - 98, 1622); }
-
-// History and stats update malus, based on depth
-int stat_malus(Depth d) { return std::min(802 * d - 243, 2850); }
-
 // Add a small random component to draw evaluations to avoid 3-fold blindness
 Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
 Value value_to_tt(Value v, int ply);
@@ -678,12 +672,14 @@ Value Search::Worker::search(
         {
             // Bonus for a quiet ttMove that fails high
             if (!ttCapture)
-                update_quiet_histories(pos, ss, *this, ttData.move, stat_bonus(depth) * 784 / 1024);
+                update_quiet_histories(pos, ss, *this, ttData.move,
+                                       std::min(117600 * depth - 71344, 1244992) / 1024);
 
             // Extra penalty for early quiet moves of the previous ply
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 3 && !priorCapture)
                 update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                              -stat_malus(depth + 1) * 1018 / 1024);
+                                              -std::min(779788 * (depth + 1) - 271806, 2958308)
+                                                / 1024);
         }
 
         // Partial workaround for the graph history interaction problem
@@ -1403,7 +1399,7 @@ moves_loop:  // When in check, search starts here
 
         bonusScale = std::max(bonusScale, 0);
 
-        const int scaledBonus = stat_bonus(depth) * bonusScale;
+        const int scaledBonus = std::min(160 * depth - 106, 1523) * bonusScale;
 
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       scaledBonus * 416 / 32768);
@@ -1422,7 +1418,7 @@ moves_loop:  // When in check, search starts here
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
         thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
-          << stat_bonus(depth) * 2;
+          << std::min(330 * depth - 198, 3320);
     }
 
     if (PvNode)
@@ -1803,8 +1799,8 @@ void update_all_stats(const Position&      pos,
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
 
-    int bonus = stat_bonus(depth) + 298 * isTTMove;
-    int malus = stat_malus(depth) - 32 * (moveCount - 1);
+    int bonus = std::min(162 * depth - 92, 1587) + 298 * isTTMove;
+    int malus = std::min(694 * depth - 230, 2503) - 32 * (moveCount - 1);
 
     if (!pos.capture_stage(bestMove))
     {
