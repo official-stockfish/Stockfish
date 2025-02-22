@@ -125,6 +125,8 @@ Engine::Engine(std::optional<std::string> path) :
 
     options.add("SyzygyProbeLimit", Option(7, 0, 7));
 
+    options.add("SyzygyExtendPv", Option(true));
+
     options.add(  //
       "EvalFile", Option(EvalFileDefaultNameBig, [this](const Option& o) {
           load_big_network(o);

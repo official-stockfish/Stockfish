@@ -1954,6 +1954,10 @@ void syzygy_extend_pv(const OptionsMap&         options,
     auto t_start      = std::chrono::steady_clock::now();
     int  moveOverhead = int(options["Move Overhead"]);
     bool rule50       = bool(options["Syzygy50MoveRule"]);
+    bool extend       = bool(options["SyzygyExtendPv"]);
+
+    if (!extend)
+      return;
 
     // Do not use more than moveOverhead / 2 time, if time management is active
     auto time_abort = [&t_start, &moveOverhead, &limits]() -> bool {
