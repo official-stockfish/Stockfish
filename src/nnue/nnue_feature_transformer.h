@@ -254,7 +254,6 @@ class FeatureTransformer {
 
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
-    static constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
 
    private:
     using Tiling = SIMDTiling<TransformedFeatureDimensions, HalfDimensions>;
@@ -836,23 +835,18 @@ class FeatureTransformer {
         if ((st->*accPtr).computed[Perspective])
             return;  // nothing to do
 
-        [[maybe_unused]]  // only used when !Big
-        int gain = FeatureSet::refresh_cost(pos);
         // Look for a usable already computed accumulator of an earlier position.
-        // When computing the small accumulator, we keep track of the estimated gain in
-        // terms of features to be added/subtracted.
-        // When computing the big accumulator, we expect to be able to reuse any
-        // accumulators, so we always try to do an incremental update.
+        // Always try to do an incremental update as most accumulators will be reusable.
         do
         {
-            if (FeatureSet::requires_refresh(st, Perspective)
-                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous
+            if (   FeatureSet::requires_refresh(st, Perspective)
+                || !st->previous
                 || st->previous->next != st)
             {
                 // compute accumulator from scratch for this position
                 update_accumulator_refresh_cache<Perspective>(pos, cache);
-                if (Big && st != pos.state())
-                    // when computing a big accumulator from scratch we can use it to
+                if (st != pos.state())
+                    // when computing an accumulator from scratch we can use it to
                     // efficiently compute the accumulator backwards, until we get to a king
                     // move. We expect that we will need these accumulators later anyway, so
                     // computing them now will save some work.
