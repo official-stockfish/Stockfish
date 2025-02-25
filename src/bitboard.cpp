@@ -183,10 +183,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
             occupancy[size] = b;
 #endif
             reference[size] = sliding_attack(pt, s, b);
-
-            if (HasPext)
-                m.attacks[pext(b, m.mask)] = reference[size];
-
+            m.attacks[m.index(b)] = reference[size];
             size++;
             b = (b - m.mask) & m.mask;
         } while (b);
