@@ -64,8 +64,8 @@ void memory_deleter_array(T* ptr, FREE_FUNC free_func) {
 
 
     // Move back on the pointer to where the size is allocated
-    const size_t array_offset = std::max(sizeof(size_t), alignof(T));
-    char*        raw_memory   = reinterpret_cast<char*>(ptr) - array_offset;
+    const auto array_offset = std::max(sizeof(size_t), alignof(T));
+    auto*      raw_memory   = reinterpret_cast<char*>(ptr) - array_offset;
 
     if constexpr (!std::is_trivially_destructible_v<T>)
     {
@@ -94,10 +94,10 @@ inline std::enable_if_t<std::is_array_v<T>, std::remove_extent_t<T>*>
 memory_allocator(ALLOC_FUNC alloc_func, size_t num) {
     using ElementType = std::remove_extent_t<T>;
 
-    const size_t array_offset = std::max(sizeof(size_t), alignof(ElementType));
+    const auto array_offset = std::max(sizeof(size_t), alignof(ElementType));
 
     // Save the array size in the memory location
-    char* raw_memory =
+    auto* raw_memory =
       reinterpret_cast<char*>(alloc_func(array_offset + num * sizeof(ElementType)));
     ASSERT_ALIGNED(raw_memory, alignof(T));
 
@@ -183,7 +183,7 @@ using AlignedPtr =
 template<typename T, typename... Args>
 std::enable_if_t<!std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(Args&&... args) {
     const auto func = [](size_t size) { return std_aligned_alloc(alignof(T), size); };
-    T*         obj  = memory_allocator<T>(func, std::forward<Args>(args)...);
+    auto*      obj  = memory_allocator<T>(func, std::forward<Args>(args)...);
 
     return AlignedPtr<T>(obj);
 }
@@ -194,7 +194,7 @@ std::enable_if_t<std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(size_t n
     using ElementType = std::remove_extent_t<T>;
 
     const auto   func   = [](size_t size) { return std_aligned_alloc(alignof(ElementType), size); };
-    ElementType* memory = memory_allocator<T>(func, num);
+    auto*        memory = memory_allocator<T>(func, num);
 
     return AlignedPtr<T>(memory);
 }
