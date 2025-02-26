@@ -699,13 +699,12 @@ Value Search::Worker::search(
             // Bonus for a quiet ttMove that fails high
             if (!ttCapture)
                 update_quiet_histories(pos, ss, *this, ttData.move,
-                                       std::min(117600 * depth - 71344, 1244992) / 1024);
+                                       std::min(115 * depth - 70, 1216));
 
             // Extra penalty for early quiet moves of the previous ply
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 3 && !priorCapture)
                 update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                              -std::min(779788 * (depth + 1) - 271806, 2958308)
-                                                / 1024);
+                                              -std::min(762 * (depth + 1) - 266, 2889));
         }
 
         // Partial workaround for the graph history interaction problem
