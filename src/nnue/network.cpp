@@ -268,21 +268,14 @@ void Network<Arch, Transformer>::verify(std::string                             
     if (f)
     {
         size_t size = sizeof(*featureTransformer) + sizeof(Arch) * LayerStacks;
-        f("info string NNUE evaluation using " + evalfilePath + " ("
-          + std::to_string(size / (1024 * 1024)) + "MiB, ("
-          + std::to_string(featureTransformer->InputDimensions) + ", "
+        f("NNUE evaluation using " + evalfilePath + " (" + std::to_string(size / (1024 * 1024))
+          + "MiB, (" + std::to_string(featureTransformer->InputDimensions) + ", "
           + std::to_string(network[0].TransformedFeatureDimensions) + ", "
           + std::to_string(network[0].FC_0_OUTPUTS) + ", " + std::to_string(network[0].FC_1_OUTPUTS)
           + ", 1))");
     }
 }
 
-
-template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::hint_common_access(
-  const Position& pos, AccumulatorCaches::Cache<FTDimensions>* cache) const {
-    featureTransformer->hint_common_access(pos, cache);
-}
 
 template<typename Arch, typename Transformer>
 NnueEvalTrace
