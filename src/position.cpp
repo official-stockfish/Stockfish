@@ -656,7 +656,7 @@ bool Position::gives_check(Move m) const {
         return false;
 
     case PROMOTION :
-        return attacks_bb(m.promotion_type(), to, pieces() ^ from) & square<KING>(~sideToMove);
+        return attacks_bb(m.promotion_type(), to, pieces() ^ from) & pieces(~sideToMove, KING);
 
     // En passant capture with check? We have already handled the case of direct
     // checks and ordinary discovered check, so the only case we need to handle
