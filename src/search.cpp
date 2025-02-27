@@ -97,31 +97,6 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
     return 7685 * pcv + 7495 * micv + 9144 * (wnpcv + bnpcv) + 6469 * cntcv;
 }
 
-int risk_tolerance(const Position& pos, Value v) {
-    // Returns (some constant of) second derivative of sigmoid.
-    static constexpr auto sigmoid_d2 = [](int x, int y) {
-        return 644800 * x / ((x * x + 3 * y * y) * y);
-    };
-
-    int m = pos.count<PAWN>() + pos.non_pawn_material() / 300;
-
-    // a and b are the crude approximation of the wdl model.
-    // The win rate is: 1/(1+exp((a-v)/b))
-    // The loss rate is 1/(1+exp((v+a)/b))
-    int a = 356;
-    int b = ((65 * m - 3172) * m + 240578) / 2048;
-
-    // guard against overflow
-    assert(abs(v) + a <= std::numeric_limits<int>::max() / 644800);
-
-    // The risk utility is therefore d/dv^2 (1/(1+exp(-(v-a)/b)) -1/(1+exp(-(-v-a)/b)))
-    // -115200x/(x^2+3) = -345600(ab) / (a^2+3b^2) (multiplied by some constant) (second degree pade approximant)
-    int winning_risk = sigmoid_d2(v - a, b);
-    int losing_risk  = sigmoid_d2(v + a, b);
-
-    return -(winning_risk + losing_risk) * 32;
-}
-
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(const Value v, const int cv) {
@@ -148,6 +123,31 @@ void update_correction_history(const Position& pos,
     if (m.is_ok())
         (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
           << bonus * 143 / 128;
+}
+
+int risk_tolerance(const Position& pos, Value v) {
+    // Returns (some constant of) second derivative of sigmoid.
+    static constexpr auto sigmoid_d2 = [](int x, int y) {
+        return 644800 * x / ((x * x + 3 * y * y) * y);
+    };
+
+    int m = pos.count<PAWN>() + pos.non_pawn_material() / 300;
+
+    // a and b are the crude approximation of the wdl model.
+    // The win rate is: 1/(1+exp((a-v)/b))
+    // The loss rate is 1/(1+exp((v+a)/b))
+    int a = 356;
+    int b = ((65 * m - 3172) * m + 240578) / 2048;
+
+    // guard against overflow
+    assert(abs(v) + a <= std::numeric_limits<int>::max() / 644800);
+
+    // The risk utility is therefore d/dv^2 (1/(1+exp(-(v-a)/b)) -1/(1+exp(-(-v-a)/b)))
+    // -115200x/(x^2+3) = -345600(ab) / (a^2+3b^2) (multiplied by some constant) (second degree pade approximant)
+    int winning_risk = sigmoid_d2(v - a, b);
+    int losing_risk  = sigmoid_d2(v + a, b);
+
+    return -(winning_risk + losing_risk) * 32;
 }
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
@@ -640,8 +640,7 @@ Value Search::Worker::search(
     Value bestValue, value, eval, maxValue, probCutBeta;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
     bool  capture, ttCapture;
-    int   priorReduction = (ss - 1)->reduction;
-    (ss - 1)->reduction  = 0;
+    int   priorReduction;
     Piece movedPiece;
 
     ValueList<Move, 32> capturesSearched;
@@ -688,8 +687,10 @@ Value Search::Worker::search(
 
     bestMove            = Move::none();
     (ss + 2)->cutoffCnt = 0;
-    Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
-    ss->statScore = 0;
+    Square prevSq  = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
+    ss->statScore  = 0;
+    priorReduction = (ss - 1)->reduction;
+    (ss - 1)->reduction = 0;
 
     // Step 4. Transposition table lookup
     excludedMove                   = ss->excludedMove;
@@ -908,8 +909,8 @@ Value Search::Worker::search(
 
     // Step 10. Internal iterative reductions
     // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
-    // (* Scaler) Especially if they make IIR more aggressive.
-    if (((PvNode || cutNode) && depth >= 7 - 3 * PvNode) && !ttData.move)
+    // (*Scaler) Especially if they make IIR less aggressive.
+    if (depth >= 7 - 3 * PvNode && !allNode && !ttData.move)
         depth--;
 
     // Step 11. ProbCut
@@ -1133,7 +1134,7 @@ moves_loop:  // When in check, search starts here
             // and if the result is lower than ttValue minus a margin, then we will
             // extend the ttMove. Recursive singular search is avoided.
 
-            // (* Scaler) Generally, higher singularBeta (i.e closer to ttValue)
+            // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
             // and lower extension margins scale well.
 
             if (!rootNode && move == ttData.move && !excludedMove
@@ -1213,8 +1214,8 @@ moves_loop:  // When in check, search starts here
 
         // These reduction adjustments have no proven non-linear scaling
 
-        r += 306 - moveCount * 34;
-
+        r += 306;  // Base reduction offset to compensate for other tweaks
+        r -= moveCount * 34;
         r -= std::abs(correctionValue) / 29696;
 
         if (PvNode && std::abs(bestValue) <= 2000)
@@ -1261,15 +1262,14 @@ moves_loop:  // When in check, search starts here
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
 
-
             Depth d = std::max(
               1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
 
             ss->reduction = newDepth - d;
 
-            value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
-            ss->reduction = 0;
+            value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
 
+            ss->reduction = 0;
 
             // Do a full-depth search when reduced LMR search fails high
             if (value > alpha && d < newDepth)
@@ -1457,12 +1457,14 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior quiet countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonusScale =
-          (std::min(78 * depth - 312, 194) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
-           + 141 * (!ss->inCheck && bestValue <= ss->staticEval - 100)
-           + 121 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75)
-           + 86 * ((ss - 1)->isTTMove) + 86 * (ss->cutoffCnt <= 3)
-           + std::min(-(ss - 1)->statScore / 112, 303));
+        int bonusScale = std::min(-(ss - 1)->statScore / 112, 303);
+        bonusScale += std::min(78 * depth - 312, 194);
+        bonusScale += 34 * !allNode;
+        bonusScale += 164 * ((ss - 1)->moveCount > 8);
+        bonusScale += 86 * (ss - 1)->isTTMove;
+        bonusScale += 86 * (ss->cutoffCnt <= 3);
+        bonusScale += 141 * (!ss->inCheck && bestValue <= ss->staticEval - 100);
+        bonusScale += 121 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75);
 
         bonusScale = std::max(bonusScale, 0);
 
