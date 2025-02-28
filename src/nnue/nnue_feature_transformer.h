@@ -41,11 +41,6 @@ using BiasType       = std::int16_t;
 using WeightType     = std::int16_t;
 using PSQTWeightType = std::int32_t;
 
-enum IncUpdateDirection {
-    FORWARD,
-    BACKWARDS
-};
-
 // If vector instructions are enabled, we update and refresh the
 // accumulator tile by tile such that each tile fits in the CPU's
 // vector registers.
@@ -130,8 +125,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_add_16(a, b) vaddq_s16(a, b)
     #define vec_sub_16(a, b) vsubq_s16(a, b)
     #define vec_mulhi_16(a, b) vqdmulhq_s16(a, b)
-    #define vec_zero() \
-        vec_t { 0 }
+    #define vec_zero() vec_t { 0 }
     #define vec_set_16(a) vdupq_n_s16(a)
     #define vec_max_16(a, b) vmaxq_s16(a, b)
     #define vec_min_16(a, b) vminq_s16(a, b)
@@ -141,8 +135,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
-    #define vec_zero_psqt() \
-        psqt_vec_t { 0 }
+    #define vec_zero_psqt() psqt_vec_t { 0 }
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
@@ -475,12 +468,10 @@ class FeatureTransformer {
 
    private:
     // Given a computed accumulator, computes the accumulator of another position.
-    template<Color Perspective, IncUpdateDirection Direction = FORWARD>
+    template<Color Perspective, bool Forward>
     void update_accumulator_incremental(const Square     ksq,
                                         StateInfo*       target_state,
                                         const StateInfo* computed) const {
-        [[maybe_unused]] constexpr bool Forward   = Direction == FORWARD;
-        [[maybe_unused]] constexpr bool Backwards = Direction == BACKWARDS;
         assert((computed->*accPtr).computed[Perspective]);
 
         StateInfo* next = Forward ? computed->next : computed->previous;
@@ -514,11 +505,8 @@ class FeatureTransformer {
         {
             assert(added.size() == 1 || added.size() == 2);
             assert(removed.size() == 1 || removed.size() == 2);
-            if (Forward)
-                assert(added.size() <= removed.size());
-            else
-                assert(removed.size() <= added.size());
-
+            assert(   ( Forward && added.size() <= removed.size())
+                   || (!Forward && removed.size() <= added.size()));
 #ifdef VECTOR
             auto* accIn =
               reinterpret_cast<const vec_t*>(&(computed->*accPtr).accumulation[Perspective][0]);
@@ -529,7 +517,7 @@ class FeatureTransformer {
             const IndexType offsetR0 = HalfDimensions * removed[0];
             auto*           columnR0 = reinterpret_cast<const vec_t*>(&weights[offsetR0]);
 
-            if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
+            if ((Forward && removed.size() == 1) || (!Forward && added.size() == 1))
             {
                 assert(added.size() == 1 && removed.size() == 1);
                 for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
@@ -545,7 +533,7 @@ class FeatureTransformer {
                     accOut[i] = vec_sub_16(vec_add_16(accIn[i], columnA0[i]),
                                            vec_add_16(columnR0[i], columnR1[i]));
             }
-            else if (Backwards && removed.size() == 1)
+            else if (!Forward && removed.size() == 1)
             {
                 assert(added.size() == 2);
                 const IndexType offsetA1 = HalfDimensions * added[1];
@@ -580,7 +568,7 @@ class FeatureTransformer {
             auto* columnPsqtR0 = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtR0]);
 
             if ((Forward && removed.size() == 1)
-                || (Backwards && added.size() == 1))  // added.size() == removed.size() == 1
+                || (!Forward && added.size() == 1))  // added.size() == removed.size() == 1
             {
                 for (std::size_t i = 0;
                      i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
@@ -599,7 +587,7 @@ class FeatureTransformer {
                       vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
                                       vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i]));
             }
-            else if (Backwards && removed.size() == 1)
+            else if (!Forward && removed.size() == 1)
             {
                 const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
                 auto*           columnPsqtA1 =
@@ -664,7 +652,7 @@ class FeatureTransformer {
         (next->*accPtr).computed[Perspective] = true;
 
         if (next != target_state)
-            update_accumulator_incremental<Perspective, Direction>(ksq, target_state, next);
+            update_accumulator_incremental<Perspective, Forward>(ksq, target_state, next);
     }
 
 
@@ -704,8 +692,7 @@ class FeatureTransformer {
         accumulator.computed[Perspective] = true;
 
 #ifdef VECTOR
-        const bool combineLast3 = std::abs((int) removed.size() - (int) added.size()) == 1
-                               && removed.size() + added.size() > 2;
+        const bool combineLast3 = std::abs((int)removed.size() - (int)added.size()) == 1 && removed.size() + added.size() > 2;
         vec_t      acc[Tiling::NumRegs];
         psqt_vec_t psqt[Tiling::NumPsqtRegs];
 
@@ -718,7 +705,7 @@ class FeatureTransformer {
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = entryTile[k];
 
-            std::size_t i = 0;
+            IndexType i = 0;
             for (; i < std::min(removed.size(), added.size()) - combineLast3; ++i)
             {
                 IndexType       indexR  = removed[i];
@@ -799,7 +786,7 @@ class FeatureTransformer {
             for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
                 psqt[k] = entryTilePsqt[k];
 
-            for (std::size_t i = 0; i < removed.size(); ++i)
+            for (IndexType i = 0; i < removed.size(); ++i)
             {
                 IndexType       index  = removed[i];
                 const IndexType offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -808,7 +795,7 @@ class FeatureTransformer {
                 for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
                     psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
             }
-            for (std::size_t i = 0; i < added.size(); ++i)
+            for (IndexType i = 0; i < added.size(); ++i)
             {
                 IndexType       index  = added[i];
                 const IndexType offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -874,7 +861,8 @@ class FeatureTransformer {
         // Always try to do an incremental update as most accumulators will be reusable.
         do
         {
-            if (FeatureSet::requires_refresh(st, Perspective) || !st->previous
+            if (   FeatureSet::requires_refresh(st, Perspective)
+                || !st->previous
                 || st->previous->next != st)
             {
                 // compute accumulator from scratch for this position
@@ -884,7 +872,7 @@ class FeatureTransformer {
                     // efficiently compute the accumulator backwards, until we get to a king
                     // move. We expect that we will need these accumulators later anyway, so
                     // computing them now will save some work.
-                    update_accumulator_incremental<Perspective, BACKWARDS>(
+                    update_accumulator_incremental<Perspective, false>(
                       pos.square<KING>(Perspective), st, pos.state());
                 return;
             }
@@ -893,7 +881,7 @@ class FeatureTransformer {
 
         // Start from the oldest computed accumulator, update all the
         // accumulators up to the current position.
-        update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), pos.state(), st);
+        update_accumulator_incremental<Perspective, true>(pos.square<KING>(Perspective), pos.state(), st);
     }
 
     template<IndexType Size>
