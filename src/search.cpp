@@ -106,7 +106,7 @@ int risk_tolerance(const Position& pos, Value v) {
                     + 337 * pos.count<ROOK>() + 553 * pos.count<QUEEN>())
                  / 64;
 
-    int m = std::clamp(material, 17, 78);
+    int m = std::max(material, 17);
 
     // a and b are the crude approximation of the wdl model.
     // The win rate is: 1/(1+exp((a-v)/b))
