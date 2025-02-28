@@ -1,6 +1,6 @@
 #!/bin/sh
 
-wget_or_curl=$( (command -v wget > /dev/null 2>&1 && echo "wget -qO-") || \
+wget_or_curl=$( (command -v wget > /dev/null 2>&1 && echo "wget -qO- --show-progress --read-timeout 10") || \
                 (command -v curl > /dev/null 2>&1 && echo "curl -skL"))
 
 if [ -z "$wget_or_curl" ]; then
@@ -48,9 +48,11 @@ fetch_network() {
   fi
 
   for url in \
+	"https://data.stockfishchess.org/nn/$_filename" \
     "https://tests.stockfishchess.org/api/nn/$_filename" \
     "https://github.com/official-stockfish/networks/raw/master/$_filename"; do
     echo "Downloading from $url ..."
+	echo "$wget_or_curl"
     if $wget_or_curl "$url" > "$_filename"; then
       if validate_network "$_filename"; then
         echo "Successfully validated $_filename"
