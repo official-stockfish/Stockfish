@@ -254,7 +254,6 @@ class FeatureTransformer {
 
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
-    static constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
 
    private:
     using Tiling = SIMDTiling<TransformedFeatureDimensions, HalfDimensions>;
@@ -705,6 +704,8 @@ class FeatureTransformer {
         accumulator.computed[Perspective] = true;
 
 #ifdef VECTOR
+        const bool combineLast3 = std::abs((int) removed.size() - (int) added.size()) == 1
+                               && removed.size() + added.size() > 2;
         vec_t      acc[Tiling::NumRegs];
         psqt_vec_t psqt[Tiling::NumPsqtRegs];
 
@@ -718,7 +719,7 @@ class FeatureTransformer {
                 acc[k] = entryTile[k];
 
             std::size_t i = 0;
-            for (; i < std::min(removed.size(), added.size()); ++i)
+            for (; i < std::min(removed.size(), added.size()) - combineLast3; ++i)
             {
                 IndexType       indexR  = removed[i];
                 const IndexType offsetR = HalfDimensions * indexR + j * Tiling::TileHeight;
@@ -730,23 +731,56 @@ class FeatureTransformer {
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                     acc[k] = vec_add_16(acc[k], vec_sub_16(columnA[k], columnR[k]));
             }
-            for (; i < removed.size(); ++i)
+            if (combineLast3)
             {
-                IndexType       index  = removed[i];
-                const IndexType offset = HalfDimensions * index + j * Tiling::TileHeight;
-                auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
+                IndexType       indexR  = removed[i];
+                const IndexType offsetR = HalfDimensions * indexR + j * Tiling::TileHeight;
+                auto*           columnR = reinterpret_cast<const vec_t*>(&weights[offsetR]);
+                IndexType       indexA  = added[i];
+                const IndexType offsetA = HalfDimensions * indexA + j * Tiling::TileHeight;
+                auto*           columnA = reinterpret_cast<const vec_t*>(&weights[offsetA]);
 
-                for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                    acc[k] = vec_sub_16(acc[k], column[k]);
+                if (removed.size() > added.size())
+                {
+                    IndexType       indexR2  = removed[i + 1];
+                    const IndexType offsetR2 = HalfDimensions * indexR2 + j * Tiling::TileHeight;
+                    auto*           columnR2 = reinterpret_cast<const vec_t*>(&weights[offsetR2]);
+
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_sub_16(vec_add_16(acc[k], columnA[k]),
+                                            vec_add_16(columnR[k], columnR2[k]));
+                }
+                else
+                {
+                    IndexType       indexA2  = added[i + 1];
+                    const IndexType offsetA2 = HalfDimensions * indexA2 + j * Tiling::TileHeight;
+                    auto*           columnA2 = reinterpret_cast<const vec_t*>(&weights[offsetA2]);
+
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_add_16(vec_sub_16(acc[k], columnR[k]),
+                                            vec_add_16(columnA[k], columnA2[k]));
+                }
             }
-            for (; i < added.size(); ++i)
+            else
             {
-                IndexType       index  = added[i];
-                const IndexType offset = HalfDimensions * index + j * Tiling::TileHeight;
-                auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
+                for (; i < removed.size(); ++i)
+                {
+                    IndexType       index  = removed[i];
+                    const IndexType offset = HalfDimensions * index + j * Tiling::TileHeight;
+                    auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
 
-                for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                    acc[k] = vec_add_16(acc[k], column[k]);
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_sub_16(acc[k], column[k]);
+                }
+                for (; i < added.size(); ++i)
+                {
+                    IndexType       index  = added[i];
+                    const IndexType offset = HalfDimensions * index + j * Tiling::TileHeight;
+                    auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
+
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_add_16(acc[k], column[k]);
+                }
             }
 
             for (IndexType k = 0; k < Tiling::NumRegs; k++)
@@ -836,23 +870,17 @@ class FeatureTransformer {
         if ((st->*accPtr).computed[Perspective])
             return;  // nothing to do
 
-        [[maybe_unused]]  // only used when !Big
-        int gain = FeatureSet::refresh_cost(pos);
         // Look for a usable already computed accumulator of an earlier position.
-        // When computing the small accumulator, we keep track of the estimated gain in
-        // terms of features to be added/subtracted.
-        // When computing the big accumulator, we expect to be able to reuse any
-        // accumulators, so we always try to do an incremental update.
+        // Always try to do an incremental update as most accumulators will be reusable.
         do
         {
-            if (FeatureSet::requires_refresh(st, Perspective)
-                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous
+            if (FeatureSet::requires_refresh(st, Perspective) || !st->previous
                 || st->previous->next != st)
             {
                 // compute accumulator from scratch for this position
                 update_accumulator_refresh_cache<Perspective>(pos, cache);
-                if (Big && st != pos.state())
-                    // when computing a big accumulator from scratch we can use it to
+                if (st != pos.state())
+                    // when computing an accumulator from scratch we can use it to
                     // efficiently compute the accumulator backwards, until we get to a king
                     // move. We expect that we will need these accumulators later anyway, so
                     // computing them now will save some work.
