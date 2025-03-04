@@ -275,17 +275,19 @@ class PRNG {
     }
 };
 
-inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
+constexpr uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
     __extension__ using uint128 = unsigned __int128;
     return (uint128(a) * uint128(b)) >> 64;
 #else
     uint64_t aL = uint32_t(a), aH = a >> 32;
     uint64_t bL = uint32_t(b), bH = b >> 32;
-    uint64_t c1 = (aL * bL) >> 32;
-    uint64_t c2 = aH * bL + c1;
-    uint64_t c3 = aL * bH + uint32_t(c2);
-    return aH * bH + (c2 >> 32) + (c3 >> 32);
+    uint64_t aHbH = aH * bH;
+    uint64_t aHbL = aH * bL;
+    uint64_t aLbH = aL * bH;
+    uint64_t aLbL = aL * bL;
+    uint64_t mid = aHbL + aLbH + (aLbL >> 32);
+    return aHbH + (mid >> 32);
 #endif
 }
 
