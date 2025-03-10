@@ -21,23 +21,24 @@
 #ifndef NNUE_ACCUMULATOR_H_INCLUDED
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
+#include <cstddef>
 #include <cstdint>
 
+#include "nnue_accumulator_fwd.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
+#include "nnue_feature_transformer_fwd.h"
 
 namespace Stockfish::Eval::NNUE {
 
-using BiasType       = std::int16_t;
-using PSQTWeightType = std::int32_t;
-using IndexType      = std::uint32_t;
+struct Networks;
 
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t accumulation[COLOR_NB][Size];
-    std::int32_t psqtAccumulation[COLOR_NB][PSQTBuckets];
-    bool         computed[COLOR_NB];
+    std::int16_t        accumulation[COLOR_NB][Size];
+    std::int32_t        psqtAccumulation[COLOR_NB][PSQTBuckets];
+    std::array<bool, 2> computed;
 };
 
 
@@ -93,6 +94,69 @@ struct AccumulatorCaches {
 
     Cache<TransformedFeatureDimensionsBig>   big;
     Cache<TransformedFeatureDimensionsSmall> small;
+};
+
+
+struct AccumulatorState {
+    Accumulator<TransformedFeatureDimensionsBig>   accumulatorBig;
+    Accumulator<TransformedFeatureDimensionsSmall> accumulatorSmall;
+    DirtyPiece                                     dirtyPiece;
+
+    void reset(const DirtyPiece& dp) noexcept;
+};
+
+
+class AccumulatorStack {
+   public:
+    AccumulatorStack() :
+        m_accumulators(MAX_PLY + 1),
+        m_current_idx{} {}
+
+    [[nodiscard]] const AccumulatorState& latest() const noexcept;
+
+    void
+    reset(const Position& rootPos, const Networks& networks, AccumulatorCaches& caches) noexcept;
+    void push(const DirtyPiece& dirtyPiece) noexcept;
+    void pop() noexcept;
+
+    template<IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::* accPtr>
+    void evaluate(const Position&                               pos,
+                  const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
+                  AccumulatorCaches::Cache<Dimensions>&         cache) noexcept;
+
+   private:
+    [[nodiscard]] AccumulatorState& mut_latest() noexcept;
+
+    template<Color                   Perspective,
+             IndexType               Dimensions,
+             Accumulator<Dimensions> AccumulatorState::* accPtr>
+    void evaluate_side(const Position&                               pos,
+                       const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
+                       AccumulatorCaches::Cache<Dimensions>&         cache) noexcept;
+
+    template<Color                   Perspective,
+             IndexType               Dimensions,
+             Accumulator<Dimensions> AccumulatorState::* accPtr>
+    [[nodiscard]] std::size_t find_last_usable_accumulator() const noexcept;
+
+    template<Color                   Perspective,
+             IndexType               Dimensions,
+             Accumulator<Dimensions> AccumulatorState::* accPtr>
+    void
+    forward_update_incremental(const Position&                               pos,
+                               const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
+                               const std::size_t                             begin) noexcept;
+
+    template<Color                   Perspective,
+             IndexType               Dimensions,
+             Accumulator<Dimensions> AccumulatorState::* accPtr>
+    void
+    backward_update_incremental(const Position&                               pos,
+                                const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
+                                const std::size_t                             end) noexcept;
+
+    std::vector<AccumulatorState> m_accumulators;
+    std::size_t                   m_current_idx;
 };
 
 }  // namespace Stockfish::Eval::NNUE
