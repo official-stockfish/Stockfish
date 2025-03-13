@@ -119,7 +119,7 @@ class AccumulatorStack {
     void push(const DirtyPiece& dirtyPiece) noexcept;
     void pop() noexcept;
 
-    template<IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::* accPtr>
+    template<IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
     void evaluate(const Position&                               pos,
                   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
                   AccumulatorCaches::Cache<Dimensions>&         cache) noexcept;
@@ -129,19 +129,19 @@ class AccumulatorStack {
 
     template<Color                   Perspective,
              IndexType               Dimensions,
-             Accumulator<Dimensions> AccumulatorState::* accPtr>
+             Accumulator<Dimensions> AccumulatorState::*accPtr>
     void evaluate_side(const Position&                               pos,
                        const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
                        AccumulatorCaches::Cache<Dimensions>&         cache) noexcept;
 
     template<Color                   Perspective,
              IndexType               Dimensions,
-             Accumulator<Dimensions> AccumulatorState::* accPtr>
+             Accumulator<Dimensions> AccumulatorState::*accPtr>
     [[nodiscard]] std::size_t find_last_usable_accumulator() const noexcept;
 
     template<Color                   Perspective,
              IndexType               Dimensions,
-             Accumulator<Dimensions> AccumulatorState::* accPtr>
+             Accumulator<Dimensions> AccumulatorState::*accPtr>
     void
     forward_update_incremental(const Position&                               pos,
                                const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
@@ -149,7 +149,7 @@ class AccumulatorStack {
 
     template<Color                   Perspective,
              IndexType               Dimensions,
-             Accumulator<Dimensions> AccumulatorState::* accPtr>
+             Accumulator<Dimensions> AccumulatorState::*accPtr>
     void
     backward_update_incremental(const Position&                               pos,
                                 const FeatureTransformer<Dimensions, accPtr>& featureTransformer,

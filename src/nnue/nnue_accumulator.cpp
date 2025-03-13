@@ -31,16 +31,14 @@ namespace {
 template<Color                                     Perspective,
          IncUpdateDirection                        Direction = FORWARD,
          IndexType                                 TransformedFeatureDimensions,
-         Accumulator<TransformedFeatureDimensions> AccumulatorState::* accPtr>
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
 void update_accumulator_incremental(
   const FeatureTransformer<TransformedFeatureDimensions, accPtr>& featureTransformer,
   const Square                                                    ksq,
   AccumulatorState&                                               target_state,
   const AccumulatorState&                                         computed);
 
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void update_accumulator_refresh_cache(
   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
   const Position&                               pos,
@@ -94,7 +92,7 @@ void AccumulatorStack::pop() noexcept {
     m_current_idx--;
 }
 
-template<IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void AccumulatorStack::evaluate(const Position&                               pos,
                                 const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
                                 AccumulatorCaches::Cache<Dimensions>&         cache) noexcept {
@@ -103,9 +101,7 @@ void AccumulatorStack::evaluate(const Position&                               po
     evaluate_side<BLACK>(pos, featureTransformer, cache);
 }
 
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void AccumulatorStack::evaluate_side(
   const Position&                               pos,
   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
@@ -125,12 +121,10 @@ void AccumulatorStack::evaluate_side(
 
 // Find the earliest usable accumulator, this can either be a computed accumulator or the accumulator
 // state just before a change that requires full refresh.
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 std::size_t AccumulatorStack::find_last_usable_accumulator() const noexcept {
 
-    for (std::size_t curr_idx = m_current_idx - 1; curr_idx >= 0; curr_idx--)
+    for (std::size_t curr_idx = m_current_idx - 1; curr_idx > 0; curr_idx--)
     {
         if ((m_accumulators[curr_idx].*accPtr).computed[Perspective])
             return curr_idx;
@@ -142,9 +136,7 @@ std::size_t AccumulatorStack::find_last_usable_accumulator() const noexcept {
     return 0;
 }
 
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void AccumulatorStack::forward_update_incremental(
   const Position&                               pos,
   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
@@ -162,9 +154,7 @@ void AccumulatorStack::forward_update_incremental(
     assert((latest().*accPtr).computed[Perspective]);
 }
 
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void AccumulatorStack::backward_update_incremental(
   const Position&                               pos,
   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
@@ -203,7 +193,7 @@ namespace {
 template<Color                                     Perspective,
          IncUpdateDirection                        Direction,
          IndexType                                 TransformedFeatureDimensions,
-         Accumulator<TransformedFeatureDimensions> AccumulatorState::* accPtr>
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
 void update_accumulator_incremental(
   const FeatureTransformer<TransformedFeatureDimensions, accPtr>& featureTransformer,
   const Square                                                    ksq,
@@ -399,9 +389,7 @@ void update_accumulator_incremental(
     (target_state.*accPtr).computed[Perspective] = true;
 }
 
-template<Color                   Perspective,
-         IndexType               Dimensions,
-         Accumulator<Dimensions> AccumulatorState::* accPtr>
+template<Color Perspective, IndexType Dimensions, Accumulator<Dimensions> AccumulatorState::*accPtr>
 void update_accumulator_refresh_cache(
   const FeatureTransformer<Dimensions, accPtr>& featureTransformer,
   const Position&                               pos,
