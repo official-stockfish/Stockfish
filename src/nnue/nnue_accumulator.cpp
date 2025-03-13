@@ -400,7 +400,7 @@ void update_accumulator_refresh_cache(
   const Position&                               pos,
   AccumulatorState&                             accumulatorState,
   AccumulatorCaches::Cache<Dimensions>&         cache) {
-    using Tiling = SIMDTiling<Dimensions, Dimensions>;
+    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions>;
 
     const Square          ksq   = pos.square<KING>(Perspective);
     auto&                 entry = cache[ksq][Perspective];
