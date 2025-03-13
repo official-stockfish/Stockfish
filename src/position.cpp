@@ -24,6 +24,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstring>
+#include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -33,7 +34,6 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
-#include "nnue/nnue_common.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
 #include "uci.h"

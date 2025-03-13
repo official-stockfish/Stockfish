@@ -28,7 +28,6 @@
 #include "../nnue_common.h"
 
 namespace Stockfish {
-struct StateInfo;
 class Position;
 }
 

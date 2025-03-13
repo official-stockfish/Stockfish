@@ -40,7 +40,6 @@
 #include "movepick.h"
 #include "nnue/network.h"
 #include "nnue/nnue_accumulator.h"
-#include "nnue/nnue_common.h"
 #include "position.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"

@@ -21,9 +21,13 @@
 #ifndef NNUE_ACCUMULATOR_H_INCLUDED
 #define NNUE_ACCUMULATOR_H_INCLUDED
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <vector>
 
+#include "../types.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 

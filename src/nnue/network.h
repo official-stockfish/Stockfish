@@ -29,12 +29,15 @@
 #include <utility>
 
 #include "../memory.h"
-#include "../position.h"
 #include "../types.h"
 #include "nnue_accumulator.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
+
+namespace Stockfish {
+class Position;
+}
 
 namespace Stockfish::Eval::NNUE {
 
