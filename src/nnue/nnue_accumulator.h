@@ -31,6 +31,10 @@
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 
+namespace Stockfish {
+class Position;
+}
+
 namespace Stockfish::Eval::NNUE {
 
 using BiasType       = std::int16_t;

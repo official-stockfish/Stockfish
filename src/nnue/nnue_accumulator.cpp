@@ -24,6 +24,7 @@
 
 #include "../bitboard.h"
 #include "../position.h"
+#include "../types.h"
 #include "nnue_architecture.h"
 #include "network.h"
 #include "nnue_common.h"
