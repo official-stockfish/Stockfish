@@ -24,14 +24,25 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "nnue_accumulator_fwd.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
-#include "nnue_feature_transformer_fwd.h"
 
 namespace Stockfish::Eval::NNUE {
 
+using BiasType       = std::int16_t;
+using PSQTWeightType = std::int32_t;
+using IndexType      = std::uint32_t;
+
 struct Networks;
+
+template<IndexType Size>
+struct alignas(CacheLineSize) Accumulator;
+
+struct AccumulatorState;
+
+template<IndexType                                 TransformedFeatureDimensions,
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
+class FeatureTransformer;
 
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>

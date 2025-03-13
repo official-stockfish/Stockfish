@@ -18,6 +18,11 @@
 
 #include "nnue_accumulator.h"
 
+#include <cassert>
+#include <initializer_list>
+#include <memory>
+
+#include "../bitboard.h"
 #include "../position.h"
 #include "nnue_architecture.h"
 #include "network.h"
