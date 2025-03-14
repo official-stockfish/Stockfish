@@ -1442,7 +1442,7 @@ moves_loop:  // When in check, search starts here
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
                          bestMove == ttData.move, moveCount);
 
-    // Bonus for prior countermove that caused the fail low
+    // Bonus for prior quiet countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
         int bonusScale = (112 * (depth > 5) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
@@ -1466,13 +1466,12 @@ moves_loop:  // When in check, search starts here
               << scaledBonus * 1055 / 32768;
     }
 
+    // Bonus for prior capture countermove that caused the fail low
     else if (priorCapture && prevSq != SQ_NONE)
     {
-        // bonus for prior countermoves that caused the fail low
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
-        thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
-          << std::min(300 * depth - 182, 2995);
+        thisThread->captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 1100;
     }
 
     if (PvNode)
