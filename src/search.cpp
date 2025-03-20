@@ -724,8 +724,7 @@ Value Search::Worker::search(
 
             // Extra penalty for early quiet moves of the previous ply
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 3 && !priorCapture)
-                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                              -std::min(809 * (depth + 1) - 249, 3052));
+                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -2200);
         }
 
         // Partial workaround for the graph history interaction problem
