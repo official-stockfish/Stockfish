@@ -21,6 +21,7 @@
 #include <cassert>
 #include <initializer_list>
 #include <memory>
+#include <type_traits>
 
 #include "../bitboard.h"
 #include "../position.h"
@@ -196,6 +197,65 @@ AccumulatorStack::evaluate<TransformedFeatureDimensionsSmall, &AccumulatorState:
 
 namespace {
 
+template<typename T, typename... Ts>
+struct is_all_same {
+    static constexpr bool value = (std::is_same_v<T, Ts> && ...);
+};
+
+template<typename... Ts>
+constexpr auto is_all_same_v = is_all_same<Ts...>::value;
+
+enum UpdateOperation {
+    Add,
+    Sub
+};
+
+template<UpdateOperation...>
+vec_t vec_fused(const vec_t& in) {
+    return in;
+}
+
+template<UpdateOperation update_op,
+         UpdateOperation... ops,
+         typename T,
+         typename... Ts,
+         std::enable_if_t<is_all_same_v<vec_t, T, Ts...>, bool> = true>
+vec_t vec_fused(const vec_t& in, const T& operand, const Ts&... operands) {
+    static_assert(sizeof...(ops) == sizeof...(Ts),
+                  "Number of operations is different from number of arguments");
+
+    switch (update_op)
+    {
+    case Add :
+        return vec_add_16(vec_fused<ops...>(in, operands...), operand);
+    case Sub :
+        return vec_sub_16(vec_fused<ops...>(in, operands...), operand);
+    }
+}
+
+template<UpdateOperation...>
+psqt_vec_t psqt_vec_fused(const psqt_vec_t& in) {
+    return in;
+}
+
+template<UpdateOperation update_op,
+         UpdateOperation... ops,
+         typename T,
+         typename... Ts,
+         std::enable_if_t<is_all_same_v<vec_t, T, Ts...>, bool> = true>
+vec_t psqt_vec_fused(const vec_t& in, const T& operand, const Ts&... operands) {
+    static_assert(sizeof...(ops) == sizeof...(Ts),
+                  "Number of operations is different from number of arguments");
+
+    switch (update_op)
+    {
+    case Add :
+        return vec_add_psqt_32(psqt_vec_fused<ops...>(in, operands...), operand);
+    case Sub :
+        return vec_sub_psqt_32(psqt_vec_fused<ops...>(in, operands...), operand);
+    }
+}
+
 template<Color                                     Perspective,
          IncUpdateDirection                        Direction,
          IndexType                                 TransformedFeatureDimensions,
@@ -248,7 +308,7 @@ void update_accumulator_incremental(
         assert(added.size() == 1 && removed.size() == 1);
         for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
              ++i)
-            accOut[i] = vec_add_16(vec_sub_16(accIn[i], columnR0[i]), columnA0[i]);
+            accOut[i] = vec_fused<Add, Sub>(accIn[i], columnA0[i], columnR0[i]);
     }
     else if (Forward && added.size() == 1)
     {
@@ -258,8 +318,7 @@ void update_accumulator_incremental(
 
         for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
              ++i)
-            accOut[i] =
-              vec_sub_16(vec_add_16(accIn[i], columnA0[i]), vec_add_16(columnR0[i], columnR1[i]));
+            accOut[i] = vec_fused<Add, Sub, Sub>(accIn[i], columnA0[i], columnR0[i], columnR1[i]);
     }
     else if (Backwards && removed.size() == 1)
     {
@@ -269,8 +328,7 @@ void update_accumulator_incremental(
 
         for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
              ++i)
-            accOut[i] =
-              vec_add_16(vec_add_16(accIn[i], columnA0[i]), vec_sub_16(columnA1[i], columnR0[i]));
+            accOut[i] = vec_fused<Add, Add, Sub>(accIn[i], columnA0[i], columnA1[i], columnR0[i]);
     }
     else
     {
@@ -282,8 +340,8 @@ void update_accumulator_incremental(
 
         for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
              ++i)
-            accOut[i] = vec_add_16(accIn[i], vec_sub_16(vec_add_16(columnA0[i], columnA1[i]),
-                                                        vec_add_16(columnR0[i], columnR1[i])));
+            accOut[i] = vec_fused<Add, Add, Sub, Sub>(accIn[i], columnA0[i], columnA1[i],
+                                                      columnR0[i], columnR1[i]);
     }
 
     auto* accPsqtIn =
@@ -303,7 +361,7 @@ void update_accumulator_incremental(
     {
         for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
             accPsqtOut[i] =
-              vec_add_psqt_32(vec_sub_psqt_32(accPsqtIn[i], columnPsqtR0[i]), columnPsqtA0[i]);
+              psqt_vec_fused<Add, Sub>(accPsqtIn[i], columnPsqtA0[i], columnPsqtR0[i]);
     }
     else if (Forward && added.size() == 1)
     {
@@ -312,8 +370,8 @@ void update_accumulator_incremental(
           reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
 
         for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
-                                            vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i]));
+            accPsqtOut[i] = psqt_vec_fused<Add, Sub, Sub>(accPsqtIn[i], columnPsqtA0[i],
+                                                          columnPsqtR0[i], columnPsqtR1[i]);
     }
     else if (Backwards && removed.size() == 1)
     {
@@ -322,8 +380,8 @@ void update_accumulator_incremental(
           reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
 
         for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = vec_add_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
-                                            vec_sub_psqt_32(columnPsqtA1[i], columnPsqtR0[i]));
+            accPsqtOut[i] = psqt_vec_fused<Add, Add, Sub>(accPsqtIn[i], columnPsqtA0[i],
+                                                          columnPsqtA1[i], columnPsqtR0[i]);
     }
     else
     {
@@ -335,9 +393,8 @@ void update_accumulator_incremental(
           reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
 
         for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = vec_add_psqt_32(
-              accPsqtIn[i], vec_sub_psqt_32(vec_add_psqt_32(columnPsqtA0[i], columnPsqtA1[i]),
-                                            vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i])));
+            accPsqtOut[i] = psqt_vec_fused<Add, Add, Sub, Sub>(
+              accPsqtIn[i], columnPsqtA0[i], columnPsqtA1[i], columnPsqtR0[i], columnPsqtR1[i]);
     }
 #else
     std::memcpy((target_state.*accPtr).accumulation[Perspective],
@@ -577,6 +634,5 @@ void update_accumulator_refresh_cache(
     for (PieceType pt = PAWN; pt <= KING; ++pt)
         entry.byTypeBB[pt] = pos.pieces(pt);
 }
-
 }
 }
