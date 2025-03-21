@@ -38,6 +38,7 @@
 
     #include <cassert>
     #include <cstdint>
+    #include <type_traits>
 
     #if defined(_MSC_VER)
         // Disable some silly and noisy warnings from MSVC compiler
@@ -428,6 +429,14 @@ class Move {
    protected:
     std::uint16_t data;
 };
+
+template<typename T, typename... Ts>
+struct is_all_same {
+    static constexpr bool value = (std::is_same_v<T, Ts> && ...);
+};
+
+template<typename... Ts>
+constexpr auto is_all_same_v = is_all_same<Ts...>::value;
 
 }  // namespace Stockfish
 
