@@ -21,6 +21,7 @@
 #include <cassert>
 #include <initializer_list>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 
 #include "../bitboard.h"
@@ -256,6 +257,45 @@ vec_t psqt_vec_fused(const vec_t& in, const T& operand, const Ts&... operands) {
     }
 }
 
+template<UpdateOperation... ops,
+         typename... Ts,
+         IndexType                                 TransformedFeatureDimensions,
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr,
+         std::enable_if_t<is_all_same_v<IndexType, Ts...>, bool> = true>
+void accumulator_apply_diff(
+  const FeatureTransformer<TransformedFeatureDimensions, accPtr>& featureTransformer,
+  const vec_t* const                                              in,
+  vec_t* const                                                    out,
+  const Ts... indicies) {
+    std::tuple update_columns = std::make_tuple((reinterpret_cast<const vec_t*>(
+      &featureTransformer.weights[indicies * TransformedFeatureDimensions]))...);
+
+    for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
+         ++i)
+        out[i] =
+          std::apply([&](const auto... columns) { return vec_fused<ops...>(in[i], columns[i]...); },
+                     update_columns);
+}
+
+template<UpdateOperation... ops,
+         typename... Ts,
+         IndexType                                 TransformedFeatureDimensions,
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr,
+         std::enable_if_t<is_all_same_v<IndexType, Ts...>, bool> = true>
+void psqt_apply_diff(
+  const FeatureTransformer<TransformedFeatureDimensions, accPtr>& featureTransformer,
+  const psqt_vec_t* const                                         in,
+  psqt_vec_t* const                                               out,
+  const Ts... indicies) {
+    std::tuple update_columns = std::make_tuple((reinterpret_cast<const psqt_vec_t*>(
+      &featureTransformer.psqtWeights[indicies * PSQTBuckets]))...);
+
+    for (IndexType i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+        out[i] = std::apply(
+          [&](const auto... columns) { return psqt_vec_fused<ops...>(in[i], columns[i]...); },
+          update_columns);
+}
+
 template<Color                                     Perspective,
          IncUpdateDirection                        Direction,
          IndexType                                 TransformedFeatureDimensions,
@@ -298,104 +338,42 @@ void update_accumulator_incremental(
     auto* accIn  = reinterpret_cast<const vec_t*>(&(computed.*accPtr).accumulation[Perspective][0]);
     auto* accOut = reinterpret_cast<vec_t*>(&(target_state.*accPtr).accumulation[Perspective][0]);
 
-    const IndexType offsetA0 = TransformedFeatureDimensions * added[0];
-    auto* columnA0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA0]);
-    const IndexType offsetR0 = TransformedFeatureDimensions * removed[0];
-    auto* columnR0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR0]);
-
-    if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
-    {
-        assert(added.size() == 1 && removed.size() == 1);
-        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
-             ++i)
-            accOut[i] = vec_fused<Add, Sub>(accIn[i], columnA0[i], columnR0[i]);
-    }
-    else if (Forward && added.size() == 1)
-    {
-        assert(removed.size() == 2);
-        const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
-        auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
-
-        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
-             ++i)
-            accOut[i] = vec_fused<Add, Sub, Sub>(accIn[i], columnA0[i], columnR0[i], columnR1[i]);
-    }
-    else if (Backwards && removed.size() == 1)
-    {
-        assert(added.size() == 2);
-        const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
-        auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
-
-        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
-             ++i)
-            accOut[i] = vec_fused<Add, Add, Sub>(accIn[i], columnA0[i], columnA1[i], columnR0[i]);
-    }
-    else
-    {
-        assert(added.size() == 2 && removed.size() == 2);
-        const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
-        auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
-        const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
-        auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
-
-        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
-             ++i)
-            accOut[i] = vec_fused<Add, Add, Sub, Sub>(accIn[i], columnA0[i], columnA1[i],
-                                                      columnR0[i], columnR1[i]);
-    }
-
     auto* accPsqtIn =
       reinterpret_cast<const psqt_vec_t*>(&(computed.*accPtr).psqtAccumulation[Perspective][0]);
     auto* accPsqtOut =
       reinterpret_cast<psqt_vec_t*>(&(target_state.*accPtr).psqtAccumulation[Perspective][0]);
 
-    const IndexType offsetPsqtA0 = PSQTBuckets * added[0];
-    auto*           columnPsqtA0 =
-      reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA0]);
-    const IndexType offsetPsqtR0 = PSQTBuckets * removed[0];
-    auto*           columnPsqtR0 =
-      reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR0]);
-
-    if ((Forward && removed.size() == 1)
-        || (Backwards && added.size() == 1))  // added.size() == removed.size() == 1
+    if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
     {
-        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] =
-              psqt_vec_fused<Add, Sub>(accPsqtIn[i], columnPsqtA0[i], columnPsqtR0[i]);
+        assert(added.size() == 1 && removed.size() == 1);
+        accumulator_apply_diff<Add, Sub>(featureTransformer, accIn, accOut, added[0], removed[0]);
+        psqt_apply_diff<Add, Sub>(featureTransformer, accPsqtIn, accPsqtOut, added[0], removed[0]);
     }
     else if (Forward && added.size() == 1)
     {
-        const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
-        auto*           columnPsqtR1 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
-
-        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = psqt_vec_fused<Add, Sub, Sub>(accPsqtIn[i], columnPsqtA0[i],
-                                                          columnPsqtR0[i], columnPsqtR1[i]);
+        assert(removed.size() == 2);
+        accumulator_apply_diff<Add, Sub, Sub>(featureTransformer, accIn, accOut, added[0],
+                                              removed[0], removed[1]);
+        psqt_apply_diff<Add, Sub, Sub>(featureTransformer, accPsqtIn, accPsqtOut, added[0],
+                                       removed[0], removed[1]);
     }
     else if (Backwards && removed.size() == 1)
     {
-        const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
-        auto*           columnPsqtA1 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
-
-        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = psqt_vec_fused<Add, Add, Sub>(accPsqtIn[i], columnPsqtA0[i],
-                                                          columnPsqtA1[i], columnPsqtR0[i]);
+        assert(added.size() == 2);
+        accumulator_apply_diff<Add, Add, Sub>(featureTransformer, accIn, accOut, added[0], added[1],
+                                              removed[0]);
+        psqt_apply_diff<Add, Add, Sub>(featureTransformer, accPsqtIn, accPsqtOut, added[0],
+                                       added[1], removed[0]);
     }
     else
     {
-        const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
-        auto*           columnPsqtA1 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
-        const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
-        auto*           columnPsqtR1 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
-
-        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
-            accPsqtOut[i] = psqt_vec_fused<Add, Add, Sub, Sub>(
-              accPsqtIn[i], columnPsqtA0[i], columnPsqtA1[i], columnPsqtR0[i], columnPsqtR1[i]);
+        assert(added.size() == 2 && removed.size() == 2);
+        accumulator_apply_diff<Add, Add, Sub, Sub>(featureTransformer, accIn, accOut, added[0],
+                                                   added[1], removed[0], removed[1]);
+        psqt_apply_diff<Add, Add, Sub, Sub>(featureTransformer, accPsqtIn, accPsqtOut, added[0],
+                                            added[1], removed[0], removed[1]);
     }
+
 #else
     std::memcpy((target_state.*accPtr).accumulation[Perspective],
                 (computed.*accPtr).accumulation[Perspective],
