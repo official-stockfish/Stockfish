@@ -210,7 +210,7 @@ enum UpdateOperation {
     Sub
 };
 
-template<UpdateOperation...>
+template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
 vec_t vec_fused(const vec_t& in) {
     return in;
 }
@@ -233,7 +233,7 @@ vec_t vec_fused(const vec_t& in, const T& operand, const Ts&... operands) {
     }
 }
 
-template<UpdateOperation...>
+template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
 psqt_vec_t psqt_vec_fused(const psqt_vec_t& in) {
     return in;
 }
