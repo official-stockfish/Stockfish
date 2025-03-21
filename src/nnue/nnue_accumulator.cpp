@@ -226,171 +226,153 @@ void update_accumulator_incremental(
     else
         FeatureSet::append_changed_indices<Perspective>(ksq, computed.dirtyPiece, added, removed);
 
-    if (removed.size() == 0 && added.size() == 0)
+    assert(added.size() == 1 || added.size() == 2);
+    assert(removed.size() == 1 || removed.size() == 2);
+
+    if (Forward)
+        assert(added.size() <= removed.size());
+    else
+        assert(removed.size() <= added.size());
+
+#ifdef VECTOR
+    auto* accIn  = reinterpret_cast<const vec_t*>(&(computed.*accPtr).accumulation[Perspective][0]);
+    auto* accOut = reinterpret_cast<vec_t*>(&(target_state.*accPtr).accumulation[Perspective][0]);
+
+    const IndexType offsetA0 = TransformedFeatureDimensions * added[0];
+    auto* columnA0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA0]);
+    const IndexType offsetR0 = TransformedFeatureDimensions * removed[0];
+    auto* columnR0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR0]);
+
+    if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
     {
-        std::memcpy((target_state.*accPtr).accumulation[Perspective],
-                    (computed.*accPtr).accumulation[Perspective],
-                    TransformedFeatureDimensions * sizeof(BiasType));
-        std::memcpy((target_state.*accPtr).psqtAccumulation[Perspective],
-                    (computed.*accPtr).psqtAccumulation[Perspective],
-                    PSQTBuckets * sizeof(PSQTWeightType));
+        assert(added.size() == 1 && removed.size() == 1);
+        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
+             ++i)
+            accOut[i] = vec_add_16(vec_sub_16(accIn[i], columnR0[i]), columnA0[i]);
+    }
+    else if (Forward && added.size() == 1)
+    {
+        assert(removed.size() == 2);
+        const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
+        auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
+
+        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
+             ++i)
+            accOut[i] =
+              vec_sub_16(vec_add_16(accIn[i], columnA0[i]), vec_add_16(columnR0[i], columnR1[i]));
+    }
+    else if (Backwards && removed.size() == 1)
+    {
+        assert(added.size() == 2);
+        const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
+        auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
+
+        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
+             ++i)
+            accOut[i] =
+              vec_add_16(vec_add_16(accIn[i], columnA0[i]), vec_sub_16(columnA1[i], columnR0[i]));
     }
     else
     {
-        assert(added.size() == 1 || added.size() == 2);
-        assert(removed.size() == 1 || removed.size() == 2);
+        assert(added.size() == 2 && removed.size() == 2);
+        const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
+        auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
+        const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
+        auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
 
-        if (Forward)
-            assert(added.size() <= removed.size());
-        else
-            assert(removed.size() <= added.size());
-
-#ifdef VECTOR
-        auto* accIn =
-          reinterpret_cast<const vec_t*>(&(computed.*accPtr).accumulation[Perspective][0]);
-        auto* accOut =
-          reinterpret_cast<vec_t*>(&(target_state.*accPtr).accumulation[Perspective][0]);
-
-        const IndexType offsetA0 = TransformedFeatureDimensions * added[0];
-        auto* columnA0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA0]);
-        const IndexType offsetR0 = TransformedFeatureDimensions * removed[0];
-        auto* columnR0 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR0]);
-
-        if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
-        {
-            assert(added.size() == 1 && removed.size() == 1);
-            for (IndexType i = 0;
-                 i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                accOut[i] = vec_add_16(vec_sub_16(accIn[i], columnR0[i]), columnA0[i]);
-        }
-        else if (Forward && added.size() == 1)
-        {
-            assert(removed.size() == 2);
-            const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
-            auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
-
-            for (IndexType i = 0;
-                 i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                accOut[i] = vec_sub_16(vec_add_16(accIn[i], columnA0[i]),
-                                       vec_add_16(columnR0[i], columnR1[i]));
-        }
-        else if (Backwards && removed.size() == 1)
-        {
-            assert(added.size() == 2);
-            const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
-            auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
-
-            for (IndexType i = 0;
-                 i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                accOut[i] = vec_add_16(vec_add_16(accIn[i], columnA0[i]),
-                                       vec_sub_16(columnA1[i], columnR0[i]));
-        }
-        else
-        {
-            assert(added.size() == 2 && removed.size() == 2);
-            const IndexType offsetA1 = TransformedFeatureDimensions * added[1];
-            auto* columnA1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA1]);
-            const IndexType offsetR1 = TransformedFeatureDimensions * removed[1];
-            auto* columnR1 = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR1]);
-
-            for (IndexType i = 0;
-                 i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                accOut[i] = vec_add_16(accIn[i], vec_sub_16(vec_add_16(columnA0[i], columnA1[i]),
-                                                            vec_add_16(columnR0[i], columnR1[i])));
-        }
-
-        auto* accPsqtIn =
-          reinterpret_cast<const psqt_vec_t*>(&(computed.*accPtr).psqtAccumulation[Perspective][0]);
-        auto* accPsqtOut =
-          reinterpret_cast<psqt_vec_t*>(&(target_state.*accPtr).psqtAccumulation[Perspective][0]);
-
-        const IndexType offsetPsqtA0 = PSQTBuckets * added[0];
-        auto*           columnPsqtA0 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA0]);
-        const IndexType offsetPsqtR0 = PSQTBuckets * removed[0];
-        auto*           columnPsqtR0 =
-          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR0]);
-
-        if ((Forward && removed.size() == 1)
-            || (Backwards && added.size() == 1))  // added.size() == removed.size() == 1
-        {
-            for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t);
-                 ++i)
-                accPsqtOut[i] =
-                  vec_add_psqt_32(vec_sub_psqt_32(accPsqtIn[i], columnPsqtR0[i]), columnPsqtA0[i]);
-        }
-        else if (Forward && added.size() == 1)
-        {
-            const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
-            auto*           columnPsqtR1 =
-              reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
-
-            for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t);
-                 ++i)
-                accPsqtOut[i] = vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
-                                                vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i]));
-        }
-        else if (Backwards && removed.size() == 1)
-        {
-            const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
-            auto*           columnPsqtA1 =
-              reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
-
-            for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t);
-                 ++i)
-                accPsqtOut[i] = vec_add_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
-                                                vec_sub_psqt_32(columnPsqtA1[i], columnPsqtR0[i]));
-        }
-        else
-        {
-            const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
-            auto*           columnPsqtA1 =
-              reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
-            const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
-            auto*           columnPsqtR1 =
-              reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
-
-            for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t);
-                 ++i)
-                accPsqtOut[i] = vec_add_psqt_32(
-                  accPsqtIn[i], vec_sub_psqt_32(vec_add_psqt_32(columnPsqtA0[i], columnPsqtA1[i]),
-                                                vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i])));
-        }
-#else
-        std::memcpy((target_state.*accPtr).accumulation[Perspective],
-                    (computed.*accPtr).accumulation[Perspective],
-                    TransformedFeatureDimensions * sizeof(BiasType));
-        std::memcpy((target_state.*accPtr).psqtAccumulation[Perspective],
-                    (computed.*accPtr).psqtAccumulation[Perspective],
-                    PSQTBuckets * sizeof(PSQTWeightType));
-
-        // Difference calculation for the deactivated features
-        for (const auto index : removed)
-        {
-            const IndexType offset = TransformedFeatureDimensions * index;
-            for (IndexType i = 0; i < TransformedFeatureDimensions; ++i)
-                (target_state.*accPtr).accumulation[Perspective][i] -=
-                  featureTransformer.weights[offset + i];
-
-            for (std::size_t i = 0; i < PSQTBuckets; ++i)
-                (target_state.*accPtr).psqtAccumulation[Perspective][i] -=
-                  featureTransformer.psqtWeights[index * PSQTBuckets + i];
-        }
-
-        // Difference calculation for the activated features
-        for (const auto index : added)
-        {
-            const IndexType offset = TransformedFeatureDimensions * index;
-            for (IndexType i = 0; i < TransformedFeatureDimensions; ++i)
-                (target_state.*accPtr).accumulation[Perspective][i] +=
-                  featureTransformer.weights[offset + i];
-
-            for (std::size_t i = 0; i < PSQTBuckets; ++i)
-                (target_state.*accPtr).psqtAccumulation[Perspective][i] +=
-                  featureTransformer.psqtWeights[index * PSQTBuckets + i];
-        }
-#endif
+        for (IndexType i = 0; i < TransformedFeatureDimensions * sizeof(WeightType) / sizeof(vec_t);
+             ++i)
+            accOut[i] = vec_add_16(accIn[i], vec_sub_16(vec_add_16(columnA0[i], columnA1[i]),
+                                                        vec_add_16(columnR0[i], columnR1[i])));
     }
+
+    auto* accPsqtIn =
+      reinterpret_cast<const psqt_vec_t*>(&(computed.*accPtr).psqtAccumulation[Perspective][0]);
+    auto* accPsqtOut =
+      reinterpret_cast<psqt_vec_t*>(&(target_state.*accPtr).psqtAccumulation[Perspective][0]);
+
+    const IndexType offsetPsqtA0 = PSQTBuckets * added[0];
+    auto*           columnPsqtA0 =
+      reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA0]);
+    const IndexType offsetPsqtR0 = PSQTBuckets * removed[0];
+    auto*           columnPsqtR0 =
+      reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR0]);
+
+    if ((Forward && removed.size() == 1)
+        || (Backwards && added.size() == 1))  // added.size() == removed.size() == 1
+    {
+        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+            accPsqtOut[i] =
+              vec_add_psqt_32(vec_sub_psqt_32(accPsqtIn[i], columnPsqtR0[i]), columnPsqtA0[i]);
+    }
+    else if (Forward && added.size() == 1)
+    {
+        const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
+        auto*           columnPsqtR1 =
+          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
+
+        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+            accPsqtOut[i] = vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
+                                            vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i]));
+    }
+    else if (Backwards && removed.size() == 1)
+    {
+        const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
+        auto*           columnPsqtA1 =
+          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
+
+        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+            accPsqtOut[i] = vec_add_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
+                                            vec_sub_psqt_32(columnPsqtA1[i], columnPsqtR0[i]));
+    }
+    else
+    {
+        const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
+        auto*           columnPsqtA1 =
+          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtA1]);
+        const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
+        auto*           columnPsqtR1 =
+          reinterpret_cast<const psqt_vec_t*>(&featureTransformer.psqtWeights[offsetPsqtR1]);
+
+        for (std::size_t i = 0; i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+            accPsqtOut[i] = vec_add_psqt_32(
+              accPsqtIn[i], vec_sub_psqt_32(vec_add_psqt_32(columnPsqtA0[i], columnPsqtA1[i]),
+                                            vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i])));
+    }
+#else
+    std::memcpy((target_state.*accPtr).accumulation[Perspective],
+                (computed.*accPtr).accumulation[Perspective],
+                TransformedFeatureDimensions * sizeof(BiasType));
+    std::memcpy((target_state.*accPtr).psqtAccumulation[Perspective],
+                (computed.*accPtr).psqtAccumulation[Perspective],
+                PSQTBuckets * sizeof(PSQTWeightType));
+
+    // Difference calculation for the deactivated features
+    for (const auto index : removed)
+    {
+        const IndexType offset = TransformedFeatureDimensions * index;
+        for (IndexType i = 0; i < TransformedFeatureDimensions; ++i)
+            (target_state.*accPtr).accumulation[Perspective][i] -=
+              featureTransformer.weights[offset + i];
+
+        for (std::size_t i = 0; i < PSQTBuckets; ++i)
+            (target_state.*accPtr).psqtAccumulation[Perspective][i] -=
+              featureTransformer.psqtWeights[index * PSQTBuckets + i];
+    }
+
+    // Difference calculation for the activated features
+    for (const auto index : added)
+    {
+        const IndexType offset = TransformedFeatureDimensions * index;
+        for (IndexType i = 0; i < TransformedFeatureDimensions; ++i)
+            (target_state.*accPtr).accumulation[Perspective][i] +=
+              featureTransformer.weights[offset + i];
+
+        for (std::size_t i = 0; i < PSQTBuckets; ++i)
+            (target_state.*accPtr).psqtAccumulation[Perspective][i] +=
+              featureTransformer.psqtWeights[index * PSQTBuckets + i];
+    }
+#endif
 
     (target_state.*accPtr).computed[Perspective] = true;
 }
@@ -597,5 +579,4 @@ void update_accumulator_refresh_cache(
 }
 
 }
-
 }
