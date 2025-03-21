@@ -64,12 +64,11 @@ using namespace Search;
 namespace {
 
 // (*Scalers):
-// The values with Scaler asterisks have proven non-linear scaling.
+// Search features marked by "(*Scaler)" have proven non-linear scaling.
 // They are optimized to time controls of 180 + 1.8 and longer,
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
 
-// Futility margin
 Value futility_margin(Depth d, bool noTtCutNode, bool improving, bool oppWorsening) {
     Value futilityMult       = 110 - 25 * noTtCutNode;
     Value improvingDeduction = improving * futilityMult * 2;
@@ -787,7 +786,7 @@ Value Search::Worker::search(
         }
     }
 
-    // Step 6. Static evaluation of the position
+    // Step 6a. Static evaluation of the position
     Value      unadjustedStaticEval = VALUE_NONE;
     const auto correctionValue      = correction_value(*thisThread, pos, ss);
     if (ss->inCheck)
@@ -826,7 +825,7 @@ Value Search::Worker::search(
                        unadjustedStaticEval, tt.generation());
     }
 
-    // Use static evaluation difference to improve quiet move ordering
+    // Step 6b. Use static evaluation difference to improve quiet move ordering
     if (((ss - 1)->currentMove).is_ok() && !(ss - 1)->inCheck && !priorCapture)
     {
         int bonus = std::clamp(-10 * int((ss - 1)->staticEval + ss->staticEval), -1950, 1416) + 655;
@@ -836,14 +835,22 @@ Value Search::Worker::search(
               << bonus * 1196 / 1024;
     }
 
-    // Set up the improving flag, which is true if current static evaluation is
-    // bigger than the previous static evaluation at our turn (if we were in
-    // check at our previous move we go back until we weren't in check) and is
-    // false otherwise. The improving flag is used in various pruning heuristics.
+    // Step 6c. Set up improving and opponentWorsening flags.
+    // These flags represent how the static evaluation has changed recently
+    // and are used in various pruning heuristics.
+    // They are true respectively if the static evaluation is better for us
+    // than it was at our last turn (two plies ago) and the opponent's
+    // last turn (one ply ago). Because evaluations are flipped with the side to move
+    // the opponent's static evaluation is negated. For prior static evals,
+    // we go back to when the player to move was last not in check.
     improving = ss->staticEval > (ss - 2)->staticEval;
 
     opponentWorsening = ss->staticEval > -(ss - 1)->staticEval;
 
+    // Step 6d. Retroactive LMR adjustments
+    // Aftering beginning an LMR search, we adjust the reduced depth based on
+    // how the opponent's move affected the static evaluation now that it has been played,
+    // so that good moves get more effort.
     if (priorReduction >= 3 && !opponentWorsening)
         depth++;
     if (priorReduction >= 1 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 188)
@@ -865,6 +872,7 @@ Value Search::Worker::search(
         return beta + (eval - beta) / 3;
 
     // Step 9. Null move search with verification search
+    // The non-pawn condition is important for finding Zugzwangs.
     if (cutNode && (ss - 1)->currentMove != Move::null() && eval >= beta
         && ss->staticEval >= beta - 19 * depth + 418 && !excludedMove && pos.non_pawn_material(us)
         && ss->ply >= thisThread->nmpMinPly && !is_loss(beta))
@@ -907,9 +915,9 @@ Value Search::Worker::search(
 
     improving |= ss->staticEval >= beta + 94;
 
-    // Step 10. Internal iterative reductions
-    // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
-    // (* Scaler) Especially if they make IIR more aggressive.
+    // Step 10. Internal iterative reductions (*Scaler)
+    // For deep enough nodes without ttMoves, we reduce search depth.
+    // Making the reduction less aggressive or less frequent scales well
     if (((PvNode || cutNode) && depth >= 7 - 3 * PvNode) && !ttData.move)
         depth--;
 
@@ -919,10 +927,9 @@ Value Search::Worker::search(
     probCutBeta = beta + 185 - 58 * improving;
     if (depth >= 3
         && !is_decisive(beta)
-        // If value from transposition table is lower than probCutBeta, don't attempt
-        // probCut there and in further interactions with transposition table cutoff
-        // depth is set to depth - 3 because probCut search has depth set to depth - 4
-        // but we also do a move before it. So effective depth is equal to depth - 3.
+        // If value from transposition table is lower than probCutBeta, don't attempt probCut.
+        // When writing to the transposition table we use the probCutDepth plus 1 since we just
+        // made a move.
         && !(is_valid(ttData.value) && ttData.value < probCutBeta))
     {
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
@@ -1049,6 +1056,7 @@ moves_loop:  // When in check, search starts here
 
         // Step 14. Pruning at shallow depth.
         // Depth conditions are important for mate finding.
+        // The non-pawn condition is important for finding Zugzwangs.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
@@ -1126,8 +1134,8 @@ moves_loop:  // When in check, search starts here
             // and if the result is lower than ttValue minus a margin, then we will
             // extend the ttMove. Recursive singular search is avoided.
 
-            // (* Scaler) Generally, higher singularBeta (i.e closer to ttValue)
-            // and lower extension margins scale well.
+            // (*Scaler) Generally, tweaks that make extensions more frequent scale well.
+            // This includes higher values of singularBeta (i.e closer to ttValue) and lower extension margins.
 
             if (!rootNode && move == ttData.move && !excludedMove
                 && depth >= 6 - (thisThread->completedDepth > 29) + ss->ttPv
@@ -1393,7 +1401,7 @@ moves_loop:  // When in check, search starts here
 
                 if (value >= beta)
                 {
-                    // (* Scaler) Especially if they make cutoffCnt increment more often.
+                    // (*Scaler) Less frequent cutoff increments scale well
                     ss->cutoffCnt += (extension < 2) || PvNode;
                     assert(value >= beta);  // Fail high
                     break;
