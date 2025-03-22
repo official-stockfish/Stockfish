@@ -3,11 +3,6 @@
 wget_or_curl=$( (command -v wget > /dev/null 2>&1 && echo "wget -qO-") || \
                 (command -v curl > /dev/null 2>&1 && echo "curl -skL"))
 
-if [ -z "$wget_or_curl" ]; then
-  >&2 printf "%s\n" "Neither wget or curl is installed." \
-	         "Install one of these tools to download NNUE files automatically."
-  exit 1
-fi
 
 sha256sum=$( (command -v shasum > /dev/null 2>&1 && echo "shasum -a 256") || \
              (command -v sha256sum > /dev/null 2>&1 && echo "sha256sum"))
@@ -45,6 +40,12 @@ fetch_network() {
     else
       echo "Removing invalid NNUE file: $_filename"
     fi
+  fi
+
+  if [ -z "$wget_or_curl" ]; then
+    >&2 printf "%s\n" "Neither wget or curl is installed." \
+          "Install one of these tools to download NNUE files automatically."
+    exit 1
   fi
 
   for url in \
