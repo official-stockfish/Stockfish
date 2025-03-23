@@ -122,8 +122,7 @@ using psqt_vec_t = int32x4_t;
     #define vec_add_16(a, b) vaddq_s16(a, b)
     #define vec_sub_16(a, b) vsubq_s16(a, b)
     #define vec_mulhi_16(a, b) vqdmulhq_s16(a, b)
-    #define vec_zero() \
-        vec_t { 0 }
+    #define vec_zero() vec_t{0}
     #define vec_set_16(a) vdupq_n_s16(a)
     #define vec_max_16(a, b) vmaxq_s16(a, b)
     #define vec_min_16(a, b) vminq_s16(a, b)
@@ -133,14 +132,86 @@ using psqt_vec_t = int32x4_t;
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
-    #define vec_zero_psqt() \
-        psqt_vec_t { 0 }
+    #define vec_zero_psqt() psqt_vec_t{0}
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
 #else
     #undef VECTOR
 
+#endif
+
+enum UpdateOperation {
+    Add,
+    Sub
+};
+
+#ifdef VECTOR
+
+template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
+vec_t fused(const vec_t& in) {
+    return in;
+}
+
+template<UpdateOperation update_op,
+         UpdateOperation... ops,
+         typename T,
+         typename... Ts,
+         std::enable_if_t<is_all_same_v<vec_t, T, Ts...>, bool>  = true,
+         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
+vec_t fused(const vec_t& in, const T& operand, const Ts&... operands) {
+    switch (update_op)
+    {
+    case Add :
+        return vec_add_16(fused<ops...>(in, operands...), operand);
+    case Sub :
+        return vec_sub_16(fused<ops...>(in, operands...), operand);
+    }
+}
+
+template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
+psqt_vec_t fused(const psqt_vec_t& in) {
+    return in;
+}
+
+template<UpdateOperation update_op,
+         UpdateOperation... ops,
+         typename T,
+         typename... Ts,
+         std::enable_if_t<is_all_same_v<psqt_vec_t, T, Ts...>, bool> = true,
+         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool>     = true>
+psqt_vec_t fused(const psqt_vec_t& in, const T& operand, const Ts&... operands) {
+    switch (update_op)
+    {
+    case Add :
+        return vec_add_psqt_32(fused<ops...>(in, operands...), operand);
+    case Sub :
+        return vec_sub_psqt_32(fused<ops...>(in, operands...), operand);
+    }
+}
+
+#else
+
+template<UpdateOperation... ops, typename T, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
+T fused(const T& in) {
+    return in;
+}
+
+template<UpdateOperation update_op,
+         UpdateOperation... ops,
+         typename T,
+         typename... Ts,
+         std::enable_if_t<is_all_same_v<T, Ts...>, bool>         = true,
+         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
+T fused(const T& in, const T& operand, const Ts&... operands) {
+    switch (update_op)
+    {
+    case Add :
+        return fused<ops...>(in, operands...) + operand;
+    case Sub :
+        return fused<ops...>(in, operands...) - operand;
+    }
+}
 #endif
 
 // Returns the inverse of a permutation
@@ -241,7 +312,7 @@ class SIMDTiling {
 
 // Input feature converter
 template<IndexType                                 TransformedFeatureDimensions,
-         Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
+         Accumulator<TransformedFeatureDimensions> AccumulatorState::* accPtr>
 class FeatureTransformer {
 
     // Number of output dimensions for one side
