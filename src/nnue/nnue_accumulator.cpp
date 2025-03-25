@@ -19,9 +19,12 @@
 #include "nnue_accumulator.h"
 
 #include <cassert>
+#include <initializer_list>
+#include <memory>
 #include <type_traits>
 
 #include "../bitboard.h"
+#include "../misc.h"
 #include "../position.h"
 #include "../types.h"
 #include "nnue_architecture.h"
