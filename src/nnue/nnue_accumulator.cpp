@@ -206,19 +206,20 @@ AccumulatorStack::evaluate<TransformedFeatureDimensionsSmall, &AccumulatorState:
 namespace {
 
 template<IndexType Width,
-         typename VectorType,
+         typename VectorWrapper,
          UpdateOperation... ops,
          typename ElementType,
          typename... Ts,
          std::enable_if_t<is_all_same_v<ElementType, Ts...>, bool> = true>
 void fused_row_reduce(const ElementType* in, ElementType* out, const Ts* const... rows) {
-    constexpr IndexType size = Width * sizeof(ElementType) / sizeof(VectorType);
+    constexpr IndexType size = Width * sizeof(ElementType) / sizeof(typename VectorWrapper::type);
 
-    auto* vecIn  = reinterpret_cast<const VectorType*>(in);
-    auto* vecOut = reinterpret_cast<VectorType*>(out);
+    auto* vecIn  = reinterpret_cast<const typename VectorWrapper::type*>(in);
+    auto* vecOut = reinterpret_cast<typename VectorWrapper::type*>(out);
 
     for (IndexType i = 0; i < size; ++i)
-        vecOut[i] = fused<ops...>(vecIn[i], reinterpret_cast<const VectorType*>(rows)[i]...);
+        vecOut[i] = fused<VectorWrapper, ops...>(
+          vecIn[i], reinterpret_cast<const typename VectorWrapper::type*>(rows)[i]...);
 }
 
 template<Color                   Perspective,
@@ -236,14 +237,6 @@ struct AccumulatorUpdateContext {
         from{accF},
         to{accT} {}
 
-#ifdef VECTOR
-    using AccumulatorVectorType = vec_t;
-    using PSQTVectorType        = psqt_vec_t;
-#else
-    using AccumulatorVectorType = BiasType;
-    using PSQTVectorType        = PSQTWeightType;
-#endif
-
     template<UpdateOperation... ops,
              typename... Ts,
              std::enable_if_t<is_all_same_v<IndexType, Ts...>, bool> = true>
@@ -256,11 +249,11 @@ struct AccumulatorUpdateContext {
             return &featureTransformer.psqtWeights[index * PSQTBuckets];
         };
 
-        fused_row_reduce<Dimensions, AccumulatorVectorType, ops...>(
-          (from.*accPtr).accumulation[Perspective], (to.*accPtr).accumulation[Perspective],
-          to_weight_vector(indices)...);
+        fused_row_reduce<Dimensions, Vec16Wrapper, ops...>((from.*accPtr).accumulation[Perspective],
+                                                           (to.*accPtr).accumulation[Perspective],
+                                                           to_weight_vector(indices)...);
 
-        fused_row_reduce<PSQTBuckets, PSQTVectorType, ops...>(
+        fused_row_reduce<PSQTBuckets, Vec32Wrapper, ops...>(
           (from.*accPtr).psqtAccumulation[Perspective], (to.*accPtr).psqtAccumulation[Perspective],
           to_psqt_weight_vector(indices)...);
     }
@@ -409,7 +402,7 @@ void update_accumulator_refresh_cache(
             auto* columnA = reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA]);
 
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = fused<Add, Sub>(acc[k], columnA[k], columnR[k]);
+                acc[k] = fused<Vec16Wrapper, Add, Sub>(acc[k], columnA[k], columnR[k]);
         }
         if (combineLast3)
         {
@@ -428,7 +421,8 @@ void update_accumulator_refresh_cache(
                   reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetR2]);
 
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                    acc[k] = fused<Add, Sub, Sub>(acc[k], columnA[k], columnR[k], columnR2[k]);
+                    acc[k] = fused<Vec16Wrapper, Add, Sub, Sub>(acc[k], columnA[k], columnR[k],
+                                                                columnR2[k]);
             }
             else
             {
@@ -438,7 +432,8 @@ void update_accumulator_refresh_cache(
                   reinterpret_cast<const vec_t*>(&featureTransformer.weights[offsetA2]);
 
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                    acc[k] = fused<Add, Add, Sub>(acc[k], columnA[k], columnA2[k], columnR[k]);
+                    acc[k] = fused<Vec16Wrapper, Add, Add, Sub>(acc[k], columnA[k], columnA2[k],
+                                                                columnR[k]);
             }
         }
         else

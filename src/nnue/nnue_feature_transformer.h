@@ -141,78 +141,63 @@ using psqt_vec_t = int32x4_t;
 
 #endif
 
+struct Vec16Wrapper {
+#ifdef VECTOR
+    using type = vec_t;
+    static constexpr type add(const type& lhs, const type& rhs) { return vec_add_16(lhs, rhs); }
+    static constexpr type sub(const type& lhs, const type& rhs) { return vec_sub_16(lhs, rhs); }
+#else
+    using type = BiasType;
+    static constexpr type add(const type& lhs, const type& rhs) { return lhs + rhs; }
+    static constexpr type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
+#endif
+};
+
+struct Vec32Wrapper {
+#ifdef VECTOR
+    using type = psqt_vec_t;
+    static constexpr type add(const type& lhs, const type& rhs) {
+        return vec_add_psqt_32(lhs, rhs);
+    }
+    static constexpr type sub(const type& lhs, const type& rhs) {
+        return vec_sub_psqt_32(lhs, rhs);
+    }
+#else
+    using type = PSQTWeightType;
+    static constexpr type add(const type& lhs, const type& rhs) { return lhs + rhs; }
+    static constexpr type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
+#endif
+};
+
 enum UpdateOperation {
     Add,
     Sub
 };
 
-#ifdef VECTOR
-
-template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
-vec_t fused(const vec_t& in) {
+template<typename VecWrapper,
+         UpdateOperation... ops,
+         std::enable_if_t<sizeof...(ops) == 0, bool> = true>
+typename VecWrapper::type fused(const typename VecWrapper::type& in) {
     return in;
 }
 
-template<UpdateOperation update_op,
+template<typename VecWrapper,
+         UpdateOperation update_op,
          UpdateOperation... ops,
          typename T,
          typename... Ts,
-         std::enable_if_t<is_all_same_v<vec_t, T, Ts...>, bool>  = true,
-         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
-vec_t fused(const vec_t& in, const T& operand, const Ts&... operands) {
+         std::enable_if_t<is_all_same_v<typename VecWrapper::type, T, Ts...>, bool> = true,
+         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool>                    = true>
+typename VecWrapper::type
+fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operands) {
     switch (update_op)
     {
     case Add :
-        return vec_add_16(fused<ops...>(in, operands...), operand);
+        return VecWrapper::add(fused<VecWrapper, ops...>(in, operands...), operand);
     case Sub :
-        return vec_sub_16(fused<ops...>(in, operands...), operand);
+        return VecWrapper::sub(fused<VecWrapper, ops...>(in, operands...), operand);
     }
 }
-
-template<UpdateOperation... ops, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
-psqt_vec_t fused(const psqt_vec_t& in) {
-    return in;
-}
-
-template<UpdateOperation update_op,
-         UpdateOperation... ops,
-         typename T,
-         typename... Ts,
-         std::enable_if_t<is_all_same_v<psqt_vec_t, T, Ts...>, bool> = true,
-         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool>     = true>
-psqt_vec_t fused(const psqt_vec_t& in, const T& operand, const Ts&... operands) {
-    switch (update_op)
-    {
-    case Add :
-        return vec_add_psqt_32(fused<ops...>(in, operands...), operand);
-    case Sub :
-        return vec_sub_psqt_32(fused<ops...>(in, operands...), operand);
-    }
-}
-
-#else
-
-template<UpdateOperation... ops, typename T, std::enable_if_t<sizeof...(ops) == 0, bool> = true>
-T fused(const T& in) {
-    return in;
-}
-
-template<UpdateOperation update_op,
-         UpdateOperation... ops,
-         typename T,
-         typename... Ts,
-         std::enable_if_t<is_all_same_v<T, Ts...>, bool>         = true,
-         std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
-T fused(const T& in, const T& operand, const Ts&... operands) {
-    switch (update_op)
-    {
-    case Add :
-        return fused<ops...>(in, operands...) + operand;
-    case Sub :
-        return fused<ops...>(in, operands...) - operand;
-    }
-}
-#endif
 
 // Returns the inverse of a permutation
 template<std::size_t Len>
