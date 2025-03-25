@@ -191,9 +191,9 @@ fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operan
     switch (update_op)
     {
     case Add :
-        return VecWrapper::add(fused<VecWrapper, ops...>(in, operands...), operand);
+        return fused<VecWrapper, ops...>(VecWrapper::add(in, operand), operands...);
     case Sub :
-        return VecWrapper::sub(fused<VecWrapper, ops...>(in, operands...), operand);
+        return fused<VecWrapper, ops...>(VecWrapper::sub(in, operand), operands...);
     }
 }
 
