@@ -144,28 +144,24 @@ using psqt_vec_t = int32x4_t;
 struct Vec16Wrapper {
 #ifdef VECTOR
     using type = vec_t;
-    static constexpr type add(const type& lhs, const type& rhs) { return vec_add_16(lhs, rhs); }
-    static constexpr type sub(const type& lhs, const type& rhs) { return vec_sub_16(lhs, rhs); }
+    static type add(const type& lhs, const type& rhs) { return vec_add_16(lhs, rhs); }
+    static type sub(const type& lhs, const type& rhs) { return vec_sub_16(lhs, rhs); }
 #else
     using type = BiasType;
-    static constexpr type add(const type& lhs, const type& rhs) { return lhs + rhs; }
-    static constexpr type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
+    static type add(const type& lhs, const type& rhs) { return lhs + rhs; }
+    static type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
 #endif
 };
 
 struct Vec32Wrapper {
 #ifdef VECTOR
     using type = psqt_vec_t;
-    static constexpr type add(const type& lhs, const type& rhs) {
-        return vec_add_psqt_32(lhs, rhs);
-    }
-    static constexpr type sub(const type& lhs, const type& rhs) {
-        return vec_sub_psqt_32(lhs, rhs);
-    }
+    static type add(const type& lhs, const type& rhs) { return vec_add_psqt_32(lhs, rhs); }
+    static type sub(const type& lhs, const type& rhs) { return vec_sub_psqt_32(lhs, rhs); }
 #else
     using type = PSQTWeightType;
-    static constexpr type add(const type& lhs, const type& rhs) { return lhs + rhs; }
-    static constexpr type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
+    static type add(const type& lhs, const type& rhs) { return lhs + rhs; }
+    static type sub(const type& lhs, const type& rhs) { return lhs - rhs; }
 #endif
 };
 
