@@ -198,8 +198,8 @@ AccumulatorStack::evaluate<TransformedFeatureDimensionsSmall, &AccumulatorState:
 
 namespace {
 
-template<IndexType Width,
-         typename VectorWrapper,
+template<typename VectorWrapper,
+         IndexType Width,
          UpdateOperation... ops,
          typename ElementType,
          typename... Ts,
@@ -240,11 +240,11 @@ struct AccumulatorUpdateContext {
             return &featureTransformer.psqtWeights[index * PSQTBuckets];
         };
 
-        fused_row_reduce<Dimensions, Vec16Wrapper, ops...>((from.*accPtr).accumulation[Perspective],
+        fused_row_reduce<Vec16Wrapper, Dimensions, ops...>((from.*accPtr).accumulation[Perspective],
                                                            (to.*accPtr).accumulation[Perspective],
                                                            to_weight_vector(indices)...);
 
-        fused_row_reduce<PSQTBuckets, Vec32Wrapper, ops...>(
+        fused_row_reduce<Vec32Wrapper, PSQTBuckets, ops...>(
           (from.*accPtr).psqtAccumulation[Perspective], (to.*accPtr).psqtAccumulation[Perspective],
           to_psqt_weight_vector(indices)...);
     }
