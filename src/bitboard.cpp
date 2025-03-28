@@ -32,7 +32,6 @@ uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
 alignas(64) Magic Magics[SQUARE_NB][2];
 
@@ -86,8 +85,8 @@ void Bitboards::init() {
 
     for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
     {
-        PawnAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
-        PawnAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
+        PseudoAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
+        PseudoAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
         for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
             PseudoAttacks[KING][s1] |= safe_destination(s1, step);

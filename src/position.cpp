@@ -270,7 +270,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         // a) side to move have a pawn threatening epSquare
         // b) there is an enemy pawn in front of epSquare
         // c) there is no piece on epSquare or behind epSquare
-        enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
+        enpassant = attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN)
                  && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
                  && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
     }
@@ -321,7 +321,7 @@ void Position::set_check_info() const {
 
     Square ksq = square<KING>(~sideToMove);
 
-    st->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
+    st->checkSquares[PAWN]   = attacks_bb<PAWN>(ksq, ~sideToMove);
     st->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
     st->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
     st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
@@ -487,8 +487,8 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
     return (attacks_bb<ROOK>(s, occupied) & pieces(ROOK, QUEEN))
          | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
-         | (pawn_attacks_bb(BLACK, s) & pieces(WHITE, PAWN))
-         | (pawn_attacks_bb(WHITE, s) & pieces(BLACK, PAWN))
+         | (attacks_bb<PAWN>(s, BLACK) & pieces(WHITE, PAWN))
+         | (attacks_bb<PAWN>(s, WHITE) & pieces(BLACK, PAWN))
          | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT)) | (attacks_bb<KING>(s) & pieces(KING));
 }
 
@@ -498,7 +498,7 @@ bool Position::attackers_to_exist(Square s, Bitboard occupied, Color c) const {
             && (attacks_bb<ROOK>(s, occupied) & pieces(c, ROOK, QUEEN)))
         || ((attacks_bb<BISHOP>(s) & pieces(c, BISHOP, QUEEN))
             && (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN)))
-        || (((pawn_attacks_bb(~c, s) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
+        || (((attacks_bb<PAWN>(s, ~c) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
              | (attacks_bb<KING>(s) & pieces(KING)))
             & pieces(c));
 }
@@ -597,7 +597,7 @@ bool Position::pseudo_legal(const Move m) const {
         if ((Rank8BB | Rank1BB) & to)
             return false;
 
-        if (!(pawn_attacks_bb(us, from) & pieces(~us) & to)  // Not a capture
+        if (!(attacks_bb<PAWN>(from, us) & pieces(~us) & to) // Not a capture
             && !((from + pawn_push(us) == to) && empty(to))  // Not a single push
             && !((from + 2 * pawn_push(us) == to)            // Not a double push
                  && (relative_rank(us, from) == RANK_2) && empty(to) && empty(to - pawn_push(us))))
@@ -812,7 +812,7 @@ DirtyPiece Position::do_move(Move                      m,
     {
         // Set en passant square if the moved pawn can be captured
         if ((int(to) ^ int(from)) == 16
-            && (pawn_attacks_bb(us, to - pawn_push(us)) & pieces(them, PAWN)))
+            && (attacks_bb<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
         {
             st->epSquare = to - pawn_push(us);
             k ^= Zobrist::enpassant[file_of(st->epSquare)];

@@ -62,7 +62,6 @@ extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-extern Bitboard PawnAttacks[COLOR_NB][SQUARE_NB];
 
 
 // Magic holds all magic bitboards relevant data for a single square
@@ -155,11 +154,6 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                       : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
-inline Bitboard pawn_attacks_bb(Color c, Square s) {
-
-    assert(is_ok(s));
-    return PawnAttacks[c][s];
-}
 
 // Returns a bitboard representing an entire line (from board edge
 // to board edge) that intersects the two given squares. If the given squares
@@ -216,10 +210,10 @@ inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 // Returns the pseudo attacks of the given piece type
 // assuming an empty board.
 template<PieceType Pt>
-inline Bitboard attacks_bb(Square s) {
+inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
 
-    assert((Pt != PAWN) && (is_ok(s)));
-    return PseudoAttacks[Pt][s];
+    assert((Pt != PAWN || c < COLOR_NB) && (is_ok(s)));
+    return Pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[Pt][s];
 }
 
 
