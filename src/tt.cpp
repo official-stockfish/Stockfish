@@ -83,10 +83,10 @@ static constexpr int GENERATION_CYCLE = 255 + GENERATION_DELTA;
 // mask to pull out generation number
 static constexpr int GENERATION_MASK = (0xFF << GENERATION_BITS) & 0xFF;
 
-// DEPTH_ENTRY_OFFSET exists because 1) we use `bool(depth8)` as the occupancy check, but
+// DEPTH_ENTRY_OFFSET exists because 1) we use `depth8 != 0` as the occupancy check, but
 // 2) we need to store negative depths for QS. (`depth8` is the only field with "spare bits":
 // we sacrifice the ability to store depths greater than 1<<8 less the offset, as asserted in `save`.)
-bool TTEntry::is_occupied() const { return bool(depth8); }
+bool TTEntry::is_occupied() const { return depth8 != 0; }
 
 // Populates the TTEntry with a new node's data, possibly
 // overwriting an old position. The update is not atomic and can be racy.
