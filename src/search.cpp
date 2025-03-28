@@ -292,7 +292,7 @@ void Search::Worker::iterative_deepening() {
     Stack  stack[MAX_PLY + 10] = {};
     Stack* ss                  = stack + 7;
 
-    for (int i = 7; i > 0; --i)
+    for (int i = 1; i <= 7; ++i)
     {
         (ss - i)->continuationHistory =
           &this->continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
