@@ -1278,8 +1278,7 @@ moves_loop:  // When in check, search starts here
                     value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, newDepth, !cutNode);
 
                 // Post LMR continuation history updates
-                int bonus = 1600;
-                update_continuation_histories(ss, movedPiece, move.to_sq(), bonus);
+                update_continuation_histories(ss, movedPiece, move.to_sq(), 1600);
             }
             else if (value > alpha && value < bestValue + 9)
                 newDepth--;
