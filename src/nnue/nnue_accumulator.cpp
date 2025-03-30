@@ -25,12 +25,24 @@
 #include "../bitboard.h"
 #include "../position.h"
 #include "../types.h"
-#include "nnue_architecture.h"
 #include "network.h"
+#include "nnue_architecture.h"
 #include "nnue_common.h"
 #include "nnue_feature_transformer.h"
 
 namespace Stockfish::Eval::NNUE {
+
+#if defined(__GNUC__) && !defined(__clang__)
+    #define sf_assume(cond) \
+        do \
+        { \
+            if (!(cond)) \
+                __builtin_unreachable(); \
+        } while (0)
+#else
+    // do nothing for other compilers
+    #define sf_assume(cond)
+#endif
 
 namespace {
 
@@ -244,6 +256,12 @@ void update_accumulator_incremental(
             assert(added.size() <= removed.size());
         else
             assert(removed.size() <= added.size());
+
+        // Workaround compiler warning for uninitialized variables, replicated on
+        // profile builds on windows with gcc 14.2.0.
+        // TODO remove once unneeded
+        sf_assume(added.size() == 1 || added.size() == 2);
+        sf_assume(removed.size() == 1 || removed.size() == 2);
 
 #ifdef VECTOR
         auto* accIn =
