@@ -849,7 +849,7 @@ Value Search::Worker::search(
 
     opponentWorsening = ss->staticEval > -(ss - 1)->staticEval;
 
-    ss->fastEMA = ((ss-2)->fastEMA * 3 + ss->staticEval)/4;
+    ss->fastEMA = ((ss-2)->fastEMA + ss->staticEval)/2;
     ss->slowEMA = ((ss-2)->slowEMA * 7 + ss->staticEval)/8;
     EMATrendingUp = (ss->fastEMA > ss->slowEMA);
 
