@@ -850,7 +850,7 @@ Value Search::Worker::search(
     opponentWorsening = ss->staticEval > -(ss - 1)->staticEval;
 
     ss->fastEMA = ((ss-2)->fastEMA + ss->staticEval)/2;
-    ss->slowEMA = ((ss-2)->slowEMA * 3 + ss->staticEval)/4;
+    ss->slowEMA = ((ss-2)->slowEMA * 7 + ss->staticEval)/8;
     EMATrendingUp = (ss->fastEMA > ss->slowEMA);
 
     if (priorReduction >= 3 && !opponentWorsening)
@@ -1765,7 +1765,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 
 Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) const {
     int reductionScale = reductions[d] * reductions[mn];
-    return reductionScale - delta * 764 / rootDelta + !i * reductionScale * 191 / 512 + 1343;
+    return reductionScale - delta * 764 / rootDelta + !i * reductionScale * 191 / 512 + 1089;
 }
 
 // elapsed() returns the time elapsed since the search started. If the
