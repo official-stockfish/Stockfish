@@ -221,27 +221,38 @@ uint8_t TranspositionTable::generation() const { return generation8; }
 // minus 8 times its relative age. TTEntry t1 is considered more valuable than
 // TTEntry t2 if its replace value is greater than that of t2.
 std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) const {
+    TTEntry* const tte = first_entry(key);
+    const uint16_t key16 = uint16_t(key);
 
-    TTEntry* const tte   = first_entry(key);
-    const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
+    // Process the first entry outside the loop.
+    TTEntry* candidate = &tte[0];
+    int bestReplaceValue = tte[0].depth8 - (tte[0].relative_age(generation8) * 2);
 
-    for (int i = 0; i < ClusterSize; ++i)
-        if (tte[i].key16 == key16)
-            // This gap is the main place for read races.
-            // After `read()` completes that copy is final, but may be self-inconsistent.
+    // Check the first entry explicitly.
+    if (tte[0].key16 == key16) {
+        return {tte[0].is_occupied(), tte[0].read(), TTWriter(&tte[0])};
+    }
+
+    // Process the remaining entries starting from index 1.
+    for (int i = 1; i < ClusterSize; ++i) {
+        // Check for a key match in the current entry.
+        if (tte[i].key16 == key16) {
             return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i])};
+        }
 
-    // Find an entry to be replaced according to the replacement strategy
-    TTEntry* replace = tte;
-    for (int i = 1; i < ClusterSize; ++i)
-        if (replace->depth8 - replace->relative_age(generation8) * 2
-            > tte[i].depth8 - tte[i].relative_age(generation8) * 2)
-            replace = &tte[i];
+        // Compute the replacement value for the current entry.
+        int currReplaceValue = tte[i].depth8 - (tte[i].relative_age(generation8) * 2);
+        if (currReplaceValue < bestReplaceValue) {
+            candidate = &tte[i];
+            bestReplaceValue = currReplaceValue;
+        }
+    }
 
     return {false,
             TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
-            TTWriter(replace)};
+            TTWriter(candidate)};
 }
+
 
 
 TTEntry* TranspositionTable::first_entry(const Key key) const {
