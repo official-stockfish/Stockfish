@@ -37,6 +37,7 @@
 //               | only in 64-bit mode and requires hardware with pext support.
 
     #include <cassert>
+    #include <cstddef>
     #include <cstdint>
     #include <type_traits>
 
