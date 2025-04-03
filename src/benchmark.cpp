@@ -437,6 +437,10 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
     return list;
 }
 
+// invoke as 
+// speedtest [threads] [hash] [time]
+// if "nodes[time]" is passed as a fourth argument searches will be limited by number of nodes
+// instead of wall time, using a conversion factor of 692 kNPS (same as fishtest)
 BenchmarkSetup setup_benchmark(std::istream& is) {
     // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
     // for the current sequence have been searched.
@@ -448,6 +452,7 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     // Assign default values to missing arguments
     int desiredTimeS;
+    bool nodestime = false;
 
     if (!(is >> setup.threads))
         setup.threads = get_hardware_concurrency();
@@ -464,6 +469,10 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     else
         setup.originalInvocation += " " + std::to_string(desiredTimeS);
 
+    std::string arg;
+    if (is >> arg)
+        nodestime = (arg == "nodes" || arg == "nodestime");
+
     setup.filledInvocation += std::to_string(setup.threads) + " " + std::to_string(setup.ttSize)
                             + " " + std::to_string(desiredTimeS);
 
@@ -479,7 +488,6 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     float totalTime = 0;
     for (const auto& game : BenchmarkPositions)
     {
-        setup.commands.emplace_back("ucinewgame");
         int ply = 1;
         for (int i = 0; i < static_cast<int>(game.size()); ++i)
         {
@@ -500,7 +508,11 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
             setup.commands.emplace_back("position fen " + fen);
 
             const int correctedTime = static_cast<int>(getCorrectedTime(ply) * timeScaleFactor);
-            setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
+            if (nodestime)
+                // fishtest base nps is 691680
+                setup.commands.emplace_back("go nodes " + std::to_string(correctedTime * 692 * setup.threads));
+            else
+                setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
 
             ply += 1;
         }
