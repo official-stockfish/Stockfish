@@ -134,7 +134,7 @@ ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard ta
             if (Type == EVASIONS && (target & (pos.ep_square() + Up)))
                 return moveList;
 
-            b1 = pawnsNotOn7 & pawn_attacks_bb(Them, pos.ep_square());
+            b1 = pawnsNotOn7 & attacks_bb<PAWN>(pos.ep_square(), Them);
 
             assert(b1);
 
