@@ -49,102 +49,105 @@ ExtMove* make_promotions(ExtMove* moveList, [[maybe_unused]] Square to) {
 
 template<Color Us, GenType Type>
 ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
+    constexpr Color Them = ~Us;
+    // Use TRank7BB and TRank3BB depending on side.
+    constexpr Bitboard TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
+    constexpr Bitboard TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
+    constexpr Direction Up      = pawn_push(Us);
+    constexpr Direction UpRight = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
+    constexpr Direction UpLeft  = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
 
-    constexpr Color     Them     = ~Us;
-    constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
-    constexpr Bitboard  TRank3BB = (Us == WHITE ? Rank3BB : Rank6BB);
-    constexpr Direction Up       = pawn_push(Us);
-    constexpr Direction UpRight  = (Us == WHITE ? NORTH_EAST : SOUTH_WEST);
-    constexpr Direction UpLeft   = (Us == WHITE ? NORTH_WEST : SOUTH_EAST);
-
+    // Precompute empty squares and enemy pieces once.
     const Bitboard emptySquares = ~pos.pieces();
-    const Bitboard enemies      = Type == EVASIONS ? pos.checkers() : pos.pieces(Them);
+    const Bitboard enemies = (Type == EVASIONS) ? pos.checkers() : pos.pieces(Them);
 
-    Bitboard pawnsOn7    = pos.pieces(Us, PAWN) & TRank7BB;
-    Bitboard pawnsNotOn7 = pos.pieces(Us, PAWN) & ~TRank7BB;
+    // Precompute pawn bitboards split by rank.
+    const Bitboard pawns = pos.pieces(Us, PAWN);
+    const Bitboard pawnsOn7    = pawns & TRank7BB;
+    const Bitboard pawnsNotOn7 = pawns & ~TRank7BB;
 
-    // Single and double pawn pushes, no promotions
-    if constexpr (Type != CAPTURES)
-    {
+    // -- Single and double pawn pushes, non-promotions --
+    if constexpr (Type != CAPTURES) {
+        // Single push from non 7th rank.
         Bitboard b1 = shift<Up>(pawnsNotOn7) & emptySquares;
+        // Double push requires that the destination is on the proper rank.
         Bitboard b2 = shift<Up>(b1 & TRank3BB) & emptySquares;
 
-        if constexpr (Type == EVASIONS)  // Consider only blocking squares
-        {
+        if constexpr (Type == EVASIONS) {
             b1 &= target;
             b2 &= target;
         }
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
+        while (b1) {
+            Square to = pop_lsb(b1);  // Should be inlined for speed.
             *moveList++ = Move(to - Up, to);
         }
 
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
+        while (b2) {
+            Square to = pop_lsb(b2);
             *moveList++ = Move(to - Up - Up, to);
         }
     }
 
-    // Promotions and underpromotions
-    if (pawnsOn7)
-    {
-        Bitboard b1 = shift<UpRight>(pawnsOn7) & enemies;
-        Bitboard b2 = shift<UpLeft>(pawnsOn7) & enemies;
-        Bitboard b3 = shift<Up>(pawnsOn7) & emptySquares;
-
+    // -- Promotions and underpromotions --
+    if (pawnsOn7) {
+        // Precalculate the three move directions for promotion.
+        Bitboard promoCapRight = shift<UpRight>(pawnsOn7) & enemies;
+        Bitboard promoCapLeft  = shift<UpLeft>(pawnsOn7) & enemies;
+        Bitboard promoForward  = shift<Up>(pawnsOn7) & emptySquares;
         if constexpr (Type == EVASIONS)
-            b3 &= target;
+            promoForward &= target;
 
-        while (b1)
-            moveList = make_promotions<Type, UpRight, true>(moveList, pop_lsb(b1));
-
-        while (b2)
-            moveList = make_promotions<Type, UpLeft, true>(moveList, pop_lsb(b2));
-
-        while (b3)
-            moveList = make_promotions<Type, Up, false>(moveList, pop_lsb(b3));
+        while (promoCapRight) {
+            // Use a helper that should be inlined to create promotion moves.
+            moveList = make_promotions<Type, UpRight, true>(moveList, pop_lsb(promoCapRight));
+        }
+        while (promoCapLeft) {
+            moveList = make_promotions<Type, UpLeft, true>(moveList, pop_lsb(promoCapLeft));
+        }
+        while (promoForward) {
+            moveList = make_promotions<Type, Up, false>(moveList, pop_lsb(promoForward));
+        }
     }
 
-    // Standard and en passant captures
-    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-    {
-        Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
-        Bitboard b2 = shift<UpLeft>(pawnsNotOn7) & enemies;
+    // -- Standard and en passant captures --
+    if constexpr (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS) {
+        Bitboard captureRight = shift<UpRight>(pawnsNotOn7) & enemies;
+        Bitboard captureLeft  = shift<UpLeft>(pawnsNotOn7) & enemies;
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
+        while (captureRight) {
+            Square to = pop_lsb(captureRight);
             *moveList++ = Move(to - UpRight, to);
         }
-
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
+        while (captureLeft) {
+            Square to = pop_lsb(captureLeft);
             *moveList++ = Move(to - UpLeft, to);
         }
 
-        if (pos.ep_square() != SQ_NONE)
-        {
+        if (pos.ep_square() != SQ_NONE) {
+            // The ep square should be on the proper rank.
             assert(rank_of(pos.ep_square()) == relative_rank(Us, RANK_6));
 
-            // An en passant capture cannot resolve a discovered check
-            if (Type == EVASIONS && (target & (pos.ep_square() + Up)))
+            // For evasions, if the target mask already covers the ep push square, skip en passant.
+            if (Type == EVASIONS && (target & (pos.ep_square() + Up))) {
                 return moveList;
+            }
 
-            b1 = pawnsNotOn7 & attacks_bb<PAWN>(pos.ep_square(), Them);
+            // Only compute the pawn mask once for en passant.
+            Bitboard ep_candidates = pawnsNotOn7 & attacks_bb<PAWN>(pos.ep_square(), Them);
+            assert(ep_candidates);
 
-            assert(b1);
-
-            while (b1)
-                *moveList++ = Move::make<EN_PASSANT>(pop_lsb(b1), pos.ep_square());
+            while (ep_candidates) {
+                *moveList++ = Move::make<EN_PASSANT>(pop_lsb(ep_candidates), pos.ep_square());
+            }
         }
     }
 
     return moveList;
 }
+
+
+
 
 
 template<Color Us, PieceType Pt>
