@@ -194,6 +194,10 @@ fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operan
         return fused<VecWrapper, ops...>(VecWrapper::add(in, operand), operands...);
     case Sub :
         return fused<VecWrapper, ops...>(VecWrapper::sub(in, operand), operands...);
+    default :
+        static_assert(update_op == Add || update_op == Sub,
+                      "Only Add and Sub are currently supported.");
+        return typename VecWrapper::type();
     }
 }
 
