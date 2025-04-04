@@ -29,7 +29,6 @@
 #include "../types.h"
 #include "network.h"
 #include "nnue_architecture.h"
-#include "nnue_common.h"
 #include "nnue_feature_transformer.h"
 
 namespace Stockfish::Eval::NNUE {
@@ -49,7 +48,7 @@ namespace Stockfish::Eval::NNUE {
 namespace {
 
 template<Color                                     Perspective,
-         IncUpdateDirection                        Direction = FORWARD,
+         bool                                      Forward,
          IndexType                                 TransformedFeatureDimensions,
          Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
 void update_accumulator_incremental(
@@ -168,7 +167,7 @@ void AccumulatorStack::forward_update_incremental(
     const Square ksq = pos.square<KING>(Perspective);
 
     for (std::size_t next = begin + 1; next < m_current_idx; next++)
-        update_accumulator_incremental<Perspective>(featureTransformer, ksq, m_accumulators[next],
+        update_accumulator_incremental<Perspective, true>(featureTransformer, ksq, m_accumulators[next],
                                                     m_accumulators[next - 1]);
 
     assert((latest().*accPtr).computed[Perspective]);
@@ -187,7 +186,7 @@ void AccumulatorStack::backward_update_incremental(
     const Square ksq = pos.square<KING>(Perspective);
 
     for (std::size_t next = m_current_idx - 2; next >= end; next--)
-        update_accumulator_incremental<Perspective, BACKWARD>(
+        update_accumulator_incremental<Perspective, false>(
           featureTransformer, ksq, m_accumulators[next], m_accumulators[next + 1]);
 
     assert((m_accumulators[end].*accPtr).computed[Perspective]);
@@ -272,7 +271,7 @@ auto make_accumulator_update_context(
 }
 
 template<Color                                     Perspective,
-         IncUpdateDirection                        Direction,
+         bool                                      Forward,
          IndexType                                 TransformedFeatureDimensions,
          Accumulator<TransformedFeatureDimensions> AccumulatorState::*accPtr>
 void update_accumulator_incremental(
@@ -280,10 +279,6 @@ void update_accumulator_incremental(
   const Square                                                    ksq,
   AccumulatorState&                                               target_state,
   const AccumulatorState&                                         computed) {
-    [[maybe_unused]] constexpr bool Forward  = Direction == FORWARD;
-    [[maybe_unused]] constexpr bool Backward = Direction == BACKWARD;
-
-    assert(Forward != Backward);
 
     assert((computed.*accPtr).computed[Perspective]);
     assert(!(target_state.*accPtr).computed[Perspective]);
@@ -303,11 +298,8 @@ void update_accumulator_incremental(
 
     assert(added.size() == 1 || added.size() == 2);
     assert(removed.size() == 1 || removed.size() == 2);
-
-    if (Forward)
-        assert(added.size() <= removed.size());
-    else
-        assert(removed.size() <= added.size());
+    assert(   ( Forward && added.size() <= removed.size())
+           || (!Forward && added.size() >= removed.size()));
 
     // Workaround compiler warning for uninitialized variables, replicated on
     // profile builds on windows with gcc 14.2.0.
@@ -318,7 +310,7 @@ void update_accumulator_incremental(
     auto updateContext =
       make_accumulator_update_context<Perspective>(featureTransformer, computed, target_state);
 
-    if ((Forward && removed.size() == 1) || (Backward && added.size() == 1))
+    if ((Forward && removed.size() == 1) || (!Forward && added.size() == 1))
     {
         assert(added.size() == 1 && removed.size() == 1);
         updateContext.template apply<Add, Sub>(added[0], removed[0]);
@@ -328,7 +320,7 @@ void update_accumulator_incremental(
         assert(removed.size() == 2);
         updateContext.template apply<Add, Sub, Sub>(added[0], removed[0], removed[1]);
     }
-    else if (Backward && removed.size() == 1)
+    else if (!Forward && removed.size() == 1)
     {
         assert(added.size() == 2);
         updateContext.template apply<Add, Add, Sub>(added[0], added[1], removed[0]);
@@ -396,7 +388,7 @@ void update_accumulator_refresh_cache(
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
             acc[k] = entryTile[k];
 
-        std::size_t i = 0;
+        IndexType i = 0;
         for (; i < std::min(removed.size(), added.size()) - combineLast3; ++i)
         {
             IndexType       indexR  = removed[i];
@@ -476,10 +468,10 @@ void update_accumulator_refresh_cache(
         auto* entryTilePsqt =
           reinterpret_cast<psqt_vec_t*>(&entry.psqtAccumulation[j * Tiling::PsqtTileHeight]);
 
-        for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
+        for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             psqt[k] = entryTilePsqt[k];
 
-        for (std::size_t i = 0; i < removed.size(); ++i)
+        for (IndexType i = 0; i < removed.size(); ++i)
         {
             IndexType       index  = removed[i];
             const IndexType offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -489,7 +481,7 @@ void update_accumulator_refresh_cache(
             for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
                 psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
         }
-        for (std::size_t i = 0; i < added.size(); ++i)
+        for (IndexType i = 0; i < added.size(); ++i)
         {
             IndexType       index  = added[i];
             const IndexType offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -500,9 +492,9 @@ void update_accumulator_refresh_cache(
                 psqt[k] = vec_add_psqt_32(psqt[k], columnPsqt[k]);
         }
 
-        for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
+        for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             vec_store_psqt(&entryTilePsqt[k], psqt[k]);
-        for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
+        for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             vec_store_psqt(&accTilePsqt[k], psqt[k]);
     }
 
