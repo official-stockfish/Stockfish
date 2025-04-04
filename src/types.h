@@ -38,6 +38,7 @@
 
     #include <cassert>
     #include <cstdint>
+    #include <cstddef>
     #include <type_traits>
 
     #if defined(_MSC_VER)
