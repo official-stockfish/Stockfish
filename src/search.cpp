@@ -1446,7 +1446,7 @@ moves_loop:  // When in check, search starts here
     else if (!priorCapture && prevSq != SQ_NONE)
     {
         int bonusScale =
-          (std::clamp(80 * depth - 320, 0, 200) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
+          (std::min(78 * depth - 312, 194) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
            + 141 * (!ss->inCheck && bestValue <= ss->staticEval - 100)
            + 121 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75)
            + 86 * ((ss - 1)->isTTMove) + 86 * (ss->cutoffCnt <= 3)
