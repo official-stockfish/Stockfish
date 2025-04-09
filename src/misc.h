@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iosfwd>
 #include <optional>
 #include <string>
@@ -134,6 +135,12 @@ class ValueList {
     const T*    begin() const { return values_; }
     const T*    end() const { return values_ + size_; }
     const T&    operator[](int index) const { return values_[index]; }
+    void        erase(int index) {
+        assert(index >= 0);
+        assert(index < size_);
+        std::memmove(values_ + index, values_ + index + 1, (size_ - index - 1) * sizeof(T));
+        size_--;
+    }
 
    private:
     T           values_[MaxSize];

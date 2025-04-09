@@ -47,6 +47,14 @@ namespace Stockfish::Eval::NNUE {
 
 namespace {
 
+template<Color Perspective, IndexType TransformedFeatureDimensions>
+void double_inc_update(
+  const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
+  const Square                                            ksq,
+  AccumulatorState&                                       middle_state,
+  AccumulatorState&                                       target_state,
+  const AccumulatorState&                                 computed);
+
 template<Color Perspective, bool Forward, IndexType TransformedFeatureDimensions>
 void update_accumulator_incremental(
   const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
@@ -158,8 +166,21 @@ void AccumulatorStack::forward_update_incremental(
     const Square ksq = pos.square<KING>(Perspective);
 
     for (std::size_t next = begin + 1; next < m_current_idx; next++)
+    {
+        if (next + 1 < m_current_idx) {
+            auto dp1 = m_accumulators[next].dirtyPiece;
+            auto dp2 = m_accumulators[next + 1].dirtyPiece;
+
+            if (dp2.dirty_num >= 2 && dp1.piece[0] == dp2.piece[1] && dp1.to[0] == dp2.from[1]) {
+                double_inc_update<Perspective>(featureTransformer, ksq, m_accumulators[next],
+                                               m_accumulators[next + 1], m_accumulators[next - 1]);
+                next++;
+                continue;
+            }
+        }
         update_accumulator_incremental<Perspective, true>(
           featureTransformer, ksq, m_accumulators[next], m_accumulators[next - 1]);
+    }
 
     assert((latest().acc<Dimensions>()).computed[Perspective]);
 }
@@ -254,6 +275,64 @@ auto make_accumulator_update_context(const FeatureTransformer<Dimensions>& featu
                                      AccumulatorState&                     accumulatorTo) noexcept {
     return AccumulatorUpdateContext<Perspective, Dimensions>{featureTransformer, accumulatorFrom,
                                                              accumulatorTo};
+}
+
+template<Color Perspective, IndexType TransformedFeatureDimensions>
+void double_inc_update(const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
+                       const Square                                            ksq,
+                       AccumulatorState&                                       middle_state,
+                       AccumulatorState&                                       target_state,
+                       const AccumulatorState&                                 computed) {
+
+    assert(computed.acc<TransformedFeatureDimensions>().computed[Perspective]);
+    assert(!middle_state.acc<TransformedFeatureDimensions>().computed[Perspective]);
+    assert(!target_state.acc<TransformedFeatureDimensions>().computed[Perspective]);
+
+    FeatureSet::IndexList removed, added;
+    FeatureSet::append_changed_indices<Perspective>(ksq, middle_state.dirtyPiece, removed,
+                                                    added);
+    // you can't capture a piece that was just involved in castling since the rook ends up
+    // in a square that the king passed
+    assert(added.size() < 2);
+    FeatureSet::append_changed_indices<Perspective>(ksq, target_state.dirtyPiece, removed,
+                                                    added);
+
+    for (unsigned i = 0; i < added.size(); ++i)
+        for (unsigned j = 0; j < removed.size(); ++j)
+        {
+            if (added[i] == removed[j])
+            {
+                added.erase(i);
+                removed.erase(j);
+                goto break_twice;
+            }
+        }
+    assert(false);
+
+break_twice:
+
+    assert(added.size() == 1);
+    assert(removed.size() == 2 || removed.size() == 3);
+
+    // Workaround compiler warning for uninitialized variables, replicated on
+    // profile builds on windows with gcc 14.2.0.
+    // TODO remove once unneeded
+    sf_assume(added.size() == 1);
+    sf_assume(removed.size() == 2 || removed.size() == 3);
+
+    auto updateContext =
+      make_accumulator_update_context<Perspective>(featureTransformer, computed, target_state);
+
+    if (removed.size() == 2)
+    {
+        updateContext.template apply<Add, Sub, Sub>(added[0], removed[0], removed[1]);
+    }
+    else
+    {
+        updateContext.template apply<Add, Sub, Sub, Sub>(added[0], removed[0], removed[1], removed[2]);
+    }
+
+    target_state.acc<TransformedFeatureDimensions>().computed[Perspective] = true;
 }
 
 template<Color Perspective, bool Forward, IndexType TransformedFeatureDimensions>
