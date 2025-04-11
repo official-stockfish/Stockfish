@@ -706,15 +706,18 @@ DirtyPiece Position::do_move(Move                      m,
     ++st->rule50;
     ++st->pliesFromNull;
 
-    DirtyPiece dp;
-    dp.dirty_num = 1;
-
     Color  us       = sideToMove;
     Color  them     = ~us;
     Square from     = m.from_sq();
     Square to       = m.to_sq();
     Piece  pc       = piece_on(from);
     Piece  captured = m.type_of() == EN_PASSANT ? make_piece(them, PAWN) : piece_on(to);
+
+    DirtyPiece dp;
+    dp.pc     = pc;
+    dp.from   = from;
+    dp.to     = to;
+    dp.add_sq = SQ_NONE;
 
     assert(color_of(pc) == us);
     assert(captured == NO_PIECE || color_of(captured) == (m.type_of() != CASTLING ? them : us));
@@ -762,10 +765,8 @@ DirtyPiece Position::do_move(Move                      m,
                 st->minorPieceKey ^= Zobrist::psq[captured][capsq];
         }
 
-        dp.dirty_num = 2;  // 1 piece moved, 1 piece captured
-        dp.piece[1]  = captured;
-        dp.from[1]   = capsq;
-        dp.to[1]     = SQ_NONE;
+        dp.remove_pc = captured;
+        dp.remove_sq = capsq;
 
         // Update board and piece lists
         remove_piece(capsq);
@@ -776,6 +777,8 @@ DirtyPiece Position::do_move(Move                      m,
         // Reset rule 50 counter
         st->rule50 = 0;
     }
+    else
+        dp.remove_sq = SQ_NONE;
 
     // Update hash key
     k ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
@@ -798,9 +801,6 @@ DirtyPiece Position::do_move(Move                      m,
     // Move the piece. The tricky Chess960 castling is handled earlier
     if (m.type_of() != CASTLING)
     {
-        dp.piece[0] = pc;
-        dp.from[0]  = from;
-        dp.to[0]    = to;
 
         move_piece(from, to);
     }
@@ -827,12 +827,9 @@ DirtyPiece Position::do_move(Move                      m,
             remove_piece(to);
             put_piece(promotion, to);
 
-            // Promoting pawn to SQ_NONE, promoted piece from SQ_NONE
-            dp.to[0]               = SQ_NONE;
-            dp.piece[dp.dirty_num] = promotion;
-            dp.from[dp.dirty_num]  = SQ_NONE;
-            dp.to[dp.dirty_num]    = to;
-            dp.dirty_num++;
+            dp.add_pc = promotion;
+            dp.add_sq = to;
+            dp.to     = SQ_NONE;
 
             // Update hash keys
             // Zobrist::psq[pc][to] is zero, so we don't need to clear it
@@ -899,6 +896,10 @@ DirtyPiece Position::do_move(Move                      m,
 
     assert(pos_is_ok());
 
+    assert(dp.pc != NO_PIECE);
+    assert(!(bool(captured) || m.type_of() == CASTLING) ^ (dp.remove_sq != SQ_NONE));
+    assert(dp.from != SQ_NONE);
+    assert(!(dp.add_sq != SQ_NONE) ^ (m.type_of() == PROMOTION || m.type_of() == CASTLING));
     return dp;
 }
 
@@ -981,13 +982,10 @@ void Position::do_castling(
 
     if (Do)
     {
-        dp->piece[0]  = make_piece(us, KING);
-        dp->from[0]   = from;
-        dp->to[0]     = to;
-        dp->piece[1]  = make_piece(us, ROOK);
-        dp->from[1]   = rfrom;
-        dp->to[1]     = rto;
-        dp->dirty_num = 2;
+        dp->to        = to;
+        dp->remove_pc = dp->add_pc = make_piece(us, ROOK);
+        dp->remove_sq              = rfrom;
+        dp->add_sq                 = rto;
     }
 
     // Remove both pieces first since squares could overlap in Chess960

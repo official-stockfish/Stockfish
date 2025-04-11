@@ -276,18 +276,14 @@ enum Rank : int {
 
 // Keep track of what a move changes on the board (used by NNUE)
 struct DirtyPiece {
+    Piece  pc;        // this is never allowed to be NO_PIECE
+    Square from, to;  // to should be SQ_NONE for promotions
 
-    // Number of changed pieces
-    int dirty_num;
-
-    // Max 3 pieces can change in one move. A promotion with capture moves
-    // both the pawn and the captured piece to SQ_NONE and the piece promoted
-    // to from SQ_NONE to the capture square.
-    Piece piece[3];
-
-    // From and to squares, which may be SQ_NONE
-    Square from[3];
-    Square to[3];
+    // if {add,remove}_sq is SQ_NONE, {add,remove}_pc is allowed to be
+    // uninitialized
+    // castling uses add_sq and remove_sq to remove and add the rook
+    Square remove_sq, add_sq;
+    Piece  remove_pc, add_pc;
 };
 
     #define ENABLE_INCR_OPERATORS_ON(T) \
