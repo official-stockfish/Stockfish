@@ -23,7 +23,6 @@
 #include <array>
 #include <cassert>
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -137,7 +136,7 @@ class ValueList {
     const T&    operator[](int index) const { return values_[index]; }
     void        erase(int index) {
         assert(index >= 0);
-        assert(index < size_);
+        assert(static_cast<size_t>(index) < size_);
         std::memmove(values_ + index, values_ + index + 1, (size_ - index - 1) * sizeof(T));
         size_--;
     }
