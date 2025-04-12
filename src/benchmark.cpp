@@ -438,8 +438,13 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 }
 
 // invoke as 
-// speedtest [threads] [hash] [time]
-// if "nodes[time]" is passed as a fourth argument searches will be limited by number of nodes
+// speedtest [threads] [hash] [limit] [limitType]
+// limitType can be one of
+//  - time: will search for a total of <limit> seconds
+//  - nodes: will search a total of <limit> nodes
+//  - depth: will search each of the 258 to depth <limit>
+//  - 
+
 // instead of wall time, using a conversion factor of 692 kNPS (same as fishtest)
 BenchmarkSetup setup_benchmark(std::istream& is) {
     // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
