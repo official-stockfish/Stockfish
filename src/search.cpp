@@ -195,7 +195,7 @@ void Search::Worker::ensure_network_replicated() {
 
 void Search::Worker::start_searching() {
 
-    accumulatorStack.reset(rootPos, networks[numaAccessToken], refreshTable);
+    accumulatorStack.reset();
 
     // Non-main threads go directly to iterative_deepening()
     if (!is_mainthread())
