@@ -85,12 +85,6 @@
       }
     },
     {
-      "binaries": "x86-64-avxvnni",
-      "config": {
-        "os": "macos-14"
-      }
-    },
-    {
       "binaries": "x86-64-avx512",
       "config": {
         "os": "macos-14"
@@ -106,12 +100,6 @@
       "binaries": "x86-64-vnni512",
       "config": {
         "os": "macos-14"
-      }
-    },
-    {
-      "binaries": "x86-64-avxvnni",
-      "config": {
-        "ubuntu-22.04": null
       }
     },
     {
