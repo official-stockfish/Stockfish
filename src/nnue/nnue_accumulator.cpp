@@ -168,12 +168,16 @@ void AccumulatorStack::forward_update_incremental(
     for (std::size_t next = begin + 1; next < m_current_idx; next++)
     {
         if (next + 1 < m_current_idx) {
-            auto dp1 = m_accumulators[next].dirtyPiece;
-            auto dp2 = m_accumulators[next + 1].dirtyPiece;
+            auto& dp1 = m_accumulators[next].dirtyPiece;
+            auto& dp2 = m_accumulators[next + 1].dirtyPiece;
 
             if (dp2.dirty_num >= 2 && dp1.piece[0] == dp2.piece[1] && dp1.to[0] == dp2.from[1]) {
+                const Square captureSq = dp1.to[0];
+                dp1.to[0] = dp2.from[1] = SQ_NONE;
                 double_inc_update<Perspective>(featureTransformer, ksq, m_accumulators[next],
                                                m_accumulators[next + 1], m_accumulators[next - 1]);
+                dp1.to[0] = dp2.from[1] = captureSq;
+
                 next++;
                 continue;
             }
@@ -296,20 +300,6 @@ void double_inc_update(const FeatureTransformer<TransformedFeatureDimensions>& f
     assert(added.size() < 2);
     FeatureSet::append_changed_indices<Perspective>(ksq, target_state.dirtyPiece, removed,
                                                     added);
-
-    for (unsigned i = 0; i < added.size(); ++i)
-        for (unsigned j = 0; j < removed.size(); ++j)
-        {
-            if (added[i] == removed[j])
-            {
-                added.erase(i);
-                removed.erase(j);
-                goto break_twice;
-            }
-        }
-    assert(false);
-
-break_twice:
 
     assert(added.size() == 1);
     assert(removed.size() == 2 || removed.size() == 3);
