@@ -698,7 +698,6 @@ DirtyPiece Position::do_move(Move                      m,
     // our state pointer to point to the new (ready to be updated) state.
     std::memcpy(&newSt, st, offsetof(StateInfo, key));
     newSt.previous = st;
-    st->next       = &newSt;
     st             = &newSt;
 
     // Increment ply counters. In particular, rule50 will be reset to zero later on
@@ -1011,7 +1010,6 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     std::memcpy(&newSt, st, sizeof(StateInfo));
 
     newSt.previous = st;
-    st->next       = &newSt;
     st             = &newSt;
 
     if (st->epSquare != SQ_NONE)

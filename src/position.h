@@ -53,7 +53,6 @@ struct StateInfo {
     Key        key;
     Bitboard   checkersBB;
     StateInfo* previous;
-    StateInfo* next;
     Bitboard   blockersForKing[COLOR_NB];
     Bitboard   pinners[COLOR_NB];
     Bitboard   checkSquares[PIECE_TYPE_NB];
@@ -164,9 +163,6 @@ class Position {
     // Position consistency check, for debugging
     bool pos_is_ok() const;
     void flip();
-
-    // Used by NNUE
-    StateInfo* state() const;
 
     void put_piece(Piece pc, Square s);
     void remove_piece(Square s);
@@ -366,8 +362,6 @@ inline void Position::move_piece(Square from, Square to) {
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
     do_move(m, newSt, gives_check(m), tt);
 }
-
-inline StateInfo* Position::state() const { return st; }
 
 }  // namespace Stockfish
 
