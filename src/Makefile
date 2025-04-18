@@ -567,6 +567,15 @@ ifeq ($(COMP),ndk)
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
+# llvm-profdata must be version compatible with the specified CXX (be it clang, or the gcc alias)
+# make -j profile-build CXX=clang++-20 COMP=clang
+# Locate the version in the same directory as the compiler used,
+# with fallback to a generic one if it can't be located
+	LLVM_PROFDATA := $(dir $(realpath $(shell which $(CXX))))llvm-profdata
+ifeq ($(wildcard $(LLVM_PROFDATA)),)
+	LLVM_PROFDATA := llvm-profdata
+endif
+
 ifeq ($(comp),icx)
 	profile_make = icx-profile-make
 	profile_use = icx-profile-use
@@ -1081,7 +1090,7 @@ clang-profile-make:
 	all
 
 clang-profile-use:
-	$(XCRUN) llvm-profdata merge -output=stockfish.profdata *.profraw
+	$(XCRUN) $(LLVM_PROFDATA) merge -output=stockfish.profdata *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-use=stockfish.profdata' \
 	EXTRALDFLAGS='-fprofile-use ' \
