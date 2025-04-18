@@ -53,7 +53,6 @@ struct StateInfo {
     Key        key;
     Bitboard   checkersBB;
     StateInfo* previous;
-    StateInfo* next;
     Bitboard   blockersForKing[COLOR_NB];
     Bitboard   pinners[COLOR_NB];
     Bitboard   checkSquares[PIECE_TYPE_NB];
@@ -165,7 +164,6 @@ class Position {
     bool pos_is_ok() const;
     void flip();
 
-    // Used by NNUE
     StateInfo* state() const;
 
     void put_piece(Piece pc, Square s);
