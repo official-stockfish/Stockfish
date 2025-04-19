@@ -440,12 +440,11 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 // invoke as 
 // speedtest [threads] [hash] [limit] [limitType]
 // limitType can be one of
-//  - time: will search for a total of <limit> seconds
+//  - time (default): will search for a total of <limit> seconds
 //  - nodes: will search a total of <limit> nodes
 //  - depth: will search each of the 258 to depth <limit>
-//  - 
-
-// instead of wall time, using a conversion factor of 692 kNPS (same as fishtest)
+//  - nodestime: will search a total of <limit> * 692000 nodes (fishtest time controls are normalized to 692 kNPS)
+// nodes, depth and nodestime have deterministic output
 BenchmarkSetup setup_benchmark(std::istream& is) {
     // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
     // for the current sequence have been searched.
@@ -456,8 +455,7 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     BenchmarkSetup setup{};
 
     // Assign default values to missing arguments
-    int desiredTimeS;
-    bool nodestime = false;
+    int limit;
 
     if (!(is >> setup.threads))
         setup.threads = get_hardware_concurrency();
@@ -469,40 +467,48 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     else
         setup.originalInvocation += " " + std::to_string(setup.ttSize);
 
-    if (!(is >> desiredTimeS))
-        desiredTimeS = DEFAULT_DURATION_S;
+    if (!(is >> limit))
+        limit = DEFAULT_DURATION_S;
     else
-        setup.originalInvocation += " " + std::to_string(desiredTimeS);
+        setup.originalInvocation += " " + std::to_string(limit);
 
-    std::string arg;
-    if (is >> arg)
-        nodestime = (arg == "nodes" || arg == "nodestime");
+    std::string token;
+    std::string limitType = (is >> token) ? token : "time";
+    if (limitType != "nodes"  && limitType != "depth" && limitType != "nodestime")
+        limitType = "time";
 
     setup.filledInvocation += std::to_string(setup.threads) + " " + std::to_string(setup.ttSize)
-                            + " " + std::to_string(desiredTimeS);
+                            + " " + std::to_string(limit) + " " + limitType;
 
-    auto getCorrectedTime = [&](int ply) {
+    if (limitType == "nodestime")
+    {
+        limitType = "nodes";
+        limit = 692000 * limit;
+    } else if (limitType == "time")
+        limit *= 1000;
+
+    auto getTimeFraction = [&](int ply) {
         // time per move is fit roughly based on LTC games
         // seconds = 50/{ply+15}
         // ms = 50000/{ply+15}
         // with this fit 10th move gets 2000ms
         // adjust for desired 10th move time
-        return 50000.0 / (static_cast<double>(ply) + 15.0);
+        return 1.0 / (static_cast<double>(ply) + 15.0);
     };
 
-    float totalTime = 0;
-    for (const auto& game : BenchmarkPositions)
-    {
-        int ply = 1;
-        for (int i = 0; i < static_cast<int>(game.size()); ++i)
+    float total = 0;
+    if (limitType == "time" || limitType == "nodes" || limitType == "nodesTime")
+        for (const auto& game : BenchmarkPositions)
         {
-            const float correctedTime = getCorrectedTime(ply);
-            totalTime += correctedTime;
-            ply += 1;
+            int ply = 1;
+            for (int i = 0; i < static_cast<int>(game.size()); ++i)
+            {
+                total += getTimeFraction(ply);
+                ply += 1;
+            }
         }
-    }
 
-    float timeScaleFactor = static_cast<float>(desiredTimeS * 1000) / totalTime;
+    float limitScaleFactor = static_cast<float>(limit) / total;
 
     for (const auto& game : BenchmarkPositions)
     {
@@ -512,12 +518,13 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         {
             setup.commands.emplace_back("position fen " + fen);
 
-            const int correctedTime = static_cast<int>(getCorrectedTime(ply) * timeScaleFactor);
-            if (nodestime)
-                // fishtest base nps is 691680
-                setup.commands.emplace_back("go nodes " + std::to_string(correctedTime * 692 * setup.threads));
+            const int correctedLimit = static_cast<int>(getTimeFraction(ply) * limitScaleFactor);
+            if (limitType == "nodes")
+                setup.commands.emplace_back("go nodes " + std::to_string(correctedLimit));
+            else if (limitType == "time")
+                setup.commands.emplace_back("go movetime " + std::to_string(correctedLimit));
             else
-                setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
+                setup.commands.emplace_back("go depth " + std::to_string(limit));
 
             ply += 1;
         }
