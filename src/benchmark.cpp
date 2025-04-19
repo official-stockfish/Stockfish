@@ -442,9 +442,9 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 // limitType can be one of
 //  - time (default): will search for a total of <limit> seconds
 //  - nodes: will search a total of <limit> nodes
-//  - depth: will search each of the 258 to depth <limit>
+//  - depth: will search each of the 258 positions to depth <limit>
 //  - nodestime: will search a total of <limit> * 692000 nodes (fishtest time controls are normalized to 692 kNPS)
-// nodes, depth and nodestime have deterministic output
+// when using one thread, nodes, depth and nodestime limits produce deterministic output
 BenchmarkSetup setup_benchmark(std::istream& is) {
     // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
     // for the current sequence have been searched.
@@ -472,8 +472,12 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     else
         setup.originalInvocation += " " + std::to_string(limit);
 
-    std::string token;
-    std::string limitType = (is >> token) ? token : "time";
+    std::string limitType;
+    if (!(is >> limitType))
+        limitType = "time";
+    else
+        setup.originalInvocation += " " + limitType;
+
     if (limitType != "nodes"  && limitType != "depth" && limitType != "nodestime")
         limitType = "time";
 
