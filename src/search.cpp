@@ -1286,7 +1286,11 @@ moves_loop:  // When in check, search starts here
                 update_continuation_histories(ss, movedPiece, move.to_sq(), 1600);
             }
             else if (value > alpha && value < bestValue + 9)
+            {
                 newDepth--;
+                if (value < bestValue + 3)
+                    newDepth--;
+            }
         }
 
         // Step 18. Full-depth search when LMR is skipped
