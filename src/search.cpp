@@ -1298,7 +1298,7 @@ moves_loop:  // When in check, search starts here
             if (!ttData.move)
                 r += 1156;
 
-            r -= ttMoveHistory[pawn_structure_index(pos)][us] / 8;
+            r -= ttMoveHistory / 8;
 
             // Note that if expected reduction is high, we reduce search depth here
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha,
