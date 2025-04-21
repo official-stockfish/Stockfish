@@ -57,9 +57,9 @@
 // _WIN32                  Building on Windows (any)
 // _WIN64                  Building on Windows 64 bit
 
-    #if defined(__GNUC__) && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ <= 2)) \
-      && defined(_WIN32) && !defined(__clang__)
-        #define ALIGNAS_ON_STACK_VARIABLES_BROKEN
+    #if defined(__GNUC__) && !defined(__clang__) \
+      && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ < 3))
+        #error "Stockfish requires GCC 9.3 or later for correct compilation"
     #endif
 
     #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
