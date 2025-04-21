@@ -19,8 +19,8 @@
 #include "movepick.h"
 
 #include <cassert>
-#include <cstddef>
 #include <limits>
+#include <utility>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -223,6 +223,7 @@ top:
     case QSEARCH_TT :
     case PROBCUT_TT :
         ++stage;
+        cur = moves + 1;
         return ttMove;
 
     case CAPTURE_INIT :
@@ -238,9 +239,12 @@ top:
 
     case GOOD_CAPTURE :
         if (select([&]() {
-                // Move losing capture to endBadCaptures to be tried later
-                return pos.see_ge(*cur, -cur->value / 18) ? true
-                                                          : (*endBadCaptures++ = *cur, false);
+                if (!pos.see_ge(*cur, -cur->value / 18))
+                {
+                    std::swap(*endBadCaptures++, *cur);
+                    return false;
+                }
+                return true;
             }))
             return *(cur - 1);
 
@@ -250,7 +254,6 @@ top:
     case QUIET_INIT :
         if (!skipQuiets)
         {
-            cur      = endBadCaptures;
             endMoves = beginBadQuiets = endBadQuiets = generate<QUIETS>(pos, cur);
 
             score<QUIETS>();
@@ -317,30 +320,23 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-bool MovePicker::otherPieceTypesMobile(PieceType pt, ValueList<Move, 32>& capturesSearched) {
-    if (stage != GOOD_QUIET && stage != BAD_QUIET)
-        return true;
+bool MovePicker::other_piece_types_mobile(PieceType pt) {
+    assert(stage == GOOD_QUIET || stage == BAD_QUIET || stage == EVASION);
 
-    // verify good captures
-    for (std::size_t i = 0; i < capturesSearched.size(); i++)
-        if (type_of(pos.moved_piece(capturesSearched[i])) != pt)
+    // verify all generated captures and quiets
+    for (ExtMove* m = moves; m < endMoves; ++m)
+    {
+        if (*m && type_of(pos.moved_piece(*m)) != pt)
         {
-            if (type_of(pos.moved_piece(capturesSearched[i])) != KING)
+            if (type_of(pos.moved_piece(*m)) != KING)
                 return true;
-            if (pos.legal(capturesSearched[i]))
+            if (pos.legal(*m))
                 return true;
         }
-
-    // now verify bad captures and quiets
-    for (ExtMove* c = moves; c < endBadQuiets; ++c)
-        if (type_of(pos.moved_piece(*c)) != pt)
-        {
-            if (type_of(pos.moved_piece(*c)) != KING)
-                return true;
-            if (pos.legal(*c))
-                return true;
-        }
+    }
     return false;
 }
+
+void MovePicker::mark_current_illegal() { *(cur - 1) = Move::none(); }
 
 }  // namespace Stockfish
