@@ -164,7 +164,7 @@ void update_all_stats(const Position&      pos,
                       ValueList<Move, 32>& quietsSearched,
                       ValueList<Move, 32>& capturesSearched,
                       Depth                depth,
-                      bool                 isTTMove,
+                      Move                 TTMove,
                       int                  moveCount);
 
 }  // namespace
@@ -1098,8 +1098,9 @@ moves_loop:  // When in check, search starts here
 
                 lmrDepth += history / 3593;
 
-                Value futilityValue = ss->staticEval + (bestMove ? 48 : 146) + 116 * lmrDepth
-                                    + 103 * (bestValue < ss->staticEval - 128 && ss->staticEval > alpha - 50);
+                Value futilityValue =
+                  ss->staticEval + (bestMove ? 48 : 146) + 116 * lmrDepth
+                  + 103 * (bestValue < ss->staticEval - 128 && ss->staticEval > alpha - 50);
 
                 // Futility pruning: parent node
                 // (*Scaler): Generally, more frequent futility pruning
@@ -1231,7 +1232,7 @@ moves_loop:  // When in check, search starts here
             r += 1042 + allNode * 864;
 
         // For first picked move (ttMove) reduce reduction
-        else if (move == ttData.move)
+        else if (ss->isTTMove)
             r -= 1937;
 
         if (capture)
@@ -1302,6 +1303,9 @@ moves_loop:  // When in check, search starts here
 
             r -= ttMoveHistory / 8;
 
+            if (cutNode)
+                r += 520;
+
             // Note that if expected reduction is high, we reduce search depth here
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha,
                                    newDepth - (r > 3495) - (r > 5510 && newDepth > 2), !cutNode);
@@ -1315,7 +1319,7 @@ moves_loop:  // When in check, search starts here
             (ss + 1)->pv[0] = Move::none();
 
             // Extend move from transposition table if we are about to dive into qsearch.
-            if (move == ttData.move && thisThread->rootDepth > 8)
+            if (ss->isTTMove && thisThread->rootDepth > 8)
                 newDepth = std::max(newDepth, 1);
 
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);
@@ -1450,10 +1454,10 @@ moves_loop:  // When in check, search starts here
     else if (bestMove)
     {
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
-                         bestMove == ttData.move, moveCount);
+                         ttData.move, moveCount);
         if (!PvNode)
         {
-            int bonus = (ttData.move == move) ? 800 : -870;
+            int bonus = ss->isTTMove ? 800 : -870;
             ttMoveHistory << bonus;
         }
     }
@@ -1877,14 +1881,14 @@ void update_all_stats(const Position&      pos,
                       ValueList<Move, 32>& quietsSearched,
                       ValueList<Move, 32>& capturesSearched,
                       Depth                depth,
-                      bool                 isTTMove,
+                      Move                 TTMove,
                       int                  moveCount) {
 
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
 
-    int bonus = std::min(141 * depth - 89, 1613) + 311 * isTTMove;
+    int bonus = std::min(141 * depth - 89, 1613) + 311 * (bestMove == TTMove);
     int malus = std::min(695 * depth - 215, 2808) - 31 * (moveCount - 1);
 
     if (!pos.capture_stage(bestMove))
