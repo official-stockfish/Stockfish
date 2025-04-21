@@ -56,6 +56,8 @@ enum Stages {
     QCAPTURE
 };
 
+constexpr int BADCAPTURE = 8888888, ILLEGALMOVE = 9999999;
+
 // Sort moves in descending order up to and including a given limit.
 // The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
@@ -223,13 +225,14 @@ top:
     case QSEARCH_TT :
     case PROBCUT_TT :
         ++stage;
+        cur = moves + 1;
         return ttMove;
 
     case CAPTURE_INIT :
     case PROBCUT_INIT :
     case QCAPTURE_INIT :
-        cur = endBadCaptures = moves;
-        endMoves             = generate<CAPTURES>(pos, cur);
+        cur = moves;
+        endMoves             = endCaptures = generate<CAPTURES>(pos, cur);
 
         score<CAPTURES>();
         partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
@@ -238,9 +241,9 @@ top:
 
     case GOOD_CAPTURE :
         if (select([&]() {
-                // Move losing capture to endBadCaptures to be tried later
+                // Score losing capture with 88888 to be tried later
                 return pos.see_ge(*cur, -cur->value / 18) ? true
-                                                          : (*endBadCaptures++ = *cur, false);
+                                                          : (cur->value = BADCAPTURE, false);
             }))
             return *(cur - 1);
 
@@ -250,7 +253,6 @@ top:
     case QUIET_INIT :
         if (!skipQuiets)
         {
-            cur      = endBadCaptures;
             endMoves = beginBadQuiets = endBadQuiets = generate<QUIETS>(pos, cur);
 
             score<QUIETS>();
@@ -272,13 +274,13 @@ top:
 
         // Prepare the pointers to loop over the bad captures
         cur      = moves;
-        endMoves = endBadCaptures;
+        endMoves = endCaptures;
 
         ++stage;
         [[fallthrough]];
 
     case BAD_CAPTURE :
-        if (select([]() { return true; }))
+        if (select([&]() { return cur->value == BADCAPTURE; }))
             return *(cur - 1);
 
         // Prepare the pointers to loop over the bad quiets
@@ -317,30 +319,28 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-bool MovePicker::otherPieceTypesMobile(PieceType pt, ValueList<Move, 32>& capturesSearched) {
-    if (stage != GOOD_QUIET && stage != BAD_QUIET)
-        return true;
+void MovePicker::markCurrent_Illegal() {
+   (cur-1)->value = ILLEGALMOVE;
+}
+bool MovePicker::otherPieceTypesMobile(PieceType pt) {
+    if (stage != GOOD_QUIET  && stage != BAD_QUIET)
+       return true;
 
-    // verify good captures
-    for (std::size_t i = 0; i < capturesSearched.size(); i++)
-        if (type_of(pos.moved_piece(capturesSearched[i])) != pt)
-        {
-            if (type_of(pos.moved_piece(capturesSearched[i])) != KING)
-                return true;
-            if (pos.legal(capturesSearched[i]))
-                return true;
-        }
-
-    // now verify bad captures and quiets
-    for (ExtMove* c = moves; c < endBadQuiets; ++c)
-        if (type_of(pos.moved_piece(*c)) != pt)
-        {
-            if (type_of(pos.moved_piece(*c)) != KING)
-                return true;
-            if (pos.legal(*c))
-                return true;
-        }
+    // verify all generated captures and quiets
+    for (ExtMove *c = moves; c < endBadQuiets; ++c)
+    {
+       if (c->value == ILLEGALMOVE)
+          continue;
+       if (type_of(pos.moved_piece(*c)) != pt)
+       {
+         if (type_of(pos.moved_piece(*c)) != KING)
+           return true;
+         if (pos.legal(*c))
+           return true;
+       }
+    }
     return false;
 }
+
 
 }  // namespace Stockfish
