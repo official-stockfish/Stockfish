@@ -241,7 +241,7 @@ top:
 
     case GOOD_CAPTURE :
         if (select([&]() {
-                // Score losing capture with 88888 to be tried later
+                // Score losing capture with BADCAPTURE to be tried later
                 return pos.see_ge(*cur, -cur->value / 18) ? true
                                                           : (cur->value = BADCAPTURE, false);
             }))
