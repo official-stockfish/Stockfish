@@ -1011,8 +1011,10 @@ moves_loop:  // When in check, search starts here
 
         // Check for legality
         if (!pos.legal(move))
-            continue;
-
+        {
+           mp.markCurrent_Illegal();
+           continue;
+        }
         // At root obey the "searchmoves" option and skip moves not listed in Root
         // Move List. In MultiPV mode we also skip PV moves that have been already
         // searched and those of lower "TB rank" if we are in a TB root position.
@@ -1084,9 +1086,7 @@ moves_loop:  // When in check, search starts here
                         && pos.non_pawn_material(us) == PieceValue[movedPiece]
                         && PieceValue[movedPiece] >= RookValue
                         && !(PseudoAttacks[KING][pos.square<KING>(us)] & move.from_sq()))
-                        skip = mp.otherPieceTypesMobile(
-                          type_of(movedPiece),
-                          capturesSearched);  // if the opponent captures last mobile piece it might be stalemate
+                        skip = mp.otherPieceTypesMobile(type_of(movedPiece));  // if the opponent captures last mobile piece it might be stalemate
 
                     if (skip)
                         continue;
