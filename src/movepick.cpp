@@ -319,9 +319,6 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-void MovePicker::markCurrent_Illegal() {
-   (cur-1)->value = ILLEGALMOVE;
-}
 bool MovePicker::otherPieceTypesMobile(PieceType pt) {
     if (stage != GOOD_QUIET  && stage != BAD_QUIET)
        return true;
@@ -342,5 +339,8 @@ bool MovePicker::otherPieceTypesMobile(PieceType pt) {
     return false;
 }
 
+void MovePicker::markCurrent_Illegal() {
+   (cur-1)->value = ILLEGALMOVE;
+}
 
 }  // namespace Stockfish
