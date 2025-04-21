@@ -321,20 +321,20 @@ void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
 bool MovePicker::otherPieceTypesMobile(PieceType pt) {
     if (stage != GOOD_QUIET  && stage != BAD_QUIET)
-       return true;
+        return true;
 
     // verify all generated captures and quiets
-    for (ExtMove *c = moves; c < endBadQuiets; ++c)
+    for (ExtMove *m = moves; m < endBadQuiets; ++m)
     {
-       if (c->value == ILLEGALMOVE)
-          continue;
-       if (type_of(pos.moved_piece(*c)) != pt)
-       {
-         if (type_of(pos.moved_piece(*c)) != KING)
-           return true;
-         if (pos.legal(*c))
-           return true;
-       }
+        if (m->value == ILLEGALMOVE)
+            continue;
+        if (type_of(pos.moved_piece(*m)) != pt)
+        {
+            if (type_of(pos.moved_piece(*m)) != KING)
+               return true;
+            if (pos.legal(*m))
+               return true;
+        }
     }
     return false;
 }
