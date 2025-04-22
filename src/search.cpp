@@ -128,7 +128,7 @@ Value to_corrected_static_eval(const Value v, const int cv) {
     return std::clamp(v + cv / 131072, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
-int adaptiveProbCutMargin(int depth) {
+int adaptive_probcut_margin(int depth) {
     // Base margin — can tune this as needed
     constexpr int base = 180;
 
@@ -990,7 +990,7 @@ Value Search::Worker::search(
 moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea
-    probCutBeta = beta + adaptiveProbCutMargin(depth);
+    probCutBeta = beta + adaptive_probcut_margin(depth);
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
