@@ -126,21 +126,20 @@ void MovePicker::score() {
 
     static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
-    [[maybe_unused]] Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook,
-      threatenedPieces;
+    [[maybe_unused]] Bitboard threatenedPieces, threat_by_lesser[4];
     if constexpr (Type == QUIETS)
     {
         Color us = pos.side_to_move();
 
-        threatenedByPawn = pos.attacks_by<PAWN>(~us);
-        threatenedByMinor =
-          pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatenedByPawn;
-        threatenedByRook = pos.attacks_by<ROOK>(~us) | threatenedByMinor;
+        threat_by_lesser[0] = threat_by_lesser[1] = pos.attacks_by<PAWN>(~us);
+        threat_by_lesser[2] =
+          pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threat_by_lesser[0];
+        threat_by_lesser[3] = pos.attacks_by<ROOK>(~us) | threat_by_lesser[2];
 
         // Pieces threatened by pieces of lesser material value
-        threatenedPieces = (pos.pieces(us, QUEEN) & threatenedByRook)
-                         | (pos.pieces(us, ROOK) & threatenedByMinor)
-                         | (pos.pieces(us, KNIGHT, BISHOP) & threatenedByPawn);
+        threatenedPieces = (pos.pieces(us, QUEEN) & threat_by_lesser[3])
+                         | (pos.pieces(us, ROOK) & threat_by_lesser[2])
+                         | (pos.pieces(us, KNIGHT, BISHOP) & threat_by_lesser[0]);
     }
 
     for (auto& m : *this)
@@ -172,17 +171,13 @@ void MovePicker::score() {
             // bonus for checks
             m.value += (bool(pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
 
-            // bonus for escaping from capture
-            m.value += threatenedPieces & from ? (pt == QUEEN && !(to & threatenedByRook)   ? 51700
-                                                  : pt == ROOK && !(to & threatenedByMinor) ? 25600
-                                                  : !(to & threatenedByPawn)                ? 14450
-                                                                                            : 0)
-                                               : 0;
-
-            // malus for putting piece en prise
-            m.value -= (pt == QUEEN && bool(to & threatenedByRook)   ? 49000
-                        : pt == ROOK && bool(to & threatenedByMinor) ? 24335
-                                                                     : 0);
+            // penalty for moving to a square threatened by a lesser piece
+            // or bonus for escaping an attack by a lesser piece.
+            constexpr int bonus[4] = {14000, 14000, 24970, 50350};
+            if ( KNIGHT <= pt && pt <= QUEEN )
+                m.value += bonus[pt - 2] * (threat_by_lesser[pt - 2] & to
+                                            ? -1
+                                            : bool(threat_by_lesser[pt - 2] & from));
 
             if (ply < LOW_PLY_HISTORY_SIZE)
                 m.value += 8 * (*lowPlyHistory)[ply][m.from_to()] / (1 + 2 * ply);
