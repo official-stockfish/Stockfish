@@ -128,7 +128,7 @@ Value to_corrected_static_eval(const Value v, const int cv) {
     return std::clamp(v + cv / 131072, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
-int adaptive_probcut_margin(int depth) {
+int adaptive_probcut_margin(Depth depth) {
     // Base margin — can tune this as needed
     constexpr int base = 180;
 
