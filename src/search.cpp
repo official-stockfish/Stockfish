@@ -129,7 +129,7 @@ Value to_corrected_static_eval(const Value v, const int cv) {
 }
 
 int adaptive_probcut_margin(Depth depth) {
-    // Base margin — can tune this as needed
+    // Base margin
     constexpr int base = 180;
 
     // Approximate log2(depth) using a fast lookup table
