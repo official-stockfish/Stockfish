@@ -1910,7 +1910,7 @@ void update_all_stats(const Position&      pos,
     PieceType              captured;
 
     int bonus = std::min(141 * depth - 89, 1613) + 311 * (bestMove == ttMove);
-    int malus = std::min(695 * depth - 215, 2808) - 31 * (moveCount - 1);
+    int malus = std::min(695 * depth - 184, 2839) - 31 * moveCount;
 
     if (!pos.capture_stage(bestMove))
     {
