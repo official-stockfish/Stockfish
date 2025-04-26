@@ -160,16 +160,9 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
         // change the NumaConfig UCI setting) is to not bind the threads to processors
         // unless we know for sure that we span NUMA nodes and replication is required.
         const std::string numaPolicy(sharedState.options["NumaPolicy"]);
-        const bool        doBindThreads = [&]() {
-            if (numaPolicy == "none")
-                return false;
-
-            if (numaPolicy == "auto")
-                return numaConfig.suggests_binding_threads(requested);
-
-            // numaPolicy == "system", or explicitly set by the user
-            return true;
-        }();
+        const bool doBindThreads = (numaPolicy == "none") ? false
+                             : (numaPolicy == "auto") ? numaConfig.suggests_binding_threads(requested)
+                             : true; // Default true for "system" or explicitly set by the user
 
         boundThreadToNumaNode = doBindThreads
                                 ? numaConfig.distribute_threads_among_numa_nodes(requested)
