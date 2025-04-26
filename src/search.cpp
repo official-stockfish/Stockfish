@@ -690,6 +690,7 @@ Value Search::Worker::search(
     (ss + 2)->cutoffCnt = 0;
     Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
     ss->statScore = 0;
+    ss->isPvNode = PvNode;
 
     // Step 4. Transposition table lookup
     excludedMove                   = ss->excludedMove;
@@ -1263,7 +1264,7 @@ moves_loop:  // When in check, search starts here
 
 
             Depth d = std::max(
-              1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove)));
+              1, std::min(newDepth - r / 1024, newDepth + !allNode + (PvNode && !bestMove))) + (!cutNode && (ss - 1)->isPvNode && moveCount < 8);
 
             ss->reduction = newDepth - d;
 
