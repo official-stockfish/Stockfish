@@ -77,7 +77,7 @@ jobs:
         run: |
           if [ $COMP == ndk ]; then
             export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-            export LDFLAGS="-static -Wno-unused-command-line-argument"
+            export LDFLAGS="-static -ffunction-sections -fdata-sections -Wl,--gc-sections -Wno-unused-command-line-argument"
           fi
           make clean
           make -j4 profile-build ARCH=$BINARY COMP=$COMP WINE_PATH=$EMU
