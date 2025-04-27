@@ -121,7 +121,7 @@ int adaptive_probcut_margin(Depth depth) {
 
     int logDepth = logTable[std::min(depth, 31)];
     return base + logDepth * 60 + std::min(10, (depth - 16) * 2);
-};
+}
 
 void update_correction_history(const Position& pos,
                                Stack* const    ss,
