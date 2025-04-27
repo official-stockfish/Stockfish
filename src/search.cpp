@@ -111,17 +111,11 @@ Value to_corrected_static_eval(const Value v, const int cv) {
     return std::clamp(v + cv / 131072, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
-int adaptive_probcut_margin(Depth depth) {
-    // Base margin
-    constexpr int base = 180;
 
-    // Approximate log2(depth) using a fast lookup table
-    static constexpr int logTable[32] = {0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
-                                         4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+constexpr int adaptiveProbcutMargin[32] = {148, 150, 212, 214, 276, 278, 280, 282, 344, 346, 348,
+                                           350, 352, 354, 356, 358, 420, 422, 424, 426, 428, 430,
+                                           430, 430, 430, 430, 430, 430, 430, 430, 430, 430};
 
-    int logDepth = logTable[std::min(depth, 31)];
-    return base + logDepth * 60 + std::min(10, (depth - 16) * 2);
-};
 
 void update_correction_history(const Position& pos,
                                Stack* const    ss,
@@ -994,7 +988,7 @@ Value Search::Worker::search(
 moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea
-    probCutBeta = beta + adaptive_probcut_margin(depth);
+    probCutBeta = beta + adaptiveProbcutMargin[std::min(depth, 31)];
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
