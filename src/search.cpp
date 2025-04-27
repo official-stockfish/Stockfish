@@ -1100,72 +1100,68 @@ moves_loop:  // When in check, search starts here
         }
 
         // Step 15. Extensions
-        // We take care to not overdo to avoid search getting stuck.
-        if (ss->ply < thisThread->rootDepth * 2)
+        // Singular extension search. If all moves but one
+        // fail low on a search of (alpha-s, beta-s), and just one fails high on
+        // (alpha, beta), then that move is singular and should be extended. To
+        // verify this we do a reduced search on the position excluding the ttMove
+        // and if the result is lower than ttValue minus a margin, then we will
+        // extend the ttMove. Recursive singular search is avoided.
+
+        // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
+        // and lower extension margins scale well.
+
+        if (!rootNode && move == ttData.move && !excludedMove
+            && depth >= 6 - (thisThread->completedDepth > 27) + ss->ttPv && is_valid(ttData.value)
+            && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
+            && ttData.depth >= depth - 3)
         {
-            // Singular extension search. If all moves but one
-            // fail low on a search of (alpha-s, beta-s), and just one fails high on
-            // (alpha, beta), then that move is singular and should be extended. To
-            // verify this we do a reduced search on the position excluding the ttMove
-            // and if the result is lower than ttValue minus a margin, then we will
-            // extend the ttMove. Recursive singular search is avoided.
+            Value singularBeta  = ttData.value - (58 + 76 * (ss->ttPv && !PvNode)) * depth / 57;
+            Depth singularDepth = newDepth / 2;
 
-            // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
-            // and lower extension margins scale well.
+            ss->excludedMove = move;
+            value = search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
+            ss->excludedMove = Move::none();
 
-            if (!rootNode && move == ttData.move && !excludedMove
-                && depth >= 6 - (thisThread->completedDepth > 27) + ss->ttPv
-                && is_valid(ttData.value) && !is_decisive(ttData.value)
-                && (ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 3)
+            if (value < singularBeta)
             {
-                Value singularBeta  = ttData.value - (58 + 76 * (ss->ttPv && !PvNode)) * depth / 57;
-                Depth singularDepth = newDepth / 2;
+                int corrValAdj1  = std::abs(correctionValue) / 248400;
+                int corrValAdj2  = std::abs(correctionValue) / 249757;
+                int doubleMargin = -4 + 244 * PvNode - 206 * !ttCapture - corrValAdj1
+                                 - 997 * ttMoveHistory / 131072
+                                 - (ss->ply * 2 > thisThread->rootDepth * 3) * 47;
+                int tripleMargin = 84 + 269 * PvNode - 253 * !ttCapture + 91 * ss->ttPv
+                                 - corrValAdj2 - (ss->ply * 2 > thisThread->rootDepth * 3) * 54;
 
-                ss->excludedMove = move;
-                value =
-                  search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
-                ss->excludedMove = Move::none();
+                extension =
+                  1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
 
-                if (value < singularBeta)
-                {
-                    int corrValAdj1  = std::abs(correctionValue) / 248400;
-                    int corrValAdj2  = std::abs(correctionValue) / 249757;
-                    int doubleMargin = -4 + 244 * PvNode - 206 * !ttCapture - corrValAdj1
-                                     - 997 * ttMoveHistory / 131072;
-                    int tripleMargin =
-                      84 + 269 * PvNode - 253 * !ttCapture + 91 * ss->ttPv - corrValAdj2;
-
-                    extension = 1 + (value < singularBeta - doubleMargin)
-                              + (value < singularBeta - tripleMargin);
-
-                    depth++;
-                }
-
-                // Multi-cut pruning
-                // Our ttMove is assumed to fail high based on the bound of the TT entry,
-                // and if after excluding the ttMove with a reduced search we fail high
-                // over the original beta, we assume this expected cut-node is not
-                // singular (multiple moves fail high), and we can prune the whole
-                // subtree by returning a softbound.
-                else if (value >= beta && !is_decisive(value))
-                    return value;
-
-                // Negative extensions
-                // If other moves failed high over (ttValue - margin) without the
-                // ttMove on a reduced search, but we cannot do multi-cut because
-                // (ttValue - margin) is lower than the original beta, we do not know
-                // if the ttMove is singular or can do a multi-cut, so we reduce the
-                // ttMove in favor of other moves based on some conditions:
-
-                // If the ttMove is assumed to fail high over current beta
-                else if (ttData.value >= beta)
-                    extension = -3;
-
-                // If we are on a cutNode but the ttMove is not assumed to fail high
-                // over current beta
-                else if (cutNode)
-                    extension = -2;
+                depth++;
             }
+
+            // Multi-cut pruning
+            // Our ttMove is assumed to fail high based on the bound of the TT entry,
+            // and if after excluding the ttMove with a reduced search we fail high
+            // over the original beta, we assume this expected cut-node is not
+            // singular (multiple moves fail high), and we can prune the whole
+            // subtree by returning a softbound.
+            else if (value >= beta && !is_decisive(value))
+                return value;
+
+            // Negative extensions
+            // If other moves failed high over (ttValue - margin) without the
+            // ttMove on a reduced search, but we cannot do multi-cut because
+            // (ttValue - margin) is lower than the original beta, we do not know
+            // if the ttMove is singular or can do a multi-cut, so we reduce the
+            // ttMove in favor of other moves based on some conditions:
+
+            // If the ttMove is assumed to fail high over current beta
+            else if (ttData.value >= beta)
+                extension = -3;
+
+            // If we are on a cutNode but the ttMove is not assumed to fail high
+            // over current beta
+            else if (cutNode)
+                extension = -2;
         }
 
         // Step 16. Make the move
