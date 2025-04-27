@@ -38,7 +38,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           if [ $COMP == ndk ]; then
-            NDKV="21.4.7075529"
+            NDKV="27.2.12479018"
             ANDROID_ROOT=/usr/local/lib/android
             ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
             SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
