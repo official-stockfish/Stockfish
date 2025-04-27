@@ -19,7 +19,7 @@ trap 'error ${LINENO}' ERR
 
 # obtain
 eval "$WINE_PATH ./stockfish bench" > "$STDOUT_FILE" 2> "$STDERR_FILE" || error ${LINENO}
-signature=$(grep "Nodes searched  : " "$STDOUT_FILE" | awk '{print $4}')
+signature=$(grep "Nodes searched  : " "$STDERR_FILE" | awk '{print $4}')
 
 rm -f "$STDOUT_FILE" "$STDERR_FILE"
 
