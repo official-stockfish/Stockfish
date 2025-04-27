@@ -57,10 +57,16 @@
 // _WIN32                  Building on Windows (any)
 // _WIN64                  Building on Windows 64 bit
 
+// Enforce minimum GCC version
     #if defined(__GNUC__) && !defined(__clang__) \
       && (__GNUC__ < 9 || (__GNUC__ == 9 && __GNUC_MINOR__ < 3))
         #error "Stockfish requires GCC 9.3 or later for correct compilation"
     #endif
+
+// Enforce minimum Clang version
+#if defined(__clang__) && (__clang_major__ < 10)
+    #error "Stockfish requires Clang 10.0 or later for correct compilation"
+#endif
 
     #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)
 
