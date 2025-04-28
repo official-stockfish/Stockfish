@@ -19,6 +19,7 @@
 #include "movepick.h"
 
 #include <cassert>
+#include <cstddef>
 #include <limits>
 
 #include "bitboard.h"
@@ -54,8 +55,6 @@ enum Stages {
     QCAPTURE_INIT,
     QCAPTURE
 };
-
-constexpr int BADCAPTURE = 8888888, ILLEGALMOVE = 9999999;
 
 // Sort moves in descending order up to and including a given limit.
 // The order of moves smaller than the limit is left unspecified.
@@ -230,8 +229,8 @@ top:
     case CAPTURE_INIT :
     case PROBCUT_INIT :
     case QCAPTURE_INIT :
-        cur = moves;
-        endMoves             = endCaptures = generate<CAPTURES>(pos, cur);
+        cur = endBadCaptures = moves;
+        endMoves             = generate<CAPTURES>(pos, cur);
 
         score<CAPTURES>();
         partial_insertion_sort(cur, endMoves, std::numeric_limits<int>::min());
@@ -240,11 +239,14 @@ top:
 
     case GOOD_CAPTURE :
         if (select([&]() {
-                // Score losing capture with BADCAPTURE to be tried later
-                return pos.see_ge(*cur, -cur->value / 18) ? true
-                                                          : (cur->value = BADCAPTURE, false);
-            }))
-            return *(cur - 1);
+            if (!pos.see_ge(*cur, -cur->value / 18))
+            {
+                std::swap(*endBadCaptures++, *cur);
+                return false;
+            }
+            return true;
+        }))
+        return *(cur - 1);
 
         ++stage;
         [[fallthrough]];
@@ -273,13 +275,13 @@ top:
 
         // Prepare the pointers to loop over the bad captures
         cur      = moves;
-        endMoves = endCaptures;
+        endMoves = endBadCaptures;
 
         ++stage;
         [[fallthrough]];
 
     case BAD_CAPTURE :
-        if (select([&]() { return cur->value == BADCAPTURE; }))
+        if (select([]() { return true; }))
             return *(cur - 1);
 
         // Prepare the pointers to loop over the bad quiets
@@ -318,14 +320,13 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-bool MovePicker::otherPieceTypesMobile(PieceType pt) {
-    if (stage != GOOD_QUIET  && stage != BAD_QUIET)
-        return true;
+bool MovePicker::other_piece_types_mobile(PieceType pt) {
+    assert (stage == GOOD_QUIET || stage == BAD_QUIET || stage == EVASION);
 
     // verify all generated captures and quiets
-    for (ExtMove *m = moves; m < endBadQuiets; ++m)
+    for (ExtMove *m = moves; m < endMoves; ++m)
     {
-        if (m->value == ILLEGALMOVE)
+        if (!m->raw()) // marked illegal
             continue;
         if (type_of(pos.moved_piece(*m)) != pt)
         {
@@ -338,8 +339,8 @@ bool MovePicker::otherPieceTypesMobile(PieceType pt) {
     return false;
 }
 
-void MovePicker::markCurrent_Illegal() {
-   (cur-1)->value = ILLEGALMOVE;
+void MovePicker::mark_current_illegal() {
+   *(cur-1) = Move::none();
 }
 
 }  // namespace Stockfish
