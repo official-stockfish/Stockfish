@@ -166,6 +166,13 @@ void AccumulatorStack::forward_update_incremental(
                 next++;
                 continue;
             }
+            else if (dp1.dirty_num == 1 && dp2.dirty_num == 1)
+            {
+                double_inc_update<Perspective>(featureTransformer, ksq, accumulators[next],
+                                               accumulators[next + 1], accumulators[next - 1]);
+                next++;
+                continue;
+            }
         }
         update_accumulator_incremental<Perspective, true>(
           featureTransformer, ksq, accumulators[next], accumulators[next - 1]);
@@ -284,7 +291,7 @@ void double_inc_update(const FeatureTransformer<TransformedFeatureDimensions>& f
     assert(added.size() < 2);
     FeatureSet::append_changed_indices<Perspective>(ksq, target_state.dirtyPiece, removed, added);
 
-    assert(added.size() == 1);
+    //assert(added.size() == 1);
     assert(removed.size() == 2 || removed.size() == 3);
 
     // Workaround compiler warning for uninitialized variables, replicated on
@@ -296,7 +303,12 @@ void double_inc_update(const FeatureTransformer<TransformedFeatureDimensions>& f
     auto updateContext =
       make_accumulator_update_context<Perspective>(featureTransformer, computed, target_state);
 
-    if (removed.size() == 2)
+    if (added.size() == 2)
+    {
+        assert(removed.size() == 2);
+        updateContext.template apply<Add, Add, Sub, Sub>(added[0], added[1], removed[0], removed[1]);
+    }
+    else if (removed.size() == 2)
     {
         updateContext.template apply<Add, Sub, Sub>(added[0], removed[0], removed[1]);
     }
