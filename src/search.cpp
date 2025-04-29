@@ -1086,7 +1086,8 @@ moves_loop:  // When in check, search starts here
                         && pos.non_pawn_material(us) == PieceValue[movedPiece]
                         && PieceValue[movedPiece] >= RookValue
                         && !(PseudoAttacks[KING][pos.square<KING>(us)] & move.from_sq()))
-                        skip = mp.other_piece_types_mobile(type_of(movedPiece));  // if the opponent captures last mobile piece it might be stalemate
+                        // if the opponent captures last mobile piece it might be stalemate
+                        skip = mp.other_piece_types_mobile(type_of(movedPiece));
 
                     if (skip)
                         continue;

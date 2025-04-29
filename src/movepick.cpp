@@ -326,9 +326,7 @@ bool MovePicker::other_piece_types_mobile(PieceType pt) {
     // verify all generated captures and quiets
     for (ExtMove *m = moves; m < endMoves; ++m)
     {
-        if (!m->raw()) // marked illegal
-            continue;
-        if (type_of(pos.moved_piece(*m)) != pt)
+        if (*m && type_of(pos.moved_piece(*m)) != pt)
         {
             if (type_of(pos.moved_piece(*m)) != KING)
                return true;
