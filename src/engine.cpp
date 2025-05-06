@@ -46,10 +46,6 @@ namespace Stockfish {
 
 namespace NN = Eval::NNUE;
 
-constexpr auto StartFEN   = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-constexpr int  MaxHashMB  = Is64Bit ? 33554432 : 2048;
-int            MaxThreads = std::max(1024, 4 * int(get_hardware_concurrency()));
-
 Engine::Engine(std::optional<std::string> path) :
     binaryDirectory(path ? CommandLine::get_binary_directory(*path) : ""),
     numaContext(NumaConfig::from_system()),
@@ -60,8 +56,10 @@ Engine::Engine(std::optional<std::string> path) :
       NN::Networks(
         NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
         NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
+    constexpr auto StartFEN   = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    constexpr int  MaxHashMB  = Is64Bit ? 33554432 : 2048;
+    int            MaxThreads = std::max(1024, 4 * int(get_hardware_concurrency()));
     pos.set(StartFEN, false, &states->back());
-
 
     options.add(  //
       "Debug Log File", Option("", [](const Option& o) {
