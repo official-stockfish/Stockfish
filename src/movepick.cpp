@@ -19,7 +19,6 @@
 #include "movepick.h"
 
 #include <cassert>
-#include <cstddef>
 #include <limits>
 
 #include "bitboard.h"
@@ -126,11 +125,11 @@ void MovePicker::score() {
 
     static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
 
+    Color us = pos.side_to_move();
+
     [[maybe_unused]] Bitboard threatenedPieces, threatByLesser[4];
     if constexpr (Type == QUIETS)
     {
-        Color us = pos.side_to_move();
-
         threatByLesser[0] = threatByLesser[1] = pos.attacks_by<PAWN>(~us);
         threatByLesser[2] =
           pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatByLesser[0];
@@ -142,41 +141,44 @@ void MovePicker::score() {
                          | (pos.pieces(us, KNIGHT, BISHOP) & threatByLesser[0]);
     }
 
+
     for (auto& m : *this)
+    {
+        Square    from          = m.from_sq();
+        Square    to            = m.to_sq();
+        Piece     piece         = pos.moved_piece(m);
+        PieceType pieceType     = type_of(piece);
+        Piece     capturedPiece = pos.piece_on(to);
+
         if constexpr (Type == CAPTURES)
-            m.value =
-              (2
-                 * (pos.blockers_for_king(~pos.side_to_move()) & m.from_sq()
-                    && !aligned(m.from_sq(), m.to_sq(), pos.square<KING>(~pos.side_to_move())))
-               + 7)
-                * int(PieceValue[pos.piece_on(m.to_sq())])
-              + (*captureHistory)[pos.moved_piece(m)][m.to_sq()][type_of(pos.piece_on(m.to_sq()))];
+        {
+            bool discoveredCheck = (pos.blockers_for_king(~us) & from) 
+                                   && !aligned(from, to, pos.square<KING>(~us));
+
+            m.value = (*captureHistory)[piece][to][type_of(capturedPiece)]
+                    + int(PieceValue[capturedPiece]) * (7 + 2 * discoveredCheck);
+        }
 
         else if constexpr (Type == QUIETS)
         {
-            Piece     pc   = pos.moved_piece(m);
-            PieceType pt   = type_of(pc);
-            Square    from = m.from_sq();
-            Square    to   = m.to_sq();
-
             // histories
-            m.value = 2 * (*mainHistory)[pos.side_to_move()][m.from_to()];
-            m.value += 2 * (*pawnHistory)[pawn_structure_index(pos)][pc][to];
-            m.value += (*continuationHistory[0])[pc][to];
-            m.value += (*continuationHistory[1])[pc][to];
-            m.value += (*continuationHistory[2])[pc][to];
-            m.value += (*continuationHistory[3])[pc][to];
-            m.value += (*continuationHistory[5])[pc][to];
+            m.value =  2 * (*mainHistory)[us][m.from_to()];
+            m.value += 2 * (*pawnHistory)[pawn_structure_index(pos)][piece][to];
+            m.value += (*continuationHistory[0])[piece][to];
+            m.value += (*continuationHistory[1])[piece][to];
+            m.value += (*continuationHistory[2])[piece][to];
+            m.value += (*continuationHistory[3])[piece][to];
+            m.value += (*continuationHistory[5])[piece][to];
 
             // bonus for checks
-            m.value += (bool(pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
+            m.value += (bool(pos.check_squares(pieceType) & to) && pos.see_ge(m, -75)) * 16384;
 
             // penalty for moving to a square threatened by a lesser piece
             // or bonus for escaping an attack by a lesser piece.
             constexpr int bonus[4] = {144, 144, 256, 517};
-            if (KNIGHT <= pt && pt <= QUEEN)
+            if (KNIGHT <= pieceType && pieceType <= QUEEN)
             {
-                auto i = pt - 2;
+                auto i = pieceType - 2;
                 int  v = (threatByLesser[i] & to ? -95 : 100 * bool(threatByLesser[i] & from));
                 m.value += bonus[i] * v;
             }
@@ -188,11 +190,12 @@ void MovePicker::score() {
         else  // Type == EVASIONS
         {
             if (pos.capture_stage(m))
-                m.value = PieceValue[pos.piece_on(m.to_sq())] + (1 << 28);
+                m.value = PieceValue[capturedPiece] + (1 << 28);
             else
-                m.value = (*mainHistory)[pos.side_to_move()][m.from_to()]
-                        + (*continuationHistory[0])[pos.moved_piece(m)][m.to_sq()];
+                m.value = (*mainHistory)[us][m.from_to()]
+                        + (*continuationHistory[0])[piece][to];
         }
+    }
 }
 
 // Returns the next move satisfying a predicate function.
@@ -317,29 +320,19 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-bool MovePicker::otherPieceTypesMobile(PieceType pt, ValueList<Move, 32>& capturesSearched) {
-    if (stage != GOOD_QUIET && stage != BAD_QUIET)
-        return true;
+// this function must be called only after all quiet moves and captures have been generated
+bool MovePicker::can_move_king_or_pawn() {
+    // ensure all necessary moves have been generated
+    assert(stage == GOOD_QUIET || stage == BAD_QUIET); 
 
-    // verify good captures
-    for (std::size_t i = 0; i < capturesSearched.size(); i++)
-        if (type_of(pos.moved_piece(capturesSearched[i])) != pt)
-        {
-            if (type_of(pos.moved_piece(capturesSearched[i])) != KING)
-                return true;
-            if (pos.legal(capturesSearched[i]))
-                return true;
-        }
-
-    // now verify bad captures and quiets
-    for (ExtMove* c = moves; c < endBadQuiets; ++c)
-        if (type_of(pos.moved_piece(*c)) != pt)
-        {
-            if (type_of(pos.moved_piece(*c)) != KING)
-                return true;
-            if (pos.legal(*c))
-                return true;
-        }
+    for (ExtMove* c = moves; c < endMoves; ++c)
+    {
+        PieceType movedPieceType = type_of(pos.moved_piece(*c));
+        if (movedPieceType == PAWN)
+            return true;
+        else if (movedPieceType == KING && pos.legal(*c))
+            return true;
+    }
     return false;
 }
 
