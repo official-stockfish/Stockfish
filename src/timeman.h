@@ -22,11 +22,11 @@
 #include <cstdint>
 
 #include "misc.h"
-#include "types.h"
 
 namespace Stockfish {
 
 class OptionsMap;
+enum Color : int8_t;
 
 namespace Search {
 struct LimitsType;
