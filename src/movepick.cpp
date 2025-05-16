@@ -208,8 +208,6 @@ Move MovePicker::select(Pred filter) {
 // picking the move with the highest score from a list of generated moves.
 Move MovePicker::next_move() {
 
-    auto quiet_threshold = [](Depth d) { return -3560 * d; };
-
 top:
     switch (stage)
     {
@@ -250,24 +248,22 @@ top:
     case QUIET_INIT :
         if (!skipQuiets)
         {
-            endMoves = beginBadQuiets = endBadQuiets = generate<QUIETS>(pos, cur);
+            cur = endBadQuiets = endBadCaptures;
+            endMoves = generate<QUIETS>(pos, cur);
 
             score<QUIETS>();
-            partial_insertion_sort(cur, endMoves, quiet_threshold(depth));
+            partial_insertion_sort(cur, endMoves, -3560 * depth);
         }
 
         ++stage;
         [[fallthrough]];
 
     case GOOD_QUIET :
-        if (!skipQuiets && select([]() { return true; }))
-        {
-            if ((cur - 1)->value > -7998 || (cur - 1)->value <= quiet_threshold(depth))
-                return *(cur - 1);
-
-            // Remaining quiets are bad
-            beginBadQuiets = cur - 1;
-        }
+        if (!skipQuiets && select([&]() {
+                return cur->value > -14000 ? true
+                                           : (*endBadQuiets++ = *cur, false);
+            }))
+            return *(cur - 1);
 
         // Prepare the pointers to loop over the bad captures
         cur      = moves;
@@ -281,7 +277,7 @@ top:
             return *(cur - 1);
 
         // Prepare the pointers to loop over the bad quiets
-        cur      = beginBadQuiets;
+        cur      = endBadCaptures;
         endMoves = endBadQuiets;
 
         ++stage;
