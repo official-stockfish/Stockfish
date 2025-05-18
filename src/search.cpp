@@ -680,6 +680,8 @@ Value Search::Worker::search(
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
         && (cutNode == (ttData.value >= beta) || depth > 5))
     {
+
+
         // If ttMove is quiet, update move sorting heuristics on TT hit
         if (ttData.move && ttData.value >= beta)
         {
@@ -696,7 +698,30 @@ Value Search::Worker::search(
         // Partial workaround for the graph history interaction problem
         // For high rule50 counts don't produce transposition table cutoffs.
         if (pos.rule50_count() < 90)
-            return ttData.value;
+        {
+            if (depth >= 8 && ttData.move && pos.pseudo_legal(ttData.move) && pos.legal(ttData.move)
+                && !is_decisive(ttData.value))
+            {
+                do_move(pos, ttData.move, st);
+                Key nextPosKey                             = pos.key();
+                auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
+                ttDataNext.value =
+                  ttHitNext ? value_from_tt(ttDataNext.value, ss->ply + 1, pos.rule50_count())
+                            : VALUE_NONE;
+                undo_move(pos, ttData.move);
+
+                if (!is_valid(ttDataNext.value))
+                    return ttData.value;
+                if (ttData.value >= beta && -ttDataNext.value >= beta)
+                    return ttData.value;
+                if (ttData.value <= alpha && -ttDataNext.value <= alpha)
+                    return ttData.value;
+            }
+            else
+            {
+                return ttData.value;
+            }
+        }
     }
 
     // Step 5. Tablebases probe
@@ -1233,7 +1258,7 @@ moves_loop:  // When in check, search starts here
             // std::clamp has been replaced by a more robust implementation.
             Depth d = std::max(1, std::min(newDepth - r / 1024,
                                            newDepth + !allNode + (PvNode && !bestMove)))
-                                         + ((ss - 1)->isPvNode);
+                    + ((ss - 1)->isPvNode);
 
             ss->reduction = newDepth - d;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
