@@ -249,7 +249,7 @@ top:
         if (!skipQuiets)
         {
             cur = endBadQuiets = endBadCaptures;
-            endMoves = generate<QUIETS>(pos, cur);
+            endMoves           = generate<QUIETS>(pos, cur);
 
             score<QUIETS>();
             partial_insertion_sort(cur, endMoves, -3560 * depth);
@@ -260,8 +260,7 @@ top:
 
     case GOOD_QUIET :
         if (!skipQuiets && select([&]() {
-                return cur->value > -14000 ? true
-                                           : (*endBadQuiets++ = *cur, false);
+                return cur->value > -14000 ? true : (*endBadQuiets++ = *cur, false);
             }))
             return *(cur - 1);
 
