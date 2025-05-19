@@ -1148,16 +1148,24 @@ moves_loop:  // When in check, search starts here
 
             if (value < singularBeta)
             {
-                int corrValAdj1  = std::abs(correctionValue) / 248400;
-                int corrValAdj2  = std::abs(correctionValue) / 249757;
-                int doubleMargin = -4 + 244 * PvNode - 206 * !ttCapture - corrValAdj1
-                                 - 997 * ttMoveHistory / 131072
-                                 - (ss->ply * 2 > thisThread->rootDepth * 3) * 47;
-                int tripleMargin = 84 + 269 * PvNode - 253 * !ttCapture + 91 * ss->ttPv
-                                 - corrValAdj2 - (ss->ply * 2 > thisThread->rootDepth * 3) * 54;
+                // measure against search explosions: don't double/triple extend bouncing & triangulation moves
+                if (ss->ply > 6 && (move == (ss-2)->currentMove.reverse() ||
+                   (move.to_sq() == (ss-4)->currentMove.from_sq() && move.from_sq() == (ss-2)->currentMove.to_sq()
+                   && (ss-4)->currentMove.to_sq() == (ss-2)->currentMove.from_sq())))
+                       extension = 1;
+                else
+                {
+                    int corrValAdj1  = std::abs(correctionValue) / 248400;
+                    int corrValAdj2  = std::abs(correctionValue) / 249757;
+                    int doubleMargin = -4 + 244 * PvNode - 206 * !ttCapture - corrValAdj1
+                                     - 997 * ttMoveHistory / 131072
+                                     - (ss->ply * 2 > thisThread->rootDepth * 3) * 47;
+                    int tripleMargin = 84 + 269 * PvNode - 253 * !ttCapture + 91 * ss->ttPv
+                                     - corrValAdj2 - (ss->ply * 2 > thisThread->rootDepth * 3) * 54;
 
-                extension =
-                  1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
+                    extension =
+                      1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
+                }
 
                 depth++;
             }
