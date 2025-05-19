@@ -134,6 +134,17 @@ void update_all_stats(const Position&      pos,
                       Move                 TTMove,
                       int                  moveCount);
 
+bool isReverseOrTriangulaton(Move move, Stack* const ss) {
+   if (move == (ss-2)->currentMove.reverse())
+       return true;
+   if (!(ss-2)->currentMove.is_ok() || !(ss-4)->currentMove.is_ok())
+       return false;
+   return move.to_sq() == (ss-4)->currentMove.from_sq()
+       && move.from_sq() == (ss-2)->currentMove.to_sq()
+       && (ss-4)->currentMove.to_sq() == (ss-2)->currentMove.from_sq();
+}
+
+
 }  // namespace
 
 Search::Worker::Worker(SharedState&                    sharedState,
@@ -1149,10 +1160,8 @@ moves_loop:  // When in check, search starts here
             if (value < singularBeta)
             {
                 // measure against search explosions: don't double/triple extend bouncing & triangulation moves
-                if (ss->ply > 6 && (move == (ss-2)->currentMove.reverse() ||
-                   (move.to_sq() == (ss-4)->currentMove.from_sq() && move.from_sq() == (ss-2)->currentMove.to_sq()
-                   && (ss-4)->currentMove.to_sq() == (ss-2)->currentMove.from_sq())))
-                       extension = 1;
+                if (ss->ply > 6 && isReverseOrTriangulaton(move, ss))
+                    extension = 1;
                 else
                 {
                     int corrValAdj1  = std::abs(correctionValue) / 248400;
@@ -2254,6 +2263,5 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     pos.undo_move(pv[0]);
     return pv.size() > 1;
 }
-
 
 }  // namespace Stockfish
