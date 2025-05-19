@@ -135,10 +135,12 @@ void update_all_stats(const Position&      pos,
                       int                  moveCount);
 
 bool isReverseOrTriangulaton(Move move, Stack* const ss) {
-   if (!(ss-2)->currentMove.is_ok() || !(ss-4)->currentMove.is_ok())
+   if (!(ss-2)->currentMove.is_ok())
        return false;
    if (move == (ss-2)->currentMove.reverse())
        return true;
+   if (!(ss-4)->currentMove.is_ok())
+       return false;
    return move.to_sq() == (ss-4)->currentMove.from_sq()
        && move.from_sq() == (ss-2)->currentMove.to_sq()
        && (ss-4)->currentMove.to_sq() == (ss-2)->currentMove.from_sq();
