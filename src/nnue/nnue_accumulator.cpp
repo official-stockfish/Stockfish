@@ -27,10 +27,13 @@
 #include "../misc.h"
 #include "../position.h"
 #include "../types.h"
+#include "simd.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 
 namespace Stockfish::Eval::NNUE {
+
+using namespace SIMD;
 
 #if defined(__GNUC__) && !defined(__clang__)
     #if __GNUC__ >= 13
@@ -381,7 +384,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
                                       AccumulatorState&                     accumulatorState,
                                       AccumulatorCaches::Cache<Dimensions>& cache) {
 
-    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions>;
+    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
     const Square          ksq   = pos.square<KING>(Perspective);
     auto&                 entry = cache[ksq][Perspective];
