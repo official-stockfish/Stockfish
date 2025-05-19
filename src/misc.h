@@ -129,6 +129,7 @@ template<typename T, std::size_t MaxSize>
 class ValueList {
 
    public:
+    ValueList() : values_{}, size_(0) {}
     std::size_t size() const { return size_; }
     void        push_back(const T& value) { values_[size_++] = value; }
     const T*    begin() const { return values_; }
@@ -137,7 +138,7 @@ class ValueList {
 
    private:
     T           values_[MaxSize];
-    std::size_t size_ = 0;
+    std::size_t size_;
 };
 
 
