@@ -130,7 +130,13 @@ case $uname_s in
     esac
     file_ext='tar'
     ;;
-  'CYGWIN'*|'MINGW'*|'MSYS'*) # Windows system with POSIX compatibility layer
+  'MINGW'*'ARM64'*) # Windows ARM64 system with POSIX compatibility layer
+    # TODO: older chips might be armv8, but we have no good way to detect, /proc/cpuinfo shows x86 info
+    file_os='windows'
+    true_arch='armv8-dotprod'
+    file_ext='zip'
+    ;;
+  'CYGWIN'*|'MINGW'*|'MSYS'*) # Windows x86_64system with POSIX compatibility layer
     get_flags
     check_znver_1_2
     set_arch_x86_64
