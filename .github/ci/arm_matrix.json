@@ -4,7 +4,7 @@
       "name": "Android NDK aarch64",
       "os": "ubuntu-22.04",
       "simple_name": "android",
-      "compiler": "aarch64-linux-android21-clang++",
+      "compiler": "aarch64-linux-android29-clang++",
       "emu": "qemu-aarch64",
       "comp": "ndk",
       "shell": "bash",
@@ -14,7 +14,7 @@
       "name": "Android NDK arm",
       "os": "ubuntu-22.04",
       "simple_name": "android",
-      "compiler": "armv7a-linux-androideabi21-clang++",
+      "compiler": "armv7a-linux-androideabi29-clang++",
       "emu": "qemu-arm",
       "comp": "ndk",
       "shell": "bash",
@@ -26,25 +26,25 @@
     {
       "binaries": "armv8-dotprod",
       "config": {
-        "compiler": "armv7a-linux-androideabi21-clang++"
+        "compiler": "armv7a-linux-androideabi29-clang++"
       }
     },
     {
       "binaries": "armv8",
       "config": {
-        "compiler": "armv7a-linux-androideabi21-clang++"
+        "compiler": "armv7a-linux-androideabi29-clang++"
       }
     },
     {
       "binaries": "armv7",
       "config": {
-        "compiler": "aarch64-linux-android21-clang++"
+        "compiler": "aarch64-linux-android29-clang++"
       }
     },
     {
       "binaries": "armv7-neon",
       "config": {
-        "compiler": "aarch64-linux-android21-clang++"
+        "compiler": "aarch64-linux-android29-clang++"
       }
     }
   ]

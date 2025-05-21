@@ -29,13 +29,13 @@ jobs:
             shell: bash
           - name: Android NDK aarch64
             os: ubuntu-22.04
-            compiler: aarch64-linux-android21-clang++
+            compiler: aarch64-linux-android29-clang++
             comp: ndk
             run_armv8_tests: true
             shell: bash
           - name: Android NDK arm
             os: ubuntu-22.04
-            compiler: armv7a-linux-androideabi21-clang++
+            compiler: armv7a-linux-androideabi29-clang++
             comp: ndk
             run_armv7_tests: true
             shell: bash
@@ -126,7 +126,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           if [ $COMP == ndk ]; then
-            NDKV="21.4.7075529"
+            NDKV="27.2.12479018"
             ANDROID_ROOT=/usr/local/lib/android
             ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
             SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
