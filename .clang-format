@@ -9,14 +9,14 @@ AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: false
-AlwaysBreakTemplateDeclarations: Yes
+BreakTemplateDeclarations: Yes
 BasedOnStyle: WebKit
 BitFieldColonSpacing: After
 BinPackParameters: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterFunction: false 
+  AfterFunction: false
   AfterClass: false
   AfterControlStatement: true
   BeforeElse: true
