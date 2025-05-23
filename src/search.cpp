@@ -680,8 +680,6 @@ Value Search::Worker::search(
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
         && (cutNode == (ttData.value >= beta) || depth > 5))
     {
-
-
         // If ttMove is quiet, update move sorting heuristics on TT hit
         if (ttData.move && ttData.value >= beta)
         {
@@ -712,15 +710,15 @@ Value Search::Worker::search(
 
                 if (!is_valid(ttDataNext.value))
                     return ttData.value;
+
                 if (ttData.value >= beta && -ttDataNext.value >= beta)
                     return ttData.value;
+
                 if (ttData.value <= alpha && -ttDataNext.value <= alpha)
                     return ttData.value;
             }
             else
-            {
                 return ttData.value;
-            }
         }
     }
 
@@ -1215,7 +1213,7 @@ moves_loop:  // When in check, search starts here
         if (cutNode)
             r += 2864 + 966 * !ttData.move;
 
-        // Increase reduction if ttMove is a capture but the current move is not a capture
+        // Increase reduction if ttMove is a capture
         if (ttCapture)
             r += 1210 + (depth < 8) * 963;
 
@@ -1253,7 +1251,7 @@ moves_loop:  // When in check, search starts here
             // std::clamp has been replaced by a more robust implementation.
             Depth d = std::max(1, std::min(newDepth - r / 1024,
                                            newDepth + !allNode + (PvNode && !bestMove)))
-                    + ((ss - 1)->isPvNode);
+                    + (ss - 1)->isPvNode;
 
             ss->reduction = newDepth - d;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
@@ -1440,10 +1438,7 @@ moves_loop:  // When in check, search starts here
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
                          ttData.move, moveCount);
         if (!PvNode)
-        {
-            int bonus = bestMove == ttData.move ? 800 : -879;
-            ttMoveHistory << bonus;
-        }
+            ttMoveHistory << (bestMove == ttData.move ? 800 : -879);
     }
 
     // Bonus for prior quiet countermove that caused the fail low
