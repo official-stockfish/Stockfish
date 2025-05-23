@@ -47,7 +47,9 @@ namespace Stockfish::Eval::NNUE::SIMD {
 
 #ifdef USE_AVX512
 using vec_t      = __m512i;
+using vec128_t   = __m128i;
 using psqt_vec_t = __m256i;
+using vec_uint_t = __m512i;
     #define vec_load(a) _mm512_load_si512(a)
     #define vec_store(a, b) _mm512_store_si512(a, b)
     #define vec_add_16(a, b) _mm512_add_epi16(a, b)
@@ -65,12 +67,28 @@ using psqt_vec_t = __m256i;
     #define vec_add_psqt_32(a, b) _mm256_add_epi32(a, b)
     #define vec_sub_psqt_32(a, b) _mm256_sub_epi32(a, b)
     #define vec_zero_psqt() _mm256_setzero_si256()
+
+    #ifdef USE_SSSE3
+        #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
+    #endif
+
+    #define vec128_zero _mm_setzero_si128()
+    #define vec128_set_16(a) _mm_set1_epi16(a)
+    #if (USE_SSE41)
+        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
+    #else
+        #define vec128_load(a) _mm_load_si128(a)
+    #endif
+    #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+    #define vec128_add(a, b) _mm_add_epi16(a, b)
     #define NumRegistersSIMD 16
     #define MaxChunkSize 64
 
 #elif USE_AVX2
 using vec_t      = __m256i;
+using vec128_t   = __m128i;
 using psqt_vec_t = __m256i;
+using vec_uint_t = __m256i;
     #define vec_load(a) _mm256_load_si256(a)
     #define vec_store(a, b) _mm256_store_si256(a, b)
     #define vec_add_16(a, b) _mm256_add_epi16(a, b)
@@ -88,12 +106,35 @@ using psqt_vec_t = __m256i;
     #define vec_add_psqt_32(a, b) _mm256_add_epi32(a, b)
     #define vec_sub_psqt_32(a, b) _mm256_sub_epi32(a, b)
     #define vec_zero_psqt() _mm256_setzero_si256()
+
+    #ifdef USE_SSSE3
+        #if defined(USE_VNNI) && !defined(USE_AVXVNNI)
+            #define vec_nnz(a) _mm256_cmpgt_epi32_mask(a, _mm256_setzero_si256())
+        #else
+            #define vec_nnz(a) \
+                _mm256_movemask_ps( \
+                  _mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+        #endif
+    #endif
+
+    #define vec128_zero _mm_setzero_si128()
+    #define vec128_set_16(a) _mm_set1_epi16(a)
+    #if (USE_SSE41)
+        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
+    #else
+        #define vec128_load(a) _mm_load_si128(a)
+    #endif
+    #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+    #define vec128_add(a, b) _mm_add_epi16(a, b)
+
     #define NumRegistersSIMD 16
     #define MaxChunkSize 32
 
 #elif USE_SSE2
 using vec_t      = __m128i;
+using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
+using vec_uint_t = __m128i;
     #define vec_load(a) (*(a))
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) _mm_add_epi16(a, b)
@@ -110,12 +151,30 @@ using psqt_vec_t = __m128i;
     #define vec_add_psqt_32(a, b) _mm_add_epi32(a, b)
     #define vec_sub_psqt_32(a, b) _mm_sub_epi32(a, b)
     #define vec_zero_psqt() _mm_setzero_si128()
+
+    #ifdef USE_SSSE3
+        #define vec_nnz(a) \
+            _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
+    #endif
+
+    #define vec128_zero _mm_setzero_si128()
+    #define vec128_set_16(a) _mm_set1_epi16(a)
+    #if (USE_SSE41)
+        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
+    #else
+        #define vec128_load(a) _mm_load_si128(a)
+    #endif
+    #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
+    #define vec128_add(a, b) _mm_add_epi16(a, b)
+
     #define NumRegistersSIMD (Is64Bit ? 16 : 8)
     #define MaxChunkSize 16
 
 #elif USE_NEON
 using vec_t      = int16x8_t;
 using psqt_vec_t = int32x4_t;
+using vec128_t   = uint16x8_t;
+using vec_uint_t = uint32x4_t;
     #define vec_load(a) (*(a))
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) vaddq_s16(a, b)
@@ -132,6 +191,15 @@ using psqt_vec_t = int32x4_t;
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
     #define vec_zero_psqt() psqt_vec_t{0}
+
+static constexpr std::uint32_t Mask[4] = {1, 2, 4, 8};
+    #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(Mask)))
+    #define vec128_zero vdupq_n_u16(0)
+    #define vec128_set_16(a) vdupq_n_u16(a)
+    #define vec128_load(a) vld1q_u16(reinterpret_cast<const std::uint16_t*>(a))
+    #define vec128_storeu(a, b) vst1q_u16(reinterpret_cast<std::uint16_t*>(a), b)
+    #define vec128_add(a, b) vaddq_u16(a, b)
+
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
@@ -296,9 +364,9 @@ dotprod_m128_add_dpbusd_epi32(int32x4_t& acc, int8x16_t a, int8x16_t b) {
 template<IndexType TransformedFeatureWidth, IndexType HalfDimensions, IndexType PSQTBuckets>
 class SIMDTiling {
 #ifdef VECTOR
-    // We use __m* types as template arguments, which causes GCC to emit warnings
-    // about losing some attribute information. This is irrelevant to us as we
-    // only take their size, so the following pragma are harmless.
+        // We use __m* types as template arguments, which causes GCC to emit warnings
+        // about losing some attribute information. This is irrelevant to us as we
+        // only take their size, so the following pragma are harmless.
     #if defined(__GNUC__)
         #pragma GCC diagnostic push
         #pragma GCC diagnostic ignored "-Wignored-attributes"
@@ -345,7 +413,6 @@ class SIMDTiling {
     static_assert(PSQTBuckets % PsqtTileHeight == 0, "PsqtTileHeight must divide PSQTBuckets");
 #endif
 };
-
 }
 
 #endif
