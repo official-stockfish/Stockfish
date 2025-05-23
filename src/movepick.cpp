@@ -314,7 +314,7 @@ void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
 // this function must be called after all quiet moves and captures have been generated
 bool MovePicker::can_move_king_or_pawn() {
-    assert(stage == GOOD_QUIET || stage == BAD_QUIET || stage == EVASION);
+    assert(stage > GOOD_CAPTURE && stage != EVASION_INIT); // SEE negative captures shouldn't be returned in GOOD_CAPTURE stage
 
     for (ExtMove* m = moves; m < endMoves; ++m)
     {
