@@ -35,22 +35,6 @@ namespace Stockfish::Eval::NNUE {
 
 using namespace SIMD;
 
-#if defined(__GNUC__) && !defined(__clang__)
-    #if __GNUC__ >= 13
-        #define sf_assume(cond) __attribute__((assume(cond)))
-    #else
-        #define sf_assume(cond) \
-            do \
-            { \
-                if (!(cond)) \
-                    __builtin_unreachable(); \
-            } while (0)
-    #endif
-#else
-    // do nothing for other compilers
-    #define sf_assume(cond)
-#endif
-
 namespace {
 
 template<Color Perspective, IndexType TransformedFeatureDimensions>
