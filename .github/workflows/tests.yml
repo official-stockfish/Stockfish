@@ -98,6 +98,14 @@ jobs:
             msys_sys: clang64
             msys_env: clang-x86_64-clang
             shell: msys2 {0}
+          - name: Windows 11 Mingw-w64 Clang arm64
+            os: windows-11-arm
+            compiler: clang++
+            comp: clang
+            run_armv8_tests: true
+            msys_sys: clangarm64
+            msys_env: clang-aarch64-clang
+            shell: msys2 {0}
     defaults:
       run:
         working-directory: src
@@ -302,8 +310,10 @@ jobs:
       - name: Test armv8 build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8 build
           ../tests/signature.sh $benchref
@@ -311,8 +321,10 @@ jobs:
       - name: Test armv8-dotprod build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8-dotprod build
           ../tests/signature.sh $benchref

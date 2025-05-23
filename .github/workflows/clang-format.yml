@@ -25,11 +25,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Run clang-format style check
-        uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e # @v4.11.0
+        uses: jidicula/clang-format-action@4726374d1aa3c6aecf132e5197e498979588ebc8 # @v4.15.0
         id: clang-format
         continue-on-error: true
         with:
-          clang-format-version: "18"
+          clang-format-version: "20"
           exclude-regex: "incbin"
 
       - name: Comment on PR
@@ -37,9 +37,9 @@ jobs:
         uses: thollander/actions-comment-pull-request@fabd468d3a1a0b97feee5f6b9e499eab0dd903f6 # @v2.5.0
         with:
           message: |
-            clang-format 18 needs to be run on this PR.
+            clang-format 20 needs to be run on this PR.
             If you do not have clang-format installed, the maintainer will run it when merging.
-            For the exact version please see https://packages.ubuntu.com/noble/clang-format-18.
+            For the exact version please see https://packages.ubuntu.com/plucky/clang-format-20.
 
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
           comment_tag: execution

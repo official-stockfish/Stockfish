@@ -923,7 +923,7 @@ Value Search::Worker::search(
     // Step 10. Internal iterative reductions
     // For PV nodes without a ttMove as well as for deep enough cutNodes, we decrease depth.
     // (*Scaler) Especially if they make IIR less aggressive.
-    if ((!allNode && depth >= (PvNode ? 5 : 7)) && !ttData.move)
+    if (!allNode && depth >= (PvNode ? 5 : 7) && !ttData.move)
         depth--;
 
     // Step 11. ProbCut
@@ -1015,10 +1015,8 @@ moves_loop:  // When in check, search starts here
 
         // Check for legality
         if (!pos.legal(move))
-        {
-            mp.mark_current_illegal();
             continue;
-        }
+
         // At root obey the "searchmoves" option and skip moves not listed in Root
         // Move List. In MultiPV mode we also skip PV moves that have been already
         // searched and those of lower "TB rank" if we are in a TB root position.
@@ -1087,15 +1085,17 @@ moves_loop:  // When in check, search starts here
                 int seeHist = std::clamp(captHist / 31, -137 * depth, 125 * depth);
                 if (!pos.see_ge(move, -158 * depth - seeHist))
                 {
-                    bool skip = true;
-                    if (depth > 2 && !capture && givesCheck && alpha < 0
-                        && pos.non_pawn_material(us) == PieceValue[movedPiece]
-                        && PieceValue[movedPiece] >= RookValue
-                        && !(PseudoAttacks[KING][pos.square<KING>(us)] & move.from_sq()))
-                        // if the opponent captures last mobile piece it might be stalemate
-                        skip = mp.other_piece_types_mobile(type_of(movedPiece));
+                    bool mayStalemateTrap =
+                      depth > 2 && givesCheck && alpha < 0
+                      && !capture  // we consider that captures will likely destroy the stalemate configuration
+                      && pos.non_pawn_material(us) == PieceValue[movedPiece]
+                      && PieceValue[movedPiece] >= RookValue
+                      // it can't be stalemate if we moved a piece adjacent to the king
+                      && !(attacks_bb<KING>(pos.square<KING>(us)) & move.from_sq())
+                      && !mp.can_move_king_or_pawn();
 
-                    if (skip)
+                    // avoid pruning sacrifices of our last piece for stalemate
+                    if (!mayStalemateTrap)
                         continue;
                 }
             }
@@ -1311,9 +1311,6 @@ moves_loop:  // When in check, search starts here
 
             r -= ttMoveHistory / 8;
 
-            if (cutNode)
-                r += 520;
-
             // Note that if expected reduction is high, we reduce search depth here
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha,
                                    newDepth - (r > 3564) - (r > 4969 && newDepth > 2), !cutNode);
@@ -1473,10 +1470,9 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior quiet countermove that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
-        int bonusScale = -324;
+        int bonusScale = -302;
         bonusScale += std::min(-(ss - 1)->statScore / 103, 323);
         bonusScale += std::min(73 * depth, 531);
-        bonusScale += 33 * !allNode;
         bonusScale += 174 * ((ss - 1)->moveCount > 8);
         bonusScale += 90 * (ss->cutoffCnt <= 3);
         bonusScale += 144 * (!ss->inCheck && bestValue <= ss->staticEval - 104);
@@ -1895,8 +1891,8 @@ void update_all_stats(const Position&      pos,
                       int                  moveCount) {
 
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
-    Piece                  moved_piece    = pos.moved_piece(bestMove);
-    PieceType              captured;
+    Piece                  movedPiece     = pos.moved_piece(bestMove);
+    PieceType              capturedPiece;
 
     int bonus = std::min(143 * depth - 89, 1496) + 302 * (bestMove == ttMove);
     int malus = std::min(737 * depth - 179, 3141) - 30 * moveCount;
@@ -1912,8 +1908,8 @@ void update_all_stats(const Position&      pos,
     else
     {
         // Increase stats for the best move in case it was a capture move
-        captured = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[moved_piece][bestMove.to_sq()][captured] << bonus * 1213 / 1024;
+        capturedPiece = type_of(pos.piece_on(bestMove.to_sq()));
+        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus * 1213 / 1024;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
@@ -1924,9 +1920,9 @@ void update_all_stats(const Position&      pos,
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
     {
-        moved_piece = pos.moved_piece(move);
-        captured    = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[moved_piece][move.to_sq()][captured] << -malus * 1388 / 1024;
+        movedPiece    = pos.moved_piece(move);
+        capturedPiece = type_of(pos.piece_on(move.to_sq()));
+        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1388 / 1024;
     }
 }
 

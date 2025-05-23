@@ -40,6 +40,18 @@
       "ext": ".exe",
       "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --",
       "archive_ext": "zip"
+    },
+    {
+      "name": "Windows 11 Mingw-w64 Clang arm64",
+      "os": "windows-11-arm",
+      "simple_name": "windows",
+      "compiler": "clang++",
+      "comp": "clang",
+      "msys_sys": "clangarm64",
+      "msys_env": "clang-aarch64-clang",
+      "shell": "msys2 {0}",
+      "ext": ".exe",
+      "archive_ext": "zip"
     }
   ],
   "binaries": [
@@ -51,7 +63,9 @@
     "x86-64-avx512",
     "x86-64-vnni256",
     "x86-64-vnni512",
-    "apple-silicon"
+    "apple-silicon",
+    "armv8",
+    "armv8-dotprod"
   ],
   "exclude": [
     {
@@ -127,9 +141,75 @@
       }
     },
     {
+      "binaries": "x86-64",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-sse41-popcnt",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-avx2",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-bmi2",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-avxvnni",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-avx512",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-vnni256",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-vnni512",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
       "binaries": "apple-silicon",
       "config": {
         "os": "windows-2022"
+      }
+    },
+    {
+      "binaries": "apple-silicon",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "apple-silicon",
+      "config": {
+        "os": "ubuntu-20.04"
+      }
+    },
+    {
+      "binaries": "apple-silicon",
+      "config": {
+        "os": "ubuntu-22.04"
       }
     },
     {
@@ -139,9 +219,63 @@
       }
     },
     {
-      "binaries": "apple-silicon",
+      "binaries": "armv8",
+      "config": {
+        "os": "windows-2022"
+      }
+    },
+    {
+      "binaries": "armv8",
+      "config": {
+        "os": "ubuntu-20.04"
+      }
+    },
+    {
+      "binaries": "armv8",
       "config": {
         "os": "ubuntu-22.04"
+      }
+    },
+    {
+      "binaries": "armv8",
+      "config": {
+        "os": "macos-13"
+      }
+    },
+    {
+      "binaries": "armv8",
+      "config": {
+        "os": "macos-14"
+      }
+    },
+    {
+      "binaries": "armv8-dotprod",
+      "config": {
+        "os": "windows-2022"
+      }
+    },
+    {
+      "binaries": "armv8-dotprod",
+      "config": {
+        "os": "ubuntu-20.04"
+      }
+    },
+    {
+      "binaries": "armv8-dotprod",
+      "config": {
+        "os": "ubuntu-22.04"
+      }
+    },
+    {
+      "binaries": "armv8-dotprod",
+      "config": {
+        "os": "macos-13"
+      }
+    },
+    {
+      "binaries": "armv8-dotprod",
+      "config": {
+        "os": "macos-14"
       }
     }
   ]

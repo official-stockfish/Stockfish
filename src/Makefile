@@ -163,8 +163,8 @@ lsx = no
 lasx = no
 STRIP = strip
 
-ifneq ($(shell which clang-format-18 2> /dev/null),)
-	CLANG-FORMAT = clang-format-18
+ifneq ($(shell which clang-format-20 2> /dev/null),)
+	CLANG-FORMAT = clang-format-20
 else
 	CLANG-FORMAT = clang-format
 endif
@@ -567,11 +567,16 @@ ifeq ($(COMP),ndk)
 	LDFLAGS += -static-libstdc++ -pie -lm -latomic
 endif
 
+### Allow overwriting CXX from command line
+ifdef COMPCXX
+	CXX=$(COMPCXX)
+endif
+
 # llvm-profdata must be version compatible with the specified CXX (be it clang, or the gcc alias)
 # make -j profile-build CXX=clang++-20 COMP=clang
 # Locate the version in the same directory as the compiler used,
 # with fallback to a generic one if it can't be located
-	LLVM_PROFDATA := $(dir $(realpath $(shell which $(CXX))))llvm-profdata
+	LLVM_PROFDATA := $(dir $(realpath $(shell which $(CXX) 2> /dev/null)))llvm-profdata
 ifeq ($(wildcard $(LLVM_PROFDATA)),)
 	LLVM_PROFDATA := llvm-profdata
 endif
@@ -588,11 +593,6 @@ else
 	ifeq ($(KERNEL),Darwin)
 		EXTRAPROFILEFLAGS = -fvisibility=hidden
 	endif
-endif
-
-### Allow overwriting CXX from command line
-ifdef COMPCXX
-	CXX=$(COMPCXX)
 endif
 
 ### Sometimes gcc is really clang

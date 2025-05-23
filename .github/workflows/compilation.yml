@@ -63,13 +63,13 @@ jobs:
       - name: Check compiler
         run: $COMPCXX -v
 
-      - name: Show g++ cpu info
-        if: runner.os != 'macOS'
-        run: g++ -Q -march=native --help=target
-
-      - name: Show clang++ cpu info
-        if: runner.os == 'macOS'
-        run: clang++ -E - -march=native -###
+      - name: Show compiler cpu info
+        run: |
+          if [[ "$COMPCXX" == clang* ]]; then
+             $COMPCXX -E - -march=native -###
+          else
+            $COMPCXX -Q -march=native --help=target
+          fi
 
       # x86-64 with newer extensions tests
 
