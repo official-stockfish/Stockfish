@@ -47,7 +47,7 @@ jobs:
 
       - name: Build
         working-directory: src
-        run: make -j build ARCH=x86-64-modern
+        run: make -j build
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
