@@ -520,4 +520,5 @@ std::string CommandLine::get_working_directory() {
     return workingDirectory;
 }
 
+
 }  // namespace Stockfish
