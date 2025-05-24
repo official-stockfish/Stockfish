@@ -22,14 +22,12 @@
 #define NNUE_LAYERS_AFFINE_TRANSFORM_SPARSE_INPUT_H_INCLUDED
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <iostream>
 
 #include "../../bitboard.h"
+#include "../simd.h"
 #include "../nnue_common.h"
-#include "affine_transform.h"
-#include "simd.h"
 
 /*
   This file contains the definition for a fully connected layer (aka affine transform) with block sparse input.
@@ -77,53 +75,16 @@ alignas(CacheLineSize) static constexpr struct OffsetIndices {
 // Find indices of nonzero numbers in an int32_t array
 template<const IndexType InputDimensions>
 void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_out) {
-    #if defined(USE_SSSE3)
-        #if defined(USE_AVX512)
-    using vec_t = __m512i;
-            #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
-        #elif defined(USE_AVX2)
-    using vec_t = __m256i;
-            #if defined(USE_VNNI) && !defined(USE_AVXVNNI)
-                #define vec_nnz(a) _mm256_cmpgt_epi32_mask(a, _mm256_setzero_si256())
-            #else
-                #define vec_nnz(a) \
-                    _mm256_movemask_ps( \
-                      _mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
-            #endif
-        #elif defined(USE_SSSE3)
-    using vec_t = __m128i;
-            #define vec_nnz(a) \
-                _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
-        #endif
-    using vec128_t = __m128i;
-        #define vec128_zero _mm_setzero_si128()
-        #define vec128_set_16(a) _mm_set1_epi16(a)
-        #if (USE_SSE41)
-            #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
-        #else
-            #define vec128_load(a) _mm_load_si128(a)
-        #endif
-        #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
-        #define vec128_add(a, b) _mm_add_epi16(a, b)
-    #elif defined(USE_NEON)
-    using vec_t                        = uint32x4_t;
-    static const std::uint32_t Mask[4] = {1, 2, 4, 8};
-        #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(Mask)))
-    using vec128_t                     = uint16x8_t;
-        #define vec128_zero vdupq_n_u16(0)
-        #define vec128_set_16(a) vdupq_n_u16(a)
-        #define vec128_load(a) vld1q_u16(reinterpret_cast<const std::uint16_t*>(a))
-        #define vec128_storeu(a, b) vst1q_u16(reinterpret_cast<std::uint16_t*>(a), b)
-        #define vec128_add(a, b) vaddq_u16(a, b)
-    #endif
-    constexpr IndexType InputSimdWidth = sizeof(vec_t) / sizeof(std::int32_t);
+    using namespace SIMD;
+
+    constexpr IndexType InputSimdWidth = sizeof(vec_uint_t) / sizeof(std::int32_t);
     // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
     constexpr IndexType ChunkSize       = std::max<IndexType>(InputSimdWidth, 8);
     constexpr IndexType NumChunks       = InputDimensions / ChunkSize;
     constexpr IndexType InputsPerChunk  = ChunkSize / InputSimdWidth;
     constexpr IndexType OutputsPerChunk = ChunkSize / 8;
 
-    const auto     inputVector = reinterpret_cast<const vec_t*>(input);
+    const auto     inputVector = reinterpret_cast<const vec_uint_t*>(input);
     IndexType      count       = 0;
     vec128_t       base        = vec128_zero;
     const vec128_t increment   = vec128_set_16(8);
@@ -133,7 +94,7 @@ void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_ou
         unsigned nnz = 0;
         for (IndexType j = 0; j < InputsPerChunk; ++j)
         {
-            const vec_t inputChunk = inputVector[i * InputsPerChunk + j];
+            const vec_uint_t inputChunk = inputVector[i * InputsPerChunk + j];
             nnz |= unsigned(vec_nnz(inputChunk)) << (j * InputSimdWidth);
         }
         for (IndexType j = 0; j < OutputsPerChunk; ++j)
@@ -148,12 +109,7 @@ void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_ou
     }
     count_out = count;
 }
-    #undef vec_nnz
-    #undef vec128_zero
-    #undef vec128_set_16
-    #undef vec128_load
-    #undef vec128_storeu
-    #undef vec128_add
+
 #endif
 
 // Sparse input implementation
@@ -232,27 +188,27 @@ class AffineTransformSparseInput {
         using invec_t  = __m512i;
         using outvec_t = __m512i;
         #define vec_set_32 _mm512_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m512_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m512_add_dpbusd_epi32
     #elif defined(USE_AVX2)
         using invec_t  = __m256i;
         using outvec_t = __m256i;
         #define vec_set_32 _mm256_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m256_add_dpbusd_epi32
     #elif defined(USE_SSSE3)
         using invec_t  = __m128i;
         using outvec_t = __m128i;
         #define vec_set_32 _mm_set1_epi32
-        #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::m128_add_dpbusd_epi32
     #elif defined(USE_NEON_DOTPROD)
         using invec_t  = int8x16_t;
         using outvec_t = int32x4_t;
         #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-        #define vec_add_dpbusd_32 Simd::dotprod_m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::dotprod_m128_add_dpbusd_epi32
     #elif defined(USE_NEON)
         using invec_t  = int8x16_t;
         using outvec_t = int32x4_t;
         #define vec_set_32(a) vreinterpretq_s8_u32(vdupq_n_u32(a))
-        #define vec_add_dpbusd_32 Simd::neon_m128_add_dpbusd_epi32
+        #define vec_add_dpbusd_32 SIMD::neon_m128_add_dpbusd_epi32
     #endif
         static constexpr IndexType OutputSimdWidth = sizeof(outvec_t) / sizeof(OutputType);
 

@@ -23,7 +23,7 @@
 #include "../../bitboard.h"
 #include "../../position.h"
 #include "../../types.h"
-#include "../nnue_accumulator.h"
+#include "../nnue_common.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 

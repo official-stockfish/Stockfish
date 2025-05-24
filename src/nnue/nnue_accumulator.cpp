@@ -27,26 +27,13 @@
 #include "../misc.h"
 #include "../position.h"
 #include "../types.h"
+#include "simd.h"
 #include "nnue_architecture.h"
-#include "nnue_feature_transformer.h"
+#include "nnue_feature_transformer.h"  // IWYU pragma: keep
 
 namespace Stockfish::Eval::NNUE {
 
-#if defined(__GNUC__) && !defined(__clang__)
-    #if __GNUC__ >= 13
-        #define sf_assume(cond) __attribute__((assume(cond)))
-    #else
-        #define sf_assume(cond) \
-            do \
-            { \
-                if (!(cond)) \
-                    __builtin_unreachable(); \
-            } while (0)
-    #endif
-#else
-    // do nothing for other compilers
-    #define sf_assume(cond)
-#endif
+using namespace SIMD;
 
 namespace {
 
@@ -381,7 +368,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
                                       AccumulatorState&                     accumulatorState,
                                       AccumulatorCaches::Cache<Dimensions>& cache) {
 
-    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions>;
+    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
     const Square          ksq   = pos.square<KING>(Perspective);
     auto&                 entry = cache[ksq][Perspective];
