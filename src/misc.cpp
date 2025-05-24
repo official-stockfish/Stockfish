@@ -520,18 +520,4 @@ std::string CommandLine::get_working_directory() {
     return workingDirectory;
 }
 
-
-#if defined(__GNUC__) && !defined(__clang__)
-    #define sf_assume(cond) \
-        do \
-        { \
-            if (!(cond)) \
-                __builtin_unreachable(); \
-        } while (0)
-#else
-    // do nothing for other compilers
-    #define sf_assume(cond)
-#endif
-
-
 }  // namespace Stockfish

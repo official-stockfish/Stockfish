@@ -317,6 +317,18 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 }
 }
 
+#if defined(__GNUC__) && !defined(__clang__)
+    #define sf_assume(cond) \
+        do \
+        { \
+            if (!(cond)) \
+                __builtin_unreachable(); \
+        } while (0)
+#else
+    // do nothing for other compilers
+    #define sf_assume(cond)
+#endif
+
 }  // namespace Stockfish
 
 #endif  // #ifndef MISC_H_INCLUDED
