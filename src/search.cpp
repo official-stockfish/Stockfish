@@ -701,18 +701,12 @@ Value Search::Worker::search(
                 do_move(pos, ttData.move, st);
                 Key nextPosKey                             = pos.key();
                 auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
-                ttDataNext.value =
-                  ttHitNext ? value_from_tt(ttDataNext.value, ss->ply + 1, pos.rule50_count())
-                            : VALUE_NONE;
                 undo_move(pos, ttData.move);
 
+                // Check that the ttValue after the tt move would also trigger a cutoff
                 if (!is_valid(ttDataNext.value))
                     return ttData.value;
-
-                if (ttData.value >= beta && -ttDataNext.value >= beta)
-                    return ttData.value;
-
-                if (ttData.value <= alpha && -ttDataNext.value <= alpha)
+                if ((ttData.value >= beta) == (-ttDataNext.value >= beta))
                     return ttData.value;
             }
             else
@@ -916,9 +910,7 @@ Value Search::Worker::search(
     if (depth >= 3
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
-        // probCut there and in further interactions with transposition table cutoff
-        // depth is set to depth - 3 because probCut search has depth set to depth - 4
-        // but we also do a move before it. So effective depth is equal to depth - 3.
+        // probCut there
         && !(is_valid(ttData.value) && ttData.value < probCutBeta))
     {
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
