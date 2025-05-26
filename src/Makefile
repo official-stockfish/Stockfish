@@ -60,9 +60,9 @@ SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 
 HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h history.h \
 		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/layers/affine_transform.h \
-		nnue/layers/affine_transform_sparse_input.h nnue/layers/clipped_relu.h nnue/layers/simd.h \
+		nnue/layers/affine_transform_sparse_input.h nnue/layers/clipped_relu.h \
 		nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h nnue/nnue_architecture.h \
-		nnue/nnue_common.h nnue/nnue_feature_transformer.h position.h \
+		nnue/nnue_common.h nnue/nnue_feature_transformer.h nnue/simd.h position.h \
 		search.h syzygy/tbprobe.h thread.h thread_win32_osx.h timeman.h \
 		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h engine.h score.h numa.h memory.h
 
@@ -533,14 +533,12 @@ ifeq ($(KERNEL),Darwin)
 	XCRUN = xcrun
 endif
 
-# To cross-compile for Android, NDK version r21 or later is recommended.
-# In earlier NDK versions, you'll need to pass -fno-addrsig if using GNU binutils.
-# Currently we don't know how to make PGO builds with the NDK yet.
+# To cross-compile for Android, use NDK version r27c or later.
 ifeq ($(COMP),ndk)
-	CXXFLAGS += -stdlib=libc++ -fPIE
+	CXXFLAGS += -stdlib=libc++
 	comp=clang
 	ifeq ($(arch),armv7)
-		CXX=armv7a-linux-androideabi16-clang++
+		CXX=armv7a-linux-androideabi29-clang++
 		CXXFLAGS += -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 		ifneq ($(shell which arm-linux-androideabi-strip 2>/dev/null),)
 			STRIP=arm-linux-androideabi-strip
@@ -549,7 +547,7 @@ ifeq ($(COMP),ndk)
 		endif
 	endif
 	ifeq ($(arch),armv8)
-		CXX=aarch64-linux-android21-clang++
+		CXX=aarch64-linux-android29-clang++
 		ifneq ($(shell which aarch64-linux-android-strip 2>/dev/null),)
 			STRIP=aarch64-linux-android-strip
 		else
@@ -557,14 +555,14 @@ ifeq ($(COMP),ndk)
 		endif
 	endif
 	ifeq ($(arch),x86_64)
-		CXX=x86_64-linux-android21-clang++
+		CXX=x86_64-linux-android29-clang++
 		ifneq ($(shell which x86_64-linux-android-strip 2>/dev/null),)
 			STRIP=x86_64-linux-android-strip
 		else
 			STRIP=llvm-strip
 		endif
 	endif
-	LDFLAGS += -static-libstdc++ -pie -lm -latomic
+	LDFLAGS += -static-libstdc++
 endif
 
 ### Allow overwriting CXX from command line
