@@ -74,11 +74,7 @@ using vec_uint_t = __m512i;
 
     #define vec128_zero _mm_setzero_si128()
     #define vec128_set_16(a) _mm_set1_epi16(a)
-    #if (USE_SSE41)
-        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
-    #else
-        #define vec128_load(a) _mm_load_si128(a)
-    #endif
+    #define vec128_load(a) _mm_load_si128(a)
     #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
     #define vec128_add(a, b) _mm_add_epi16(a, b)
     #define NumRegistersSIMD 16
@@ -119,11 +115,7 @@ using vec_uint_t = __m256i;
 
     #define vec128_zero _mm_setzero_si128()
     #define vec128_set_16(a) _mm_set1_epi16(a)
-    #if (USE_SSE41)
-        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
-    #else
-        #define vec128_load(a) _mm_load_si128(a)
-    #endif
+    #define vec128_load(a) _mm_load_si128(a)
     #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
     #define vec128_add(a, b) _mm_add_epi16(a, b)
 
@@ -159,11 +151,7 @@ using vec_uint_t = __m128i;
 
     #define vec128_zero _mm_setzero_si128()
     #define vec128_set_16(a) _mm_set1_epi16(a)
-    #if (USE_SSE41)
-        #define vec128_load(a) _mm_cvtepu8_epi16(_mm_loadl_epi64(a))
-    #else
-        #define vec128_load(a) _mm_load_si128(a)
-    #endif
+    #define vec128_load(a) _mm_load_si128(a)
     #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
     #define vec128_add(a, b) _mm_add_epi16(a, b)
 
