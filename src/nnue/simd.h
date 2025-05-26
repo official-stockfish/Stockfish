@@ -73,6 +73,7 @@ using vec_uint_t = __m512i;
     #endif
 
     #define vec128_zero _mm_setzero_si128()
+    #define vec128_set_16(a) _mm_set1_epi16(a)
     #define vec128_load(a) _mm_load_si128(a)
     #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
     #define vec128_add(a, b) _mm_add_epi16(a, b)
