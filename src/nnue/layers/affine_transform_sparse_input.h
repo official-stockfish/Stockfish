@@ -49,11 +49,7 @@ constexpr int constexpr_lsb(uint64_t bb) {
 
 alignas(CacheLineSize) static constexpr struct OffsetIndices {
 
-    #if (USE_SSE41)
-    std::uint8_t offset_indices[256][8];
-    #else
     std::uint16_t offset_indices[256][8];
-    #endif
 
     constexpr OffsetIndices() :
         offset_indices() {
