@@ -19,6 +19,7 @@
 #include "movepick.h"
 
 #include <cassert>
+#include <cstddef>
 #include <limits>
 #include <utility>
 
@@ -227,10 +228,11 @@ top:
     case PROBCUT_INIT :
     case QCAPTURE_INIT :
         cur = endBadCaptures = moves;
-        endCur               = generate<CAPTURES>(pos, cur);
+        endCaptures = endCur             = generate<CAPTURES>(pos, cur);
 
         score<CAPTURES>();
         partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
+        noBadCaptures=true;
         ++stage;
         goto top;
 
@@ -238,7 +240,8 @@ top:
         if (select([&]() {
                 if (pos.see_ge(*cur, -cur->value / 18))
                     return true;
-                std::swap(*endBadCaptures++, *cur);
+                *endBadCaptures++ = *cur;
+                noBadCaptures=false;
                 return false;
             }))
             return *(cur - 1);
@@ -249,8 +252,8 @@ top:
     case QUIET_INIT :
         if (!skipQuiets)
         {
-            cur = endBadQuiets = endBadCaptures;
-            endCur             = generate<QUIETS>(pos, cur);
+            cur  = endBadCaptures;
+            endQuiets = endCur           = generate<QUIETS>(pos, cur);
 
             score<QUIETS>();
             partial_insertion_sort(cur, endCur, -3560 * depth);
@@ -261,10 +264,7 @@ top:
 
     case GOOD_QUIET :
         if (!skipQuiets && select([&]() {
-                if (cur->value > -14000)
-                    return true;
-                *endBadQuiets++ = *cur;
-                return false;
+                return cur->value > -14000 || noBadCaptures ? true : false;
             }))
             return *(cur - 1);
 
@@ -280,15 +280,15 @@ top:
             return *(cur - 1);
 
         // Prepare the pointers to loop over the bad quiets
-        cur    = endBadCaptures;
-        endCur = endBadQuiets;
+        cur      = endCaptures;
+        endCur = endQuiets;
 
         ++stage;
         [[fallthrough]];
 
     case BAD_QUIET :
-        if (!skipQuiets)
-            return select([]() { return true; });
+        if (!skipQuiets && !noBadCaptures)
+            return select([&]() { return cur->value <= -14000;  });
 
         return Move::none();
 
@@ -316,9 +316,18 @@ top:
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
 // this function must be called after all quiet moves and captures have been generated
-bool MovePicker::can_move_king_or_pawn() {
+bool MovePicker::can_move_king_or_pawn(const ValueList<Move, 32>& capturesSearched) {
     // SEE negative captures shouldn't be returned in GOOD_CAPTURE stage
     assert(stage > GOOD_CAPTURE && stage != EVASION_INIT);
+    
+    // verify good captures (here in movepicker they are overriden by quiets)
+    for (std::size_t i=0; i< capturesSearched.size();i++)
+    {
+        PieceType movedPieceType = type_of(pos.moved_piece(capturesSearched[i]));
+        // it's assured they are legal;
+        if (movedPieceType == PAWN || movedPieceType == KING)
+            return true;
+    }
 
     for (ExtMove* m = moves; m < endCur; ++m)
     {

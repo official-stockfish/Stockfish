@@ -27,6 +27,8 @@ namespace Stockfish {
 
 class Position;
 
+template <typename T, std::size_t MaxSize> class ValueList;
+
 // The MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which emits one
 // new pseudo-legal move on every call, until there are no moves left, when
@@ -50,7 +52,7 @@ class MovePicker {
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move();
     void skip_quiet_moves();
-    bool can_move_king_or_pawn();
+    bool can_move_king_or_pawn(const ValueList<Move, 32>& capturesSearched);
 
    private:
     template<typename Pred>
@@ -67,12 +69,13 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endCur, *endBadCaptures, *endBadQuiets;
+    ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endQuiets;
     int                          stage;
     int                          threshold;
     Depth                        depth;
     int                          ply;
     bool                         skipQuiets = false;
+    bool                         noBadCaptures;
     ExtMove                      moves[MAX_MOVES];
 };
 
