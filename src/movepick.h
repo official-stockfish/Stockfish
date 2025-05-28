@@ -50,7 +50,6 @@ class MovePicker {
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move();
     void skip_quiet_moves();
-    bool can_move_king_or_pawn();
 
    private:
     template<typename Pred>
