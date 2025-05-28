@@ -128,18 +128,13 @@ void MovePicker::score() {
 
     Color us = pos.side_to_move();
 
-    [[maybe_unused]] Bitboard threatenedPieces, threatByLesser[QUEEN + 1];
+    [[maybe_unused]] Bitboard threatByLesser[QUEEN + 1];
     if constexpr (Type == QUIETS)
     {
         threatByLesser[KNIGHT] = threatByLesser[BISHOP] = pos.attacks_by<PAWN>(~us);
         threatByLesser[ROOK] =
           pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatByLesser[KNIGHT];
         threatByLesser[QUEEN] = pos.attacks_by<ROOK>(~us) | threatByLesser[ROOK];
-
-        // Pieces threatened by pieces of lesser material value
-        threatenedPieces = (pos.pieces(us, QUEEN) & threatByLesser[QUEEN])
-                         | (pos.pieces(us, ROOK) & threatByLesser[ROOK])
-                         | (pos.pieces(us, KNIGHT, BISHOP) & threatByLesser[KNIGHT]);
     }
 
     for (auto& m : *this)
@@ -316,11 +311,11 @@ top:
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
 // this function must be called after all quiet moves and captures have been generated
-bool MovePicker::can_move_king_or_pawn() {
+bool MovePicker::can_move_king_or_pawn() const {
     // SEE negative captures shouldn't be returned in GOOD_CAPTURE stage
     assert(stage > GOOD_CAPTURE && stage != EVASION_INIT);
 
-    for (ExtMove* m = moves; m < endCur; ++m)
+    for (const ExtMove* m = moves; m < endCur; ++m)
     {
         PieceType movedPieceType = type_of(pos.moved_piece(*m));
         if ((movedPieceType == PAWN || movedPieceType == KING) && pos.legal(*m))

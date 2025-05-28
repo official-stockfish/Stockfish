@@ -81,7 +81,6 @@ constexpr std::size_t MaxSimdWidth = 32;
 
 // Type of input feature after conversion
 using TransformedFeatureType = std::uint8_t;
-using IndexType              = std::uint32_t;
 
 // Round n up to be a multiple of base
 template<typename IntType>
