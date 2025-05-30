@@ -778,10 +778,7 @@ Value Search::Worker::search(
         goto moves_loop;
     }
     else if (excludedMove)
-    {
-        // Providing the hint that this node's accumulator will be used often
         unadjustedStaticEval = eval = ss->staticEval;
-    }
     else if (ss->ttHit)
     {
         // Never assume anything about values stored in TT
