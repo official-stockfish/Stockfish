@@ -1055,16 +1055,12 @@ moves_loop:  // When in check, search starts here
                 }
 
                 // SEE based pruning for captures and checks
+                // We take care to avoid pruning sacrifices
+                // of our last piece for stalemate
                 int margin = std::clamp(158 * depth + captHist / 31, 0, 283 * depth);
-                if (!pos.see_ge(move, -margin))
-                {
-                    bool mayStalemateTrap = pos.non_pawn_material(us) == PieceValue[movedPiece]
-                                         && PieceValue[movedPiece] >= RookValue;
-
-                    // avoid pruning sacrifices of our last piece for stalemate
-                    if (!mayStalemateTrap)
-                        continue;
-                }
+                if (pos.non_pawn_material(us) != PieceValue[movedPiece]
+                    && !pos.see_ge(move, -margin))
+                    continue;
             }
             else
             {
