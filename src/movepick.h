@@ -58,7 +58,7 @@ class MovePicker {
     template<GenType>
     void     score();
     ExtMove* begin() { return cur; }
-    ExtMove* end() { return endMoves; }
+    ExtMove* end() { return endCur; }
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
@@ -67,7 +67,7 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endMoves, *endBadCaptures, *endBadQuiets;
+    ExtMove *                    cur, *endCur, *endBadCaptures, *endBadQuiets;
     int                          stage;
     int                          threshold;
     Depth                        depth;

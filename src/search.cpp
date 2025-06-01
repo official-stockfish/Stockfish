@@ -69,10 +69,6 @@ namespace {
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
 
-constexpr int futility_move_count(bool improving, Depth depth) {
-    return (3 + depth * depth) / (2 - improving);
-}
-
 int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
     const Color us    = pos.side_to_move();
     const auto  m     = (ss - 1)->currentMove;
@@ -466,7 +462,9 @@ void Search::Worker::iterative_deepening() {
             fallingEval = std::clamp(fallingEval, 0.5786, 1.6752);
 
             // If the bestMove is stable over several iterations, reduce time accordingly
-            timeReduction = lastBestMoveDepth + 8 < completedDepth ? 1.4857 : 0.7046;
+            double k      = 0.527;
+            double center = lastBestMoveDepth + 11;
+            timeReduction = 0.8 + 0.84 / (1.077 + std::exp(-k * (completedDepth - center)));
             double reduction =
               (1.4540 + mainThread->previousTimeReduction) / (2.1593 * timeReduction);
             double bestMoveInstability = 0.9929 + 1.8519 * totBestMoveChanges / threads.size();
@@ -680,8 +678,6 @@ Value Search::Worker::search(
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
         && (cutNode == (ttData.value >= beta) || depth > 5))
     {
-
-
         // If ttMove is quiet, update move sorting heuristics on TT hit
         if (ttData.move && ttData.value >= beta)
         {
@@ -712,15 +708,15 @@ Value Search::Worker::search(
 
                 if (!is_valid(ttDataNext.value))
                     return ttData.value;
+
                 if (ttData.value >= beta && -ttDataNext.value >= beta)
                     return ttData.value;
+
                 if (ttData.value <= alpha && -ttDataNext.value <= alpha)
                     return ttData.value;
             }
             else
-            {
                 return ttData.value;
-            }
         }
     }
 
@@ -1047,7 +1043,7 @@ moves_loop:  // When in check, search starts here
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-            if (moveCount >= futility_move_count(improving, depth))
+            if (moveCount >= (3 + depth * depth) / (2 - improving))
                 mp.skip_quiet_moves();
 
             // Reduced depth of the next LMR search
@@ -1073,9 +1069,7 @@ moves_loop:  // When in check, search starts here
                 if (!pos.see_ge(move, -158 * depth - seeHist))
                 {
                     bool mayStalemateTrap =
-                      depth > 2 && givesCheck && alpha < 0
-                      && !capture  // we consider that captures will likely destroy the stalemate configuration
-                      && pos.non_pawn_material(us) == PieceValue[movedPiece]
+                      depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece]
                       && PieceValue[movedPiece] >= RookValue
                       // it can't be stalemate if we moved a piece adjacent to the king
                       && !(attacks_bb<KING>(pos.square<KING>(us)) & move.from_sq())
@@ -1101,8 +1095,9 @@ moves_loop:  // When in check, search starts here
 
                 lmrDepth += history / 3388;
 
-                Value futilityValue = ss->staticEval + (bestMove ? 46 : 138) + 117 * lmrDepth
-                                    + 102 * (ss->staticEval > alpha);
+                Value baseFutility = (bestMove ? 46 : 138 + std::abs(history / 300));
+                Value futilityValue =
+                  ss->staticEval + baseFutility + 117 * lmrDepth + 102 * (ss->staticEval > alpha);
 
                 // Futility pruning: parent node
                 // (*Scaler): Generally, more frequent futility pruning
@@ -1152,7 +1147,7 @@ moves_loop:  // When in check, search starts here
                 int corrValAdj2  = std::abs(correctionValue) / 249757;
                 int doubleMargin = -4 + 244 * PvNode - 206 * !ttCapture - corrValAdj1
                                  - 997 * ttMoveHistory / 131072
-                                 - (ss->ply * 2 > thisThread->rootDepth * 3) * 47;
+                                 - (ss->ply > thisThread->rootDepth) * 47;
                 int tripleMargin = 84 + 269 * PvNode - 253 * !ttCapture + 91 * ss->ttPv
                                  - corrValAdj2 - (ss->ply * 2 > thisThread->rootDepth * 3) * 54;
 
@@ -1217,7 +1212,7 @@ moves_loop:  // When in check, search starts here
         if (cutNode)
             r += 2864 + 966 * !ttData.move;
 
-        // Increase reduction if ttMove is a capture but the current move is not a capture
+        // Increase reduction if ttMove is a capture
         if (ttCapture)
             r += 1210 + (depth < 8) * 963;
 
@@ -1229,7 +1224,7 @@ moves_loop:  // When in check, search starts here
             r += (ss->quietMoveStreak - 1) * 50;
 
         // For first picked move (ttMove) reduce reduction
-        else if (move == ttData.move)
+        if (move == ttData.move)
             r -= 2006;
 
         if (capture)
@@ -1255,7 +1250,7 @@ moves_loop:  // When in check, search starts here
             // std::clamp has been replaced by a more robust implementation.
             Depth d = std::max(1, std::min(newDepth - r / 1024,
                                            newDepth + !allNode + (PvNode && !bestMove)))
-                    + ((ss - 1)->isPvNode);
+                    + (ss - 1)->isPvNode;
 
             ss->reduction = newDepth - d;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
@@ -1442,10 +1437,7 @@ moves_loop:  // When in check, search starts here
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
                          ttData.move, moveCount);
         if (!PvNode)
-        {
-            int bonus = bestMove == ttData.move ? 800 : -879;
-            ttMoveHistory << bonus;
-        }
+            ttMoveHistory << (bestMove == ttData.move ? 800 : -879);
     }
 
     // Bonus for prior quiet countermove that caused the fail low
