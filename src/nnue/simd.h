@@ -168,8 +168,7 @@ using vec_uint_t = uint32x4_t;
     #define vec_add_16(a, b) vaddq_s16(a, b)
     #define vec_sub_16(a, b) vsubq_s16(a, b)
     #define vec_mulhi_16(a, b) vqdmulhq_s16(a, b)
-    #define vec_zero() vec_t{0}
-    #define vec_set_16(a) vdupq_n_s16(a)
+    #define vec_zero() vdupq_n_s16(0)
     #define vec_max_16(a, b) vmaxq_s16(a, b)
     #define vec_min_16(a, b) vminq_s16(a, b)
     #define vec_slli_16(a, b) vshlq_s16(a, vec_set_16(b))
@@ -179,7 +178,7 @@ using vec_uint_t = uint32x4_t;
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
-    #define vec_zero_psqt() psqt_vec_t{0}
+    #define vec_zero_psqt() vdupq_n_s32(0)
 
 static constexpr std::uint32_t Mask[4] = {1, 2, 4, 8};
     #define vec_nnz(a) vaddvq_u32(vandq_u32(vtstq_u32(a, a), vld1q_u32(Mask)))
