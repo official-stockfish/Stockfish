@@ -128,6 +128,7 @@ using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
 using vec_uint_t = __m128i;
     #define vec_load(a) (*(a))
+    #define vec_load(a) _mm_load_si128(a) 
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) _mm_add_epi16(a, b)
     #define vec_sub_16(a, b) _mm_sub_epi16(a, b)
@@ -239,18 +240,12 @@ template<typename VecWrapper,
          typename... Ts,
          std::enable_if_t<is_all_same_v<typename VecWrapper::type, T, Ts...>, bool> = true,
          std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool>                    = true>
-typename VecWrapper::type
+constexpr typename VecWrapper::type 
 fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operands) {
-    switch (update_op)
-    {
-    case Add :
+    if constexpr (update_op == Add) {
         return fused<VecWrapper, ops...>(VecWrapper::add(in, operand), operands...);
-    case Sub :
+    } else if constexpr (update_op == Sub) {
         return fused<VecWrapper, ops...>(VecWrapper::sub(in, operand), operands...);
-    default :
-        static_assert(update_op == Add || update_op == Sub,
-                      "Only Add and Sub are currently supported.");
-        return typename VecWrapper::type();
     }
 }
 
