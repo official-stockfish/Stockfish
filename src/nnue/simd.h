@@ -127,7 +127,7 @@ using vec_t      = __m128i;
 using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
 using vec_uint_t = __m128i;
-    #define vec_load(a) _mm_load_si128(a) 
+    #define vec_load(a) _mm_load_si128(a)
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) _mm_add_epi16(a, b)
     #define vec_sub_16(a, b) _mm_sub_epi16(a, b)
@@ -174,7 +174,7 @@ using vec_uint_t = uint32x4_t;
     #define vec_min_16(a, b) vminq_s16(a, b)
     #define vec_slli_16(a, b) vshlq_s16(a, vec_set_16(b))
     // #define vec_packus_16(a, b) reinterpret_cast<vec_t>(vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)))
-    #define vec_packus_16(a, b) vcombine_u8(vqmovun_s16(a), vqmovun_s16(b)) 
+    #define vec_packus_16(a, b) vcombine_u8(vqmovun_s16(a), vqmovun_s16(b))
     #define vec_load_psqt(a) (*(a))
     #define vec_store_psqt(a, b) *(a) = (b)
     #define vec_add_psqt_32(a, b) vaddq_s32(a, b)
@@ -240,11 +240,14 @@ template<typename VecWrapper,
          typename... Ts,
          std::enable_if_t<is_all_same_v<typename VecWrapper::type, T, Ts...>, bool> = true,
          std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool>                    = true>
-constexpr typename VecWrapper::type 
+constexpr typename VecWrapper::type
 fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operands) {
-    if constexpr (update_op == Add) {
+    if constexpr (update_op == Add)
+    {
         return fused<VecWrapper, ops...>(VecWrapper::add(in, operand), operands...);
-    } else if constexpr (update_op == Sub) {
+    }
+    else if constexpr (update_op == Sub)
+    {
         return fused<VecWrapper, ops...>(VecWrapper::sub(in, operand), operands...);
     }
 }
