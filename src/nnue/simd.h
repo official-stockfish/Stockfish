@@ -127,7 +127,6 @@ using vec_t      = __m128i;
 using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
 using vec_uint_t = __m128i;
-    #define vec_load(a) (*(a))
     #define vec_load(a) _mm_load_si128(a) 
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) _mm_add_epi16(a, b)
