@@ -1,0 +1,260 @@
+# Founders of the Stockfish project and Fishtest infrastructure
+Tord Romstad (romstad)
+Marco Costalba (mcostalba)
+Joona Kiiski (zamar)
+Gary Linscott (glinscott)
+
+# Authors and inventors of NNUE, training, and NNUE port
+Yu Nasu (ynasu87)
+Motohiro Isozaki (yaneurao)
+Hisayori Noda (nodchip)
+
+# All other authors of Stockfish code (in alphabetical order)
+Aditya (absimaldata)
+Adrian Petrescu (apetresc)
+Ahmed Kerimov (wcdbmv)
+Ajith Chandy Jose (ajithcj)
+Alain Savard (Rocky640)
+Alayan Feh (Alayan-stk-2)
+Alexander Kure
+Alexander Pagel (Lolligerhans)
+Alfredo Menezes (lonfom169)
+Ali AlZhrani (Cooffe)
+AliceRoselia
+Andreas Jan van der Meulen (Andyson007)
+Andreas Matthies (Matthies)
+Andrei Vetrov (proukornew)
+Andrew Grant (AndyGrant)
+Andrey Neporada (nepal)
+Andy Duplain
+Antoine Champion (antoinechampion)
+Aram Tumanian (atumanian)
+Arjun Temurnikar
+Artem Solopiy (EntityFX)
+Auguste Pop
+Balazs Szilagyi
+Balint Pfliegel
+Baptiste Rech (breatn)
+Ben Chaney (Chaneybenjamini)
+Ben Koshy (BKSpurgeon)
+Bill Henry (VoyagerOne)
+Bojun Guo (noobpwnftw, Nooby)
+borg323
+Boštjan Mejak (PedanticHacker)
+braich
+Brian Sheppard (SapphireBrand, briansheppard-toast)
+Bruno de Melo Costa (BM123499)
+Bruno Pellanda (pellanda)
+Bryan Cross (crossbr)
+candirufish
+Carlos Esparza Sánchez (ces42)
+Chess13234
+Chris Bao (sscg13)
+Chris Cain (ceebo)
+Ciekce
+clefrks
+Clemens L. (rn5f107s2)
+Cody Ho (aesrentai)
+Dale Weiler (graphitemaster)
+Daniel Axtens (daxtens)
+Daniel Dugovic (ddugovic)
+Daniel Monroe (Ergodice)
+Daniel Samek (DanSamek)
+Dan Schmidt (dfannius)
+Dariusz Orzechowski (dorzechowski)
+David (dav1312)
+David Zar
+Daylen Yang (daylen)
+Deshawn Mohan-Smith (GoldenRare)
+Dieter Dobbelaere (ddobbelaere)
+DiscanX
+Dominik Schlösser (domschl)
+double-beep
+Douglas Matos Gomes (dsmsgms)
+Dubslow
+Eduardo Cáceres (eduherminio)
+Eelco de Groot (KingDefender)
+Ehsan Rashid (erashid)
+Elvin Liu (solarlight2)
+erbsenzaehler
+Ernesto Gatti
+evqsx
+Fabian Beuke (madnight)
+Fabian Fichter (ianfab)
+Fanael Linithien (Fanael)
+fanon
+Fauzi Akram Dabat (fauzi2)
+Felix Wittmann
+gamander
+Gabriele Lombardo (gabe)
+Gahtan Nahdi
+Gary Heckman (gheckman)
+George Sobala (gsobala)
+gguliash
+Giacomo Lorenzetti (G-Lorenz)
+Gian-Carlo Pascutto (gcp)
+Goh CJ (cj5716)
+Gontran Lemaire (gonlem)
+Goodkov Vasiliy Aleksandrovich (goodkov)
+Gregor Cramer
+GuardianRM
+Guy Vreuls (gvreuls)
+Günther Demetz (pb00067, pb00068)
+Henri Wiechers
+Hiraoka Takuya (HiraokaTakuya)
+homoSapiensSapiens
+Hongzhi Cheng
+Ivan Ivec (IIvec)
+Jacques B. (Timshel)
+Jake Senne (w1wwwwww)
+Jan Ondruš (hxim)
+Jared Kish (Kurtbusch, kurt22i)
+Jarrod Torriero (DU-jdto)
+Jasper Shovelton (Beanie496)
+Jean-Francois Romang (jromang)
+Jean Gauthier (OuaisBla)
+Jekaa
+Jerry Donald Watson (jerrydonaldwatson)
+jjoshua2
+Jonathan Buladas Dumale (SFisGOD)
+Jonathan Calovski (Mysseno)
+Jonathan McDermid (jonathanmcdermid)
+Joost VandeVondele (vondele)
+Joseph Ellis (jhellis3)
+Joseph R. Prostko
+Jörg Oster (joergoster)
+Julian Willemer (NightlyKing)
+jundery
+Justin Blanchard (UncombedCoconut)
+Kelly Wilson
+Ken Takusagawa
+Kenneth Lee (kennethlee33)
+Kian E (KJE-98)
+kinderchocolate
+Kiran Panditrao (Krgp)
+Kirill Zaripov (kokodio)
+Kojirion
+Krisztián Peőcz
+Krystian Kuzniarek (kuzkry)
+Leonardo Ljubičić (ICCF World Champion)
+Leonid Pechenik (lp--)
+Li Ying (yl25946)
+Liam Keegan (lkeegan)
+Linmiao Xu (linrock)
+Linus Arver (listx)
+loco-loco
+Lub van den Berg (ElbertoOne)
+Luca Brivio (lucabrivio)
+Lucas Braesch (lucasart)
+Lyudmil Antonov (lantonov)
+Maciej Żenczykowski (zenczykowski)
+Malcolm Campbell (xoto10)
+Mark Marosi (Mapika)
+Mark Tenzer (31m059)
+marotear
+Mathias Parnaudeau (mparnaudeau)
+Matt Ginsberg (mattginsberg)
+Matthew Lai (matthewlai)
+Matthew Sullivan (Matt14916)
+Max A. (Disservin)
+Maxim Masiutin (maximmasiutin)
+Maxim Molchanov (Maxim)
+Michael An (man)
+Michael Byrne (MichaelB7)
+Michael Chaly (Vizvezdenec)
+Michael Stembera (mstembera)
+Michael Whiteley (protonspring)
+Michel Van den Bergh (vdbergh)
+Miguel Lahoz (miguel-l)
+Mikael Bäckman (mbootsector)
+Mike Babigian (Farseer)
+Mira
+Miroslav Fontán (Hexik)
+Moez Jellouli (MJZ1977)
+Mohammed Li (tthsqe12)
+Muzhen J (XInTheDark)
+Nathan Rugg (nmrugg)
+Nguyen Pham (nguyenpham)
+Nicklas Persson (NicklasPersson)
+Nick Pelling (nickpelling)
+Niklas Fiekas (niklasf)
+Nikolay Kostov (NikolayIT)
+Norman Schmidt (FireFather)
+notruck
+Nour Berakdar (Nonlinear)
+Ofek Shochat (OfekShochat, ghostway)
+Ondrej Mosnáček (WOnder93)
+Ondřej Mišina (AndrovT)
+Oskar Werkelin Ahlin
+Ömer Faruk Tutkun (OmerFarukTutkun)
+Pablo Vazquez
+Panthee
+Pascal Romaret
+Pasquale Pigazzini (ppigazzini)
+Patrick Jansen (mibere)
+Peter Schneider (pschneider1968)
+Peter Zsifkovits (CoffeeOne)
+PikaCat
+Praveen Kumar Tummala (praveentml)
+Prokop Randáček (ProkopRandacek)
+Rahul Dsilva (silversolver1)
+Ralph Stößer (Ralph Stoesser)
+Raminder Singh
+renouve
+Reuven Peleg (R-Peleg)
+Richard Lloyd (Richard-Lloyd)
+Robert Nürnberg (robertnurnberg)
+Rodrigo Exterckötter Tjäder
+Rodrigo Roim (roim)
+Ronald de Man (syzygy1, syzygy)
+Ron Britvich (Britvich)
+rqs
+Rui Coelho (ruicoelhopedro)
+Ryan Schmitt
+Ryan Takker
+Sami Kiminki (skiminki)
+Sebastian Buchwald (UniQP)
+Sergei Antonov (saproj)
+Sergei Ivanov (svivanov72)
+Sergio Vieri (sergiovieri)
+sf-x
+Shahin M. Shahin (peregrine)
+Shane Booth (shane31)
+Shawn Varghese (xXH4CKST3RXx)
+Shawn Xu (xu-shawn)
+Siad Daboul (Topologist)
+Stefan Geschwentner (locutus2)
+Stefano Cardanobile (Stefano80)
+Stefano Di Martino (StefanoD)
+Steinar Gunderson (sesse)
+Stéphane Nicolet (snicolet)
+Stephen Touset (stouset)
+Syine Mineta (MinetaS)
+Taras Vuk (TarasVuk)
+Thanar2
+thaspel
+theo77186
+TierynnB
+Ting-Hsuan Huang (fffelix-huang)
+Tobias Steinmann
+Tomasz Sobczyk (Sopel97)
+Tom Truscott
+Tom Vijlbrief (tomtor)
+Torsten Franz (torfranz, tfranzer)
+Torsten Hellwig (Torom)
+Tracey Emery (basepr1me)
+tttak
+Unai Corzo (unaiic)
+Uri Blass (uriblass)
+Vince Negri (cuddlestmonkey)
+Viren
+Wencey Wang
+windfishballad
+xefoci7612
+Xiang Wang (KatyushaScarlet)
+zz4032
+
+# Additionally, we acknowledge the authors and maintainers of fishtest,
+# an amazing and essential framework for Stockfish development!
+#
+# https://github.com/official-stockfish/fishtest/blob/master/AUTHORS
