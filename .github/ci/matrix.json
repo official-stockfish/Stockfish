@@ -38,7 +38,7 @@
       "msys_env": "x86_64-gcc",
       "shell": "msys2 {0}",
       "ext": ".exe",
-      "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --",
+      "sde": "/c/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --",
       "archive_ext": "zip"
     },
     {
