@@ -36,6 +36,15 @@
 #include "nnue/nnue_accumulator.h"
 
 namespace Stockfish {
+namespace Eval { // Changed: Moved constants inside Eval namespace
+
+// Evaluation constants for Knight-Play experiment
+static constexpr Value SINGLE_KNIGHT_EVAL_BONUS = Value(15000);
+static constexpr Value QUEEN_PRESENCE_PENALTY  = Value(8000);
+static constexpr Value ROOK_PRESENCE_PENALTY   = Value(6000); // Per rook
+static constexpr Value BISHOP_PRESENCE_PENALTY = Value(5000); // Per bishop
+} // namespace Eval
+
 
 // Returns a static, purely materialistic evaluation of the position from
 // the point of view of the side to move. It can be divided by PawnValue to get
@@ -71,6 +80,26 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
         nnue                       = (125 * psqt + 131 * positional) / 128;
         smallNet                   = false;
     }
+
+    // === START OF MODIFICATIONS for Knight-Play ===
+    Value knight_specific_bonus = VALUE_ZERO;
+    Color us = pos.side_to_move(); // Evaluation is from side-to-move's perspective
+    Color them = ~us;
+
+    // 1. Knight Presence Bonus (applied for 'us', subtracted for 'them')
+    knight_specific_bonus += pos.count<KNIGHT>(us) * Eval::SINGLE_KNIGHT_EVAL_BONUS;
+    knight_specific_bonus -= pos.count<KNIGHT>(them) * Eval::SINGLE_KNIGHT_EVAL_BONUS;
+
+    // 2. Penalties for other pieces for the side to move ('us')
+    Value other_piece_presence_penalty = VALUE_ZERO;
+    if (pos.count<QUEEN>(us) > 0)  other_piece_presence_penalty += Eval::QUEEN_PRESENCE_PENALTY;
+    other_piece_presence_penalty += pos.count<ROOK>(us)   * Eval::ROOK_PRESENCE_PENALTY;
+    other_piece_presence_penalty += pos.count<BISHOP>(us) * Eval::BISHOP_PRESENCE_PENALTY;
+
+    // Apply to nnue score
+    nnue += knight_specific_bonus;
+    nnue -= other_piece_presence_penalty;
+    // === END OF MODIFICATIONS for Knight-Play ===
 
     // Blend optimism and eval with nnue complexity
     int nnueComplexity = std::abs(psqt - positional);

@@ -30,6 +30,13 @@ namespace Stockfish {
 
 namespace {
 
+// Constants for Knight-Play move ordering experiment
+const int KNIGHT_MOVE_ORDERING_BONUS = 50000;
+const int KNIGHT_CAPTURE_ORDERING_BONUS = 30000;
+const int KNIGHT_EVASION_ORDERING_BONUS = 40000;
+const int PENALTY_FOR_UNSAFE_KNIGHT_MOVE = -60000;
+const int KNIGHT_SAFETY_SEE_THRESHOLD = -1000; // Value in centipawns for SEE check
+
 enum Stages {
     // generate main search moves
     MAIN_TT,
@@ -187,6 +194,39 @@ void MovePicker::score() {
                     m.value += 2 * (*lowPlyHistory)[ply][m.from_to()] / (1 + ply);
             }
         }
+
+        // === START OF PROPOSED MODIFICATIONS for Knight-Play Move Ordering ===
+        if constexpr (Type == CAPTURES)
+        {
+            if (pt == KNIGHT) {
+                if (!pos.see_ge(m, KNIGHT_SAFETY_SEE_THRESHOLD)) {
+                    m.value += PENALTY_FOR_UNSAFE_KNIGHT_MOVE;
+                } else {
+                    m.value += KNIGHT_CAPTURE_ORDERING_BONUS;
+                }
+            }
+        }
+        else if constexpr (Type == QUIETS)
+        {
+            if (pt == KNIGHT) {
+                if (!pos.see_ge(m, KNIGHT_SAFETY_SEE_THRESHOLD)) {
+                    m.value += PENALTY_FOR_UNSAFE_KNIGHT_MOVE;
+                } else {
+                    m.value += KNIGHT_MOVE_ORDERING_BONUS;
+                }
+            }
+        }
+        else // Type == EVASIONS
+        {
+            if (pt == KNIGHT) {
+                if (!pos.see_ge(m, KNIGHT_SAFETY_SEE_THRESHOLD)) {
+                    m.value += PENALTY_FOR_UNSAFE_KNIGHT_MOVE;
+                } else {
+                    m.value += KNIGHT_EVASION_ORDERING_BONUS;
+                }
+            }
+        }
+        // === END OF PROPOSED MODIFICATIONS for Knight-Play Move Ordering ===
     }
 }
 
