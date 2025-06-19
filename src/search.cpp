@@ -64,7 +64,7 @@ using namespace Search;
 namespace {
 
 // (*Scalers):
-// The values with Scaler asterisks have proven non-linear scaling.
+// Search features marked by "(*Scaler)" have proven non-linear scaling.
 // They are optimized to time controls of 180 + 1.8 and longer,
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
@@ -813,14 +813,17 @@ Value Search::Worker::search(
               << bonus * 1266 / 1024;
     }
 
-    // Set up the improving flag, which is true if current static evaluation is
-    // bigger than the previous static evaluation at our turn (if we were in
-    // check at our previous move we go back until we weren't in check) and is
-    // false otherwise. The improving flag is used in various pruning heuristics.
-    improving = ss->staticEval > (ss - 2)->staticEval;
 
+    // Set up the improving and opponentWorsening flags.
+    // These flags are true respectively if the static evaluation is better for us
+    // than it was at our last turn (two plies ago) and the opponent's
+    // last turn (one ply ago).
+    improving         = ss->staticEval > (ss - 2)->staticEval;
     opponentWorsening = ss->staticEval > -(ss - 1)->staticEval;
 
+    // Retroactive LMR adjustments
+    // The ply after beginning an LMR search, we adjust the reduced depth based on
+    // how the opponent's move affected the static evaluation.
     if (priorReduction >= 3 && !opponentWorsening)
         depth++;
     if (priorReduction >= 1 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 175)
@@ -851,6 +854,7 @@ Value Search::Worker::search(
     }
 
     // Step 9. Null move search with verification search
+    // The non-pawn condition is important for finding Zugzwangs.
     if (cutNode && (ss - 1)->currentMove != Move::null() && eval >= beta
         && ss->staticEval >= beta - 19 * depth + 389 && !excludedMove && pos.non_pawn_material(us)
         && ss->ply >= thisThread->nmpMinPly && !is_loss(beta))
@@ -1056,12 +1060,8 @@ moves_loop:  // When in check, search starts here
                 int seeHist = std::clamp(captHist / 31, -137 * depth, 125 * depth);
                 if (!pos.see_ge(move, -158 * depth - seeHist))
                 {
-                    bool mayStalemateTrap =
-                      depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece]
-                      && PieceValue[movedPiece] >= RookValue
-                      // it can't be stalemate if we moved a piece adjacent to the king
-                      && !(attacks_bb<KING>(pos.square<KING>(us)) & move.from_sq())
-                      && !mp.can_move_king_or_pawn();
+                    bool mayStalemateTrap = pos.non_pawn_material(us) == PieceValue[movedPiece]
+                                         && PieceValue[movedPiece] >= RookValue;
 
                     // avoid pruning sacrifices of our last piece for stalemate
                     if (!mayStalemateTrap)
@@ -1083,9 +1083,9 @@ moves_loop:  // When in check, search starts here
 
                 lmrDepth += history / 3388;
 
-                Value baseFutility = (bestMove ? 46 : 138 + std::abs(history / 300));
-                Value futilityValue =
-                  ss->staticEval + baseFutility + 117 * lmrDepth + 102 * (ss->staticEval > alpha);
+                Value futilityValue = ss->staticEval + 117 * lmrDepth
+                                    + 102 * (ss->staticEval > alpha)
+                                    + (bestMove ? 46 : 138 + std::abs(history / 300));
 
                 // Futility pruning: parent node
                 // (*Scaler): Generally, more frequent futility pruning
@@ -1113,10 +1113,9 @@ moves_loop:  // When in check, search starts here
         // verify this we do a reduced search on the position excluding the ttMove
         // and if the result is lower than ttValue minus a margin, then we will
         // extend the ttMove. Recursive singular search is avoided.
-
-        // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
-        // and lower extension margins scale well.
-
+        //
+        // (*Scaler) Generally, frequent extensions scale well.
+        // This includes high singularBeta values (i.e closer to ttValue) and low extension margins.
         if (!rootNode && move == ttData.move && !excludedMove
             && depth >= 6 - (thisThread->completedDepth > 27) + ss->ttPv && is_valid(ttData.value)
             && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
@@ -1375,7 +1374,7 @@ moves_loop:  // When in check, search starts here
 
                 if (value >= beta)
                 {
-                    // (* Scaler) Especially if they make cutoffCnt increment more often.
+                    // (*Scaler) Less frequent cutoff increments scale well
                     ss->cutoffCnt += (extension < 2) || PvNode;
                     assert(value >= beta);  // Fail high
                     break;
