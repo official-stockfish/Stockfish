@@ -69,36 +69,99 @@ namespace {
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
 
+// Thêm vào đầu file search.cpp, trong namespace ẩn danh
+
+// Enum để xác định giai đoạn của ván cờ
+enum GamePhase {
+    OPENING,
+    MIDDLEGAME,
+    ENDGAME
+};
+
+// Hàm xác định giai đoạn ván cờ dựa trên số quân cờ
+GamePhase get_game_phase(const Position& pos) {
+    // Đếm số quân cờ không phải là Tốt và Vua
+    int pieceCount = popcount(pos.pieces() & ~pos.pieces(PAWN, KING));
+    if (pieceCount <= 10) { // Có thể điều chỉnh ngưỡng này
+        return ENDGAME;
+    }
+    if (pos.game_ply() > 40) { // Sau 20 nước đi của mỗi bên, thường là trung cuộc
+        return MIDDLEGAME;
+    }
+    return OPENING;
+}
+
+// Hàm tính chỉ số an toàn của vua để dùng cho bảng lịch sử mới
+int king_safety_index(const Position& pos) {
+    const Color us = pos.side_to_move();
+    const Square ksq = pos.square<KING>(us);
+
+    // Vùng 8 ô xung quanh vua
+    const Bitboard king_zone = attacks_bb<KING>(ksq);
+
+    // Đếm số quân cờ của đối phương đang tấn công vào vùng an toàn của vua
+    const int attack_count = popcount(pos.attackers_to(king_zone, pos.pieces(~us)));
+    
+    // Giới hạn giá trị trả về để vừa với kích thước của bảng lịch sử mới (ví dụ: 16)
+    return std::min(attack_count, 15);
+}
+
+
+// Thay thế hàm correction_value gốc bằng hàm này
 int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
-    const Color us    = pos.side_to_move();
-    const auto  m     = (ss - 1)->currentMove;
-    const auto  pcv   = w.pawnCorrectionHistory[pawn_structure_index<Correction>(pos)][us];
-    const auto  micv  = w.minorPieceCorrectionHistory[minor_piece_index(pos)][us];
-    const auto  wnpcv = w.nonPawnCorrectionHistory[non_pawn_index<WHITE>(pos)][WHITE][us];
-    const auto  bnpcv = w.nonPawnCorrectionHistory[non_pawn_index<BLACK>(pos)][BLACK][us];
-    const auto  cntcv =
-      m.is_ok() ?
-      (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
-                 : 0;
+    [span_0](start_span)const Color us = pos.side_to_move();[span_0](end_span)
+    [span_1](start_span)const auto m = (ss - 1)->currentMove;[span_1](end_span)
 
-    // --- ĐỀ XUẤT CẢI TIẾN ---
-    int pawn_weight, minor_piece_weight, non_pawn_weight, cont_weight;
+    // --- Lấy các giá trị lịch sử hiệu chỉnh có sẵn ---
+    [span_2](start_span)const auto pcv = w.pawnCorrectionHistory[pawn_structure_index<Correction>(pos)][us];[span_2](end_span)
+    [span_3](start_span)const auto micv = w.minorPieceCorrectionHistory[minor_piece_index(pos)][us];[span_3](end_span)
+    [span_4](start_span)const auto wnpcv = w.nonPawnCorrectionHistory[non_pawn_index<WHITE>(pos)][WHITE][us];[span_4](end_span)
+    [span_5](start_span)const auto bnpcv = w.nonPawnCorrectionHistory[non_pawn_index<BLACK>(pos)][BLACK][us];[span_5](end_span)
+    const auto cntcv = m.is_ok() ? [span_6](start_span)(*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()] : 0;[span_6](end_span)
 
-    if (is_endgame(pos)) { // is_endgame() là hàm bạn tự định nghĩa
-        pawn_weight = 9000; // Trong tàn cuộc, cấu trúc tốt rất quan trọng
-        minor_piece_weight = 7000;
-        non_pawn_weight = 8000;
-        cont_weight = 6000;
-    } else { // Khai cuộc và trung cuộc
-        pawn_weight = 7696;
-        minor_piece_weight = 7689;
-        non_pawn_weight = 9708;
-        cont_weight = 6978;
+    // --- CẢI TIẾN: Lấy giá trị từ lịch sử an toàn vua mới ---
+    const int k_index = king_safety_index(pos);
+    // Giả định 'kingSafetyCorrectionHistory' đã được thêm vào lớp Worker 'w'
+    const auto kscv = w.kingSafetyCorrectionHistory[k_index];
+
+    // --- CẢI TIẾN: Xác định các trọng số linh hoạt dựa trên giai đoạn ván cờ ---
+    int pawn_w, minor_w, non_pawn_w, cont_w, king_safety_w;
+
+    const GamePhase phase = get_game_phase(pos);
+
+    switch (phase) {
+        case ENDGAME:
+            pawn_w = 9520;        // Cấu trúc tốt là vua trong tàn cuộc
+            minor_w = 7150;
+            non_pawn_w = 8050;    // Các quân nặng
+            cont_w = 6100;        // Lịch sử nước đi tiếp diễn
+            king_safety_w = 4800; // An toàn vua ít quan trọng hơn, vua có thể hoạt động
+            break;
+
+        case MIDDLEGAME:
+            pawn_w = 7200;
+            minor_w = 7400;
+            non_pawn_w = 9250;
+            cont_w = 6800;
+            king_safety_w = 12500; // An toàn vua là tối quan trọng khi còn nhiều quân cờ
+            break;
+
+        case OPENING:
+        default:
+            pawn_w = 7696;         // Sử dụng giá trị gốc làm cơ sở
+            minor_w = 7689;
+            non_pawn_w = 9708;
+            cont_w = 6978;
+            king_safety_w = 9000;  // Quan trọng, nhưng chưa ở mức báo động như trung cuộc
+            break;
     }
 
-    return pawn_weight * pcv + minor_piece_weight * micv + non_pawn_weight * (wnpcv + bnpcv) + cont_weight * cntcv;
-    // --- KẾT THÚC CẢI TIẾN ---
+    // Tính toán và trả về giá trị hiệu chỉnh cuối cùng
+    // Giá trị gốc được nhân với 131072, nên ta có thể chia để giữ giá trị trong khoảng tương tự
+    return (pawn_w * pcv + minor_w * micv + non_pawn_w * (wnpcv + bnpcv)
+            + cont_w * cntcv + king_safety_w * kscv) / 13;
 }
+
 
 }
 
