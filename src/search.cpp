@@ -77,10 +77,29 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
     const auto  wnpcv = w.nonPawnCorrectionHistory[non_pawn_index<WHITE>(pos)][WHITE][us];
     const auto  bnpcv = w.nonPawnCorrectionHistory[non_pawn_index<BLACK>(pos)][BLACK][us];
     const auto  cntcv =
-      m.is_ok() ? (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
+      m.is_ok() ?
+      (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                  : 0;
 
-    return 7696 * pcv + 7689 * micv + 9708 * (wnpcv + bnpcv) + 6978 * cntcv;
+    // --- ĐỀ XUẤT CẢI TIẾN ---
+    int pawn_weight, minor_piece_weight, non_pawn_weight, cont_weight;
+
+    if (is_endgame(pos)) { // is_endgame() là hàm bạn tự định nghĩa
+        pawn_weight = 9000; // Trong tàn cuộc, cấu trúc tốt rất quan trọng
+        minor_piece_weight = 7000;
+        non_pawn_weight = 8000;
+        cont_weight = 6000;
+    } else { // Khai cuộc và trung cuộc
+        pawn_weight = 7696;
+        minor_piece_weight = 7689;
+        non_pawn_weight = 9708;
+        cont_weight = 6978;
+    }
+
+    return pawn_weight * pcv + minor_piece_weight * micv + non_pawn_weight * (wnpcv + bnpcv) + cont_weight * cntcv;
+    // --- KẾT THÚC CẢI TIẾN ---
+}
+
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation
