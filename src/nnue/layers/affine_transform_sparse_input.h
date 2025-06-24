@@ -68,9 +68,42 @@ alignas(CacheLineSize) static constexpr struct OffsetIndices {
 
 } Lookup;
 
+    #if defined(__GNUC__) || defined(__clang__)
+        #define RESTRICT __restrict__
+    #elif defined(_MSC_VER)
+        #define RESTRICT __restrict
+    #else
+        #define RESTRICT
+    #endif
+
 // Find indices of nonzero numbers in an int32_t array
 template<const IndexType InputDimensions>
-void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_out) {
+void find_nnz(const std::int32_t* RESTRICT input,
+              std::uint16_t* RESTRICT      out,
+              IndexType&                   count_out) {
+
+    #ifdef USE_AVX512
+    constexpr IndexType SimdWidth = 16;  // 512 bits / 32 bits
+    constexpr IndexType NumChunks = InputDimensions / SimdWidth;
+    const __m512i       increment = _mm512_set1_epi32(SimdWidth);
+    __m512i base = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+
+    IndexType count = 0;
+    for (IndexType i = 0; i < NumChunks; ++i)
+    {
+        const __m512i inputV = _mm512_load_si512(input + i * SimdWidth);
+
+        // Get a bitmask and gather non zero indices
+        const __mmask16 nnzMask = _mm512_test_epi32_mask(inputV, inputV);
+        const __m512i   nnzV    = _mm512_maskz_compress_epi32(nnzMask, base);
+        _mm512_mask_cvtepi32_storeu_epi16(out + count, 0xFFFF, nnzV);
+        count += popcount(nnzMask);
+        base = _mm512_add_epi32(base, increment);
+    }
+    count_out = count;
+
+    #else
+
     using namespace SIMD;
 
     constexpr IndexType InputSimdWidth = sizeof(vec_uint_t) / sizeof(std::int32_t);
@@ -104,6 +137,7 @@ void find_nnz(const std::int32_t* input, std::uint16_t* out, IndexType& count_ou
         }
     }
     count_out = count;
+    #endif
 }
 
 #endif
