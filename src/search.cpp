@@ -63,6 +63,9 @@ using namespace Search;
 
 namespace {
 
+constexpr int SEARCHEDLIST_CAPACITY = 32;
+using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
+
 // (*Scalers):
 // The values with Scaler asterisks have proven non-linear scaling.
 // They are optimized to time controls of 180 + 1.8 and longer,
@@ -119,16 +122,16 @@ void  update_pv(Move* pv, Move move, const Move* childPv);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
 void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
-void update_all_stats(const Position&      pos,
-                      Stack*               ss,
-                      Search::Worker&      workerThread,
-                      Move                 bestMove,
-                      Square               prevSq,
-                      ValueList<Move, 32>& quietsSearched,
-                      ValueList<Move, 32>& capturesSearched,
-                      Depth                depth,
-                      Move                 TTMove,
-                      int                  moveCount);
+void update_all_stats(const Position& pos,
+                      Stack*          ss,
+                      Search::Worker& workerThread,
+                      Move            bestMove,
+                      Square          prevSq,
+                      SearchedList&   quietsSearched,
+                      SearchedList&   capturesSearched,
+                      Depth           depth,
+                      Move            TTMove,
+                      int             moveCount);
 
 }  // namespace
 
@@ -605,8 +608,8 @@ Value Search::Worker::search(
     int   priorReduction;
     Piece movedPiece;
 
-    ValueList<Move, 32> capturesSearched;
-    ValueList<Move, 32> quietsSearched;
+    SearchedList capturesSearched;
+    SearchedList quietsSearched;
 
     // Step 1. Initialize node
     Worker* thisThread = this;
@@ -1390,7 +1393,7 @@ moves_loop:  // When in check, search starts here
 
         // If the move is worse than some previously searched move,
         // remember it, to update its stats later.
-        if (move != bestMove && moveCount <= 32)
+        if (move != bestMove && moveCount <= SEARCHEDLIST_CAPACITY)
         {
             if (capture)
                 capturesSearched.push_back(move);
@@ -1833,16 +1836,16 @@ void update_pv(Move* pv, Move move, const Move* childPv) {
 
 
 // Updates stats at the end of search() when a bestMove is found
-void update_all_stats(const Position&      pos,
-                      Stack*               ss,
-                      Search::Worker&      workerThread,
-                      Move                 bestMove,
-                      Square               prevSq,
-                      ValueList<Move, 32>& quietsSearched,
-                      ValueList<Move, 32>& capturesSearched,
-                      Depth                depth,
-                      Move                 ttMove,
-                      int                  moveCount) {
+void update_all_stats(const Position& pos,
+                      Stack*          ss,
+                      Search::Worker& workerThread,
+                      Move            bestMove,
+                      Square          prevSq,
+                      SearchedList&   quietsSearched,
+                      SearchedList&   capturesSearched,
+                      Depth           depth,
+                      Move            ttMove,
+                      int             moveCount) {
 
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
     Piece                  movedPiece     = pos.moved_piece(bestMove);
