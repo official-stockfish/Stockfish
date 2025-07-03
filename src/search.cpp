@@ -655,7 +655,6 @@ Value Search::Worker::search(
     priorReduction = (ss - 1)->reduction;
     (ss - 1)->reduction = 0;
     ss->statScore       = 0;
-    ss->isPvNode        = PvNode;
     (ss + 2)->cutoffCnt = 0;
 
     // Step 4. Transposition table lookup
@@ -1238,7 +1237,7 @@ moves_loop:  // When in check, search starts here
             // std::clamp has been replaced by a more robust implementation.
             Depth d = std::max(1, std::min(newDepth - r / 1024,
                                            newDepth + !allNode + (PvNode && !bestMove)))
-                    + (ss - 1)->isPvNode;
+                    + PvNode;
 
             ss->reduction = newDepth - d;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
