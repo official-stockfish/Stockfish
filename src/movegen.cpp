@@ -28,6 +28,22 @@ namespace Stockfish {
 
 namespace {
 
+template<Direction offset>
+inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+    while (to_bb)
+    {
+        Square to   = pop_lsb(to_bb);
+        *moveList++ = Move(to - offset, to);
+    }
+    return moveList;
+}
+
+inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    while (to_bb)
+        *moveList++ = Move(from, pop_lsb(to_bb));
+    return moveList;
+}
+
 template<GenType Type, Direction D, bool Enemy>
 Move* make_promotions(Move* moveList, [[maybe_unused]] Square to) {
 
@@ -75,17 +91,8 @@ Move* generate_pawn_moves(const Position& pos, Move* moveList, Bitboard target) 
             b2 &= target;
         }
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
-            *moveList++ = Move(to - Up, to);
-        }
-
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
-            *moveList++ = Move(to - Up - Up, to);
-        }
+        moveList = splat_pawn_moves<Up>(moveList, b1);
+        moveList = splat_pawn_moves<Up + Up>(moveList, b2);
     }
 
     // Promotions and underpromotions
@@ -114,17 +121,8 @@ Move* generate_pawn_moves(const Position& pos, Move* moveList, Bitboard target) 
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
         Bitboard b2 = shift<UpLeft>(pawnsNotOn7) & enemies;
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
-            *moveList++ = Move(to - UpRight, to);
-        }
-
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
-            *moveList++ = Move(to - UpLeft, to);
-        }
+        moveList = splat_pawn_moves<UpRight>(moveList, b1);
+        moveList = splat_pawn_moves<UpLeft>(moveList, b2);
 
         if (pos.ep_square() != SQ_NONE)
         {
@@ -159,8 +157,7 @@ Move* generate_moves(const Position& pos, Move* moveList, Bitboard target) {
         Square   from = pop_lsb(bb);
         Bitboard b    = attacks_bb<Pt>(from, pos.pieces()) & target;
 
-        while (b)
-            *moveList++ = Move(from, pop_lsb(b));
+        moveList = splat_moves(moveList, from, b);
     }
 
     return moveList;
@@ -192,8 +189,7 @@ Move* generate_all(const Position& pos, Move* moveList) {
 
     Bitboard b = attacks_bb<KING>(ksq) & (Type == EVASIONS ? ~pos.pieces(Us) : target);
 
-    while (b)
-        *moveList++ = Move(ksq, pop_lsb(b));
+    moveList = splat_moves(moveList, ksq, b);
 
     if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
         for (CastlingRights cr : {Us & KING_SIDE, Us & QUEEN_SIDE})
