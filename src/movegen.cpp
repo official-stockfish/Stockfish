@@ -24,7 +24,7 @@
 #include "bitboard.h"
 #include "position.h"
 
-#if defined(USE_AVX512) || defined(USE_VNNI)
+#if defined(USE_VBMI2)
     #include <array>
     #include <algorithm>
     #include <immintrin.h>
@@ -34,7 +34,7 @@ namespace Stockfish {
 
 namespace {
 
-#if defined(USE_AVX512) || defined(USE_VNNI)
+#if defined(USE_VBMI2)
 
 template<Direction offset>
 constexpr std::array<Move, 64> generate_pawn_table() {
@@ -58,10 +58,6 @@ alignas(64) constexpr std::array<Move, 64> SPLAT_TABLE = [] {
 }();
 
 static_assert(sizeof(SPLAT_TABLE) == 128);
-
-#endif
-
-#if defined(USE_VBMI2)
 
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
     _mm512_storeu_si512((__m512i*) moveList, _mm512_maskz_compress_epi16(mask, vector));

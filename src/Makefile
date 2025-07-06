@@ -300,7 +300,6 @@ ifeq ($(findstring -vbmi2-256,$(ARCH)),-vbmi2-256)
 	sse41 = yes
 	avx2 = yes
 	pext = yes
-	avx512 = yes
 	vnni256 = yes
 	vbmi2 = yes
 endif
