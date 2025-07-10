@@ -48,9 +48,6 @@ constexpr std::array<Move, 64> generate_pawn_table() {
 }
 
 alignas(64) constexpr std::array<Move, 64> SPLAT_TABLE = [] {
-    // Ensure the move format hasn't changed.
-    static_assert(Move(SQ_E7, SQ_D4).raw() == (Move(SQUARE_ZERO, SQ_D4).raw() | (SQ_E7 << 6)));
-
     std::array<Move, 64> table{};
     for (int8_t i = 0; i < 64; i++)
         table[i] = {Move(SQUARE_ZERO, Square{i})};
@@ -61,7 +58,7 @@ static_assert(sizeof(SPLAT_TABLE) == 128);
 
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
     _mm512_storeu_si512((__m512i*) moveList, _mm512_maskz_compress_epi16(mask, vector));
-    return moveList + __builtin_popcount(mask);
+    return moveList + popcount(mask);
 }
 
 template<Direction offset>
@@ -77,7 +74,7 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 }
 
 inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
-    __m512i fromVec = _mm512_set1_epi16(from << 6);
+    __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
 
     moveList = write_moves(
       moveList, static_cast<uint32_t>(to_bb >> 0),
