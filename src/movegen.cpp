@@ -57,7 +57,8 @@ alignas(64) constexpr std::array<Move, 64> SPLAT_TABLE = [] {
 static_assert(sizeof(SPLAT_TABLE) == 128);
 
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
-    _mm512_storeu_si512((__m512i*) moveList, _mm512_maskz_compress_epi16(mask, vector));
+    _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
+                        _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
 }
 
@@ -65,10 +66,12 @@ template<Direction offset>
 inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     alignas(64) static constexpr auto SPLAT_PAWN_TABLE = generate_pawn_table<offset>();
 
-    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
-                           _mm512_load_si512((const __m512i*) SPLAT_PAWN_TABLE.data() + 0));
-    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
-                           _mm512_load_si512((const __m512i*) SPLAT_PAWN_TABLE.data() + 1));
+    auto table = reinterpret_cast<const __m512i*>(SPLAT_PAWN_TABLE.data());
+
+    moveList =
+      write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
+    moveList =
+      write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
 
     return moveList;
 }
@@ -76,12 +79,12 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
 
-    moveList = write_moves(
-      moveList, static_cast<uint32_t>(to_bb >> 0),
-      _mm512_or_si512(_mm512_load_si512((const __m512i*) SPLAT_TABLE.data() + 0), fromVec));
-    moveList = write_moves(
-      moveList, static_cast<uint32_t>(to_bb >> 32),
-      _mm512_or_si512(_mm512_load_si512((const __m512i*) SPLAT_TABLE.data() + 1), fromVec));
+    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
+
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
+                           _mm512_or_si512(_mm512_load_si512(table + 0), fromVec));
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
+                           _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
 
     return moveList;
 }
