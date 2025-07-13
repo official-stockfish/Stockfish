@@ -24,7 +24,7 @@
 #include "bitboard.h"
 #include "position.h"
 
-#if defined(USE_VBMI2)
+#if defined(USE_AVX512ICL)
     #include <array>
     #include <algorithm>
     #include <immintrin.h>
@@ -34,7 +34,7 @@ namespace Stockfish {
 
 namespace {
 
-#if defined(USE_VBMI2)
+#if defined(USE_AVX512ICL)
 
 template<Direction offset>
 constexpr std::array<Move, 64> generate_pawn_table() {
