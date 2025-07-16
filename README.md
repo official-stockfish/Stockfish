@@ -29,6 +29,17 @@
 
 </div>
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Files](#files)
+- [Contributing](#contributing)
+  - [Donating Hardware](#donating-hardware)
+  - [Improving the Code](#improving-the-code)
+- [Compiling Stockfish](#compiling-stockfish)
+- [Terms of Use](#terms-of-use)
+- [Acknowledgements](#acknowledgements)
+
 ## Overview
 
 [Stockfish][website-link] is a **free and strong UCI chess engine** derived from
@@ -46,22 +57,17 @@ See also the Stockfish [documentation][wiki-usage-link] for further usage help.
 
 This distribution of Stockfish consists of the following files:
 
-  * [README.md][readme-link], the file you are currently reading.
-
-  * [Copying.txt][license-link], a text file containing the GNU General Public
-    License version 3.
-
-  * [AUTHORS][authors-link], a text file with the list of authors for the project.
-
-  * [src][src-link], a subdirectory containing the full source code, including a
-    Makefile that can be used to compile Stockfish on Unix-like systems.
-
-  * a file with the .nnue extension, storing the neural network for the NNUE
-    evaluation. Binary distributions will have this file embedded.
+| File / Folder                  | Description                                                   |
+|--------------------------------|---------------------------------------------------------------|
+| [README.md][readme-link]       | This file, overview of the project                            |
+| [Copying.txt][license-link]    | GPL v3 license text                                           |
+| [AUTHORS][authors-link]        | List of contributors                                          |
+| [src][src-link]                | Full source code and Makefile                                 |
+| `*.nnue`                       | Neural network for evaluation (included in binary releases)   |
 
 ## Contributing
 
-__See [Contributing Guide](CONTRIBUTING.md).__
+__View the [Contributing Guide](CONTRIBUTING.md).__
 
 ### Donating hardware
 
@@ -122,7 +128,7 @@ also be made available under GPL v3.
 
 ## Acknowledgements
 
-Stockfish uses neural networks trained on [data provided by the Leela Chess Zero
+Stockfish uses neural networks trained on data provided by the [Leela Chess Zero
 project][lc0-data-link], which is made available under the [Open Database License][odbl-link] (ODbL).
 
 
