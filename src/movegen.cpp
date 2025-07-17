@@ -36,26 +36,6 @@ namespace {
 
 #if defined(USE_AVX512ICL)
 
-template<Direction offset>
-constexpr std::array<Move, 64> generate_pawn_table() {
-    std::array<Move, 64> pawn_table{};
-    for (int8_t i = 0; i < 64; i++)
-    {
-        Square from{std::clamp<int8_t>(i - offset, 0, 63)};
-        pawn_table[i] = {Move(from, Square{i})};
-    }
-    return pawn_table;
-}
-
-alignas(64) constexpr std::array<Move, 64> SPLAT_TABLE = [] {
-    std::array<Move, 64> table{};
-    for (int8_t i = 0; i < 64; i++)
-        table[i] = {Move(SQUARE_ZERO, Square{i})};
-    return table;
-}();
-
-static_assert(sizeof(SPLAT_TABLE) == 128);
-
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
     _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
                         _mm512_maskz_compress_epi16(mask, vector));
@@ -64,9 +44,17 @@ inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
 
 template<Direction offset>
 inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
-    alignas(64) static constexpr auto SPLAT_PAWN_TABLE = generate_pawn_table<offset>();
+    alignas(64) static constexpr auto SPLAT_TABLE = [] {
+        std::array<Move, 64> table{};
+        for (int8_t i = 0; i < 64; i++)
+        {
+            Square from{std::clamp<int8_t>(i - offset, 0, 63)};
+            table[i] = {Move(from, Square{i})};
+        }
+        return table;
+    }();
 
-    auto table = reinterpret_cast<const __m512i*>(SPLAT_PAWN_TABLE.data());
+    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
 
     moveList =
       write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
@@ -77,6 +65,13 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 }
 
 inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    alignas(64) static constexpr auto SPLAT_TABLE = [] {
+        std::array<Move, 64> table{};
+        for (int8_t i = 0; i < 64; i++)
+            table[i] = {Move(SQUARE_ZERO, Square{i})};
+        return table;
+    }();
+
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
 
     auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
