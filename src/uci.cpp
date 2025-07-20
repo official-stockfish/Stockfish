@@ -136,6 +136,10 @@ void UCIEngine::loop() {
         else if (token == "isready")
             sync_cout << "readyok" << sync_endl;
 
+        // Add custom non-UCI commands, which can be used during a search
+        else if (token == "wait")
+            engine.wait_for_search_finished();
+
         // Add custom non-UCI commands, mainly for debugging purposes.
         // These commands must not be used during a search!
         else if (token == "flip")
