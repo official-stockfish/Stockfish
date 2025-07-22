@@ -120,11 +120,11 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
             format_cp_compact(value, &board[y + 2][x + 2], pos);
     };
 
-    AccumulatorStack accumulators;
+    auto accumulators = std::make_unique<AccumulatorStack>();
 
     // We estimate the value of each piece by doing a differential evaluation from
     // the current base eval, simulating the removal of the piece from its square.
-    auto [psqt, positional] = networks.big.evaluate(pos, accumulators, &caches.big);
+    auto [psqt, positional] = networks.big.evaluate(pos, *accumulators, &caches.big);
     Value base              = psqt + positional;
     base                    = pos.side_to_move() == WHITE ? base : -base;
 
@@ -139,8 +139,8 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
             {
                 pos.remove_piece(sq);
 
-                accumulators.reset();
-                std::tie(psqt, positional) = networks.big.evaluate(pos, accumulators, &caches.big);
+                accumulators->reset();
+                std::tie(psqt, positional) = networks.big.evaluate(pos, *accumulators, &caches.big);
                 Value eval                 = psqt + positional;
                 eval                       = pos.side_to_move() == WHITE ? eval : -eval;
                 v                          = base - eval;
@@ -156,8 +156,8 @@ trace(Position& pos, const Eval::NNUE::Networks& networks, Eval::NNUE::Accumulat
         ss << board[row] << '\n';
     ss << '\n';
 
-    accumulators.reset();
-    auto t = networks.big.trace_evaluate(pos, accumulators, &caches.big);
+    accumulators->reset();
+    auto t = networks.big.trace_evaluate(pos, *accumulators, &caches.big);
 
     ss << " NNUE network contributions "
        << (pos.side_to_move() == WHITE ? "(White to move)" : "(Black to move)") << std::endl
