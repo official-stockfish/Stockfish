@@ -55,12 +55,6 @@
 // the calls at compile time), try to load them at runtime. To do this we need
 // first to define the corresponding function pointers.
 
-extern "C" {
-using OpenProcessToken_t      = bool (*)(HANDLE, DWORD, PHANDLE);
-using LookupPrivilegeValueA_t = bool (*)(LPCSTR, LPCSTR, PLUID);
-using AdjustTokenPrivileges_t =
-  bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
-}
 #endif
 
 

@@ -45,6 +45,12 @@
     #include <windows.h>
     #include <psapi.h>
 
+extern "C" {
+using OpenProcessToken_t      = bool (*)(HANDLE, DWORD, PHANDLE);
+using LookupPrivilegeValueA_t = bool (*)(LPCSTR, LPCSTR, PLUID);
+using AdjustTokenPrivileges_t =
+  bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
+}
 #endif
 
 namespace Stockfish {
@@ -253,6 +259,72 @@ inline std::string GetLastErrorAsString(DWORD error)
     return message;
 }
 
+
+static void* get_large_pages_priviliges() {
+
+    #if !defined(_WIN64)
+    return nullptr;
+    #else
+
+    HANDLE hProcessToken{};
+    LUID   luid{};
+    void*  mem = nullptr;
+
+    const size_t largePageSize = GetLargePageMinimum();
+    if (!largePageSize)
+        return nullptr;
+
+    // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
+
+    HMODULE hAdvapi32 = GetModuleHandle(TEXT("advapi32.dll"));
+
+    if (!hAdvapi32)
+        hAdvapi32 = LoadLibrary(TEXT("advapi32.dll"));
+
+    auto OpenProcessToken_f =
+      OpenProcessToken_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
+    if (!OpenProcessToken_f)
+        return nullptr;
+    auto LookupPrivilegeValueA_f =
+      LookupPrivilegeValueA_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
+    if (!LookupPrivilegeValueA_f)
+        return nullptr;
+    auto AdjustTokenPrivileges_f =
+      AdjustTokenPrivileges_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
+    if (!AdjustTokenPrivileges_f)
+        return nullptr;
+
+    // We need SeLockMemoryPrivilege, so try to enable it for the process
+
+    if (!OpenProcessToken_f(  // OpenProcessToken()
+          GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
+        return nullptr;
+
+    if (LookupPrivilegeValueA_f(nullptr, "SeLockMemoryPrivilege", &luid))
+    {
+        TOKEN_PRIVILEGES tp{};
+        TOKEN_PRIVILEGES prevTp{};
+        DWORD            prevTpLen = 0;
+
+        tp.PrivilegeCount           = 1;
+        tp.Privileges[0].Luid       = luid;
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+        // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges()
+        // succeeds, we still need to query GetLastError() to ensure that the privileges
+        // were actually obtained.
+
+        AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
+                                    &prevTpLen);
+    }
+
+    CloseHandle(hProcessToken);
+
+    return mem;
+
+    #endif
+}
+
 template <typename T>
 struct SystemWideSharedConstant {
     static_assert(std::is_trivially_destructible_v<T>);
@@ -261,7 +333,10 @@ struct SystemWideSharedConstant {
 
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
 
-        const size_t total_size = sizeof(DWORD) + sizeof(T);
+        get_large_pages_priviliges();
+
+        const size_t page_size = 2 * 1024 * 1024;
+        const size_t total_size = (sizeof(T) + sizeof(DWORD) + page_size - 1) / page_size * page_size;
 
         std::size_t content_hash = std::hash<T>{}(value);
 
@@ -274,7 +349,7 @@ struct SystemWideSharedConstant {
         hMapFile = CreateFileMappingA(
             INVALID_HANDLE_VALUE,
             NULL,
-            PAGE_READWRITE,
+            PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
             0,
             static_cast<DWORD>(total_size),
             shm_name.c_str()
@@ -303,8 +378,8 @@ struct SystemWideSharedConstant {
             std::terminate();
         }
 
-        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(pMap));
-        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
+        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(pMap + sizeof(T)));
+        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap)));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
@@ -354,13 +429,13 @@ struct SystemWideSharedConstant {
     }
 
     const T& operator*() const {
-        const T* pObject = std::launder(reinterpret_cast<const T*>(reinterpret_cast<const BYTE*>(pMap) + sizeof(DWORD)));
+        const T* pObject = std::launder(reinterpret_cast<const T*>(reinterpret_cast<const BYTE*>(pMap)));
         return *pObject;
     }
 
     // Should not exist but we're not really RAII with the network
     T& operator*() {
-        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
+        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap)));
         return *pObject;
     }
 
