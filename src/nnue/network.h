@@ -78,8 +78,8 @@ class Network {
                                  AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
     std::size_t get_content_hash() const {
-        // TODO: this
-        return 12345;
+        // TODO: this properly
+        return std::hash<std::string>()(std::string(reinterpret_cast<const char*>(&featureTransformer), sizeof(Transformer)));
     }
 
    private:
