@@ -118,7 +118,7 @@ class Engine {
     OptionsMap                               options;
     ThreadPool                               threads;
     TranspositionTable                       tt;
-    LazyNumaReplicated<Eval::NNUE::Networks> networks;
+    LazyNumaReplicatedSystemWide<Eval::NNUE::Networks> networks;
 
     Search::SearchManager::UpdateContext  updateContext;
     std::function<void(std::string_view)> onVerifyNetworks;

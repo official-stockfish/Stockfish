@@ -26,8 +26,26 @@
 #include <new>
 #include <type_traits>
 #include <utility>
+#include <new>
+
+#include <iostream>
 
 #include "types.h"
+
+#if defined(_WIN64)
+
+    #if _WIN32_WINNT < 0x0601
+        #undef _WIN32_WINNT
+        #define _WIN32_WINNT 0x0601  // Force to include needed API prototypes
+    #endif
+
+    #if !defined(NOMINMAX)
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+    #include <psapi.h>
+
+#endif
 
 namespace Stockfish {
 
@@ -210,6 +228,170 @@ T* align_ptr_up(T* ptr) {
     return reinterpret_cast<T*>(
       reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
 }
+
+inline std::string GetLastErrorAsString(DWORD error)
+{
+    //Get the error message ID, if any.
+    DWORD errorMessageID = error;
+    if(errorMessageID == 0) {
+        return std::string(); //No error message has been recorded
+    }
+    
+    LPSTR messageBuffer = nullptr;
+
+    //Ask Win32 to give us the string version of that message ID.
+    //The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
+    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+    
+    //Copy the error message into a std::string.
+    std::string message(messageBuffer, size);
+    
+    //Free the Win32's string's buffer.
+    LocalFree(messageBuffer);
+            
+    return message;
+}
+
+template <typename T>
+struct SystemWideSharedConstant {
+    // We would kinda need this but Networks are not trivially destructible. Unsure how to solve this.
+    // static_assert(std::is_trivially_destructible_v<T>);
+
+    SystemWideSharedConstant() = default;
+
+    SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
+
+        struct SharedData {
+            T value;
+            std::shared_ptr<T> masterValuePtr;
+        };
+
+        const size_t total_size = sizeof(DWORD) + sizeof(SharedData);
+
+        std::size_t content_hash = std::hash<T>{}(value);
+
+        char executable_path[4096] = {0};
+        GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
+        std::size_t executable_hash = std::hash<std::string>{}(std::string(executable_path, 4096));
+
+        std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$" + std::to_string(executable_hash) + "$" + std::to_string(discriminator);
+
+        hMapFile = CreateFileMappingA(
+            INVALID_HANDLE_VALUE,
+            NULL,
+            PAGE_READWRITE,
+            0,
+            static_cast<DWORD>(total_size),
+            shm_name.c_str()
+        );
+
+        const auto err = GetLastError();
+
+        if (!hMapFile) {
+            std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err) << std::endl;
+            std::terminate();
+        }
+
+        const bool already_exists = (err == ERROR_ALREADY_EXISTS);
+
+        pMap = MapViewOfFile(
+            hMapFile,
+            FILE_MAP_ALL_ACCESS,
+            0, 0,
+            total_size
+        );
+        
+        const auto err2 = GetLastError();
+        if (!pMap) {
+            std::cerr << "Failed to map view: " << GetLastErrorAsString(err2) << std::endl;
+            CloseHandle(hMapFile);
+            std::terminate();
+        }
+
+        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(pMap));
+        SharedData* pObject = std::launder(reinterpret_cast<SharedData*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
+
+        // Use named mutex to ensure only one initializer
+        std::string mutex_name = shm_name + "$mutex";
+        HANDLE hMutex = CreateMutexA(NULL, FALSE, mutex_name.c_str());
+        const auto err3 = GetLastError();
+        if (!hMutex) {
+            std::cerr << "Failed to create mutex: " << GetLastErrorAsString(err3) << std::endl;
+            UnmapViewOfFile(pMap);
+            CloseHandle(hMapFile);
+            std::terminate();
+        }
+
+        WaitForSingleObject(hMutex, INFINITE);
+
+        if (*pInitialized != 1) {
+            // First time initialization
+            std::cout << "initialized: " << shm_name << "\n";
+            new (pObject) SharedData{value, std::shared_ptr<T>(&pObject->value, [](T* ptr) { ptr->~T(); })};
+            *pInitialized = 1;
+        }
+        else
+        {
+            std::cout << "already initialized: " << shm_name << "\n";
+        }
+
+        ReleaseMutex(hMutex);
+        CloseHandle(hMutex);
+
+        // Return as shared_ptr with custom deleter to cleanup mapping handle
+        shm = std::shared_ptr<T>(
+            pObject->masterValuePtr,
+            &pObject->value
+        );
+    }
+
+    SystemWideSharedConstant(const SystemWideSharedConstant& other) = delete;
+    SystemWideSharedConstant(SystemWideSharedConstant&& other) : 
+        shm(std::move(other.shm)),
+        pMap(other.pMap),
+        hMapFile(other.hMapFile) {
+
+        other.pMap = nullptr;
+        other.hMapFile = 0;
+    }
+    SystemWideSharedConstant& operator=(const SystemWideSharedConstant& other) = delete;
+    SystemWideSharedConstant& operator=(SystemWideSharedConstant&& other) {
+        shm = std::move(other.shm);
+        pMap = other.pMap;
+        hMapFile = other.hMapFile;
+
+        other.pMap = nullptr;
+        other.hMapFile = 0;
+
+        return *this;
+    }
+
+    const T& operator*() const {
+        return *shm;
+    }
+
+    bool operator==(std::nullptr_t) const noexcept {
+        return shm == nullptr;
+    }
+
+    bool operator!=(std::nullptr_t) const noexcept {
+        return shm != nullptr;
+    }
+
+    ~SystemWideSharedConstant() {
+        if (pMap != nullptr)
+            UnmapViewOfFile(pMap);
+        
+        if (hMapFile)
+            CloseHandle(hMapFile);
+    }
+private:
+    // use shared_ptr for now for type-erased deleter
+    std::shared_ptr<T> shm;
+    void* pMap;
+    HANDLE hMapFile;
+};
 
 
 }  // namespace Stockfish

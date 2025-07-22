@@ -1263,6 +1263,121 @@ class LazyNumaReplicated: public NumaReplicatedBase {
     }
 };
 
+template<typename T>
+class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
+   public:
+    using ReplicatorFuncType = std::function<T(const T&)>;
+
+    LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx) :
+        NumaReplicatedBase(ctx) {
+        prepare_replicate_from(T{});
+    }
+
+    LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx, T&& source) :
+        NumaReplicatedBase(ctx) {
+        prepare_replicate_from(std::move(source));
+    }
+
+    LazyNumaReplicatedSystemWide(const LazyNumaReplicatedSystemWide&) = delete;
+    LazyNumaReplicatedSystemWide(LazyNumaReplicatedSystemWide&& other) noexcept :
+        NumaReplicatedBase(std::move(other)),
+        instances(std::exchange(other.instances, {})) {}
+
+    LazyNumaReplicatedSystemWide& operator=(const LazyNumaReplicatedSystemWide&) = delete;
+    LazyNumaReplicatedSystemWide& operator=(LazyNumaReplicatedSystemWide&& other) noexcept {
+        NumaReplicatedBase::operator=(*this, std::move(other));
+        instances = std::exchange(other.instances, {});
+
+        return *this;
+    }
+
+    LazyNumaReplicatedSystemWide& operator=(T&& source) {
+        prepare_replicate_from(std::move(source));
+
+        return *this;
+    }
+
+    ~LazyNumaReplicatedSystemWide() override = default;
+
+    const T& operator[](NumaReplicatedAccessToken token) const {
+        assert(token.get_numa_index() < instances.size());
+        ensure_present(token.get_numa_index());
+        return *(instances[token.get_numa_index()]);
+    }
+
+    const T& operator*() const { return *(instances[0]); }
+
+    const T* operator->() const { return &*instances[0]; }
+
+    template<typename FuncT>
+    void modify_and_replicate(FuncT&& f) {
+        auto source = T(*instances[0]);
+        std::forward<FuncT>(f)(source);
+        prepare_replicate_from(std::move(source));
+    }
+
+    void on_numa_config_changed() override {
+        // Use the first one as the source. It doesn't matter which one we use,
+        // because they all must be identical, but the first one is guaranteed to exist.
+        auto source = std::move(instances[0]);
+        prepare_replicate_from(*source);
+    }
+
+   private:
+    mutable std::vector<SystemWideSharedConstant<T>> instances;
+    mutable std::mutex                               mutex;
+
+    std::size_t get_discriminator(NumaIndex idx) const {
+        const NumaConfig& cfg = get_numa_config();
+        std::string s = cfg.to_string() + "$" + std::to_string(idx);
+        return std::hash<std::string>{}(s);
+    }
+
+    void ensure_present(NumaIndex idx) const {
+        assert(idx < instances.size());
+
+        if (instances[idx] != nullptr)
+            return;
+
+        assert(idx != 0);
+
+        std::unique_lock<std::mutex> lock(mutex);
+        // Check again for races.
+        if (instances[idx] != nullptr)
+            return;
+
+        const NumaConfig& cfg = get_numa_config();
+        cfg.execute_on_numa_node(
+          idx, [this, idx]() { instances[idx] = SystemWideSharedConstant<T>(*instances[0], get_discriminator(idx)); });
+    }
+
+    void prepare_replicate_from(const T& source) {
+        instances.clear();
+
+        const NumaConfig& cfg = get_numa_config();
+        if (cfg.requires_memory_replication())
+        {
+            assert(cfg.num_numa_nodes() > 0);
+
+            // We just need to make sure the first instance is there.
+            // Note that we cannot move here as we need to reallocate the data
+            // on the correct NUMA node.
+            cfg.execute_on_numa_node(
+              0, [this, &source]() { instances.emplace_back(SystemWideSharedConstant<T>(source, get_discriminator(0))); });
+
+            // Prepare others for lazy init.
+            instances.resize(cfg.num_numa_nodes());
+        }
+        else
+        {
+            assert(cfg.num_numa_nodes() == 1);
+            // We take advantage of the fact that replication is not required
+            // and reuse the source value, avoiding one copy operation.
+            instances.emplace_back(SystemWideSharedConstant<T>(source, std::size_t(-1)));
+        }
+    }
+};
+
 class NumaReplicationContext {
    public:
     NumaReplicationContext(NumaConfig&& cfg) :
