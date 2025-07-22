@@ -57,9 +57,9 @@ Engine::Engine(std::optional<std::string> path) :
     threads(),
     networks(
       numaContext,
-      NN::Networks(
-        NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
-        NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
+      std::make_unique<NN::Networks>(
+        std::make_unique<NN::NetworkBig>(NN::EvalFile{EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
+        std::make_unique<NN::NetworkSmall>(NN::EvalFile{EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
 
     pos.set(StartFEN, false, &states->back());
 

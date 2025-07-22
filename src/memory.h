@@ -255,19 +255,13 @@ inline std::string GetLastErrorAsString(DWORD error)
 
 template <typename T>
 struct SystemWideSharedConstant {
-    // We would kinda need this but Networks are not trivially destructible. Unsure how to solve this.
-    // static_assert(std::is_trivially_destructible_v<T>);
+    static_assert(std::is_trivially_destructible_v<T>);
 
     SystemWideSharedConstant() = default;
 
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
 
-        struct SharedData {
-            T value;
-            std::shared_ptr<T> masterValuePtr;
-        };
-
-        const size_t total_size = sizeof(DWORD) + sizeof(SharedData);
+        const size_t total_size = sizeof(DWORD) + sizeof(T);
 
         std::size_t content_hash = std::hash<T>{}(value);
 
@@ -310,7 +304,7 @@ struct SystemWideSharedConstant {
         }
 
         volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(pMap));
-        SharedData* pObject = std::launder(reinterpret_cast<SharedData*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
+        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
@@ -328,7 +322,7 @@ struct SystemWideSharedConstant {
         if (*pInitialized != 1) {
             // First time initialization
             std::cout << "initialized: " << shm_name << "\n";
-            new (pObject) SharedData{value, std::shared_ptr<T>(&pObject->value, [](T* ptr) { ptr->~T(); })};
+            new (pObject) T{value};
             *pInitialized = 1;
         }
         else
@@ -338,17 +332,10 @@ struct SystemWideSharedConstant {
 
         ReleaseMutex(hMutex);
         CloseHandle(hMutex);
-
-        // Return as shared_ptr with custom deleter to cleanup mapping handle
-        shm = std::shared_ptr<T>(
-            pObject->masterValuePtr,
-            &pObject->value
-        );
     }
 
     SystemWideSharedConstant(const SystemWideSharedConstant& other) = delete;
     SystemWideSharedConstant(SystemWideSharedConstant&& other) : 
-        shm(std::move(other.shm)),
         pMap(other.pMap),
         hMapFile(other.hMapFile) {
 
@@ -357,7 +344,6 @@ struct SystemWideSharedConstant {
     }
     SystemWideSharedConstant& operator=(const SystemWideSharedConstant& other) = delete;
     SystemWideSharedConstant& operator=(SystemWideSharedConstant&& other) {
-        shm = std::move(other.shm);
         pMap = other.pMap;
         hMapFile = other.hMapFile;
 
@@ -368,15 +354,22 @@ struct SystemWideSharedConstant {
     }
 
     const T& operator*() const {
-        return *shm;
+        const T* pObject = std::launder(reinterpret_cast<const T*>(reinterpret_cast<const BYTE*>(pMap) + sizeof(DWORD)));
+        return *pObject;
+    }
+
+    // Should not exist but we're not really RAII with the network
+    T& operator*() {
+        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap) + sizeof(DWORD)));
+        return *pObject;
     }
 
     bool operator==(std::nullptr_t) const noexcept {
-        return shm == nullptr;
+        return pMap == nullptr;
     }
 
     bool operator!=(std::nullptr_t) const noexcept {
-        return shm != nullptr;
+        return pMap != nullptr;
     }
 
     ~SystemWideSharedConstant() {
@@ -388,7 +381,6 @@ struct SystemWideSharedConstant {
     }
 private:
     // use shared_ptr for now for type-erased deleter
-    std::shared_ptr<T> shm;
     void* pMap;
     HANDLE hMapFile;
 };

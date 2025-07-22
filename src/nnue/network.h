@@ -65,7 +65,7 @@ class Network {
     Network& operator=(Network&& other) = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
-    bool save(const std::optional<std::string>& filename) const;
+    bool save(const std::optional<std::string>& filename);
 
     NetworkOutput evaluate(const Position&                         pos,
                            AccumulatorStack&                       accumulatorStack,
@@ -88,20 +88,20 @@ class Network {
 
     void initialize();
 
-    bool                       save(std::ostream&, const std::string&, const std::string&) const;
+    bool                       save(std::ostream&, const std::string&, const std::string&);
     std::optional<std::string> load(std::istream&);
 
     bool read_header(std::istream&, std::uint32_t*, std::string*) const;
     bool write_header(std::ostream&, std::uint32_t, const std::string&) const;
 
-    bool read_parameters(std::istream&, std::string&) const;
-    bool write_parameters(std::ostream&, const std::string&) const;
+    bool read_parameters(std::istream&, std::string&);
+    bool write_parameters(std::ostream&, const std::string&);
 
     // Input feature converter
-    LargePagePtr<Transformer> featureTransformer;
+    Transformer featureTransformer;
 
     // Evaluation function
-    AlignedPtr<Arch[]> network;
+    Arch network[LayerStacks];
 
     EvalFile         evalFile;
     EmbeddedNNUEType embeddedType;
@@ -126,9 +126,9 @@ using NetworkSmall = Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
 
 
 struct Networks {
-    Networks(NetworkBig&& nB, NetworkSmall&& nS) :
-        big(std::move(nB)),
-        small(std::move(nS)) {}
+    Networks(std::unique_ptr<NetworkBig>&& nB, std::unique_ptr<NetworkSmall>&& nS) :
+        big(std::move(*nB)),
+        small(std::move(*nS)) {}
 
     NetworkBig   big;
     NetworkSmall small;
