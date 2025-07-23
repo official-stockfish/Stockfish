@@ -335,6 +335,8 @@ auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
 
 #endif
 
+
+// Utilizes shared memory to store the value. It is deduplicated system-wide (for the single user).
 template <typename T>
 struct SystemWideSharedConstant {
     // We can't run the destructor because it may be in a completely different process.
@@ -347,18 +349,21 @@ struct SystemWideSharedConstant {
 
     SystemWideSharedConstant() = default;
 
+    // Content is addressed by its hash. An additional discriminator can be added to account for differences
+    // that are not present in the content, for example NUMA node allocation.
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
 
         const size_t total_size = sizeof(T) + sizeof(DWORD);
 
         std::size_t content_hash = std::hash<T>{}(value);
 
-        char executable_path[4096] = {0};
-        GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
-        std::size_t executable_hash = std::hash<std::string>{}(std::string(executable_path, 4096));
+        char executable_path[4096];
+        const int path_length = GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
+        std::size_t executable_hash = std::hash<std::string_view>{}(std::string_view(executable_path, path_length));
 
         std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$" + std::to_string(executable_hash) + "$" + std::to_string(discriminator);
 
+        // Try allocating with large pages first.
         hMapFile = windows_try_with_large_page_priviliges([&](size_t largePageSize){
             const size_t total_size_aligned = (total_size + largePageSize - 1) / largePageSize * largePageSize;
             return CreateFileMappingA(
@@ -371,6 +376,7 @@ struct SystemWideSharedConstant {
             );
         }, []() { return (void*)nullptr; });
 
+        // Fallback to normal allocation if no large pages available.
         if (!hMapFile) {
             hMapFile = CreateFileMappingA(
                 INVALID_HANDLE_VALUE,
@@ -402,8 +408,9 @@ struct SystemWideSharedConstant {
             std::terminate();
         }
 
-        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
-        T* pObject = std::launder(reinterpret_cast<T*>(pMap));
+        // Crucially, we place the object first to ensure alignment.
+        volatile DWORD* is_initialized = std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
+        T* object = std::launder(reinterpret_cast<T*>(pMap));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
@@ -418,11 +425,11 @@ struct SystemWideSharedConstant {
 
         WaitForSingleObject(hMutex, INFINITE);
 
-        if (*pInitialized != IS_INITIALIZED_VALUE) {
+        if (*is_initialized != IS_INITIALIZED_VALUE) {
             // First time initialization, message for debug purposes
             std::cout << "initializing: " << shm_name << "\n";
-            new (pObject) T{value};
-            *pInitialized = IS_INITIALIZED_VALUE;
+            new (object) T{value};
+            *is_initialized = IS_INITIALIZED_VALUE;
         } else {
             std::cout << "already initialized: " << shm_name << "\n";
         }
@@ -451,14 +458,12 @@ struct SystemWideSharedConstant {
     }
 
     const T& operator*() const {
-        const T* pObject = std::launder(reinterpret_cast<const T*>(pMap));
-        return *pObject;
+        return *std::launder(reinterpret_cast<const T*>(pMap));;
     }
 
     // Should not exist but we're not really RAII with the network
     T& operator*() {
-        T* pObject = std::launder(reinterpret_cast<T*>(pMap));
-        return *pObject;
+        return *std::launder(reinterpret_cast<T*>(pMap));
     }
 
     bool operator==(std::nullptr_t) const noexcept {

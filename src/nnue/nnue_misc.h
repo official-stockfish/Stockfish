@@ -25,83 +25,13 @@
 #include "../types.h"
 #include "nnue_architecture.h"
 
-// chatgpt xdd
-template <std::size_t Capacity>
-class FixedString {
-public:
-    FixedString() : length_(0) {
-        data_[0] = '\0';
-    }
-
-    FixedString(const char* str) {
-        size_t len = std::strlen(str);
-        if (len > Capacity)
-            std::terminate();
-        std::memcpy(data_, str, len);
-        length_ = len;
-        data_[length_] = '\0';
-    }
-
-    FixedString(const std::string& str) {
-        if (str.size() > Capacity)
-            std::terminate();
-        std::memcpy(data_, str.data(), str.size());
-        length_ = str.size();
-        data_[length_] = '\0';
-    }
-
-    std::size_t size() const { return length_; }
-    std::size_t capacity() const { return Capacity; }
-
-    const char* c_str() const { return data_; }
-    const char* data() const { return data_; }
-
-    char& operator[](std::size_t i) {
-        if (i >= length_)
-            std::terminate();
-        return data_[i];
-    }
-
-    const char& operator[](std::size_t i) const {
-        if (i >= length_)
-            std::terminate();
-        return data_[i];
-    }
-
-    FixedString& operator+=(const char* str) {
-        size_t len = std::strlen(str);
-        if (length_ + len > Capacity)
-            std::terminate();
-        std::memcpy(data_ + length_, str, len);
-        length_ += len;
-        data_[length_] = '\0';
-        return *this;
-    }
-
-    FixedString& operator+=(const FixedString& other) {
-        return (*this += other.c_str());
-    }
-
-    operator std::string() const {
-      return std::string(data_, length_);
-    }
-
-    void clear() {
-        length_ = 0;
-        data_[0] = '\0';
-    }
-
-private:
-    char data_[Capacity + 1]; // +1 for null terminator
-    std::size_t length_;
-};
-
 namespace Stockfish {
 
 class Position;
 
 namespace Eval::NNUE {
 
+// EvalFile uses fixed string types because it's part of the network structure which must be trivial.
 struct EvalFile {
     // Default net name, will use one of the EvalFileDefaultName* macros defined
     // in evaluate.h

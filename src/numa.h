@@ -1263,6 +1263,7 @@ class LazyNumaReplicated: public NumaReplicatedBase {
     }
 };
 
+// Utilizes shared memory.
 template<typename T>
 class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
    public:
@@ -1355,13 +1356,14 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
         instances.clear();
 
         const NumaConfig& cfg = get_numa_config();
+        // We just need to make sure the first instance is there.
+        // Note that we cannot move here as we need to reallocate the data
+        // on the correct NUMA node.
+        // Even in the case of a single NUMA node we have to copy since it's shared memory.
         if (cfg.requires_memory_replication())
         {
             assert(cfg.num_numa_nodes() > 0);
 
-            // We just need to make sure the first instance is there.
-            // Note that we cannot move here as we need to reallocate the data
-            // on the correct NUMA node.
             cfg.execute_on_numa_node(
               0, [this, &source]() { instances.emplace_back(SystemWideSharedConstant<T>(*source, get_discriminator(0))); });
 
@@ -1371,9 +1373,7 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
         else
         {
             assert(cfg.num_numa_nodes() == 1);
-            // We take advantage of the fact that replication is not required
-            // and reuse the source value, avoiding one copy operation.
-            instances.emplace_back(SystemWideSharedConstant<T>(*source, std::size_t(-1)));
+            instances.emplace_back(SystemWideSharedConstant<T>(*source, get_discriminator(0)));
         }
     }
 };

@@ -57,7 +57,7 @@ Engine::Engine(std::optional<std::string> path) :
     threads(),
     networks(
       numaContext,
-      std::make_unique<NN::Networks>(
+      std::make_unique<NN::Networks>( // requires heap alloc due to sizeof
         std::make_unique<NN::NetworkBig>(NN::EvalFile{EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
         std::make_unique<NN::NetworkSmall>(NN::EvalFile{EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
 

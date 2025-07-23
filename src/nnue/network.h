@@ -49,6 +49,7 @@ enum class EmbeddedNNUEType {
 
 using NetworkOutput = std::tuple<Value, Value>;
 
+// The network must be trivial, i.e. the memory must be in-line. This is required to allow sharing the network via shared memory.
 template<typename Arch, typename Transformer>
 class Network {
     static constexpr IndexType FTDimensions = Arch::TransformedFeatureDimensions;
