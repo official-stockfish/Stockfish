@@ -331,7 +331,7 @@ template<typename Arch, typename Transformer>
 std::size_t Network<Arch, Transformer>::get_content_hash() const {
     std::size_t h = 0;
     hash_combine(h, featureTransformer);
-    for (int i = 0; i < LayerStacks; ++i)
+    for (IndexType i = 0; i < LayerStacks; ++i)
         hash_combine(h, network[i]);
     hash_combine(h, evalFile);
     hash_combine(h, static_cast<int>(embeddedType));

@@ -364,42 +364,61 @@ struct SystemWideSharedConstant {
         std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$" + std::to_string(executable_hash) + "$" + std::to_string(discriminator);
 
         // Try allocating with large pages first.
-        hMapFile = windows_try_with_large_page_priviliges([&](size_t largePageSize){
-            const size_t total_size_aligned = (total_size + largePageSize - 1) / largePageSize * largePageSize;
-            return CreateFileMappingA(
-                INVALID_HANDLE_VALUE,
-                NULL,
-                PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
-                static_cast<DWORD>(total_size_aligned >> 32u),
-                static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu),
-                shm_name.c_str()
-            );
-        }, []() { return (void*)nullptr; });
+        windows_try_with_large_page_priviliges(
+            [&, this](size_t largePageSize) {
+                std::cout << "SystemWideSharedConstant using large pages...\n";
+                const size_t total_size_aligned = (total_size + largePageSize - 1) / largePageSize * largePageSize;
+                hMapFile = CreateFileMappingA(
+                    INVALID_HANDLE_VALUE,
+                    NULL,
+                    PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
+                    static_cast<DWORD>(total_size_aligned >> 32u),
+                    static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu),
+                    shm_name.c_str()
+                );
 
-        // Fallback to normal allocation if no large pages available.
-        if (!hMapFile) {
-            hMapFile = CreateFileMappingA(
-                INVALID_HANDLE_VALUE,
-                NULL,
-                PAGE_READWRITE,
-                0,
-                static_cast<DWORD>(total_size),
-                shm_name.c_str()
-            );
-        }
+                if (!hMapFile)
+                    return nullptr;
 
+                pMap = MapViewOfFile(
+                    hMapFile,
+                    FILE_MAP_ALL_ACCESS | FILE_MAP_LARGE_PAGES,
+                    0, 0,
+                    total_size_aligned
+                );
+
+                return nullptr;
+            }, 
+            [&, this]() { 
+                std::cout << "SystemWideSharedConstant using normal pages...\n";
+                hMapFile = CreateFileMappingA(
+                    INVALID_HANDLE_VALUE,
+                    NULL,
+                    PAGE_READWRITE,
+                    static_cast<DWORD>(total_size >> 32u),
+                    static_cast<DWORD>(total_size & 0xFFFFFFFFu),
+                    shm_name.c_str()
+                );
+
+                if (!hMapFile)
+                    return nullptr;
+
+                pMap = MapViewOfFile(
+                    hMapFile,
+                    FILE_MAP_ALL_ACCESS,
+                    0, 0,
+                    total_size
+                );
+
+                return nullptr;
+            }
+        );
+            
         if (!hMapFile) {
             const DWORD err = GetLastError();
             std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err) << std::endl;
             std::terminate();
         }
-
-        pMap = MapViewOfFile(
-            hMapFile,
-            FILE_MAP_ALL_ACCESS,
-            0, 0,
-            total_size
-        );
         
         if (!pMap) {
             const DWORD err = GetLastError();
