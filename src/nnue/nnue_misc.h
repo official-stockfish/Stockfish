@@ -112,7 +112,6 @@ struct EvalFile {
     FixedString<256> netDescription;
 };
 
-
 struct NnueEvalTrace {
     static_assert(LayerStacks == PSQTBuckets);
 
@@ -128,5 +127,16 @@ std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& ca
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
+
+template <>
+struct std::hash<Stockfish::Eval::NNUE::EvalFile> {
+    std::size_t operator()(const Stockfish::Eval::NNUE::EvalFile& evalFile) const noexcept {
+        std::size_t h = 0;
+        Stockfish::hash_combine(h, evalFile.defaultName);
+        Stockfish::hash_combine(h, evalFile.current);
+        Stockfish::hash_combine(h, evalFile.netDescription);
+        return h;
+    }
+};
 
 #endif  // #ifndef NNUE_MISC_H_INCLUDED

@@ -171,6 +171,15 @@ class FeatureTransformer {
         return !stream.fail();
     }
 
+    std::size_t get_content_hash() const {
+        std::size_t h = 0;
+        hash_combine(h, get_raw_data_hash(biases));
+        hash_combine(h, get_raw_data_hash(weights));
+        hash_combine(h, get_raw_data_hash(psqtWeights));
+        hash_combine(h, get_hash_value());
+        return h;
+    }
+
     // Convert input features
     std::int32_t transform(const Position&                           pos,
                            AccumulatorStack&                         accumulatorStack,
@@ -308,5 +317,13 @@ class FeatureTransformer {
 };
 
 }  // namespace Stockfish::Eval::NNUE
+
+
+template<Stockfish::Eval::NNUE::IndexType TransformedFeatureDimensions>
+struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>> {
+    std::size_t operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft) const noexcept {
+        return ft.get_content_hash();
+    }
+};
 
 #endif  // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED

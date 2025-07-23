@@ -136,8 +136,27 @@ struct NetworkArchitecture {
 
         return outputValue;
     }
+
+    std::size_t get_content_hash() const {
+        std::size_t h = 0;
+        hash_combine(h, fc_0.get_content_hash());
+        hash_combine(h, ac_sqr_0.get_content_hash());
+        hash_combine(h, ac_0.get_content_hash());
+        hash_combine(h, fc_1.get_content_hash());
+        hash_combine(h, ac_1.get_content_hash());
+        hash_combine(h, fc_2.get_content_hash());
+        hash_combine(h, get_hash_value());
+        return h;
+    }
 };
 
 }  // namespace Stockfish::Eval::NNUE
+
+template<Stockfish::Eval::NNUE::IndexType L1, int L2, int L3>
+struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>> {
+    std::size_t operator()(const Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>& arch) const noexcept {
+      return arch.get_content_hash();
+    }
+};
 
 #endif  // #ifndef NNUE_ARCHITECTURE_H_INCLUDED
