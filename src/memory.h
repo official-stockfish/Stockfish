@@ -461,11 +461,6 @@ struct SystemWideSharedConstant {
         return *std::launder(reinterpret_cast<const T*>(pMap));;
     }
 
-    // Should not exist but we're not really RAII with the network
-    T& operator*() {
-        return *std::launder(reinterpret_cast<T*>(pMap));
-    }
-
     bool operator==(std::nullptr_t) const noexcept {
         return pMap == nullptr;
     }
