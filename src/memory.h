@@ -26,7 +26,6 @@
 #include <new>
 #include <type_traits>
 #include <utility>
-#include <new>
 
 #include <iostream>
 
@@ -43,6 +42,7 @@
         #define NOMINMAX
     #endif
     #include <windows.h>
+
     #include <psapi.h>
 
 extern "C" {
@@ -51,6 +51,14 @@ using LookupPrivilegeValueA_t = bool (*)(LPCSTR, LPCSTR, PLUID);
 using AdjustTokenPrivileges_t =
   bool (*)(HANDLE, BOOL, PTOKEN_PRIVILEGES, DWORD, PTOKEN_PRIVILEGES, PDWORD);
 }
+#else
+    #include <cstring>
+    #include <fcntl.h>
+    #include <pthread.h>
+    #include <semaphore.h>
+    #include <sys/mman.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
 #endif
 
 namespace Stockfish {
@@ -235,33 +243,36 @@ T* align_ptr_up(T* ptr) {
       reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
 }
 
-inline std::string GetLastErrorAsString(DWORD error)
-{
+#if defined(_WIN32)
+
+inline std::string GetLastErrorAsString(DWORD error) {
     //Get the error message ID, if any.
     DWORD errorMessageID = error;
-    if(errorMessageID == 0) {
-        return std::string(); //No error message has been recorded
+    if (errorMessageID == 0)
+    {
+        return std::string();  //No error message has been recorded
     }
-    
+
     LPSTR messageBuffer = nullptr;
 
     //Ask Win32 to give us the string version of that message ID.
     //The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
-    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-    
+    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+                                   | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                 (LPSTR) &messageBuffer, 0, NULL);
+
     //Copy the error message into a std::string.
     std::string message(messageBuffer, size);
-    
+
     //Free the Win32's string's buffer.
     LocalFree(messageBuffer);
-            
+
     return message;
 }
 
-#if defined(_WIN32)
 
-template <typename FuncYesT, typename FuncNoT>
+template<typename FuncYesT, typename FuncNoT>
 auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
 
     #if !defined(_WIN64)
@@ -317,7 +328,7 @@ auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
     // were actually obtained.
 
     if (!AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
-                                &prevTpLen)
+                                 &prevTpLen)
         || GetLastError() != ERROR_SUCCESS)
         return fno();
 
@@ -333,94 +344,45 @@ auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
     #endif
 }
 
-#endif
-
 
 // Utilizes shared memory to store the value. It is deduplicated system-wide (for the single user).
-template <typename T>
-struct SystemWideSharedConstant {
-    // We can't run the destructor because it may be in a completely different process.
-    // The object stored must also be obviously in-line but we can't check for that, other than some basic checks that cover most cases.
-    static_assert(std::is_trivially_destructible_v<T>);
-    static_assert(std::is_trivially_move_constructible_v<T>);
-    static_assert(std::is_trivially_copy_constructible_v<T>);
-
+template<typename T>
+struct SharedMemoryBackend {
     static constexpr DWORD IS_INITIALIZED_VALUE = 1;
 
-    SystemWideSharedConstant() = default;
-
-    // Content is addressed by its hash. An additional discriminator can be added to account for differences
-    // that are not present in the content, for example NUMA node allocation.
-    SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
-
-        const size_t total_size = sizeof(T) + sizeof(DWORD);
-
-        std::size_t content_hash = std::hash<T>{}(value);
-
-        char executable_path[4096];
-        const int path_length = GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
-        std::size_t executable_hash = std::hash<std::string_view>{}(std::string_view(executable_path, path_length));
-
-        std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$" + std::to_string(executable_hash) + "$" + std::to_string(discriminator);
-
+    SharedMemoryBackend() = default;
+    SharedMemoryBackend(const std::string& shm_name, size_t total_size, const T& value) {
         // Try allocating with large pages first.
-        windows_try_with_large_page_priviliges(
-            [&, this](size_t largePageSize) {
-                std::cout << "SystemWideSharedConstant using large pages...\n";
-                const size_t total_size_aligned = (total_size + largePageSize - 1) / largePageSize * largePageSize;
-                hMapFile = CreateFileMappingA(
-                    INVALID_HANDLE_VALUE,
-                    NULL,
-                    PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
-                    static_cast<DWORD>(total_size_aligned >> 32u),
-                    static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu),
-                    shm_name.c_str()
-                );
+        hMapFile = windows_try_with_large_page_priviliges(
+          [&](size_t largePageSize) {
+              const size_t total_size_aligned =
+                (total_size + largePageSize - 1) / largePageSize * largePageSize;
+              return CreateFileMappingA(
+                INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
+                static_cast<DWORD>(total_size_aligned >> 32u),
+                static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu), shm_name.c_str());
+          },
+          []() { return (void*) nullptr; });
 
-                if (!hMapFile)
-                    return nullptr;
+        // Fallback to normal allocation if no large pages available.
+        if (!hMapFile)
+        {
+            hMapFile = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,
+                                          static_cast<DWORD>(total_size), shm_name.c_str());
+        }
 
-                pMap = MapViewOfFile(
-                    hMapFile,
-                    FILE_MAP_ALL_ACCESS | FILE_MAP_LARGE_PAGES,
-                    0, 0,
-                    total_size_aligned
-                );
-
-                return nullptr;
-            }, 
-            [&, this]() { 
-                std::cout << "SystemWideSharedConstant using normal pages...\n";
-                hMapFile = CreateFileMappingA(
-                    INVALID_HANDLE_VALUE,
-                    NULL,
-                    PAGE_READWRITE,
-                    static_cast<DWORD>(total_size >> 32u),
-                    static_cast<DWORD>(total_size & 0xFFFFFFFFu),
-                    shm_name.c_str()
-                );
-
-                if (!hMapFile)
-                    return nullptr;
-
-                pMap = MapViewOfFile(
-                    hMapFile,
-                    FILE_MAP_ALL_ACCESS,
-                    0, 0,
-                    total_size
-                );
-
-                return nullptr;
-            }
-        );
-            
-        if (!hMapFile) {
+        if (!hMapFile)
+        {
             const DWORD err = GetLastError();
-            std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err) << std::endl;
+            std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err)
+                      << std::endl;
             std::terminate();
         }
-        
-        if (!pMap) {
+
+        pMap = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, total_size);
+
+        if (!pMap)
+        {
             const DWORD err = GetLastError();
             std::cerr << "Failed to map view: " << GetLastErrorAsString(err) << std::endl;
             CloseHandle(hMapFile);
@@ -428,13 +390,15 @@ struct SystemWideSharedConstant {
         }
 
         // Crucially, we place the object first to ensure alignment.
-        volatile DWORD* is_initialized = std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
+        volatile DWORD* is_initialized =
+          std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
         T* object = std::launder(reinterpret_cast<T*>(pMap));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
-        HANDLE hMutex = CreateMutexA(NULL, FALSE, mutex_name.c_str());
-        if (!hMutex) {
+        HANDLE      hMutex     = CreateMutexA(NULL, FALSE, mutex_name.c_str());
+        if (!hMutex)
+        {
             const DWORD err = GetLastError();
             std::cerr << "Failed to create mutex: " << GetLastErrorAsString(err) << std::endl;
             UnmapViewOfFile(pMap);
@@ -444,12 +408,15 @@ struct SystemWideSharedConstant {
 
         WaitForSingleObject(hMutex, INFINITE);
 
-        if (*is_initialized != IS_INITIALIZED_VALUE) {
+        if (*is_initialized != IS_INITIALIZED_VALUE)
+        {
             // First time initialization, message for debug purposes
             std::cout << "initializing: " << shm_name << "\n";
             new (object) T{value};
             *is_initialized = IS_INITIALIZED_VALUE;
-        } else {
+        }
+        else
+        {
             std::cout << "already initialized: " << shm_name << "\n";
         }
 
@@ -457,48 +424,238 @@ struct SystemWideSharedConstant {
         CloseHandle(hMutex);
     }
 
-    SystemWideSharedConstant(const SystemWideSharedConstant& other) = delete;
-    SystemWideSharedConstant(SystemWideSharedConstant&& other) : 
+    void* get() const { return pMap; }
+
+    SharedMemoryBackend(const SharedMemoryBackend&) = delete;
+    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
         pMap(other.pMap),
         hMapFile(other.hMapFile) {
-
-        other.pMap = nullptr;
+        other.pMap     = nullptr;
         other.hMapFile = 0;
     }
-    SystemWideSharedConstant& operator=(const SystemWideSharedConstant& other) = delete;
-    SystemWideSharedConstant& operator=(SystemWideSharedConstant&& other) {
-        pMap = other.pMap;
-        hMapFile = other.hMapFile;
 
-        other.pMap = nullptr;
+    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
+    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
+        pMap           = other.pMap;
+        hMapFile       = other.hMapFile;
+        other.pMap     = nullptr;
         other.hMapFile = 0;
-
         return *this;
     }
 
-    const T& operator*() const {
-        return *std::launder(reinterpret_cast<const T*>(pMap));;
-    }
-
-    bool operator==(std::nullptr_t) const noexcept {
-        return pMap == nullptr;
-    }
-
-    bool operator!=(std::nullptr_t) const noexcept {
-        return pMap != nullptr;
-    }
-
-    ~SystemWideSharedConstant() {
+    ~SharedMemoryBackend() {
         if (pMap != nullptr)
             UnmapViewOfFile(pMap);
-        
         if (hMapFile)
             CloseHandle(hMapFile);
     }
-private:
+
+   private:
     // use shared_ptr for now for type-erased deleter
-    void* pMap;
-    HANDLE hMapFile;
+    void*  pMap     = nullptr;
+    HANDLE hMapFile = 0;
+};
+
+#else
+
+
+template<typename T>
+struct SharedMemoryBackend {
+    static constexpr uint32_t IS_INITIALIZED_VALUE = 1;
+
+    SharedMemoryBackend() = default;
+    SharedMemoryBackend(const std::string& name, size_t total_size, const T& value) :
+        shm_name(name),
+        shm_size(total_size) {
+
+        shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
+        if (shm_fd == -1)
+        {
+            std::cerr << "Failed to create shared memory: " << strerror(errno) << std::endl;
+            std::terminate();
+        }
+
+        if (ftruncate(shm_fd, total_size) == -1)
+        {
+            std::cerr << "Failed to set shared memory size: " << strerror(errno) << std::endl;
+            close(shm_fd);
+            shm_unlink(shm_name.c_str());
+            std::terminate();
+        }
+
+        // MAP_SHARED|MADV_HUGEPAGE not working.. mmap fails
+        pMap = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        if (pMap == MAP_FAILED)
+        {
+            std::cerr << "Failed to map shared memory: " << strerror(errno) << std::endl;
+            close(shm_fd);
+            shm_unlink(shm_name.c_str());
+            std::terminate();
+        }
+
+        // no effect
+        // madvise(pMap, total_size, MADV_HUGEPAGE);
+
+        // Create named semaphore for synchronization
+        std::string sem_name = "/" + shm_name + "_mutex";
+        sem                  = sem_open(sem_name.c_str(), O_CREAT, 0666, 1);
+        if (sem == SEM_FAILED)
+        {
+            std::cerr << "Failed to create semaphore: " << strerror(errno) << std::endl;
+            munmap(pMap, total_size);
+            close(shm_fd);
+            shm_unlink(shm_name.c_str());
+            std::terminate();
+        }
+
+        if (sem_wait(sem) == -1)
+        {
+            std::cerr << "Failed to wait on semaphore: " << strerror(errno) << std::endl;
+            cleanup();
+            std::terminate();
+        }
+
+        // Crucially, we place the object first to ensure alignment.
+        volatile uint32_t* is_initialized =
+          std::launder(reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
+        T* object = std::launder(reinterpret_cast<T*>(pMap));
+
+        if (*is_initialized != IS_INITIALIZED_VALUE)
+        {
+            // First time initialization, message for debug purposes
+            std::cout << "initializing: " << shm_name << "\n";
+            new (object) T{value};
+            *is_initialized = IS_INITIALIZED_VALUE;
+        }
+        else
+        {
+            std::cout << "already initialized: " << shm_name << "\n";
+        }
+
+        // Release the semaphore
+        if (sem_post(sem) == -1)
+        {
+            std::cerr << "Failed to post semaphore: " << strerror(errno) << std::endl;
+            cleanup();
+            std::terminate();
+        }
+    }
+
+    void* get() const { return pMap; }
+
+    ~SharedMemoryBackend() { cleanup(); }
+
+    SharedMemoryBackend(const SharedMemoryBackend&)            = delete;
+    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
+
+    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
+        pMap(other.pMap),
+        shm_fd(other.shm_fd),
+        sem(other.sem),
+        shm_name(std::move(other.shm_name)),
+        shm_size(other.shm_size) {
+        other.pMap     = nullptr;
+        other.shm_fd   = -1;
+        other.sem      = nullptr;
+        other.shm_size = 0;
+    }
+
+    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
+        if (this != &other)
+        {
+            cleanup();
+            pMap     = other.pMap;
+            shm_fd   = other.shm_fd;
+            sem      = other.sem;
+            shm_name = std::move(other.shm_name);
+            shm_size = other.shm_size;
+
+            other.pMap     = nullptr;
+            other.shm_fd   = -1;
+            other.sem      = nullptr;
+            other.shm_size = 0;
+        }
+        return *this;
+    }
+
+   private:
+    void cleanup() {
+        if (pMap && pMap != MAP_FAILED)
+        {
+            munmap(pMap, shm_size);
+            pMap = nullptr;
+        }
+        if (shm_fd != -1)
+        {
+            close(shm_fd);
+            shm_fd = -1;
+        }
+        if (sem && sem != SEM_FAILED)
+        {
+            sem_close(sem);
+            sem_unlink(("/" + shm_name + "_mutex").c_str());
+            sem = nullptr;
+        }
+    }
+
+    void*       pMap   = nullptr;
+    int         shm_fd = -1;
+    sem_t*      sem    = nullptr;
+    std::string shm_name;
+    size_t      shm_size = 0;
+};
+#endif
+
+
+// Platform-independent wrapper
+template<typename T>
+struct SystemWideSharedConstant {
+    // We can't run the destructor because it may be in a completely different process.
+    // The object stored must also be obviously in-line but we can't check for that, other than some basic checks that cover most cases.
+    static_assert(std::is_trivially_destructible_v<T>);
+    static_assert(std::is_trivially_move_constructible_v<T>);
+    static_assert(std::is_trivially_copy_constructible_v<T>);
+
+    SystemWideSharedConstant() = default;
+
+
+    // Content is addressed by its hash. An additional discriminator can be added to account for differences
+    // that are not present in the content, for example NUMA node allocation.
+    SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
+        const size_t total_size   = sizeof(T) + 4;
+        std::size_t  content_hash = std::hash<T>{}(value);
+
+        // char executable_path[4096];
+        // int  path_length =
+        //   GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
+        // std::size_t executable_hash =
+        //   std::hash<std::string_view>{}(std::string_view(executable_path, path_length));
+
+        std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$"
+                             + std::to_string(discriminator);
+
+        backend = SharedMemoryBackend<T>(shm_name, total_size, value);
+    }
+
+    SystemWideSharedConstant(const SystemWideSharedConstant&)            = delete;
+    SystemWideSharedConstant& operator=(const SystemWideSharedConstant&) = delete;
+
+    SystemWideSharedConstant(SystemWideSharedConstant&& other) noexcept :
+        backend(std::move(other.backend)) {}
+
+    SystemWideSharedConstant& operator=(SystemWideSharedConstant&& other) noexcept {
+        backend = std::move(other.backend);
+        return *this;
+    }
+
+    const T& operator*() const { return *std::launder(reinterpret_cast<const T*>(backend.get())); }
+
+    bool operator==(std::nullptr_t) const noexcept { return backend.get() == nullptr; }
+
+    bool operator!=(std::nullptr_t) const noexcept { return backend.get() != nullptr; }
+
+   private:
+    SharedMemoryBackend<T> backend;
 };
 
 
