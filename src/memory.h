@@ -259,20 +259,21 @@ inline std::string GetLastErrorAsString(DWORD error)
     return message;
 }
 
+#if defined(_WIN32)
 
-static void* get_large_pages_priviliges() {
+template <typename FuncYesT, typename FuncNoT>
+auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
 
     #if !defined(_WIN64)
-    return nullptr;
+    return fno();
     #else
 
     HANDLE hProcessToken{};
     LUID   luid{};
-    void*  mem = nullptr;
 
     const size_t largePageSize = GetLargePageMinimum();
     if (!largePageSize)
-        return nullptr;
+        return fno();
 
     // Dynamically link OpenProcessToken, LookupPrivilegeValue and AdjustTokenPrivileges
 
@@ -284,59 +285,71 @@ static void* get_large_pages_priviliges() {
     auto OpenProcessToken_f =
       OpenProcessToken_t((void (*)()) GetProcAddress(hAdvapi32, "OpenProcessToken"));
     if (!OpenProcessToken_f)
-        return nullptr;
+        return fno();
     auto LookupPrivilegeValueA_f =
       LookupPrivilegeValueA_t((void (*)()) GetProcAddress(hAdvapi32, "LookupPrivilegeValueA"));
     if (!LookupPrivilegeValueA_f)
-        return nullptr;
+        return fno();
     auto AdjustTokenPrivileges_f =
       AdjustTokenPrivileges_t((void (*)()) GetProcAddress(hAdvapi32, "AdjustTokenPrivileges"));
     if (!AdjustTokenPrivileges_f)
-        return nullptr;
+        return fno();
 
     // We need SeLockMemoryPrivilege, so try to enable it for the process
 
     if (!OpenProcessToken_f(  // OpenProcessToken()
           GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hProcessToken))
-        return nullptr;
+        return fno();
 
-    if (LookupPrivilegeValueA_f(nullptr, "SeLockMemoryPrivilege", &luid))
-    {
-        TOKEN_PRIVILEGES tp{};
-        TOKEN_PRIVILEGES prevTp{};
-        DWORD            prevTpLen = 0;
+    if (!LookupPrivilegeValueA_f(nullptr, "SeLockMemoryPrivilege", &luid))
+        return fno();
 
-        tp.PrivilegeCount           = 1;
-        tp.Privileges[0].Luid       = luid;
-        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    TOKEN_PRIVILEGES tp{};
+    TOKEN_PRIVILEGES prevTp{};
+    DWORD            prevTpLen = 0;
 
-        // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges()
-        // succeeds, we still need to query GetLastError() to ensure that the privileges
-        // were actually obtained.
+    tp.PrivilegeCount           = 1;
+    tp.Privileges[0].Luid       = luid;
+    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-        AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
-                                    &prevTpLen);
-    }
+    // Try to enable SeLockMemoryPrivilege. Note that even if AdjustTokenPrivileges()
+    // succeeds, we still need to query GetLastError() to ensure that the privileges
+    // were actually obtained.
+
+    if (!AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
+                                &prevTpLen)
+        || GetLastError() != ERROR_SUCCESS)
+        return fno();
+
+    auto&& ret = fyes(largePageSize);
+
+    // Privilege no longer needed, restore previous state
+    AdjustTokenPrivileges_f(hProcessToken, FALSE, &prevTp, 0, nullptr, nullptr);
 
     CloseHandle(hProcessToken);
 
-    return mem;
+    return std::forward<decltype(ret)>(ret);
 
     #endif
 }
 
+#endif
+
 template <typename T>
 struct SystemWideSharedConstant {
+    // We can't run the destructor because it may be in a completely different process.
+    // The object stored must also be obviously in-line but we can't check for that, other than some basic checks that cover most cases.
     static_assert(std::is_trivially_destructible_v<T>);
+    static_assert(std::is_trivially_move_constructible_v<T>);
+    static_assert(std::is_trivially_copy_constructible_v<T>);
+
+    static constexpr DWORD IS_INITIALIZED_VALUE = 1;
 
     SystemWideSharedConstant() = default;
 
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
 
-        get_large_pages_priviliges();
-
-        const size_t page_size = 2 * 1024 * 1024;
-        const size_t total_size = (sizeof(T) + sizeof(DWORD) + page_size - 1) / page_size * page_size;
+        const size_t total_size = sizeof(T) + sizeof(DWORD);
 
         std::size_t content_hash = std::hash<T>{}(value);
 
@@ -346,23 +359,34 @@ struct SystemWideSharedConstant {
 
         std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$" + std::to_string(executable_hash) + "$" + std::to_string(discriminator);
 
-        hMapFile = CreateFileMappingA(
-            INVALID_HANDLE_VALUE,
-            NULL,
-            PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
-            0,
-            static_cast<DWORD>(total_size),
-            shm_name.c_str()
-        );
-
-        const auto err = GetLastError();
+        hMapFile = windows_try_with_large_page_priviliges([&](size_t largePageSize){
+            const size_t total_size_aligned = (total_size + largePageSize - 1) / largePageSize * largePageSize;
+            return CreateFileMappingA(
+                INVALID_HANDLE_VALUE,
+                NULL,
+                PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
+                static_cast<DWORD>(total_size_aligned >> 32u),
+                static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu),
+                shm_name.c_str()
+            );
+        }, []() { return (void*)nullptr; });
 
         if (!hMapFile) {
+            hMapFile = CreateFileMappingA(
+                INVALID_HANDLE_VALUE,
+                NULL,
+                PAGE_READWRITE,
+                0,
+                static_cast<DWORD>(total_size),
+                shm_name.c_str()
+            );
+        }
+
+        if (!hMapFile) {
+            const DWORD err = GetLastError();
             std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err) << std::endl;
             std::terminate();
         }
-
-        const bool already_exists = (err == ERROR_ALREADY_EXISTS);
 
         pMap = MapViewOfFile(
             hMapFile,
@@ -371,22 +395,22 @@ struct SystemWideSharedConstant {
             total_size
         );
         
-        const auto err2 = GetLastError();
         if (!pMap) {
-            std::cerr << "Failed to map view: " << GetLastErrorAsString(err2) << std::endl;
+            const DWORD err = GetLastError();
+            std::cerr << "Failed to map view: " << GetLastErrorAsString(err) << std::endl;
             CloseHandle(hMapFile);
             std::terminate();
         }
 
-        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(pMap + sizeof(T)));
-        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap)));
+        volatile DWORD* pInitialized = std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
+        T* pObject = std::launder(reinterpret_cast<T*>(pMap));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
         HANDLE hMutex = CreateMutexA(NULL, FALSE, mutex_name.c_str());
-        const auto err3 = GetLastError();
         if (!hMutex) {
-            std::cerr << "Failed to create mutex: " << GetLastErrorAsString(err3) << std::endl;
+            const DWORD err = GetLastError();
+            std::cerr << "Failed to create mutex: " << GetLastErrorAsString(err) << std::endl;
             UnmapViewOfFile(pMap);
             CloseHandle(hMapFile);
             std::terminate();
@@ -394,14 +418,12 @@ struct SystemWideSharedConstant {
 
         WaitForSingleObject(hMutex, INFINITE);
 
-        if (*pInitialized != 1) {
-            // First time initialization
-            std::cout << "initialized: " << shm_name << "\n";
+        if (*pInitialized != IS_INITIALIZED_VALUE) {
+            // First time initialization, message for debug purposes
+            std::cout << "initializing: " << shm_name << "\n";
             new (pObject) T{value};
-            *pInitialized = 1;
-        }
-        else
-        {
+            *pInitialized = IS_INITIALIZED_VALUE;
+        } else {
             std::cout << "already initialized: " << shm_name << "\n";
         }
 
@@ -429,13 +451,13 @@ struct SystemWideSharedConstant {
     }
 
     const T& operator*() const {
-        const T* pObject = std::launder(reinterpret_cast<const T*>(reinterpret_cast<const BYTE*>(pMap)));
+        const T* pObject = std::launder(reinterpret_cast<const T*>(pMap));
         return *pObject;
     }
 
     // Should not exist but we're not really RAII with the network
     T& operator*() {
-        T* pObject = std::launder(reinterpret_cast<T*>(reinterpret_cast<BYTE*>(pMap)));
+        T* pObject = std::launder(reinterpret_cast<T*>(pMap));
         return *pObject;
     }
 

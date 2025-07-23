@@ -110,31 +110,6 @@ bool write_parameters(std::ostream& stream, T& reference) {
 }  // namespace Detail
 
 template<typename Arch, typename Transformer>
-Network<Arch, Transformer>::Network(const Network<Arch, Transformer>& other) :
-    evalFile(other.evalFile),
-    embeddedType(other.embeddedType) {
-
-    featureTransformer = other.featureTransformer;
-
-    for (std::size_t i = 0; i < LayerStacks; ++i)
-        network[i] = other.network[i];
-}
-
-template<typename Arch, typename Transformer>
-Network<Arch, Transformer>&
-Network<Arch, Transformer>::operator=(const Network<Arch, Transformer>& other) {
-    evalFile     = other.evalFile;
-    embeddedType = other.embeddedType;
-
-    featureTransformer = other.featureTransformer;
-
-    for (std::size_t i = 0; i < LayerStacks; ++i)
-        network[i] = other.network[i];
-
-    return *this;
-}
-
-template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::load(const std::string& rootDirectory, std::string evalfilePath) {
 #if defined(DEFAULT_NNUE_DIRECTORY)
     std::vector<std::string> dirs = {"<internal>", "", rootDirectory,

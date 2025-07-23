@@ -58,10 +58,10 @@ class Network {
         evalFile(file),
         embeddedType(type) {}
 
-    Network(const Network& other);
+    Network(const Network& other) = default;
     Network(Network&& other) = default;
 
-    Network& operator=(const Network& other);
+    Network& operator=(const Network& other) = default;
     Network& operator=(Network&& other) = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
