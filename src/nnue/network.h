@@ -65,7 +65,7 @@ class Network {
     Network& operator=(Network&& other) = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
-    bool save(const std::optional<std::string>& filename);
+    bool save(const std::optional<std::string>& filename) const;
 
     std::size_t get_content_hash() const;
 
@@ -85,14 +85,14 @@ class Network {
 
     void initialize();
 
-    bool                       save(std::ostream&, const std::string&, const std::string&);
+    bool                       save(std::ostream&, const std::string&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
     bool read_header(std::istream&, std::uint32_t*, std::string*) const;
     bool write_header(std::ostream&, std::uint32_t, const std::string&) const;
 
     bool read_parameters(std::istream&, std::string&);
-    bool write_parameters(std::ostream&, const std::string&);
+    bool write_parameters(std::ostream&, const std::string&) const;
 
     // Input feature converter
     Transformer featureTransformer;

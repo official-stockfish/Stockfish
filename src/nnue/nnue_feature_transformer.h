@@ -157,17 +157,16 @@ class FeatureTransformer {
     }
 
     // Write network parameters
-    bool write_parameters(std::ostream& stream) {
+    bool write_parameters(std::ostream& stream) const {
+        auto copy = *this;
 
-        unpermute_weights();
-        scale_weights(false);
+        copy.unpermute_weights();
+        copy.scale_weights(false);
 
-        write_leb_128<BiasType>(stream, biases, HalfDimensions);
-        write_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
-        write_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
-
-        permute_weights();
-        scale_weights(true);
+        write_leb_128<BiasType>(stream, copy.biases, HalfDimensions);
+        write_leb_128<WeightType>(stream, copy.weights, HalfDimensions * InputDimensions);
+        write_leb_128<PSQTWeightType>(stream, copy.psqtWeights, PSQTBuckets * InputDimensions);
+        
         return !stream.fail();
     }
 
