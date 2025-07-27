@@ -520,14 +520,15 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
     do_move(pos, move, st, pos.gives_check(move), ss);
 }
 
-void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
-    bool capture = pos.capture_stage(move);
-    DirtyPiece dp = pos.do_move(move, st, givesCheck, &tt);
+void Search::Worker::do_move(
+  Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
+    bool       capture = pos.capture_stage(move);
+    DirtyPiece dp      = pos.do_move(move, st, givesCheck, &tt);
     nodes.fetch_add(1, std::memory_order_relaxed);
     accumulatorStack.push(dp);
     if (ss != nullptr)
     {
-        ss->currentMove = move;
+        ss->currentMove         = move;
         ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
     }
@@ -893,7 +894,7 @@ Value Search::Worker::search(
         }
     }
 
-    improving |= ss->staticEval >= beta + 87;
+    improving |= ss->staticEval >= beta + 94 * !PvNode;
 
     // Step 10. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
