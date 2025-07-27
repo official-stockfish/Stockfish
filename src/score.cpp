@@ -40,8 +40,7 @@ Score::Score(Value v, const Position& pos) {
     }
     else
     {
-        auto distance = VALUE_MATE - std::abs(v);
-        score         = (v > 0) ? Mate{distance} : Mate{-distance};
+        score = Mate{v > 0 ? VALUE_MATE - v : -VALUE_MATE - v};
     }
 }
 
