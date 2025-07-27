@@ -22,12 +22,15 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <functional>
+#include <iostream>
 #include <memory>
 #include <new>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
-
-#include <iostream>
 
 #include "types.h"
 
@@ -61,7 +64,82 @@ using AdjustTokenPrivileges_t =
     #include <unistd.h>
 #endif
 
+
+#if defined(__APPLE__)
+    #include <mach-o/dyld.h>
+
+#elif defined(__sun)
+    #include <stdlib.h>
+
+#elif defined(__FreeBSD__)
+    #include <sys/sysctl.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+
+#elif defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
+    #include <limits.h>
+    #include <unistd.h>
+#endif
+
+
 namespace Stockfish {
+
+// Ideally use argv[0] instead maybe
+inline std::string getExecutablePathHash() {
+    char executable_path[4096] = {0};
+    int  path_length           = 0;
+
+#if defined(_WIN32)
+    path_length = GetModuleFileNameA(NULL, executable_path, sizeof(executable_path));
+
+#elif defined(__APPLE__)
+    uint32_t size = sizeof(executable_path);
+    if (_NSGetExecutablePath(executable_path, &size) == 0)
+    {
+        path_length = static_cast<int>(std::strlen(executable_path));
+    }
+
+#elif defined(__sun)  // Solaris
+    const char* path = getexecname();
+    if (path)
+    {
+        std::strncpy(executable_path, path, sizeof(executable_path) - 1);
+        path_length = static_cast<int>(std::strlen(executable_path));
+    }
+
+#elif defined(__FreeBSD__)
+    size_t size   = sizeof(executable_path);
+    int    mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    if (sysctl(mib, 4, executable_path, &size, NULL, 0) == 0)
+    {
+        path_length = static_cast<int>(std::strlen(executable_path));
+    }
+
+#elif defined(__NetBSD__) || defined(__DragonFly__)
+    ssize_t len = readlink("/proc/curproc/exe", executable_path, sizeof(executable_path) - 1);
+    if (len != -1)
+    {
+        executable_path[len] = '\0';
+        path_length          = static_cast<int>(len);
+    }
+
+#elif defined(__linux__)
+    ssize_t len = readlink("/proc/self/exe", executable_path, sizeof(executable_path) - 1);
+    if (len != -1)
+    {
+        executable_path[len] = '\0';
+        path_length          = static_cast<int>(len);
+    }
+
+#endif
+
+    if (path_length <= 0)
+    {
+        return 0;  // fallback
+    }
+
+    return std::string(executable_path, path_length);
+}
 
 void* std_aligned_alloc(size_t alignment, size_t size);
 void  std_aligned_free(void* ptr);
@@ -351,7 +429,8 @@ struct SharedMemoryBackend {
     static constexpr DWORD IS_INITIALIZED_VALUE = 1;
 
     SharedMemoryBackend() = default;
-    SharedMemoryBackend(const std::string& shm_name, size_t total_size, const T& value) {
+    SharedMemoryBackend(const std::string& shm_name, const T& value) {
+        const auto total_size = sizeof(T) + sizeof(IS_INITIALIZED_VALUE);
         // Try allocating with large pages first.
         hMapFile = windows_try_with_large_page_priviliges(
           [&](size_t largePageSize) {
@@ -458,15 +537,28 @@ struct SharedMemoryBackend {
 
 #else
 
-
 template<typename T>
 struct SharedMemoryBackend {
     static constexpr uint32_t IS_INITIALIZED_VALUE = 1;
 
     SharedMemoryBackend() = default;
-    SharedMemoryBackend(const std::string& name, size_t total_size, const T& value) :
+    SharedMemoryBackend(const std::string& name, const T& value) :
         shm_name(name),
-        shm_size(total_size) {
+        shm_size(sizeof(T) + sizeof(IS_INITIALIZED_VALUE)) {
+
+        // get page size
+        long page_size = sysconf(_SC_PAGE_SIZE);
+        if (page_size <= 0)
+        {
+            std::cerr << "Failed to get page size: " << strerror(errno) << std ::endl;
+            std::terminate();
+        }
+
+        // Ensure the size is a multiple of page size,
+        if (shm_size % page_size != 0)
+        {
+            shm_size += page_size - (shm_size % page_size);
+        }
 
         shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
         if (shm_fd == -1)
@@ -475,7 +567,7 @@ struct SharedMemoryBackend {
             std::terminate();
         }
 
-        if (ftruncate(shm_fd, total_size) == -1)
+        if (ftruncate(shm_fd, shm_size) == -1)
         {
             std::cerr << "Failed to set shared memory size: " << strerror(errno) << std::endl;
             close(shm_fd);
@@ -483,8 +575,8 @@ struct SharedMemoryBackend {
             std::terminate();
         }
 
-        // MAP_SHARED|MADV_HUGEPAGE not working.. mmap fails
-        pMap = mmap(nullptr, total_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        pMap = mmap(nullptr, shm_size, PROT_READ | PROT_WRITE,
+                    MAP_SHARED | MAP_ANONYMOUS | MAP_POPULATE, shm_fd, 0);
         if (pMap == MAP_FAILED)
         {
             std::cerr << "Failed to map shared memory: " << strerror(errno) << std::endl;
@@ -493,8 +585,6 @@ struct SharedMemoryBackend {
             std::terminate();
         }
 
-        // no effect
-        // madvise(pMap, total_size, MADV_HUGEPAGE);
 
         // Create named semaphore for synchronization
         std::string sem_name = "/" + shm_name + "_mutex";
@@ -502,7 +592,7 @@ struct SharedMemoryBackend {
         if (sem == SEM_FAILED)
         {
             std::cerr << "Failed to create semaphore: " << strerror(errno) << std::endl;
-            munmap(pMap, total_size);
+            munmap(pMap, shm_size);
             close(shm_fd);
             shm_unlink(shm_name.c_str());
             std::terminate();
@@ -622,19 +712,14 @@ struct SystemWideSharedConstant {
     // Content is addressed by its hash. An additional discriminator can be added to account for differences
     // that are not present in the content, for example NUMA node allocation.
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
-        const size_t total_size   = sizeof(T) + 4;
-        std::size_t  content_hash = std::hash<T>{}(value);
-
-        // char executable_path[4096];
-        // int  path_length =
-        //   GetProcessImageFileName(GetCurrentProcess(), executable_path, sizeof(executable_path));
-        // std::size_t executable_hash =
-        //   std::hash<std::string_view>{}(std::string_view(executable_path, path_length));
+        std::size_t content_hash    = std::hash<T>{}(value);
+        std::size_t executable_hash = std::hash<std::string>{}(getExecutablePathHash());
 
         std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$"
+                             + std::to_string(executable_hash) + "$"
                              + std::to_string(discriminator);
 
-        backend = SharedMemoryBackend<T>(shm_name, total_size, value);
+        backend = SharedMemoryBackend<T>(shm_name, value);
     }
 
     SystemWideSharedConstant(const SystemWideSharedConstant&)            = delete;
