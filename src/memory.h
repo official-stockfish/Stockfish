@@ -851,6 +851,7 @@ class SharedMemoryBackend {
         if (shm_fd != -1)
         {
             close(shm_fd);
+            shm_unlink(shm_name.c_str());
             shm_fd = -1;
         }
         if (sem && sem != SEM_FAILED)
