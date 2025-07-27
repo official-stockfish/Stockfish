@@ -813,7 +813,8 @@ Value Search::Worker::search(
     {
         int bonus = std::clamp(-10 * int((ss - 1)->staticEval + ss->staticEval), -1979, 1561) + 630;
         mainHistory[~us][((ss - 1)->currentMove).from_to()] << bonus * 935 / 1024;
-        if (!ttHit && type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
+        if (!ttHit && type_of(pos.piece_on(prevSq)) != PAWN
+            && ((ss - 1)->currentMove).type_of() != PROMOTION)
             pawnHistory[pawn_structure_index(pos)][pos.piece_on(prevSq)][prevSq]
               << bonus * 1428 / 1024;
     }
@@ -900,7 +901,7 @@ Value Search::Worker::search(
     // Step 10. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
     // (*Scaler) Especially if they make IIR less aggressive.
-    if (!allNode && depth >= 6 && !ttData.move)
+    if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
     // Step 11. ProbCut
