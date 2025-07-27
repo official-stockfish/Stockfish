@@ -426,12 +426,94 @@ auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
 
 // Utilizes shared memory to store the value. It is deduplicated system-wide (for the single user).
 template<typename T>
-struct SharedMemoryBackend {
+class SharedMemoryBackend {
+   public:
+    enum class Status {
+        Success,
+        LargePageAllocationError,
+        FileMappingError,
+        MapViewError,
+        MutexCreateError,
+        MutexWaitError,
+        MutexReleaseError,
+        NotInitialized
+    };
+
     static constexpr DWORD IS_INITIALIZED_VALUE = 1;
 
-    SharedMemoryBackend() = default;
-    SharedMemoryBackend(const std::string& shm_name, const T& value) {
-        const auto total_size = sizeof(T) + sizeof(IS_INITIALIZED_VALUE);
+    SharedMemoryBackend() :
+        status(Status::NotInitialized) {}
+
+    SharedMemoryBackend(const std::string& shm_name, const T& value) :
+        status(Status::NotInitialized) {
+
+        initialize(shm_name, value);
+    }
+
+    bool is_valid() const { return status == Status::Success; }
+
+    std::string get_error_message() const {
+        switch (status)
+        {
+        case Status::Success :
+            return "Success";
+        case Status::LargePageAllocationError :
+            return "Failed to allocate large page memory";
+        case Status::FileMappingError :
+            return "Failed to create file mapping: " + last_error_message;
+        case Status::MapViewError :
+            return "Failed to map view: " + last_error_message;
+        case Status::MutexCreateError :
+            return "Failed to create mutex: " + last_error_message;
+        case Status::MutexWaitError :
+            return "Failed to wait on mutex: " + last_error_message;
+        case Status::MutexReleaseError :
+            return "Failed to release mutex: " + last_error_message;
+        case Status::NotInitialized :
+            return "Not initialized";
+        default :
+            return "Unknown error";
+        }
+    }
+
+    void* get() const { return is_valid() ? pMap : nullptr; }
+
+    ~SharedMemoryBackend() { cleanup(); }
+
+    SharedMemoryBackend(const SharedMemoryBackend&)            = delete;
+    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
+
+    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
+        pMap(other.pMap),
+        hMapFile(other.hMapFile),
+        status(other.status),
+        last_error_message(std::move(other.last_error_message)) {
+
+        other.pMap     = nullptr;
+        other.hMapFile = 0;
+        other.status   = Status::NotInitialized;
+    }
+
+    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
+        if (this != &other)
+        {
+            cleanup();
+            pMap               = other.pMap;
+            hMapFile           = other.hMapFile;
+            status             = other.status;
+            last_error_message = std::move(other.last_error_message);
+
+            other.pMap     = nullptr;
+            other.hMapFile = 0;
+            other.status   = Status::NotInitialized;
+        }
+        return *this;
+    }
+
+   private:
+    void initialize(const std::string& shm_name, const T& value) {
+        const size_t total_size = sizeof(T) + sizeof(IS_INITIALIZED_VALUE);
+
         // Try allocating with large pages first.
         hMapFile = windows_try_with_large_page_priviliges(
           [&](size_t largePageSize) {
@@ -453,40 +535,49 @@ struct SharedMemoryBackend {
 
         if (!hMapFile)
         {
-            const DWORD err = GetLastError();
-            std::cerr << "Failed to create file mapping: " << GetLastErrorAsString(err)
-                      << std::endl;
-            std::terminate();
+            const DWORD err    = GetLastError();
+            last_error_message = GetLastErrorAsString(err);
+            status             = Status::FileMappingError;
+            return;
         }
 
         pMap = MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, total_size);
-
         if (!pMap)
         {
-            const DWORD err = GetLastError();
-            std::cerr << "Failed to map view: " << GetLastErrorAsString(err) << std::endl;
-            CloseHandle(hMapFile);
-            std::terminate();
+            const DWORD err    = GetLastError();
+            last_error_message = GetLastErrorAsString(err);
+            status             = Status::MapViewError;
+            cleanup_partial();
+            return;
         }
-
-        // Crucially, we place the object first to ensure alignment.
-        volatile DWORD* is_initialized =
-          std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
-        T* object = std::launder(reinterpret_cast<T*>(pMap));
 
         // Use named mutex to ensure only one initializer
         std::string mutex_name = shm_name + "$mutex";
         HANDLE      hMutex     = CreateMutexA(NULL, FALSE, mutex_name.c_str());
         if (!hMutex)
         {
-            const DWORD err = GetLastError();
-            std::cerr << "Failed to create mutex: " << GetLastErrorAsString(err) << std::endl;
-            UnmapViewOfFile(pMap);
-            CloseHandle(hMapFile);
-            std::terminate();
+            const DWORD err    = GetLastError();
+            last_error_message = GetLastErrorAsString(err);
+            status             = Status::MutexCreateError;
+            cleanup_partial();
+            return;
         }
 
-        WaitForSingleObject(hMutex, INFINITE);
+        DWORD wait_result = WaitForSingleObject(hMutex, INFINITE);
+        if (wait_result != WAIT_OBJECT_0)
+        {
+            const DWORD err    = GetLastError();
+            last_error_message = GetLastErrorAsString(err);
+            status             = Status::MutexWaitError;
+            CloseHandle(hMutex);
+            cleanup_partial();
+            return;
+        }
+
+        // Crucially, we place the object first to ensure alignment.
+        volatile DWORD* is_initialized =
+          std::launder(reinterpret_cast<DWORD*>(reinterpret_cast<char*>(pMap) + sizeof(T)));
+        T* object = std::launder(reinterpret_cast<T*>(pMap));
 
         if (*is_initialized != IS_INITIALIZED_VALUE)
         {
@@ -500,42 +591,52 @@ struct SharedMemoryBackend {
             std::cout << "already initialized: " << shm_name << "\n";
         }
 
-        ReleaseMutex(hMutex);
+        BOOL release_result = ReleaseMutex(hMutex);
         CloseHandle(hMutex);
+
+        if (!release_result)
+        {
+            const DWORD err    = GetLastError();
+            last_error_message = GetLastErrorAsString(err);
+            status             = Status::MutexReleaseError;
+            cleanup_partial();
+            return;
+        }
+
+        status = Status::Success;
     }
 
-    void* get() const { return pMap; }
-
-    SharedMemoryBackend(const SharedMemoryBackend&) = delete;
-    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
-        pMap(other.pMap),
-        hMapFile(other.hMapFile) {
-        other.pMap     = nullptr;
-        other.hMapFile = 0;
-    }
-
-    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
-    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
-        pMap           = other.pMap;
-        hMapFile       = other.hMapFile;
-        other.pMap     = nullptr;
-        other.hMapFile = 0;
-        return *this;
-    }
-
-    ~SharedMemoryBackend() {
+    void cleanup_partial() {
         if (pMap != nullptr)
+        {
             UnmapViewOfFile(pMap);
+            pMap = nullptr;
+        }
         if (hMapFile)
+        {
             CloseHandle(hMapFile);
+            hMapFile = 0;
+        }
     }
 
-   private:
-    // use shared_ptr for now for type-erased deleter
-    void*  pMap     = nullptr;
-    HANDLE hMapFile = 0;
-};
+    void cleanup() {
+        if (pMap != nullptr)
+        {
+            UnmapViewOfFile(pMap);
+            pMap = nullptr;
+        }
+        if (hMapFile)
+        {
+            CloseHandle(hMapFile);
+            hMapFile = 0;
+        }
+    }
 
+    void*       pMap     = nullptr;
+    HANDLE      hMapFile = 0;
+    Status      status   = Status::NotInitialized;
+    std::string last_error_message;
+};
 #else
 
 template<typename T>
@@ -665,8 +766,7 @@ class SharedMemoryBackend {
             return;
         }
 
-        pMap = mmap(nullptr, shm_size, PROT_READ | PROT_WRITE,
-                    MAP_SHARED | MAP_ANONYMOUS | MAP_POPULATE, shm_fd, 0);
+        pMap = mmap(nullptr, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
         if (pMap == MAP_FAILED)
         {
             status = Status::MmapError;
@@ -865,7 +965,6 @@ struct SystemWideSharedConstant {
           backend);
     }
 
-    // SharedMemoryBackend<T> backend;
     std::variant<std::monostate, SharedMemoryBackend<T>, SharedMemoryBackendFallback<T>> backend;
 };
 
