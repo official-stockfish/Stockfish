@@ -31,6 +31,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include "types.h"
 
@@ -538,23 +539,113 @@ struct SharedMemoryBackend {
 #else
 
 template<typename T>
-struct SharedMemoryBackend {
+class SharedMemoryBackend {
+   public:
+    enum class Status {
+        Success,
+        PageSizeError,
+        ShmOpenError,
+        TruncateError,
+        MmapError,
+        SemaphoreCreateError,
+        SemaphoreWaitError,
+        SemaphorePostError,
+        NotInitialized
+    };
+
     static constexpr uint32_t IS_INITIALIZED_VALUE = 1;
 
-    SharedMemoryBackend() = default;
+    SharedMemoryBackend() :
+        status(Status::NotInitialized) {}
+
     SharedMemoryBackend(const std::string& name, const T& value) :
         shm_name(name),
-        shm_size(sizeof(T) + sizeof(IS_INITIALIZED_VALUE)) {
+        shm_size(sizeof(T) + sizeof(IS_INITIALIZED_VALUE)),
+        status(Status::NotInitialized) {
 
-        // get page size
+        initialize(value);
+    }
+
+    bool is_valid() const { return status == Status::Success; }
+
+    std::string get_error_message() const {
+        switch (status)
+        {
+        case Status::Success :
+            return "Success";
+        case Status::PageSizeError :
+            return "Failed to get page size";
+        case Status::ShmOpenError :
+            return "Failed to create shared memory";
+        case Status::TruncateError :
+            return "Failed to set shared memory size";
+        case Status::MmapError :
+            return "Failed to map shared memory";
+        case Status::SemaphoreCreateError :
+            return "Failed to create semaphore";
+        case Status::SemaphoreWaitError :
+            return "Failed to wait on semaphore";
+        case Status::SemaphorePostError :
+            return "Failed to post semaphore";
+        case Status::NotInitialized :
+            return "Not initialized";
+        default :
+            return "Unknown error";
+        }
+    }
+
+    void* get() const { return is_valid() ? pMap : nullptr; }
+
+    ~SharedMemoryBackend() { cleanup(); }
+
+    SharedMemoryBackend(const SharedMemoryBackend&)            = delete;
+    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
+
+    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
+        pMap(other.pMap),
+        shm_fd(other.shm_fd),
+        sem(other.sem),
+        shm_name(std::move(other.shm_name)),
+        shm_size(other.shm_size),
+        status(other.status) {
+
+        other.pMap     = nullptr;
+        other.shm_fd   = -1;
+        other.sem      = nullptr;
+        other.shm_size = 0;
+        other.status   = Status::NotInitialized;
+    }
+
+    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
+        if (this != &other)
+        {
+            cleanup();
+            pMap     = other.pMap;
+            shm_fd   = other.shm_fd;
+            sem      = other.sem;
+            shm_name = std::move(other.shm_name);
+            shm_size = other.shm_size;
+            status   = other.status;
+
+            other.pMap     = nullptr;
+            other.shm_fd   = -1;
+            other.sem      = nullptr;
+            other.shm_size = 0;
+            other.status   = Status::NotInitialized;
+        }
+        return *this;
+    }
+
+   private:
+    void initialize(const T& value) {
         long page_size = sysconf(_SC_PAGE_SIZE);
         if (page_size <= 0)
         {
-            std::cerr << "Failed to get page size: " << strerror(errno) << std ::endl;
-            std::terminate();
+            status = Status::PageSizeError;
+            return;
         }
 
-        // Ensure the size is a multiple of page size,
+        // Ensure the size is a multiple of page size
         if (shm_size % page_size != 0)
         {
             shm_size += page_size - (shm_size % page_size);
@@ -563,46 +654,44 @@ struct SharedMemoryBackend {
         shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
         if (shm_fd == -1)
         {
-            std::cerr << "Failed to create shared memory: " << strerror(errno) << std::endl;
-            std::terminate();
+            status = Status::ShmOpenError;
+            return;
         }
 
         if (ftruncate(shm_fd, shm_size) == -1)
         {
-            std::cerr << "Failed to set shared memory size: " << strerror(errno) << std::endl;
-            close(shm_fd);
-            shm_unlink(shm_name.c_str());
-            std::terminate();
+            status = Status::TruncateError;
+            cleanup_partial();
+            return;
         }
 
         pMap = mmap(nullptr, shm_size, PROT_READ | PROT_WRITE,
                     MAP_SHARED | MAP_ANONYMOUS | MAP_POPULATE, shm_fd, 0);
         if (pMap == MAP_FAILED)
         {
-            std::cerr << "Failed to map shared memory: " << strerror(errno) << std::endl;
-            close(shm_fd);
-            shm_unlink(shm_name.c_str());
-            std::terminate();
+            status = Status::MmapError;
+            pMap   = nullptr;
+            cleanup_partial();
+            return;
         }
 
-
-        // Create named semaphore for synchronization
+        // Use named mutex to ensure only one initializer
         std::string sem_name = "/" + shm_name + "_mutex";
         sem                  = sem_open(sem_name.c_str(), O_CREAT, 0666, 1);
         if (sem == SEM_FAILED)
         {
-            std::cerr << "Failed to create semaphore: " << strerror(errno) << std::endl;
-            munmap(pMap, shm_size);
-            close(shm_fd);
-            shm_unlink(shm_name.c_str());
-            std::terminate();
+            status = Status::SemaphoreCreateError;
+            sem    = nullptr;
+            cleanup_partial();
+            return;
         }
 
+        // Wait on semaphore
         if (sem_wait(sem) == -1)
         {
-            std::cerr << "Failed to wait on semaphore: " << strerror(errno) << std::endl;
-            cleanup();
-            std::terminate();
+            status = Status::SemaphoreWaitError;
+            cleanup_partial();
+            return;
         }
 
         // Crucially, we place the object first to ensure alignment.
@@ -625,50 +714,34 @@ struct SharedMemoryBackend {
         // Release the semaphore
         if (sem_post(sem) == -1)
         {
-            std::cerr << "Failed to post semaphore: " << strerror(errno) << std::endl;
-            cleanup();
-            std::terminate();
+            status = Status::SemaphorePostError;
+            cleanup_partial();
+            return;
         }
+
+        status = Status::Success;
     }
 
-    void* get() const { return pMap; }
-
-    ~SharedMemoryBackend() { cleanup(); }
-
-    SharedMemoryBackend(const SharedMemoryBackend&)            = delete;
-    SharedMemoryBackend& operator=(const SharedMemoryBackend&) = delete;
-
-    SharedMemoryBackend(SharedMemoryBackend&& other) noexcept :
-        pMap(other.pMap),
-        shm_fd(other.shm_fd),
-        sem(other.sem),
-        shm_name(std::move(other.shm_name)),
-        shm_size(other.shm_size) {
-        other.pMap     = nullptr;
-        other.shm_fd   = -1;
-        other.sem      = nullptr;
-        other.shm_size = 0;
-    }
-
-    SharedMemoryBackend& operator=(SharedMemoryBackend&& other) noexcept {
-        if (this != &other)
+    void cleanup_partial() {
+        if (pMap && pMap != MAP_FAILED)
         {
-            cleanup();
-            pMap     = other.pMap;
-            shm_fd   = other.shm_fd;
-            sem      = other.sem;
-            shm_name = std::move(other.shm_name);
-            shm_size = other.shm_size;
-
-            other.pMap     = nullptr;
-            other.shm_fd   = -1;
-            other.sem      = nullptr;
-            other.shm_size = 0;
+            munmap(pMap, shm_size);
+            pMap = nullptr;
         }
-        return *this;
+        if (shm_fd != -1)
+        {
+            close(shm_fd);
+            shm_unlink(shm_name.c_str());
+            shm_fd = -1;
+        }
+        if (sem && sem != SEM_FAILED)
+        {
+            sem_close(sem);
+            sem_unlink(("/" + shm_name + "_mutex").c_str());
+            sem = nullptr;
+        }
     }
 
-   private:
     void cleanup() {
         if (pMap && pMap != MAP_FAILED)
         {
@@ -693,8 +766,34 @@ struct SharedMemoryBackend {
     sem_t*      sem    = nullptr;
     std::string shm_name;
     size_t      shm_size = 0;
+    Status      status   = Status::NotInitialized;
 };
 #endif
+
+template<typename T>
+struct SharedMemoryBackendFallback {
+    SharedMemoryBackendFallback() = default;
+
+    SharedMemoryBackendFallback(const std::string&, const T& value) {
+        fallback_object = make_unique_large_page<T>(value);
+    }
+
+    void* get() const { return fallback_object.get(); }
+
+    SharedMemoryBackendFallback(const SharedMemoryBackendFallback&)            = delete;
+    SharedMemoryBackendFallback& operator=(const SharedMemoryBackendFallback&) = delete;
+
+    SharedMemoryBackendFallback(SharedMemoryBackendFallback&& other) noexcept :
+        fallback_object(std::move(other.fallback_object)) {}
+
+    SharedMemoryBackendFallback& operator=(SharedMemoryBackendFallback&& other) noexcept {
+        fallback_object = std::move(other.fallback_object);
+        return *this;
+    }
+
+   private:
+    LargePagePtr<T> fallback_object;
+};
 
 
 // Platform-independent wrapper
@@ -719,7 +818,18 @@ struct SystemWideSharedConstant {
                              + std::to_string(executable_hash) + "$"
                              + std::to_string(discriminator);
 
-        backend = SharedMemoryBackend<T>(shm_name, value);
+        SharedMemoryBackend<T> shm_backend(shm_name, value);
+
+        if (shm_backend.is_valid())
+        {
+            backend = std::move(shm_backend);
+        }
+        else
+        {
+            std::cerr << "Failed to create shared memory backend: "
+                      << shm_backend.get_error_message() << std::endl;
+            backend = SharedMemoryBackendFallback<T>(shm_name, value);
+        }
     }
 
     SystemWideSharedConstant(const SystemWideSharedConstant&)            = delete;
@@ -733,14 +843,30 @@ struct SystemWideSharedConstant {
         return *this;
     }
 
-    const T& operator*() const { return *std::launder(reinterpret_cast<const T*>(backend.get())); }
+    const T& operator*() const { return *std::launder(reinterpret_cast<const T*>(get_ptr())); }
 
-    bool operator==(std::nullptr_t) const noexcept { return backend.get() == nullptr; }
+    bool operator==(std::nullptr_t) const noexcept { return get_ptr() == nullptr; }
 
-    bool operator!=(std::nullptr_t) const noexcept { return backend.get() != nullptr; }
+    bool operator!=(std::nullptr_t) const noexcept { return get_ptr() != nullptr; }
 
    private:
-    SharedMemoryBackend<T> backend;
+    auto get_ptr() const {
+        return std::visit(
+          [](const auto& end) -> void* {
+              if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
+              {
+                  return nullptr;
+              }
+              else
+              {
+                  return end.get();
+              }
+          },
+          backend);
+    }
+
+    // SharedMemoryBackend<T> backend;
+    std::variant<std::monostate, SharedMemoryBackend<T>, SharedMemoryBackendFallback<T>> backend;
 };
 
 
