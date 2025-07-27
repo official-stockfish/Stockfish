@@ -82,7 +82,36 @@ void find_nnz(const std::int32_t* RESTRICT input,
               std::uint16_t* RESTRICT      out,
               IndexType&                   count_out) {
 
-    #ifdef USE_AVX512
+    #if defined(USE_AVX512ICL)
+
+    constexpr IndexType SimdWidthIn  = 16;  // 512 bits / 32 bits
+    constexpr IndexType SimdWidthOut = 32;  // 512 bits / 16 bits
+    constexpr IndexType NumChunks    = InputDimensions / SimdWidthOut;
+    const __m512i       increment    = _mm512_set1_epi16(SimdWidthOut);
+    __m512i base = _mm512_set_epi16(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+                                    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+
+    IndexType count = 0;
+    for (IndexType i = 0; i < NumChunks; ++i)
+    {
+        const __m512i inputV0 = _mm512_load_si512(input + i * 2 * SimdWidthIn);
+        const __m512i inputV1 = _mm512_load_si512(input + i * 2 * SimdWidthIn + SimdWidthIn);
+
+        // Get a bitmask and gather non zero indices
+        const __mmask32 nnzMask = _mm512_kunpackw(_mm512_test_epi32_mask(inputV1, inputV1),
+                                                  _mm512_test_epi32_mask(inputV0, inputV0));
+
+        // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
+        __m512i nnz = _mm512_maskz_compress_epi16(nnzMask, base);
+        _mm512_storeu_epi16(out + count, nnz);
+
+        count += popcount(nnzMask);
+        base = _mm512_add_epi16(base, increment);
+    }
+    count_out = count;
+
+    #elif defined(USE_AVX512)
+
     constexpr IndexType SimdWidth = 16;  // 512 bits / 32 bits
     constexpr IndexType NumChunks = InputDimensions / SimdWidth;
     const __m512i       increment = _mm512_set1_epi32(SimdWidth);
