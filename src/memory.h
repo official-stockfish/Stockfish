@@ -24,11 +24,12 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <new>
+#include <sstream>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -900,6 +901,17 @@ struct SharedMemoryBackendFallback {
 // Platform-independent wrapper
 template<typename T>
 struct SystemWideSharedConstant {
+   private:
+    static std::string createHashString(const std::string& input) {
+        size_t hash = std::hash<std::string>{}(input);
+
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0') << hash;
+
+        return ss.str();
+    }
+
+   public:
     // We can't run the destructor because it may be in a completely different process.
     // The object stored must also be obviously in-line but we can't check for that, other than some basic checks that cover most cases.
     static_assert(std::is_trivially_destructible_v<T>);
@@ -918,6 +930,18 @@ struct SystemWideSharedConstant {
         std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$"
                              + std::to_string(executable_hash) + "$"
                              + std::to_string(discriminator);
+
+#ifndef _WIN32
+        // POSIX shared memory names must start with a slash
+        shm_name = "/" + createHashString(shm_name);
+
+        // hash name and make sure it is not longer than NAME_MAX
+        if (shm_name.size() > NAME_MAX)
+        {
+            shm_name = shm_name.substr(0, NAME_MAX);
+        }
+#endif
+
 
         SharedMemoryBackend<T> shm_backend(shm_name, value);
 
