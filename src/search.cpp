@@ -851,6 +851,8 @@ Value Search::Worker::search(
     if (cutNode && ss->staticEval >= beta - 19 * depth + 389 && !excludedMove
         && pos.non_pawn_material(us) && ss->ply >= nmpMinPly && !is_loss(beta))
     {
+        assert((ss - 1)->currentMove != Move::null());
+
         // Null move dynamic reduction based on depth
         Depth R = 7 + depth / 3;
 
