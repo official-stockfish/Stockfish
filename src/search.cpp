@@ -1038,7 +1038,8 @@ moves_loop:  // When in check, search starts here
                 // Futility pruning for captures
                 if (!givesCheck && lmrDepth < 7 && !ss->inCheck)
                 {
-                    Value futilityValue = ss->staticEval + 232 + 224 * lmrDepth
+                    Value futilityValue = ss->staticEval + 225 + 220 * lmrDepth
+                                        + 275 * (move.to_sq() == prevSq)
                                         + PieceValue[capturedPiece] + 131 * captHist / 1024;
                     if (futilityValue <= alpha)
                         continue;
