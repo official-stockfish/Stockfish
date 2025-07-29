@@ -130,8 +130,7 @@ void update_all_stats(const Position& pos,
                       SearchedList&   quietsSearched,
                       SearchedList&   capturesSearched,
                       Depth           depth,
-                      Move            TTMove,
-                      int             moveCount);
+                      Move            TTMove);
 
 }  // namespace
 
@@ -1397,7 +1396,7 @@ moves_loop:  // When in check, search starts here
     else if (bestMove)
     {
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
-                         ttData.move, moveCount);
+                         ttData.move);
         if (!PvNode)
             ttMoveHistory << (bestMove == ttData.move ? 811 : -848);
     }
@@ -1808,42 +1807,43 @@ void update_all_stats(const Position& pos,
                       SearchedList&   quietsSearched,
                       SearchedList&   capturesSearched,
                       Depth           depth,
-                      Move            ttMove,
-                      int             moveCount) {
+                      Move            ttMove) {
 
     CapturePieceToHistory& captureHistory = workerThread.captureHistory;
     Piece                  movedPiece     = pos.moved_piece(bestMove);
     PieceType              capturedPiece;
 
-    int bonus = std::min(142 * depth - 88, 1501) + 318 * (bestMove == ttMove);
-    int malus = std::min(757 * depth - 172, 2848) - 30 * moveCount;
+    int quietBonus = std::min(160 * depth - 90, 1550) + 330 * (bestMove == ttMove);
+    int quietMalus = std::min(770 * depth - 175, 2900) - 33 * quietsSearched.size();
+    int captureBonus = std::min(120 * depth - 65, 1200) + 350 * (bestMove == ttMove);
+    int captureMalus = std::min(730 * depth - 150, 2400) - 27 * capturesSearched.size();
 
     if (!pos.capture_stage(bestMove))
     {
-        update_quiet_histories(pos, ss, workerThread, bestMove, bonus * 1054 / 1024);
+        update_quiet_histories(pos, ss, workerThread, bestMove, quietBonus * 1054 / 1024);
 
         // Decrease stats for all non-best quiet moves
         for (Move move : quietsSearched)
-            update_quiet_histories(pos, ss, workerThread, move, -malus * 1388 / 1024);
+            update_quiet_histories(pos, ss, workerThread, move, -quietMalus * 1388 / 1024);
     }
     else
     {
         // Increase stats for the best move in case it was a capture move
         capturedPiece = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus * 1235 / 1024;
+        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << captureBonus * 1235 / 1024;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus * 595 / 1024);
+        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -captureMalus * 595 / 1024);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
     {
         movedPiece    = pos.moved_piece(move);
         capturedPiece = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1354 / 1024;
+        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -captureMalus * 1354 / 1024;
     }
 }
 
