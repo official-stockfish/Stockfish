@@ -16,18 +16,50 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstdlib>
 #include <iostream>
+#include <signal.h>
+#include <unistd.h>
 
 #include "bitboard.h"
 #include "misc.h"
 #include "position.h"
+#include "tune.h"
 #include "types.h"
 #include "uci.h"
-#include "tune.h"
 
 using namespace Stockfish;
 
+
+namespace {
+#ifndef _WIN32
+void register_cleanup() {
+    // hack to invoke atexit
+    int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,
+                     SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
+
+    struct sigaction sa;
+    sa.sa_handler = [](int) { std::exit(1); };
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    for (int sig : signals)
+        if (sigaction(sig, &sa, nullptr) == -1)
+            std::perror("sigaction");
+
+    // Cleanup function to ensure shared memory is unlinked on exit
+    std::atexit([]() {
+        std::cout << "Exiting, cleaning up shared memory..." << std::endl;
+        shm::SharedMemory<Eval::NNUE::Networks>::cleanup_all_instances();
+    });
+}
+#else
+void register_cleanup() {}
+#endif
+}
+
 int main(int argc, char* argv[]) {
+    register_cleanup();
 
     std::cout << engine_info() << std::endl;
 
