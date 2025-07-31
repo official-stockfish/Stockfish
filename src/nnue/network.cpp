@@ -304,6 +304,7 @@ void Network<Arch, Transformer>::load_internal() {
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::initialize() {
+    initialized = true;
 }
 
 
@@ -329,6 +330,9 @@ std::optional<std::string> Network<Arch, Transformer>::load(std::istream& stream
 
 template<typename Arch, typename Transformer>
 std::size_t Network<Arch, Transformer>::get_content_hash() const {
+    if (!initialized)
+        return 0;
+
     std::size_t h = 0;
     hash_combine(h, featureTransformer);
     for (IndexType i = 0; i < LayerStacks; ++i)

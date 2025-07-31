@@ -158,15 +158,15 @@ class FeatureTransformer {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-        auto copy = *this;
+        auto copy = std::make_unique<FeatureTransformer>(*this);
 
-        copy.unpermute_weights();
-        copy.scale_weights(false);
+        copy->unpermute_weights();
+        copy->scale_weights(false);
 
-        write_leb_128<BiasType>(stream, copy.biases, HalfDimensions);
-        write_leb_128<WeightType>(stream, copy.weights, HalfDimensions * InputDimensions);
-        write_leb_128<PSQTWeightType>(stream, copy.psqtWeights, PSQTBuckets * InputDimensions);
-        
+        write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
+        write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
+        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
+
         return !stream.fail();
     }
 
@@ -320,7 +320,9 @@ class FeatureTransformer {
 
 template<Stockfish::Eval::NNUE::IndexType TransformedFeatureDimensions>
 struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft) const noexcept {
+    std::size_t
+    operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft)
+      const noexcept {
         return ft.get_content_hash();
     }
 };

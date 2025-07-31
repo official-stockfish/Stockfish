@@ -104,6 +104,8 @@ class Network {
     EvalFile         evalFile;
     EmbeddedNNUEType embeddedType;
 
+    bool initialized = false;
+
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
 
