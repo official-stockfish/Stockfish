@@ -903,7 +903,7 @@ help:
 	echo "Supported archs:" && \
 	echo "" && \
 	echo "native                  > select the best architecture for the host processor (default)" && \
-	echo "x86-64-avx512icl        > x86 64-bit with minimum avx512 support of Intel Ice Lane or AMD Zen 4" && \
+	echo "x86-64-avx512icl        > x86 64-bit with minimum avx512 support of Intel Ice Lake or AMD Zen 4" && \
 	echo "x86-64-vnni512          > x86 64-bit with vnni 512bit support" && \
 	echo "x86-64-vnni256          > x86 64-bit with vnni 512bit support, limit operands to 256bit wide" && \
 	echo "x86-64-avx512           > x86 64-bit with avx512 support" && \
