@@ -702,10 +702,10 @@ Value Search::Worker::search(
             if (depth >= 8 && ttData.move && pos.pseudo_legal(ttData.move) && pos.legal(ttData.move)
                 && !is_decisive(ttData.value))
             {
-                do_move(pos, ttData.move, st, nullptr);
+                pos.do_move(ttData.move, st);
                 Key nextPosKey                             = pos.key();
                 auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
-                undo_move(pos, ttData.move);
+                pos.undo_move(ttData.move);
 
                 // Check that the ttValue after the tt move would also trigger a cutoff
                 if (!is_valid(ttDataNext.value))
