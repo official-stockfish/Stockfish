@@ -176,11 +176,9 @@ class SharedMemory: public detail::SharedMemoryBase {
         // If creation failed, try to open existing
         fd_ = shm_open(name_.c_str(), O_RDWR, 0666);
         if (fd_ == -1)
-        {
             return false;
-        }
 
-        bool success = setup_existing_region(initial_value);
+        bool success = setup_existing_region();
         if (success)
             detail::SharedMemoryRegistry::register_instance(this);
         return success;
@@ -192,11 +190,10 @@ class SharedMemory: public detail::SharedMemoryBase {
             if (header_ptr_ != nullptr)
             {
                 auto old_count = header_ptr_->ref_count.fetch_sub(1, std::memory_order_acq_rel);
+
+                // remove shm
                 if (old_count == 1)
-                {
-                    // remove shm
                     shm_unlink(name_.c_str());
-                }
             }
 
             munmap(mapped_ptr_, total_size_);
@@ -267,18 +264,17 @@ class SharedMemory: public detail::SharedMemoryBase {
         header_ptr_ =
           reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
 
-        // Initialize header
         new (header_ptr_) detail::ShmHeader{};
-        header_ptr_->ref_count.store(1, std::memory_order_release);
+        new (data_ptr_) T{initial_value};
 
-        // Use placement new to construct the object
-        new (data_ptr_) T(initial_value);
+        // Initialize header
+        header_ptr_->ref_count.store(1, std::memory_order_release);
         header_ptr_->initialized.store(true, std::memory_order_release);
 
         return true;
     }
 
-    [[nodiscard]] bool setup_existing_region(const T& initial_value) noexcept {
+    [[nodiscard]] bool setup_existing_region() noexcept {
         // Map the memory
         auto flags  = PROT_READ | PROT_WRITE;
         mapped_ptr_ = mmap(nullptr, total_size_, flags, MAP_SHARED, fd_, 0);
@@ -293,30 +289,13 @@ class SharedMemory: public detail::SharedMemoryBase {
         header_ptr_ =
           reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
 
-        if (header_ptr_->magic != 0xDEADBEEF)
-        {
-            return false;
-        }
-
         header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
 
-        bool expected = false;
-        if (header_ptr_->initialized.compare_exchange_strong(expected, true,
-                                                             std::memory_order_acq_rel))
-        {
-            // We won the race to initialize
-            new (data_ptr_) T(initial_value);
-        }
-        else
-        {
-            // Already initialized by another process, wait for completion
-            std::cout << "Waiting for initialization of shared memory: " << name_ << std::endl;
-            while (!header_ptr_->initialized.load(std::memory_order_acquire))
-            {
-                std::this_thread::yield();
-            }
-            std::cout << "Shared memory initialized: " << name_ << std::endl;
-        }
+        while (!header_ptr_->initialized.load(std::memory_order_acquire))
+            std::this_thread::yield();
+
+        if (header_ptr_->magic != 0xDEADBEEF)
+            return false;
 
         return true;
     }
@@ -328,9 +307,7 @@ template<typename T>
                                                            const T& initial_value) noexcept {
     SharedMemory<T> shm(name);
     if (shm.open(initial_value))
-    {
         return std::move(shm);
-    }
     return std::nullopt;
 }
 
