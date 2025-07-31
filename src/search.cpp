@@ -1112,9 +1112,8 @@ moves_loop:  // When in check, search starts here
         // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
         // and lower extension margins scale well.
 
-        if (!rootNode && move == ttData.move && !excludedMove
-            && depth >= 6 - (completedDepth > 26) + ss->ttPv && is_valid(ttData.value)
-            && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
+        if (!rootNode && move == ttData.move && !excludedMove && depth >= 6 + ss->ttPv
+            && is_valid(ttData.value) && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
             && ttData.depth >= depth - 3)
         {
             Value singularBeta  = ttData.value - (56 + 79 * (ss->ttPv && !PvNode)) * depth / 58;
