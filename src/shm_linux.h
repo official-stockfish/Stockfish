@@ -194,12 +194,6 @@ class SharedMemory: public detail::SharedMemoryBase {
                 auto old_count = header_ptr_->ref_count.fetch_sub(1, std::memory_order_acq_rel);
                 if (old_count == 1)
                 {
-                    // Last reference, destroy the object
-                    if (header_ptr_->initialized.load(std::memory_order_acquire))
-                    {
-                        data_ptr_->~T();
-                    }
-
                     // remove shm
                     shm_unlink(name_.c_str());
                 }

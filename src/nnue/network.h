@@ -60,10 +60,10 @@ class Network {
         embeddedType(type) {}
 
     Network(const Network& other) = default;
-    Network(Network&& other) = default;
+    Network(Network&& other)      = default;
 
     Network& operator=(const Network& other) = default;
-    Network& operator=(Network&& other) = default;
+    Network& operator=(Network&& other)      = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
@@ -137,14 +137,15 @@ struct Networks {
 
 }  // namespace Stockfish
 
-template <typename ArchT, typename FeatureTransformerT>
+template<typename ArchT, typename FeatureTransformerT>
 struct std::hash<Stockfish::Eval::NNUE::Network<ArchT, FeatureTransformerT>> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::Network<ArchT, FeatureTransformerT>& network) const noexcept {
+    std::size_t operator()(
+      const Stockfish::Eval::NNUE::Network<ArchT, FeatureTransformerT>& network) const noexcept {
         return network.get_content_hash();
     }
 };
 
-template <>
+template<>
 struct std::hash<Stockfish::Eval::NNUE::Networks> {
     std::size_t operator()(const Stockfish::Eval::NNUE::Networks& networks) const noexcept {
         std::size_t h = 0;
