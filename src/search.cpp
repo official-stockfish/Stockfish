@@ -1048,7 +1048,6 @@ moves_loop:  // When in check, search starts here
                     int imbalanceAdjustment = std::clamp(materialImbalance / 80, -50, 50);
 
                     Value futilityValue = ss->staticEval + 232 + 224 * lmrDepth
-                                        + PieceValue[capturedPiece] + 131 * captHist / 1024;
                                         + PieceValue[capturedPiece] + 131 * captHist / 1024
                                         + imbalanceAdjustment;
 
