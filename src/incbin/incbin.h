@@ -161,7 +161,7 @@
 #endif
 
 #if defined(__APPLE__)
-#  include "TargetConditionals.h"
+#  include <TargetConditionals.h>
 #  if defined(TARGET_OS_IPHONE) && !defined(INCBIN_SILENCE_BITCODE_WARNING)
 #    warning "incbin is incompatible with bitcode. Using the library will break upload to App Store if you have bitcode enabled. Add `#define INCBIN_SILENCE_BITCODE_WARNING` before including this header to silence this warning."
 #  endif
@@ -174,7 +174,7 @@
 #  define INCBIN_TYPE(...)
 #else
 #  define INCBIN_SECTION         ".section " INCBIN_OUTPUT_SECTION "\n"
-#  define INCBIN_GLOBAL(NAME)    ".global " INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME "\n"
+#  define INCBIN_GLOBAL(NAME)    ".global " INCBIN_MANGLE INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME "\n"
 #  if defined(__ghs__)
 #    define INCBIN_INT           ".word "
 #  else
@@ -188,8 +188,8 @@
 #  if defined(INCBIN_ARM)
 /* On arm assemblers, `@' is used as a line comment token */
 #    define INCBIN_TYPE(NAME)    ".type " INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME ", %object\n"
-#  elif defined(__MINGW32__) || defined(__MINGW64__)
-/* Mingw doesn't support this directive either */
+#  elif defined(__MINGW32__) || defined(__MINGW64__) || defined(__CYGWIN__)
+/* Mingw and Cygwin don't support this directive either */
 #    define INCBIN_TYPE(NAME)
 #  else
 /* It's safe to use `@' on other architectures */

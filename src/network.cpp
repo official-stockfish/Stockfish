@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "network.h"
+#include "nnue/network.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -26,18 +26,38 @@
 #include <type_traits>
 #include <vector>
 
+#include "evaluate.h"
+#include "memory.h"
+#include "misc.h"
+#include "position.h"
+#include "types.h"
+#include "nnue/nnue_accumulator.h"
+#include "nnue/nnue_architecture.h"
+#include "nnue/nnue_common.h"
+#include "nnue/nnue_feature_transformer.h"
+#include "nnue/nnue_misc.h"
+
+#if defined(NNUE_EMBEDDING_OFF) || defined(_MSC_VER)
+const unsigned char gEmbeddedNNUEBigData[1] = {0x0};
+const unsigned char* const gEmbeddedNNUEBigEnd = &gEmbeddedNNUEBigData[1];
+const unsigned int gEmbeddedNNUEBigSize = 1;
+const unsigned char gEmbeddedNNUESmallData[1] = {0x0};
+const unsigned char* const gEmbeddedNNUESmallEnd = &gEmbeddedNNUESmallData[1];
+const unsigned int gEmbeddedNNUESmallSize = 1;
+#elif defined(__cpp_pp_embed) // In the Makefile, change std=c++17 to std=c++2a to use embed
+const unsigned char gEmbeddedNNUEBigData[] = {
+#embed EvalFileDefaultNameBig
+};
+const unsigned int gEmbeddedNNUEBigSize = sizeof(gEmbeddedNNUEBigData) / sizeof(gEmbeddedNNUEBigData[0]);
+const unsigned char* const gEmbeddedNNUEBigEnd = &gEmbeddedNNUEBigData[gEmbeddedNNUEBigSize];
+const unsigned char gEmbeddedNNUESmallData[] = {
+#embed EvalFileDefaultNameSmall
+};
+const unsigned int gEmbeddedNNUESmallSize = sizeof(gEmbeddedNNUESmallData) / sizeof(gEmbeddedNNUESmallData[0]);
+const unsigned char* const gEmbeddedNNUESmallEnd = &gEmbeddedNNUESmallData[gEmbeddedNNUESmallSize];
+#else
 #define INCBIN_SILENCE_BITCODE_WARNING
-#include "../incbin/incbin.h"
-
-#include "../evaluate.h"
-#include "../memory.h"
-#include "../misc.h"
-#include "../position.h"
-#include "../types.h"
-#include "nnue_architecture.h"
-#include "nnue_common.h"
-#include "nnue_misc.h"
-
+#include "incbin/incbin.h"
 // Macro to embed the default efficiently updatable neural network (NNUE) file
 // data in the engine binary (using incbin.h, by Dale Weiler).
 // This macro invocation will declare the following three variables
@@ -45,16 +65,8 @@
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsoft Visual Studio.
-#if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
 INCBIN(EmbeddedNNUEBig, EvalFileDefaultNameBig);
 INCBIN(EmbeddedNNUESmall, EvalFileDefaultNameSmall);
-#else
-const unsigned char        gEmbeddedNNUEBigData[1]   = {0x0};
-const unsigned char* const gEmbeddedNNUEBigEnd       = &gEmbeddedNNUEBigData[1];
-const unsigned int         gEmbeddedNNUEBigSize      = 1;
-const unsigned char        gEmbeddedNNUESmallData[1] = {0x0};
-const unsigned char* const gEmbeddedNNUESmallEnd     = &gEmbeddedNNUESmallData[1];
-const unsigned int         gEmbeddedNNUESmallSize    = 1;
 #endif
 
 namespace {
