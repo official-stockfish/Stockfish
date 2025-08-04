@@ -307,7 +307,7 @@ template<typename T>
                                                            const T& initial_value) noexcept {
     SharedMemory<T> shm(name);
     if (shm.open(initial_value))
-        return std::move(shm);
+        return shm;  // copy elision is guaranteed here
     return std::nullopt;
 }
 
