@@ -945,10 +945,11 @@ class NumaConfig {
         th.join();
     }
 
-   private:
     std::vector<std::set<CpuIndex>> nodes;
     std::map<CpuIndex, NumaIndex>   nodeByCpu;
-    CpuIndex                        highestCpuIndex;
+
+   private:
+    CpuIndex highestCpuIndex;
 
     bool customAffinity;
 
@@ -1329,8 +1330,12 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
     mutable std::mutex                               mutex;
 
     std::size_t get_discriminator(NumaIndex idx) const {
-        const NumaConfig& cfg = get_numa_config();
-        std::string s = cfg.to_string() + "$" + std::to_string(idx);
+        const NumaConfig& cfg     = get_numa_config();
+        const NumaConfig& cfg_sys = NumaConfig::from_system(false);
+        // as a descriminator, locate the hardware/system numadomain this cpuindex belongs to
+        CpuIndex  cpu     = *cfg.nodes[idx].begin();  // get a CpuIndex from NumaIndex
+        NumaIndex sys_idx = cfg_sys.is_cpu_assigned(cpu) ? cfg_sys.nodeByCpu.at(cpu) : 0;
+        std::string s = cfg_sys.to_string() + "$" + std::to_string(sys_idx);
         return std::hash<std::string>{}(s);
     }
 
