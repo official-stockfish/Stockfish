@@ -158,7 +158,7 @@ class FeatureTransformer {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-        auto copy = std::make_unique<FeatureTransformer>(*this);
+        std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
         copy->unpermute_weights();
         copy->scale_weights(false);
