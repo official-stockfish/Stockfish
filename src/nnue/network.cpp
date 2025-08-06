@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
@@ -30,7 +29,6 @@
 #include "../incbin/incbin.h"
 
 #include "../evaluate.h"
-#include "../memory.h"
 #include "../misc.h"
 #include "../position.h"
 #include "../types.h"

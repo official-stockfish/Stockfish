@@ -33,6 +33,7 @@
 #include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_common.h"
+#include "nnue/nnue_misc.h"
 #include "numa.h"
 #include "perft.h"
 #include "position.h"

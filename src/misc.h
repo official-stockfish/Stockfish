@@ -23,12 +23,13 @@
 #include <array>
 #include <cassert>
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <functional>
 #include <iosfwd>
 #include <optional>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>

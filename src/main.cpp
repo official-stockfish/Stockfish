@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <signal.h>
 #include <unistd.h>
 

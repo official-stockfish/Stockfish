@@ -20,8 +20,10 @@
 #define NNUE_MISC_H_INCLUDED
 
 #include <cstddef>
+#include <memory>
 #include <string>
 
+#include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
 

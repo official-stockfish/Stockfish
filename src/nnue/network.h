@@ -19,16 +19,17 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
 
-#include "../memory.h"
 #include "../types.h"
 #include "nnue_accumulator.h"
 #include "nnue_architecture.h"
