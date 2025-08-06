@@ -112,6 +112,9 @@ void update_correction_history(const Position& pos,
         (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
           << bonus * 153 / 128;
 }
+int flip_from_to_ranks(int from_to){
+    return from_to^0b111000111000;
+}
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
 Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
@@ -126,6 +129,7 @@ void update_all_stats(const Position& pos,
                       Search::Worker& workerThread,
                       Move            bestMove,
                       Square          prevSq,
+                      Piece           prevPc,
                       SearchedList&   quietsSearched,
                       SearchedList&   capturesSearched,
                       Depth           depth,
@@ -528,6 +532,7 @@ void Search::Worker::do_move(
     if (ss != nullptr)
     {
         ss->currentMove         = move;
+        ss->currentMovePc = dp.pc;
         ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
     }
@@ -543,9 +548,44 @@ void Search::Worker::undo_move(Position& pos, const Move move) {
 void Search::Worker::undo_null_move(Position& pos) { pos.undo_null_move(); }
 
 
+constexpr int knightPSQT[RANK_NB][int(FILE_NB) / 2] = {
+    { -183, -76, -66, -73, },
+    { -60, -54, -43, -15, } ,
+    { -50, -3,  -11, 13,  } ,
+    { -24, 1,   33,  47,  } ,
+    { -29, 8,   27,  42,  } ,
+    { -2,  14,  68,  48,  } ,
+    { -62, -17, 8,   43,  } ,
+    { -186, -93, -51, -22, },
+};
+
+constexpr int offs[KING + 1] = {651, 597, 629, 652, 626, 677, 613};
+
+
 // Reset histories, usually before a new game
+
 void Search::Worker::clear() {
     mainHistory.fill(64);
+
+    for (Square from = SQ_A1; from <= SQ_H8; ++from)
+    {
+        auto from_rank = rank_of(from);
+        auto from_file = file_of(from);
+        from_file = mirror_file(from_file);
+        assert(from_file < 4);
+        Bitboard movs = PseudoAttacks[KNIGHT][from];
+        while (movs) {
+            Square to = pop_lsb(movs);
+            auto to_rank = rank_of(to);
+            auto to_file = file_of(to);
+            to_file = mirror_file(to_file);
+            int from_to = from * 64 + to;
+            int delta = knightPSQT[to_rank][to_file] - knightPSQT[from_rank][from_file];
+            mainHistory.data()[W_KNIGHT][from_to]
+                = mainHistory[B_KNIGHT].data()[flip_from_to_ranks(from_to)]
+                = 64 + 349 * delta / 64;
+        }
+    }
     captureHistory.fill(-753);
     pawnHistory.fill(-1275);
     pawnCorrectionHistory.fill(5);
@@ -656,6 +696,7 @@ Value Search::Worker::search(
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
     Square prevSq  = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
+    Piece prevPc = (ss - 1)->currentMovePc;
     bestMove       = Move::none();
     priorReduction = (ss - 1)->reduction;
     (ss - 1)->reduction = 0;
@@ -692,7 +733,7 @@ Value Search::Worker::search(
 
             // Extra penalty for early quiet moves of the previous ply
             if (prevSq != SQ_NONE && (ss - 1)->moveCount <= 3 && !priorCapture)
-                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -2128);
+                update_continuation_histories(ss - 1, prevPc, prevSq, -2128);
         }
 
         // Partial workaround for the graph history interaction problem
@@ -810,11 +851,11 @@ Value Search::Worker::search(
     // Use static evaluation difference to improve quiet move ordering
     if (((ss - 1)->currentMove).is_ok() && !(ss - 1)->inCheck && !priorCapture)
     {
-        int bonus = std::clamp(-10 * int((ss - 1)->staticEval + ss->staticEval), -1979, 1561) + 630;
-        mainHistory[~us][((ss - 1)->currentMove).from_to()] << bonus * 935 / 1024;
-        if (!ttHit && type_of(pos.piece_on(prevSq)) != PAWN
-            && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            pawnHistory[pawn_history_index(pos)][pos.piece_on(prevSq)][prevSq]
+        int bonus = std::clamp(-10 * int((ss - 1)->staticEval + ss->staticEval), -1979, 1561) + offs[type_of(prevPc)];
+        mainHistory[prevPc][((ss - 1)->currentMove).from_to()] << bonus * 883 / 1024;
+
+        if (type_of(prevPc) != PAWN)
+            pawnHistory[pawn_history_index(pos)][prevPc][prevSq]
               << bonus * 1428 / 1024;
     }
 
@@ -864,6 +905,7 @@ Value Search::Worker::search(
         Depth R = 7 + depth / 3;
 
         ss->currentMove                   = Move::null();
+        ss->currentMovePc                 = NO_PIECE;
         ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
 
@@ -1073,7 +1115,7 @@ moves_loop:  // When in check, search starts here
                 if (history < -4361 * depth)
                     continue;
 
-                history += 71 * mainHistory[us][move.from_to()] / 32;
+                history += 58 * mainHistory[movedPiece][move.from_to()] / 32;
 
                 lmrDepth += history / 3233;
 
@@ -1203,7 +1245,7 @@ moves_loop:  // When in check, search starts here
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
         else
-            ss->statScore = 2 * mainHistory[us][move.from_to()]
+            ss->statScore = 2 * mainHistory[movedPiece][move.from_to()]
                           + (*contHist[0])[movedPiece][move.to_sq()]
                           + (*contHist[1])[movedPiece][move.to_sq()];
 
@@ -1399,7 +1441,7 @@ moves_loop:  // When in check, search starts here
     // we update the stats of searched moves.
     else if (bestMove)
     {
-        update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
+        update_all_stats(pos, ss, *this, bestMove, prevSq, prevPc, quietsSearched, capturesSearched, depth,
                          ttData.move, moveCount);
         if (!PvNode)
             ttMoveHistory << (bestMove == ttData.move ? 811 : -848);
@@ -1419,13 +1461,14 @@ moves_loop:  // When in check, search starts here
 
         const int scaledBonus = std::min(155 * depth - 88, 1416) * bonusScale;
 
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
+        update_continuation_histories(ss - 1, prevPc, prevSq,
                                       scaledBonus * 397 / 32768);
 
-        mainHistory[~us][((ss - 1)->currentMove).from_to()] << scaledBonus * 224 / 32768;
+        assert(prevPc == NO_PIECE || color_of(prevPc) == ~us);
+        mainHistory[prevPc][((ss - 1)->currentMove).from_to()] << scaledBonus * 242 / 32768;
 
-        if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            pawnHistory[pawn_history_index(pos)][pos.piece_on(prevSq)][prevSq]
+        if (type_of(prevPc) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
+            pawnHistory[pawn_history_index(pos)][prevPc][prevSq]
               << scaledBonus * 1127 / 32768;
     }
 
@@ -1434,7 +1477,7 @@ moves_loop:  // When in check, search starts here
     {
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
-        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 1042;
+        captureHistory[prevPc][prevSq][type_of(capturedPiece)] << 1042;
     }
 
     if (PvNode)
@@ -1808,6 +1851,7 @@ void update_all_stats(const Position& pos,
                       Search::Worker& workerThread,
                       Move            bestMove,
                       Square          prevSq,
+                      Piece           prevPc,
                       SearchedList&   quietsSearched,
                       SearchedList&   capturesSearched,
                       Depth           depth,
@@ -1839,7 +1883,7 @@ void update_all_stats(const Position& pos,
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus * 595 / 1024);
+        update_continuation_histories(ss - 1, prevPc, prevSq, -malus * 595 / 1024);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
@@ -1872,17 +1916,17 @@ void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus) {
 void update_quiet_histories(
   const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
 
-    Color us = pos.side_to_move();
-    workerThread.mainHistory[us][move.from_to()] << bonus;  // Untuned to prevent duplicate effort
+    Piece movedPiece = pos.moved_piece(move);
+    workerThread.mainHistory[movedPiece][move.from_to()] << bonus;  // Untuned to prevent duplicate effort
 
     if (ss->ply < LOW_PLY_HISTORY_SIZE)
         workerThread.lowPlyHistory[ss->ply][move.from_to()] << (bonus * 771 / 1024) + 40;
 
-    update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(),
+    update_continuation_histories(ss, movedPiece, move.to_sq(),
                                   bonus * (bonus > 0 ? 979 : 842) / 1024);
 
     int pIndex = pawn_history_index(pos);
-    workerThread.pawnHistory[pIndex][pos.moved_piece(move)][move.to_sq()]
+    workerThread.pawnHistory[pIndex][movedPiece][move.to_sq()]
       << (bonus * (bonus > 0 ? 704 : 439) / 1024) + 70;
 }
 

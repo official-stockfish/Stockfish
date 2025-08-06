@@ -353,6 +353,8 @@ constexpr Rank relative_rank(Color c, Rank r) { return Rank(r ^ (c * 7)); }
 
 constexpr Rank relative_rank(Color c, Square s) { return relative_rank(c, rank_of(s)); }
 
+constexpr File mirror_file(File f){return File(f ^ 7 * (f >> 2));}
+
 constexpr Direction pawn_push(Color c) { return c == WHITE ? NORTH : SOUTH; }
 
 
