@@ -265,15 +265,24 @@ class SharedMemoryBackend {
 
         // Try allocating with large pages first.
         hMapFile = windows_try_with_large_page_priviliges(
-          [&](size_t largePageSize) {
-              const size_t total_size_aligned =
-                (total_size + largePageSize - 1) / largePageSize * largePageSize;
-              return CreateFileMappingA(
-                INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
-                static_cast<DWORD>(total_size_aligned >> 32u),
-                static_cast<DWORD>(total_size_aligned & 0xFFFFFFFFu), shm_name.c_str());
-          },
-          []() { return (void*) nullptr; });
+            [&](size_t largePageSize) {
+                const size_t total_size_aligned =
+                  (total_size + largePageSize - 1) / largePageSize * largePageSize;
+                
+                  DWORD total_size_high = 0;
+                DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
+                if constexpr (sizeof(size_t) > 4) {
+                    total_size_high = total_size_aligned >> 32u;
+                }
+
+                return CreateFileMappingA(
+                    INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
+                    total_size_high,
+                    total_size_low, 
+                    shm_name.c_str()
+                );
+            },
+            []() { return (void*) nullptr; });
 
         // Fallback to normal allocation if no large pages available.
         if (!hMapFile)
