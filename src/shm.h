@@ -35,7 +35,10 @@
 #include <utility>
 #include <variant>
 
+#if !defined(_WIN32)
 #include "shm_linux.h"
+#endif
+
 #include "types.h"
 
 #include "memory.h"
