@@ -1333,9 +1333,9 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
         const NumaConfig& cfg     = get_numa_config();
         const NumaConfig& cfg_sys = NumaConfig::from_system(false);
         // as a descriminator, locate the hardware/system numadomain this cpuindex belongs to
-        CpuIndex  cpu     = *cfg.nodes[idx].begin();  // get a CpuIndex from NumaIndex
-        NumaIndex sys_idx = cfg_sys.is_cpu_assigned(cpu) ? cfg_sys.nodeByCpu.at(cpu) : 0;
-        std::string s = cfg_sys.to_string() + "$" + std::to_string(sys_idx);
+        CpuIndex    cpu     = *cfg.nodes[idx].begin();  // get a CpuIndex from NumaIndex
+        NumaIndex   sys_idx = cfg_sys.is_cpu_assigned(cpu) ? cfg_sys.nodeByCpu.at(cpu) : 0;
+        std::string s       = cfg_sys.to_string() + "$" + std::to_string(sys_idx);
         return std::hash<std::string>{}(s);
     }
 
@@ -1353,8 +1353,9 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
             return;
 
         const NumaConfig& cfg = get_numa_config();
-        cfg.execute_on_numa_node(
-          idx, [this, idx]() { instances[idx] = SystemWideSharedConstant<T>(*instances[0], get_discriminator(idx)); });
+        cfg.execute_on_numa_node(idx, [this, idx]() {
+            instances[idx] = SystemWideSharedConstant<T>(*instances[0], get_discriminator(idx));
+        });
     }
 
     void prepare_replicate_from(std::unique_ptr<T>&& source) {
@@ -1369,8 +1370,9 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
         {
             assert(cfg.num_numa_nodes() > 0);
 
-            cfg.execute_on_numa_node(
-              0, [this, &source]() { instances.emplace_back(SystemWideSharedConstant<T>(*source, get_discriminator(0))); });
+            cfg.execute_on_numa_node(0, [this, &source]() {
+                instances.emplace_back(SystemWideSharedConstant<T>(*source, get_discriminator(0)));
+            });
 
             // Prepare others for lazy init.
             instances.resize(cfg.num_numa_nodes());

@@ -100,12 +100,14 @@ void std_aligned_free(void* ptr) {
 
 static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize) {
 
-    return windows_try_with_large_page_priviliges([&](size_t largePageSize) {
-        // Round up size to full pages and allocate
-        allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
-        return VirtualAlloc(nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES,
-                                    PAGE_READWRITE);
-    }, [](){return (void*)nullptr;});
+    return windows_try_with_large_page_priviliges(
+      [&](size_t largePageSize) {
+          // Round up size to full pages and allocate
+          allocSize = (allocSize + largePageSize - 1) & ~size_t(largePageSize - 1);
+          return VirtualAlloc(nullptr, allocSize, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES,
+                              PAGE_READWRITE);
+      },
+      []() { return (void*) nullptr; });
 }
 
 void* aligned_large_pages_alloc(size_t allocSize) {

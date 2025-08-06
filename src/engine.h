@@ -115,9 +115,9 @@ class Engine {
     Position     pos;
     StateListPtr states;
 
-    OptionsMap                               options;
-    ThreadPool                               threads;
-    TranspositionTable                       tt;
+    OptionsMap                                         options;
+    ThreadPool                                         threads;
+    TranspositionTable                                 tt;
     LazyNumaReplicatedSystemWide<Eval::NNUE::Networks> networks;
 
     Search::SearchManager::UpdateContext  updateContext;

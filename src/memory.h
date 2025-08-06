@@ -236,7 +236,7 @@ T* align_ptr_up(T* ptr) {
 
 #if defined(_WIN32)
 
-template <typename FuncYesT, typename FuncNoT>
+template<typename FuncYesT, typename FuncNoT>
 auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
 
     #if !defined(_WIN64)
@@ -292,7 +292,7 @@ auto windows_try_with_large_page_priviliges(FuncYesT&& fyes, FuncNoT&& fno) {
     // were actually obtained.
 
     if (!AdjustTokenPrivileges_f(hProcessToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &prevTp,
-                                &prevTpLen)
+                                 &prevTpLen)
         || GetLastError() != ERROR_SUCCESS)
         return fno();
 

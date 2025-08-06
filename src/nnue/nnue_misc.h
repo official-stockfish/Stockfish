@@ -60,7 +60,7 @@ std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& ca
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
 
-template <>
+template<>
 struct std::hash<Stockfish::Eval::NNUE::EvalFile> {
     std::size_t operator()(const Stockfish::Eval::NNUE::EvalFile& evalFile) const noexcept {
         std::size_t h = 0;

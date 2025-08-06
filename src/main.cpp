@@ -29,10 +29,10 @@
 #include "shm.h"
 
 #if defined(SHM_CLEANUP)
-#include <cstdlib>
-#include <cstdio>
+    #include <cstdlib>
+    #include <cstdio>
 
-#include <signal.h>
+    #include <signal.h>
 #endif
 
 using namespace Stockfish;
@@ -55,9 +55,7 @@ void register_cleanup() {
             std::perror("sigaction");
 
     // Cleanup function to ensure shared memory is unlinked on exit
-    std::atexit([]() {
-        shm::SharedMemory<Eval::NNUE::Networks>::cleanup_all_instances();
-    });
+    std::atexit([]() { shm::SharedMemory<Eval::NNUE::Networks>::cleanup_all_instances(); });
 }
 #else
 void register_cleanup() {}
