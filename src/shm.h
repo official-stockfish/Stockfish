@@ -144,7 +144,7 @@ inline std::string getExecutablePathHash() {
 }
 
 
-#if defined(_WIN64)
+#if defined(_WIN32)
 
 inline std::string GetLastErrorAsString(DWORD error) {
     //Get the error message ID, if any.
@@ -388,7 +388,7 @@ class SharedMemoryBackend {
     std::string last_error_message;
 };
 
-#elif !defined(__ANDROID__) && !defined(_WIN32)
+#elif !defined(__ANDROID__)
 
 template<typename T>
 class SharedMemoryBackend {
