@@ -144,7 +144,7 @@ inline std::string getExecutablePathHash() {
 }
 
 
-#if defined(_WIN32)
+#if defined(_WIN64)
 
 inline std::string GetLastErrorAsString(DWORD error) {
     //Get the error message ID, if any.
@@ -269,13 +269,8 @@ class SharedMemoryBackend {
                 const size_t total_size_aligned =
                   (total_size + largePageSize - 1) / largePageSize * largePageSize;
                 
-#if defined(_WIN64)
-                DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
-                DWORD total_size_high = total_size_aligned >> 32u;
-#else
-                DWORD total_size_low = total_size_aligned;
-                DWORD total_size_high = 0;
-#endif
+                const DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
+                const DWORD total_size_high = total_size_aligned >> 32u;
 
                 return CreateFileMappingA(
                     INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
@@ -393,7 +388,7 @@ class SharedMemoryBackend {
     std::string last_error_message;
 };
 
-#elif !defined(__ANDROID__)
+#elif !defined(__ANDROID__) && !defined(_WIN32)
 
 template<typename T>
 class SharedMemoryBackend {
@@ -423,7 +418,7 @@ class SharedMemoryBackend {
 
 #else
 
-// For systems that don't have shared memory.
+// For systems that don't have shared memory, or support is troublesome.
 // The way fallback is done is that we need a dummy backend.
 
 template<typename T>
