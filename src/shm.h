@@ -269,11 +269,13 @@ class SharedMemoryBackend {
                 const size_t total_size_aligned =
                   (total_size + largePageSize - 1) / largePageSize * largePageSize;
                 
-                DWORD total_size_high = 0;
+#if defined(_WIN64)
                 DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
-                if constexpr (sizeof(size_t) > 4) {
-                    total_size_high = total_size_aligned >> 32u;
-                }
+                DWORD total_size_aligned >> 32u;
+#else
+                DWORD total_size_low = total_size_aligned;
+                DWORD total_size_high = 0;
+#endif
 
                 return CreateFileMappingA(
                     INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE | SEC_COMMIT | SEC_LARGE_PAGES,
