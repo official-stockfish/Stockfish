@@ -271,7 +271,7 @@ class SharedMemoryBackend {
                 
 #if defined(_WIN64)
                 DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
-                DWORD total_size_aligned >> 32u;
+                DWORD total_size_high = total_size_aligned >> 32u;
 #else
                 DWORD total_size_low = total_size_aligned;
                 DWORD total_size_high = 0;
