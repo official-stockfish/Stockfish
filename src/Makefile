@@ -617,10 +617,19 @@ ifneq ($(comp),mingw)
 		# Haiku has pthreads in its libroot, so only link it in on other platforms
 		ifneq ($(KERNEL),Haiku)
 			ifneq ($(COMP),ndk)
+				LDFLAGS += -lpthread
+
+				add_lrt = yes
 				ifeq ($(target_windows),yes)
-					LDFLAGS += -lpthread
-				else
-					LDFLAGS += -lpthread -lrt
+					add_lrt = no
+				endif
+
+				ifeq ($(KERNEL),Darwin)
+					add_lrt = no
+				endif
+				
+				ifeq ($(add_lrt),yes)
+					LDFLAGS += -lrt
 				endif
 			endif
 		endif
