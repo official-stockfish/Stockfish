@@ -269,7 +269,7 @@ class SharedMemoryBackend {
                 const size_t total_size_aligned =
                   (total_size + largePageSize - 1) / largePageSize * largePageSize;
                 
-                  DWORD total_size_high = 0;
+                DWORD total_size_high = 0;
                 DWORD total_size_low = total_size_aligned & 0xFFFFFFFFu;
                 if constexpr (sizeof(size_t) > 4) {
                     total_size_high = total_size_aligned >> 32u;
