@@ -54,7 +54,6 @@ void register_cleanup() {
 
     // Cleanup function to ensure shared memory is unlinked on exit
     std::atexit([]() {
-        std::cout << "Exiting, cleaning up shared memory..." << std::endl;
         shm::SharedMemory<Eval::NNUE::Networks>::cleanup_all_instances();
     });
 }

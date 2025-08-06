@@ -330,13 +330,8 @@ class SharedMemoryBackend {
         if (*is_initialized != IS_INITIALIZED_VALUE)
         {
             // First time initialization, message for debug purposes
-            std::cout << "initializing: " << shm_name << "\n";
             new (object) T{value};
             *is_initialized = IS_INITIALIZED_VALUE;
-        }
-        else
-        {
-            std::cout << "already initialized: " << shm_name << "\n";
         }
 
         BOOL release_result = ReleaseMutex(hMutex);
