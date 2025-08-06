@@ -20,7 +20,6 @@
 #include <iostream>
 #include <memory>
 #include <signal.h>
-#include <unistd.h>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -29,11 +28,16 @@
 #include "types.h"
 #include "uci.h"
 
+
+#if defined(SHM_CLEANUP)
+#include <unistd.h>
+#endif
+
 using namespace Stockfish;
 
-
 namespace {
-#ifndef _WIN32
+#if defined(SHM_CLEANUP)
+
 void register_cleanup() {
     // hack to invoke atexit
     int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,

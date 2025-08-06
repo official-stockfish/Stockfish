@@ -37,6 +37,8 @@
 #include <unistd.h>
 #include <unordered_set>
 
+#define SHM_CLEANUP
+
 namespace Stockfish {
 
 namespace shm {
