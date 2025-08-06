@@ -74,6 +74,7 @@
 #elif defined(__FreeBSD__)
     #include <sys/sysctl.h>
     #include <sys/types.h>
+    #include <sys/syslimits.h>
     #include <unistd.h>
 
 #elif defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
