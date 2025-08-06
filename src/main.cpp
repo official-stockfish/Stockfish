@@ -33,6 +33,8 @@
     #include <cstdio>
 
     #include <signal.h>
+    
+    #include "shm_linux.h"
 #endif
 
 using namespace Stockfish;
