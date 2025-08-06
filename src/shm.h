@@ -35,7 +35,7 @@
 #include <utility>
 #include <variant>
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__ANDROID__)
 #include "shm_linux.h"
 #endif
 
@@ -384,7 +384,8 @@ class SharedMemoryBackend {
     Status      status   = Status::NotInitialized;
     std::string last_error_message;
 };
-#else
+
+#elif !defined(__ANDROID__)
 
 template<typename T>
 class SharedMemoryBackend {
@@ -411,6 +412,30 @@ class SharedMemoryBackend {
    private:
     std::optional<shm::SharedMemory<T>> shm1;
 };
+
+#else
+
+// For systems that don't have shared memory.
+// The way fallback is done is that we need a dummy backend.
+
+template<typename T>
+class SharedMemoryBackend {
+   public:
+    SharedMemoryBackend() {}
+
+    SharedMemoryBackend(const std::string& shm_name, const T& value) {}
+
+    void* get() const {
+        return nullptr;
+    }
+
+    bool is_valid() const { return false; }
+
+    std::string get_error_message() const {
+        return "Shared memory not supported by the OS";
+    }
+};
+
 #endif
 
 template<typename T>
