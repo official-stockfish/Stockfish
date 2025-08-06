@@ -25,6 +25,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <functional>
 #include <iosfwd>
 #include <optional>

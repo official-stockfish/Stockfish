@@ -16,10 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <signal.h>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -28,9 +26,13 @@
 #include "types.h"
 #include "uci.h"
 
+#include "shm.h"
 
 #if defined(SHM_CLEANUP)
-#include <unistd.h>
+#include <cstdlib>
+#include <cstdio>
+
+#include <signal.h>
 #endif
 
 using namespace Stockfish;

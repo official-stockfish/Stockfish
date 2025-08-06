@@ -30,6 +30,7 @@
 #include <tuple>
 #include <utility>
 
+#include "../misc.h"
 #include "../types.h"
 #include "nnue_accumulator.h"
 #include "nnue_architecture.h"
