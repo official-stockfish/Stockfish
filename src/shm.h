@@ -68,6 +68,7 @@
 
 #if defined(__APPLE__)
     #include <mach-o/dyld.h>
+    #include <sys/syslimits.h>
 
 #elif defined(__sun)
     #include <stdlib.h>
@@ -76,8 +77,6 @@
     #include <sys/sysctl.h>
     #include <sys/types.h>
     #include <unistd.h>
-
-    #define NAME_MAX 255
 
 #elif defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
     #include <limits.h>
