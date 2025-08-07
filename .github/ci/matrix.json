@@ -63,6 +63,7 @@
     "x86-64-avx512",
     "x86-64-vnni256",
     "x86-64-vnni512",
+    "x86-64-avx512icl",
     "apple-silicon",
     "armv8",
     "armv8-dotprod"
@@ -117,6 +118,12 @@
       }
     },
     {
+      "binaries": "x86-64-avx512icl",
+      "config": {
+        "os": "macos-14"
+      }
+    },
+    {
       "binaries": "x86-64-avxvnni",
       "config": {
         "os": "macos-13"
@@ -136,6 +143,12 @@
     },
     {
       "binaries": "x86-64-vnni512",
+      "config": {
+        "os": "macos-13"
+      }
+    },
+    {
+      "binaries": "x86-64-avx512icl",
       "config": {
         "os": "macos-13"
       }
@@ -184,6 +197,12 @@
     },
     {
       "binaries": "x86-64-vnni512",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
+      "binaries": "x86-64-avx512icl",
       "config": {
         "os": "windows-11-arm"
       }
