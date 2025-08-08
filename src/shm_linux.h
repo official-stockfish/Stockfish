@@ -275,6 +275,19 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     [[nodiscard]] bool setup_existing_region() noexcept {
+
+        // Wait until the file is at least total_size_ bytes
+        struct stat st;
+        int         retries = 1000;
+        while (retries-- > 0)
+        {
+            if (fstat(fd_, &st) == 0 && static_cast<size_t>(st.st_size) >= total_size_)
+                break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        if (static_cast<size_t>(st.st_size) < total_size_)
+            return false;
+
         // Map the memory
         auto flags  = PROT_READ | PROT_WRITE;
         mapped_ptr_ = mmap(nullptr, total_size_, flags, MAP_SHARED, fd_, 0);
