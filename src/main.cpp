@@ -33,11 +33,17 @@
     #include <cstdio>
 
     #include <signal.h>
-    
+
     #include "shm_linux.h"
 #endif
 
-namespace Stockfish { namespace Eval { namespace NNUE { struct Networks; } } }
+namespace Stockfish {
+namespace Eval {
+namespace NNUE {
+struct Networks;
+}
+}
+}
 
 using namespace Stockfish;
 
@@ -50,7 +56,7 @@ void register_cleanup() {
                      SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
 
     struct sigaction sa;
-    sa.sa_handler = [](int) { std::exit(1); };
+    sa.sa_handler = [](int sig) { std::exit(128 + sig); };
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
 

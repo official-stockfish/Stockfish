@@ -25,7 +25,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
-#include <exception> // IWYU pragma: keep
+#include <exception>  // IWYU pragma: keep
 // IWYU pragma: no_include <__exception/terminate.h>
 #include <functional>
 #include <iosfwd>
