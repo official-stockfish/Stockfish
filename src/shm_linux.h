@@ -95,6 +95,25 @@ class SharedMemoryRegistry {
     }
 };
 
+inline int portable_fallocate(int fd, off_t offset, off_t length) {
+#ifdef __APPLE__
+    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, length, 0};
+    int      ret   = fcntl(fd, F_PREALLOCATE, &store);
+    if (ret == -1)
+    {
+        store.fst_flags = F_ALLOCATEALL;
+        ret             = fcntl(fd, F_PREALLOCATE, &store);
+    }
+    if (ret != -1)
+    {
+        ret = ftruncate(fd, offset + length);
+    }
+    return ret;
+#else
+    return posix_fallocate(fd, offset, length);
+#endif
+}
+
 inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
 inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
@@ -120,7 +139,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     std::string get_semaphore_name() const {
         auto name = "/" + name_ + "_mutex";
-        assert(name.size() < SEM_NAME_LEN - 4 && "Semaphore name too long");
+        assert(name.size() < SF_MAX_SEM_NAME_LEN - 4 && "Semaphore name too long");
         return name;
     }
 
@@ -309,7 +328,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             return false;
         }
 
-        int r = posix_fallocate(fd_, 0, static_cast<off_t>(total_size_));
+        int r = detail::portable_fallocate(fd_, 0, static_cast<off_t>(total_size_));
         if (r != 0)
         {
             sem_post(sem_);
