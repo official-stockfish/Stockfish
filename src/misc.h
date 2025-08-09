@@ -370,7 +370,7 @@ class FixedString {
 
     template<typename T>
     bool operator!=(const T& other) const noexcept {
-        return (std::string_view) (*this) == other;
+        return (std::string_view) (*this) != other;
     }
 
     void clear() {
