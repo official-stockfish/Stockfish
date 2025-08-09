@@ -86,7 +86,12 @@
 
 namespace Stockfish {
 
-// Ideally use argv[0] instead maybe
+// argv[0] CANNOT be used because we need to identify the executable.
+// argv[0] contains the command used to invoke it, which does not involve the full path.
+// Just using a path is not fully resilient either, as the executable could
+// have changed if it wasn't locked by the OS. Ideally we would hash the executable
+// but it's not really that important at this point.
+
 inline std::string getExecutablePathHash() {
     char executable_path[4096] = {0};
     int  path_length           = 0;
