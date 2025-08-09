@@ -17,8 +17,8 @@ const ChessboardComponent = ({ onMove, onGameUpdate, engineBestMove }) => {
       onGameUpdate({
         fen: fen,
         turn: game.turn(),
-        gameOver: game.game_over(),
-        inCheck: game.in_check(),
+        gameOver: game.isGameOver(),
+        inCheck: game.isCheck(),
         status: gameStatus,
         history: moveHistory
       });
@@ -28,22 +28,22 @@ const ChessboardComponent = ({ onMove, onGameUpdate, engineBestMove }) => {
   const updateGameStatus = () => {
     let status = '';
     
-    if (game.game_over()) {
-      if (game.in_checkmate()) {
+    if (game.isGameOver()) {
+      if (game.isCheckmate()) {
         status = `Game Over - ${game.turn() === 'w' ? 'Black' : 'White'} wins by checkmate`;
-      } else if (game.in_draw()) {
-        if (game.in_stalemate()) {
+      } else if (game.isDraw()) {
+        if (game.isStalemate()) {
           status = 'Game Over - Draw by stalemate';
-        } else if (game.in_threefold_repetition()) {
+        } else if (game.isThreefoldRepetition()) {
           status = 'Game Over - Draw by threefold repetition';
-        } else if (game.insufficient_material()) {
+        } else if (game.isInsufficientMaterial()) {
           status = 'Game Over - Draw by insufficient material';
         } else {
           status = 'Game Over - Draw by 50-move rule';
         }
       }
     } else {
-      if (game.in_check()) {
+      if (game.isCheck()) {
         status = `${game.turn() === 'w' ? 'White' : 'Black'} is in check`;
       } else {
         status = `${game.turn() === 'w' ? 'White' : 'Black'} to move`;
