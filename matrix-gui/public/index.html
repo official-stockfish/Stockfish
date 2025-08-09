@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Cyberpunk-themed GUI for Stockfish chess engine"
+    />
+    <title>Stockfish Matrix GUI</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Courier New', monospace;
+        background: #000;
+        color: #00ff00;
+        overflow: hidden;
+      }
+      
+      #root {
+        height: 100vh;
+        width: 100vw;
+      }
+      
+      /* Loading screen styles */
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #000;
+        color: #00ff00;
+        font-size: 24px;
+        text-shadow: 0 0 10px #00ff00;
+      }
+      
+      .loading::after {
+        content: '...';
+        animation: dots 1.5s infinite;
+      }
+      
+      @keyframes dots {
+        0%, 20% { content: '.'; }
+        40% { content: '..'; }
+        60%, 100% { content: '...'; }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root">
+      <div class="loading">
+        Loading Matrix GUI
+      </div>
+    </div>
+  </body>
+</html>
