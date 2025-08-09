@@ -20,22 +20,24 @@
 #define SHM_LINUX_H_INCLUDED
 
 #include <atomic>
-#include <chrono>
+#include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
-#include <iostream>
 #include <mutex>
 #include <new>
 #include <optional>
-#include <signal.h>
 #include <string>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <thread>
 #include <type_traits>
-#include <unistd.h>
 #include <unordered_set>
+
+#include <fcntl.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 namespace Stockfish {
 
@@ -100,11 +102,14 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
+    sem_t*             sem_        = nullptr;
     size_t             total_size_ = 0;
 
     static constexpr size_t calculate_total_size() noexcept {
         return sizeof(T) + sizeof(detail::ShmHeader);
     }
+
+    std::string get_semaphore_name() const { return "/" + name_ + "_mutex"; }
 
    public:
     explicit SharedMemory(const std::string& name) noexcept :
@@ -126,6 +131,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         mapped_ptr_(other.mapped_ptr_),
         data_ptr_(other.data_ptr_),
         header_ptr_(other.header_ptr_),
+        sem_(other.sem_),
         total_size_(other.total_size_) {
 
         // Update registry
@@ -146,6 +152,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             mapped_ptr_ = other.mapped_ptr_;
             data_ptr_   = other.data_ptr_;
             header_ptr_ = other.header_ptr_;
+            sem_        = other.sem_;
             total_size_ = other.total_size_;
 
             detail::SharedMemoryRegistry::unregister_instance(&other);
@@ -160,6 +167,15 @@ class SharedMemory: public detail::SharedMemoryBase {
     [[nodiscard]] bool open(const T& initial_value) noexcept {
         if (is_open())
             return false;
+
+        std::string sem_name = get_semaphore_name();
+        sem_                 = sem_open(sem_name.c_str(), O_CREAT, 0666, 1);
+
+        if (sem_ == SEM_FAILED)
+        {
+            sem_ = nullptr;
+            return false;
+        }
 
         // Try to create new shared memory
         fd_ = shm_open(name_.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
@@ -178,11 +194,20 @@ class SharedMemory: public detail::SharedMemoryBase {
         // If creation failed, try to open existing
         fd_ = shm_open(name_.c_str(), O_RDWR, 0666);
         if (fd_ == -1)
+        {
+            cleanup_semaphore();
             return false;
+        }
 
         bool success = setup_existing_region();
         if (success)
+        {
             detail::SharedMemoryRegistry::register_instance(this);
+        }
+        else
+        {
+            cleanup_semaphore();
+        }
         return success;
     }
 
@@ -195,7 +220,10 @@ class SharedMemory: public detail::SharedMemoryBase {
 
                 // remove shm
                 if (old_count == 1)
+                {
                     shm_unlink(name_.c_str());
+                    sem_unlink(get_semaphore_name().c_str());
+                }
             }
 
             munmap(mapped_ptr_, total_size_);
@@ -210,6 +238,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             ::close(fd_);
         }
 
+        cleanup_semaphore();
         reset();
     }
 
@@ -242,12 +271,28 @@ class SharedMemory: public detail::SharedMemoryBase {
         mapped_ptr_ = nullptr;
         data_ptr_   = nullptr;
         header_ptr_ = nullptr;
+        sem_        = nullptr;
+    }
+
+    void cleanup_semaphore() noexcept {
+        if (sem_ && sem_ != SEM_FAILED)
+        {
+            sem_close(sem_);
+            sem_ = nullptr;
+        }
     }
 
     [[nodiscard]] bool setup_new_region(const T& initial_value) noexcept {
+        // Wait on semaphore to ensure exclusive access during initialization
+        if (sem_wait(sem_) == -1)
+        {
+            return false;
+        }
+
         // Set the size of the shared memory region
         if (ftruncate(fd_, static_cast<off_t>(total_size_)) == -1)
         {
+            sem_post(sem_);
             return false;
         }
 
@@ -258,6 +303,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (mapped_ptr_ == MAP_FAILED)
         {
             mapped_ptr_ = nullptr;
+            sem_post(sem_);
             return false;
         }
 
@@ -273,21 +319,15 @@ class SharedMemory: public detail::SharedMemoryBase {
         header_ptr_->ref_count.store(1, std::memory_order_release);
         header_ptr_->initialized.store(true, std::memory_order_release);
 
+        if (sem_post(sem_) == -1)
+            return false;
+
         return true;
     }
 
     [[nodiscard]] bool setup_existing_region() noexcept {
-
-        // Wait until the file is at least total_size_ bytes
-        struct stat st;
-        int         retries = 1000;
-        while (retries-- > 0)
-        {
-            if (fstat(fd_, &st) == 0 && static_cast<size_t>(st.st_size) >= total_size_)
-                break;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        if (static_cast<size_t>(st.st_size) < total_size_)
+        // Wait on semaphore to ensure proper initialization
+        if (sem_wait(sem_) == -1)
             return false;
 
         // Map the memory
@@ -297,19 +337,25 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (mapped_ptr_ == MAP_FAILED)
         {
             mapped_ptr_ = nullptr;
+            sem_post(sem_);
             return false;
         }
 
-        data_ptr_ = static_cast<T*>(mapped_ptr_);
-        header_ptr_ =
-          std::launder(reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
+        data_ptr_   = static_cast<T*>(mapped_ptr_);
+        header_ptr_ = std::launder(
+          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
+
+        assert(header_ptr_->initialized.load(std::memory_order_acquire));
+
+        if (header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
+        {
+            sem_post(sem_);
+            return false;
+        }
 
         header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
 
-        while (!header_ptr_->initialized.load(std::memory_order_acquire))
-            std::this_thread::yield();
-
-        if (header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
+        if (sem_post(sem_) == -1)
             return false;
 
         return true;
