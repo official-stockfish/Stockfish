@@ -300,7 +300,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         data_ptr_ = static_cast<T*>(mapped_ptr_);
         header_ptr_ =
-          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
+          std::launder(reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
 
         header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
 
