@@ -15,3 +15,10 @@ tsan.supp
 __pycache__/
 tests/syzygy
 tests/bench_tmp.epd
+
+# Matrix GUI
+matrix-gui/node_modules/
+matrix-gui/build/
+matrix-gui/dist/
+matrix-gui/engine/stockfish*
+!matrix-gui/engine/README.md

@@ -1,0 +1,42 @@
+{
+  "name": "stockfish-matrix-gui",
+  "version": "1.0.0",
+  "description": "Cyberpunk-themed Electron GUI for Stockfish chess engine",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-pack": "npm run build && electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "chess.js": "^1.0.0-beta.8",
+    "chessboardjsx": "^2.4.7",
+    "electron": "^25.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "wait-on": "^7.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
