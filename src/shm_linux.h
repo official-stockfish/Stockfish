@@ -44,9 +44,11 @@ namespace shm {
 namespace detail {
 // Header placed after the data
 struct ShmHeader {
+    static constexpr uint32_t SHM_MAGIC = 0xDEADBEEF;
+
     std::atomic<uint32_t> ref_count{0};
     std::atomic<bool>     initialized{false};
-    uint32_t              magic = 0xDEADBEEF;
+    uint32_t              magic = SHM_MAGIC;
 };
 
 class SharedMemoryBase {
@@ -307,7 +309,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         while (!header_ptr_->initialized.load(std::memory_order_acquire))
             std::this_thread::yield();
 
-        if (header_ptr_->magic != 0xDEADBEEF)
+        if (header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
             return false;
 
         return true;
