@@ -38,6 +38,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#if defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
+    #include <limits.h>
+    #define SF_MAX_SEM_NAME_LEN NAME_MAX
+#elif defined(__APPLE__)
+    #define SF_MAX_SEM_NAME_LEN SEM_NAME_LEN
+#else
+    #define SF_MAX_SEM_NAME_LEN 255
+#endif
+
 
 namespace Stockfish {
 
@@ -109,7 +118,11 @@ class SharedMemory: public detail::SharedMemoryBase {
         return sizeof(T) + sizeof(detail::ShmHeader);
     }
 
-    std::string get_semaphore_name() const { return "/" + name_ + "_mutex"; }
+    std::string get_semaphore_name() const {
+        auto name = "/" + name_ + "_mutex";
+        assert(name.size() < SEM_NAME_LEN - 4 && "Semaphore name too long");
+        return name;
+    }
 
    public:
     explicit SharedMemory(const std::string& name) noexcept :
