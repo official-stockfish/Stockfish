@@ -2,7 +2,7 @@
 
 A cyberpunk-themed Electron + React GUI for the Stockfish chess engine, featuring a digital rain matrix effect and neon styling.
 
-![Matrix GUI Preview](preview.png)
+50,341 Files, 7,796 Folders
 
 ## Features
 
