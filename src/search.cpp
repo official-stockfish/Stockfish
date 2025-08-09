@@ -1443,7 +1443,7 @@ moves_loop:  // When in check, search starts here
     else if (bestMove)
     {
         update_all_stats(pos, ss, *this, bestMove, prevSq, prevPc, quietsSearched, capturesSearched, depth,
-                         ttData.move, moveCount);
+                         ttData.move);
         if (!PvNode)
             ttMoveHistory << (bestMove == ttData.move ? 811 : -848);
     }
@@ -1885,7 +1885,7 @@ void update_all_stats(const Position& pos,
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, prevPc, prevSq, -malus * 595 / 1024);
+        update_continuation_histories(ss - 1, prevPc, prevSq, -captureMalus * 595 / 1024);
 
 
     // Decrease stats for all non-best capture moves
