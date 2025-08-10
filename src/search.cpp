@@ -1816,14 +1816,13 @@ void update_all_stats(const Position& pos,
     Piece                  movedPiece     = pos.moved_piece(bestMove);
     PieceType              capturedPiece;
 
-    int quietBonus   = std::min(170 * depth - 87, 1598) + 332 * (bestMove == ttMove);
+    int bonus        = std::min(170 * depth - 87, 1598) + 332 * (bestMove == ttMove);
     int quietMalus   = std::min(743 * depth - 180, 2287) - 33 * quietsSearched.size();
-    int captureBonus = std::min(124 * depth - 62, 1245) + 336 * (bestMove == ttMove);
     int captureMalus = std::min(708 * depth - 148, 2287) - 29 * capturesSearched.size();
 
     if (!pos.capture_stage(bestMove))
     {
-        update_quiet_histories(pos, ss, workerThread, bestMove, quietBonus * 978 / 1024);
+        update_quiet_histories(pos, ss, workerThread, bestMove, bonus * 978 / 1024);
 
         // Decrease stats for all non-best quiet moves
         for (Move move : quietsSearched)
@@ -1833,7 +1832,7 @@ void update_all_stats(const Position& pos,
     {
         // Increase stats for the best move in case it was a capture move
         capturedPiece = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << captureBonus * 1288 / 1024;
+        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
