@@ -22,3 +22,14 @@ matrix-gui/build/
 matrix-gui/dist/
 matrix-gui/engine/stockfish*
 !matrix-gui/engine/README.md
+
+# .NET build artifacts
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.props
+*.targets
+*.nuget.*

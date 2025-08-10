@@ -1,11 +1,30 @@
 {
   "version": 3,
   "targets": {
-    "net8.0": {}
+    "net8.0": {
+      "NexusChess.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "compile": {
+          "bin/placeholder/NexusChess.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/NexusChess.Core.dll": {}
+        }
+      }
+    }
   },
-  "libraries": {},
+  "libraries": {
+    "NexusChess.Core/1.0.0": {
+      "type": "project",
+      "path": "../NexusChess.Core/NexusChess.Core.csproj",
+      "msbuildProject": "../NexusChess.Core/NexusChess.Core.csproj"
+    }
+  },
   "projectFileDependencyGroups": {
-    "net8.0": []
+    "net8.0": [
+      "NexusChess.Core >= 1.0.0"
+    ]
   },
   "packageFolders": {
     "/home/runner/.nuget/packages/": {}
@@ -31,7 +50,11 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj": {
+              "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NexusChess.Core\NexusChess.Core.csproj" />
+  </ItemGroup>
+
 </Project>
