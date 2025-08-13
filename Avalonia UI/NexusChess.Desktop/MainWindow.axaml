@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NexusChess.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="NexusChess.Desktop.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="NexusChess - Greetings from Jon-Arve Constantine"
+        Width="1200" Height="800"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+    
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Header Panel -->
+        <Border Grid.Row="0" Background="{DynamicResource SystemAccentColor}" Padding="10">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="♛ NexusChess" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,20,0"/>
+                    <TextBlock Text="Greetings from Jon-Arve Constantine" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBox Text="{Binding EnginePath}" Width="250" Margin="0,0,10,0" Watermark="Engine Path (e.g., stockfish.exe)"/>
+                    <Button Content="Start Engine" Command="{Binding StartEngineCommand}" Margin="0,0,5,0"/>
+                    <Button Content="Stop Engine" Command="{Binding StopEngineCommand}" Margin="0,0,5,0"/>
+                    <Button Content="New Game" Command="{Binding NewGameCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="2*,*">
+            <!-- Left Panel - Chess Board -->
+            <Border Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="Chess Board" FontSize="14" FontWeight="Bold" Margin="10,5"/>
+                    <Border Grid.Row="1" Name="ChessBoardContainer" Margin="10">
+                        <!-- Chess board will be rendered here -->
+                        <Grid Name="ChessBoard" Background="Transparent">
+                            <!-- Board squares will be added programmatically -->
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Right Panel - Engine Analysis and Controls -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,*">
+                <!-- Engine Status -->
+                <Border Grid.Row="0" BorderBrush="LightGray" BorderThickness="1" Margin="5" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="Engine Status" FontSize="14" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBlock Text="{Binding EngineStatus}" FontWeight="Medium"/>
+                        <TextBlock Text="{Binding CurrentEvaluation}" FontSize="12" Foreground="DarkBlue"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Engine Output Log -->
+                <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Margin="5">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0" Text="Engine Output" FontSize="14" FontWeight="Bold" Margin="10,5"/>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <TextBox Text="{Binding EngineOutputLog}" IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     FontFamily="Consolas" FontSize="11" Margin="5"
+                                     Background="Black" Foreground="LightGreen"/>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <!-- Game Controls -->
+                <Border Grid.Row="2" BorderBrush="LightGray" BorderThickness="1" Margin="5" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="Game Controls" FontSize="14" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <Button Content="Go" Command="{Binding SendGoCommand}" Margin="0,0,5,0"/>
+                            <Button Content="Stop" Command="{Binding SendStopCommand}" Margin="0,0,5,0"/>
+                            <Button Content="UCI" Command="{Binding SendUciCommand}" Margin="0,0,5,0"/>
+                            <Button Content="IsReady" Command="{Binding SendIsReadyCommand}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <Button Content="Take Back" Command="{Binding TakeBackMoveCommand}" Margin="0,0,5,0"/>
+                            <Button Content="Forward" Command="{Binding ForwardMoveCommand}" Margin="0,0,5,0"/>
+                            <Button Content="Flip Board" Command="{Binding FlipBoardCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Game Information -->
+                <Border Grid.Row="3" BorderBrush="LightGray" BorderThickness="1" Margin="5" Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="Game Information" FontSize="14" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <TextBlock Text="{Binding GameStatusText}" FontWeight="Medium" Margin="0,2"/>
+                        <TextBlock Text="{Binding MoveCountText}" FontSize="12" Margin="0,2"/>
+                        <TextBlock Text="Current FEN:" FontSize="12" FontWeight="Bold" Margin="0,5,0,2"/>
+                        <TextBox Text="{Binding CurrentFen}" IsReadOnly="True" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="LightGray" Padding="10,5">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding CurrentTimeText}" VerticalAlignment="Center" FontFamily="Consolas"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

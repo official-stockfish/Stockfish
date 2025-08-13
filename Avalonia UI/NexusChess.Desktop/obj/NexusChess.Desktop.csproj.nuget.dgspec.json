@@ -1,0 +1,200 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Desktop/NexusChess.Desktop.csproj": {}
+  },
+  "projects": {
+    "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj",
+        "projectName": "NexusChess.Core",
+        "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj",
+        "packagesPath": "/home/runner/.nuget/packages/",
+        "outputPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/runner/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.118/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Desktop/NexusChess.Desktop.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Desktop/NexusChess.Desktop.csproj",
+        "projectName": "NexusChess.Desktop",
+        "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Desktop/NexusChess.Desktop.csproj",
+        "packagesPath": "/home/runner/.nuget/packages/",
+        "outputPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Desktop/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/runner/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj": {
+                "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj"
+              },
+              "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/NexusChess.ViewModels.csproj": {
+                "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/NexusChess.ViewModels.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Avalonia": {
+              "target": "Package",
+              "version": "[11.1.3, )"
+            },
+            "Avalonia.Desktop": {
+              "target": "Package",
+              "version": "[11.1.3, )"
+            },
+            "Avalonia.Diagnostics": {
+              "target": "Package",
+              "version": "[11.1.3, )"
+            },
+            "Avalonia.Fonts.Inter": {
+              "target": "Package",
+              "version": "[11.1.3, )"
+            },
+            "Avalonia.Themes.Fluent": {
+              "target": "Package",
+              "version": "[11.1.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.118/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/NexusChess.ViewModels.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/NexusChess.ViewModels.csproj",
+        "projectName": "NexusChess.ViewModels",
+        "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/NexusChess.ViewModels.csproj",
+        "packagesPath": "/home/runner/.nuget/packages/",
+        "outputPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.ViewModels/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/runner/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj": {
+                "projectPath": "/home/runner/work/Stockfish/Stockfish/Avalonia UI/NexusChess.Core/NexusChess.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.118/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

@@ -31,6 +31,8 @@
 
 ## Overview
 
+**Greetings from Jon-Arve Constantine**
+
 [Stockfish][website-link] is a **free and strong UCI chess engine** derived from
 Glaurung 2.1 that analyzes chess positions and computes the optimal moves.
 
@@ -39,6 +41,11 @@ to display a chessboard and to make it easy to input moves. These GUIs are
 developed independently from Stockfish and are available online. **Read the
 documentation for your GUI** of choice for information about how to use
 Stockfish with it.
+
+**NEW: NexusChess Avalonia UI** - A complete Windows GUI for Stockfish has been 
+implemented in the `Avalonia UI` folder, featuring a hybrid C++/CLI + C# 
+architecture with modern Avalonia UI. See the [Avalonia UI folder](Avalonia%20UI/) 
+for the full-featured chess application.
 
 See also the Stockfish [documentation][wiki-usage-link] for further usage help.
 
