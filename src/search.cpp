@@ -464,8 +464,7 @@ void Search::Worker::iterative_deepening() {
 
             // If the bestMove is stable over several iterations, reduce time accordingly
             double k      = 0.527;
-            double center = lastBestMoveDepth + 11;
-            timeReduction = 0.8 + 0.84 / (1.077 + std::exp(-k * (completedDepth - center)));
+            timeReduction = 0.8 + 0.84 / (1.077 + std::exp(-k * (completedDepth - lastBestMoveDepth + 11)));
             double reduction =
               (1.4540 + mainThread->previousTimeReduction) / (2.1593 * timeReduction);
             double bestMoveInstability = 0.9929 + 1.8519 * totBestMoveChanges / threads.size();
