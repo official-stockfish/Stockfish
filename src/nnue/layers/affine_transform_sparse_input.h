@@ -82,7 +82,12 @@ void find_nnz(const std::int32_t* RESTRICT input,
               std::uint16_t* RESTRICT      out,
               IndexType&                   count_out) {
 
-    #if defined(USE_AVX512ICL)
+    // gcc 9 & 10 don't have _mm512_storeu_epi16 https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95483
+    #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
+        #define TOO_OLD_FOR_AVX512ICL
+    #endif
+
+    #if defined(USE_AVX512ICL) && !defined(TOO_OLD_FOR_AVX512ICL)
 
     constexpr IndexType SimdWidthIn  = 16;  // 512 bits / 32 bits
     constexpr IndexType SimdWidthOut = 32;  // 512 bits / 16 bits
@@ -111,7 +116,7 @@ void find_nnz(const std::int32_t* RESTRICT input,
     }
     count_out = count;
 
-    #elif defined(USE_AVX512)
+    #elif defined(USE_AVX512) || (defined(USE_AVX512ICL) && defined(TOO_OLD_FOR_AVX512ICL))
 
     constexpr IndexType SimdWidth = 16;  // 512 bits / 32 bits
     constexpr IndexType NumChunks = InputDimensions / SimdWidth;
