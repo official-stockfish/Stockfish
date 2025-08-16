@@ -37,6 +37,7 @@ namespace {
 #if defined(USE_AVX512ICL)
 
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
+    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
                         _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
