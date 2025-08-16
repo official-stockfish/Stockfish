@@ -318,8 +318,14 @@ void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
 // this function must be called after all quiet moves and captures have been generated
 bool MovePicker::can_move_king_or_pawn() const {
-    // SEE negative captures shouldn't be returned in GOOD_CAPTURE stage
-    assert(stage > GOOD_CAPTURE && stage != EVASION_INIT);
+    assert(stage != EVASION_INIT);
+
+    // Until good capture state no quiet moves are generated for comparison so simply assume king or pawns can move
+    if (stage <= GOOD_CAPTURE)
+        return true;
+
+    // If condition not holds the variable endGenereted is not defined
+    assert(stage > GOOD_CAPTURE);
 
     for (const ExtMove* m = moves; m < endGenerated; ++m)
     {
