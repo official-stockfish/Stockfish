@@ -1176,28 +1176,28 @@ moves_loop:  // When in check, search starts here
                + (ttData.depth >= depth) * (943 + cutNode * 1180);
 
         // These reduction adjustments have no proven non-linear scaling
-
-        r += 679 - 6 * msb(depth);  // Base reduction offset to compensate for other tweaks
-        r -= moveCount * (67 - 2 * msb(depth));
+        r += 669;  // Base reduction offset to compensate for other tweaks
+        r -= moveCount * 62;
         r -= std::abs(correctionValue) / 27160;
+
 
         // Increase reduction for cut nodes
         if (cutNode)
-            r += 2998 + 2 * msb(depth) + (948 + 14 * msb(depth)) * !ttData.move;
+            r += 3001 + 965 * !ttData.move;
 
         // Increase reduction if ttMove is a capture
         if (ttCapture)
-            r += 1402 - 39 * msb(depth);
+            r += 1325;
 
         // Increase reduction if next ply has a lot of fail high
         if ((ss + 1)->cutoffCnt > 2)
-            r += 925 + 33 * msb(depth) + allNode * (701 + 224 * msb(depth));
+            r += 1007 + allNode * 1316;
 
         r += (ss + 1)->quietMoveStreak * 51;
 
         // For first picked move (ttMove) reduce reduction
         if (move == ttData.move)
-            r -= 2121 + 28 * msb(depth);
+            r -= 2167;
 
         if (capture)
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
@@ -1208,7 +1208,7 @@ moves_loop:  // When in check, search starts here
                           + (*contHist[1])[movedPiece][move.to_sq()];
 
         // Decrease/increase reduction for moves with a good/bad history
-        r -= ss->statScore * (729 - 12 * msb(depth)) / 8192;
+        r -= ss->statScore * 708 / 8192;
 
         // Step 17. Late moves reduction / extension (LMR)
         if (depth >= 2 && moveCount > 1)
@@ -1249,7 +1249,7 @@ moves_loop:  // When in check, search starts here
         {
             // Increase reduction if ttMove is not present
             if (!ttData.move)
-                r += 1199 + 35 * msb(depth);
+                r += 1233;
 
             if (depth <= 4)
                 r += 1150;
