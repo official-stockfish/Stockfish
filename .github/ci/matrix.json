@@ -8,7 +8,7 @@
       "comp": "gcc",
       "shell": "bash",
       "archive_ext": "tar",
-      "sde": "/home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-lin/sde -future --"
+      "sde": "/home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.33.0-2024-01-07-lin/sde -future --"
     },
     {
       "name": "MacOS 13 Apple Clang",
@@ -38,7 +38,7 @@
       "msys_env": "x86_64-gcc",
       "shell": "msys2 {0}",
       "ext": ".exe",
-      "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --",
+      "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.33.0-2024-01-07-win/sde.exe -future --",
       "archive_ext": "zip"
     },
     {
