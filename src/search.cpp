@@ -1177,6 +1177,7 @@ moves_loop:  // When in check, search starts here
         // These reduction adjustments have no proven non-linear scaling
 
         r += 671;  // Base reduction offset to compensate for other tweaks
+        r -= (threadIdx % 8) * 64;
         r -= moveCount * 66;
         r -= std::abs(correctionValue) / 30450;
 
