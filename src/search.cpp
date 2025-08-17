@@ -839,7 +839,7 @@ Value Search::Worker::search(
     // The depth condition is important for mate finding.
     {
         auto futility_margin = [&](Depth d) {
-            Value futilityMult = 90 - 20 * (cutNode && !ss->ttHit);
+            Value futilityMult = 90 - 20 * !ss->ttHit;
 
             return futilityMult * d                      //
                  - improving * futilityMult * 2          //
