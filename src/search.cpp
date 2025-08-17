@@ -1049,7 +1049,7 @@ moves_loop:  // When in check, search starts here
                 }
 
                 // SEE based pruning for captures and checks
-                int margin = std::clamp(157 * depth + captHist / 29, 0, 279 * depth);
+                int margin = std::max(157 * depth + captHist / 29, 0);
                 if (!pos.see_ge(move, -margin))
                 {
                     bool mayStalemateTrap =
