@@ -1211,6 +1211,11 @@ moves_loop:  // When in check, search starts here
         r -= ss->statScore * (734 - 12 * msb(depth)) / 8192;
 
         // Step 17. Late moves reduction / extension (LMR)
+        // LOCATION: search.cpp, around lines 1200-1300 in the main search function
+// Look for "Step 17. Late moves reduction / extension (LMR)"
+
+// CURRENT CODE (around line 1250):
+        // Step 17. Late moves reduction / extension (LMR)
         if (depth >= 2 && moveCount > 1)
         {
             // In general we want to cap the LMR depth search at newDepth, but when
@@ -1232,6 +1237,47 @@ moves_loop:  // When in check, search starts here
             {
                 // Adjust full-depth search based on LMR results - if the result was
                 // good enough search deeper, if it was bad enough search shallower.
+                const bool doDeeperSearch = d < newDepth && value > (bestValue + 43 + 2 * newDepth);
+                const bool doShallowerSearch = value < bestValue + 9;
+
+                newDepth += doDeeperSearch - doShallowerSearch;
+
+                if (newDepth > d)
+                    value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, newDepth, !cutNode);
+
+                // Post LMR continuation history updates
+                update_continuation_histories(ss, movedPiece, move.to_sq(), 1365);
+            }
+        }
+
+// PROPOSED IMPROVEMENT:
+        // Step 17. Late moves reduction / extension (LMR)
+        if (depth >= 2 && moveCount > 1)
+        {
+            int stabilityBonus = 0;
+            if (moveCount > 4 && bestValue < alpha - 100) {
+                stabilityBonus = std::min(512, (alpha - bestValue) / 4); // Up to 0.5 depth
+            }
+            
+            // Reduce reduction in tactical positions with many pieces
+            int tacticalMalus = 0;
+            int pieceCount = popcount(pos.pieces());
+            if (pieceCount > 20 && (ss->inCheck || givesCheck || capture)) {
+                tacticalMalus = 256;
+            }
+            
+            // Apply adjustments to base reduction
+            int adjustedR = r + stabilityBonus - tacticalMalus;
+            adjustedR = std::max(0, std::min(adjustedR, (depth - 1) * 1024));
+            Depth d = std::max(1, std::min(newDepth - adjustedR / 1024, newDepth + (PvNode ? 2 : 1))) + PvNode;
+
+            ss->reduction = newDepth - d;
+            value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
+            ss->reduction = 0;
+
+            if (value > alpha)
+            {
+
                 const bool doDeeperSearch = d < newDepth && value > (bestValue + 43 + 2 * newDepth);
                 const bool doShallowerSearch = value < bestValue + 9;
 
