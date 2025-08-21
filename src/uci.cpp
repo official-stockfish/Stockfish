@@ -325,6 +325,8 @@ void UCIEngine::benchmark(std::istream& args) {
     setoption(ss);
     ss = std::istringstream("name UCI_Chess960 value false");
     setoption(ss);
+    ss = std::istringstream("name Null Move Pruning value true");
+    setoption(ss);
 
     // Warmup
     for (const auto& cmd : setup.commands)
