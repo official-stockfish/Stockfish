@@ -108,6 +108,8 @@ Engine::Engine(std::optional<std::string> path) :
 
     options.add("UCI_Chess960", Option(false));
 
+    options.add("Null Move Pruning", Option(true));
+
     options.add("UCI_LimitStrength", Option(false));
 
     options.add("UCI_Elo",
