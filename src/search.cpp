@@ -1021,9 +1021,6 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 946;
 
-        dbg_mean_of(mainHistory[us][move.from_to()]);
-        dbg_mean_of((*(ss-1)->continuationHistory)[pos.piece_on(move.from_sq())][move.to_sq()], 2);
-
         // Step 14. Pruning at shallow depth.
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
