@@ -1021,6 +1021,9 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 946;
 
+        dbg_mean_of(mainHistory[us][move.from_to()]);
+        dbg_mean_of((*(ss-1)->continuationHistory)[pos.piece_on(move.from_sq())][move.to_sq()], 2);
+
         // Step 14. Pruning at shallow depth.
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
@@ -1817,9 +1820,8 @@ void update_all_stats(const Position& pos,
     Piece                  movedPiece     = pos.moved_piece(bestMove);
     PieceType              capturedPiece;
 
-    int bonus        = std::min(151 * depth - 91, 1730) + 302 * (bestMove == ttMove);
-    int quietMalus   = std::min(798 * depth - 175, 2268) - 33 * quietsSearched.size();
-    int captureMalus = std::min(757 * depth - 134, 2129) - 28 * capturesSearched.size();
+    int bonus = std::min(151 * depth - 91, 1730) + 302 * (bestMove == ttMove);
+    int malus = std::min(951 * depth - 156, 2468) - 30 * quietsSearched.size();
 
     if (!pos.capture_stage(bestMove))
     {
@@ -1827,7 +1829,7 @@ void update_all_stats(const Position& pos,
 
         // Decrease stats for all non-best quiet moves
         for (Move move : quietsSearched)
-            update_quiet_histories(pos, ss, workerThread, move, -quietMalus * 1208 / 1024);
+            update_quiet_histories(pos, ss, workerThread, move, -malus);
     }
     else
     {
@@ -1840,14 +1842,14 @@ void update_all_stats(const Position& pos,
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                      -captureMalus * 594 / 1024);
+                                      -malus * 503 / 1024);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
     {
         movedPiece    = pos.moved_piece(move);
         capturedPiece = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -captureMalus * 1366 / 1024;
+        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1157 / 1024;
     }
 }
 
