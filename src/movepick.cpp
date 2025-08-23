@@ -316,14 +316,14 @@ top:
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
 
-// this function must be called after all quiet moves and captures have been generated
 bool MovePicker::can_move_king_or_pawn() const {
+    // don't call this method while processing tt-move
+    assert (stage != CAPTURE_INIT && stage != QUIET_INIT && stage != PROBCUT_INIT && stage != EVASION_INIT);
 
-    assert((GOOD_QUIET <= stage && stage <= BAD_QUIET) || stage == EVASION);
-
-    // Until good capture state no quiet moves are generated for comparison so simply assume king or pawns can move.
-    // Do the same for other states that don't have a valid available move list.
-    if ((GOOD_QUIET > stage || stage > BAD_QUIET) && stage != EVASION)
+    // For a reliable result we need all moves generated (quiets too)
+    // In the rare case of a 'good capture' candidate for SEE based pruning (= capture with really good history score)
+    // we can safely assume that we still can move king or pawn after the capture
+    if (stage == GOOD_CAPTURE)
         return true;
 
     for (const ExtMove* m = moves; m < endGenerated; ++m)
