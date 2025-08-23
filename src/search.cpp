@@ -1219,7 +1219,7 @@ moves_loop:  // When in check, search starts here
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
             Depth d =
-              std::max(1, std::min(newDepth - r / 1024, newDepth + (PvNode ? 2 : 1))) + PvNode;
+              std::max(1, std::min(newDepth - r / 1024, newDepth + 1)) + PvNode;
 
             ss->reduction = newDepth - d;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
