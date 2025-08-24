@@ -344,7 +344,8 @@ void Search::Worker::iterative_deepening() {
                 // effective increment for every four searchAgain steps (see issue #2717).
                 Depth adjustedDepth =
                   std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
-                rootDelta = beta - alpha;
+                rootDelta                      = beta - alpha;
+                size_t previousBestMoveChanges = bestMoveChanges;
                 bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
                 // Bring the best move to the front. It is critical that sorting
@@ -372,7 +373,9 @@ void Search::Worker::iterative_deepening() {
                 // otherwise exit the loop.
                 if (bestValue <= alpha)
                 {
-                    beta  = alpha;
+                    beta =
+                      (alpha * 123 + beta * 9 + std::min(bestValue + delta, VALUE_INFINITE) * 12)
+                      / 144;
                     alpha = std::max(bestValue - delta, -VALUE_INFINITE);
 
                     failedHighCnt = 0;
@@ -381,6 +384,15 @@ void Search::Worker::iterative_deepening() {
                 }
                 else if (bestValue >= beta)
                 {
+                    if (bestMoveChanges > previousBestMoveChanges)
+                        alpha =
+                          (alpha * 116 + beta + std::max(bestValue - delta, -VALUE_INFINITE) * 7)
+                          / 124;
+                    else
+                        alpha = (alpha * 119 + beta * 6
+                                 + std::max(bestValue - delta, -VALUE_INFINITE) * 16)
+                              / 141;
+
                     beta = std::min(bestValue + delta, VALUE_INFINITE);
                     ++failedHighCnt;
                 }
