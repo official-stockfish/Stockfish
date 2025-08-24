@@ -448,7 +448,7 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations
+	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations -Wstack-usage=128000
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8 riscv64))
 		ifeq ($(OS),Android)
@@ -631,6 +631,19 @@ ifneq ($(comp),mingw)
 		ifneq ($(KERNEL),Haiku)
 			ifneq ($(COMP),ndk)
 				LDFLAGS += -lpthread
+
+				add_lrt = yes
+				ifeq ($(target_windows),yes)
+					add_lrt = no
+				endif
+
+				ifeq ($(KERNEL),Darwin)
+					add_lrt = no
+				endif
+				
+				ifeq ($(add_lrt),yes)
+					LDFLAGS += -lrt
+				endif
 			endif
 		endif
 	endif
@@ -641,6 +654,7 @@ ifeq ($(debug),no)
 	CXXFLAGS += -DNDEBUG
 else
 	CXXFLAGS += -g
+	CXXFLAGS += -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG
 endif
 
 ### 3.2.2 Debugging with undefined behavior sanitizers

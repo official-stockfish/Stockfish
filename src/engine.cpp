@@ -33,6 +33,7 @@
 #include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_common.h"
+#include "nnue/nnue_misc.h"
 #include "numa.h"
 #include "perft.h"
 #include "position.h"
@@ -57,11 +58,13 @@ Engine::Engine(std::optional<std::string> path) :
     threads(),
     networks(
       numaContext,
-      NN::Networks(
-        NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
-        NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
-    pos.set(StartFEN, false, &states->back());
+      std::make_unique<NN::Networks>(  // requires heap alloc due to sizeof
+        std::make_unique<NN::NetworkBig>(NN::EvalFile{EvalFileDefaultNameBig, "None", ""},
+                                         NN::EmbeddedNNUEType::BIG),
+        std::make_unique<NN::NetworkSmall>(NN::EvalFile{EvalFileDefaultNameSmall, "None", ""},
+                                           NN::EmbeddedNNUEType::SMALL))) {
 
+    pos.set(StartFEN, false, &states->back());
 
     options.add(  //
       "Debug Log File", Option("", [](const Option& o) {

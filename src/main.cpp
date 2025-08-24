@@ -17,28 +17,74 @@
 */
 
 #include <iostream>
+#include <memory>
 
 #include "bitboard.h"
 #include "misc.h"
 #include "position.h"
+#include "tune.h"
 #include "types.h"
 #include "uci.h"
-#include "tune.h"
+
+#include "shm.h"
+
+#if defined(SHM_CLEANUP)
+    #include <cstdlib>
+    #include <cstdio>
+
+    #include <signal.h>
+
+    #include "shm_linux.h"
+#endif
+
+namespace Stockfish {
+namespace Eval {
+namespace NNUE {
+struct Networks;
+}
+}
+}
 
 using namespace Stockfish;
 
+namespace {
+#if defined(SHM_CLEANUP)
+
+void register_cleanup() {
+    // hack to invoke atexit
+    int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,
+                     SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
+
+    struct sigaction sa;
+    sa.sa_handler = [](int sig) { std::exit(128 + sig); };
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    for (int sig : signals)
+        if (sigaction(sig, &sa, nullptr) == -1)
+            std::perror("sigaction");
+
+    // Cleanup function to ensure shared memory is unlinked on exit
+    std::atexit([]() { shm::SharedMemory<Eval::NNUE::Networks>::cleanup_all_instances(); });
+}
+#else
+void register_cleanup() {}
+#endif
+}
+
 int main(int argc, char* argv[]) {
+    register_cleanup();
 
     std::cout << engine_info() << std::endl;
 
     Bitboards::init();
     Position::init();
 
-    UCIEngine uci(argc, argv);
+    auto uci = std::make_unique<UCIEngine>(argc, argv);
 
-    Tune::init(uci.engine_options());
+    Tune::init(uci->engine_options());
 
-    uci.loop();
+    uci->loop();
 
     return 0;
 }
