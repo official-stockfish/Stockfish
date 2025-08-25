@@ -535,7 +535,7 @@ bool Position::legal(Move m) const {
 
     // Castling moves generation does not check if the castling path is clear of
     // enemy attacks, it is delayed at a later time: now!
-    if (m.type_of() == CASTLING)
+    if (chess960 && m.type_of() == CASTLING)
     {
         // After castling, the rook and king final positions are the same in
         // Chess960 as they would be in standard chess.
@@ -548,7 +548,7 @@ bool Position::legal(Move m) const {
 
         // In case of Chess960, verify if the Rook blocks some checks.
         // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-        return !chess960 || !(blockers_for_king(us) & m.to_sq());
+        return !(blockers_for_king(us) & m.to_sq());
     }
 
     // If the moving piece is a king, check whether the destination square is
