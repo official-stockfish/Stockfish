@@ -1053,10 +1053,7 @@ moves_loop:  // When in check, search starts here
                 if (!pos.see_ge(move, -margin))
                 {
                     bool mayStalemateTrap =
-                      depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece]
-                      && PieceValue[movedPiece] >= RookValue
-                      // it can't be stalemate if we moved a piece adjacent to the king
-                      && !(attacks_bb<KING>(pos.square<KING>(us)) & move.from_sq());
+                      depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece];
 
                     // avoid pruning sacrifices of our last piece for stalemate
                     if (!mayStalemateTrap)
