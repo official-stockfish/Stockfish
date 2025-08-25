@@ -1053,7 +1053,7 @@ moves_loop:  // When in check, search starts here
                 if (!pos.see_ge(move, -margin))
                 {
                     bool mayStalemateTrap =
-                        depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece];
+                      depth > 2 && alpha < 0 && pos.non_pawn_material(us) == PieceValue[movedPiece];
 
                     // avoid pruning sacrifices of our last piece for stalemate
                     if (!mayStalemateTrap)
