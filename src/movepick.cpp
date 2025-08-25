@@ -130,17 +130,6 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
     Color us = pos.side_to_move();
 
-    [[maybe_unused]] Bitboard threatByLesser[KING + 1];
-    if constexpr (Type == QUIETS)
-    {
-        threatByLesser[PAWN]   = 0;
-        threatByLesser[KNIGHT] = threatByLesser[BISHOP] = pos.attacks_by<PAWN>(~us);
-        threatByLesser[ROOK] =
-          pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatByLesser[KNIGHT];
-        threatByLesser[QUEEN] = pos.attacks_by<ROOK>(~us) | threatByLesser[ROOK];
-        threatByLesser[KING]  = pos.attacks_by<QUEEN>(~us) | pos.attacks_by<KING>(~us) | threatByLesser[QUEEN];
-    }
-
     ExtMove* it = cur;
     for (auto move : ml)
     {
@@ -254,7 +243,15 @@ top:
     case QUIET_INIT :
         if (!skipQuiets)
         {
-            MoveList<QUIETS> ml(pos);
+            Color us = pos.side_to_move();
+            threatByLesser[PAWN]   = 0;
+            threatByLesser[KNIGHT] = threatByLesser[BISHOP] = pos.attacks_by<PAWN>(~us);
+            threatByLesser[ROOK] =
+              pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatByLesser[KNIGHT];
+            threatByLesser[QUEEN] = pos.attacks_by<ROOK>(~us) | threatByLesser[ROOK];
+            threatByLesser[KING]  = pos.attacks_by<QUEEN>(~us) | pos.attacks_by<KING>(~us) | threatByLesser[QUEEN];
+
+            MoveList<QUIETS> ml(pos, threatByLesser[KING]);
 
             endCur = endGenerated = score<QUIETS>(ml);
 
