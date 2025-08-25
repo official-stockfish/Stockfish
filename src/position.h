@@ -193,6 +193,7 @@ class Position {
     int        castlingRightsMask[SQUARE_NB];
     Square     castlingRookSquare[CASTLING_RIGHT_NB];
     Bitboard   castlingPath[CASTLING_RIGHT_NB];
+    Bitboard   castlingKingPath[CASTLING_RIGHT_NB];
     StateInfo* st;
     int        gamePly;
     Color      sideToMove;
@@ -248,7 +249,7 @@ inline bool Position::can_castle(CastlingRights cr) const { return st->castlingR
 
 inline bool Position::castling_impeded(CastlingRights cr, Bitboard threats) const {
     assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
-    return (pieces() | threats) & castlingPath[cr];
+    return pieces() & castlingPath[cr] || threats & castlingKingPath[cr];
 }
 
 inline Square Position::castling_rook_square(CastlingRights cr) const {

@@ -309,6 +309,7 @@ void Position::set_castling_right(Color c, Square rfrom) {
     Square kto = relative_square(c, cr & KING_SIDE ? SQ_G1 : SQ_C1);
     Square rto = relative_square(c, cr & KING_SIDE ? SQ_F1 : SQ_D1);
 
+    castlingKingPath[cr] = between_bb(kfrom, kto);
     castlingPath[cr] = (between_bb(rfrom, rto) | between_bb(kfrom, kto)) & ~(kfrom | rfrom);
 }
 
@@ -533,30 +534,32 @@ bool Position::legal(Move m) const {
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
     }
 
-    // Castling moves generation does not check if the castling path is clear of
-    // enemy attacks, it is delayed at a later time: now!
-    if (m.type_of() == CASTLING)
-    {
-        if (!chess960)
-            return true;
-        // After castling, the rook and king final positions are the same in
-        // Chess960 as they would be in standard chess.
-        to             = relative_square(us, to > from ? SQ_G1 : SQ_C1);
-        Direction step = to > from ? WEST : EAST;
-
-        for (Square s = to; s != from; s += step)
-            if (attackers_to_exist(s, pieces(), ~us))
-                return false;
-
-        // In case of Chess960, verify if the Rook blocks some checks.
-        // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-        return !chess960 || !(blockers_for_king(us) & m.to_sq());
-    }
 
     // If the moving piece is a king, check whether the destination square is
     // attacked by the opponent.
     if (type_of(piece_on(from)) == KING)
+    {
+        // Castling moves generation does not check if the castling path is clear of
+        // enemy attacks, it is delayed at a later time: now!
+        if (m.type_of() == CASTLING)
+        {
+            if (!chess960)
+                return true;
+            // After castling, the rook and king final positions are the same in
+            // Chess960 as they would be in standard chess.
+            to             = relative_square(us, to > from ? SQ_G1 : SQ_C1);
+            Direction step = to > from ? WEST : EAST;
+
+            for (Square s = to; s != from; s += step)
+                if (attackers_to_exist(s, pieces(), ~us))
+                    return false;
+
+            // In case of Chess960, verify if the Rook blocks some checks.
+            // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
+            return !chess960 || !(blockers_for_king(us) & m.to_sq());
+        }
         return !(attackers_to_exist(to, pieces() ^ from, ~us));
+    }
 
     // A non-king move is legal if and only if it is not pinned or it
     // is moving along the ray towards or away from the king.
