@@ -104,7 +104,7 @@ class Position {
 
     // Castling
     bool           can_castle(CastlingRights cr) const;
-    bool           castling_impeded(CastlingRights cr, Bitboard threats = 0) const;
+    bool           castling_impeded(CastlingRights cr, Bitboard threats) const;
     Square         castling_rook_square(CastlingRights cr) const;
 
     // Checking
@@ -265,8 +265,6 @@ inline Bitboard Position::attacks_by(Color c) const {
     if constexpr (Pt == PAWN)
         return c == WHITE ? pawn_attacks_bb<WHITE>(pieces(WHITE, PAWN))
                           : pawn_attacks_bb<BLACK>(pieces(BLACK, PAWN));
-    else if constexpr (Pt == KING)
-        return attacks_bb<KING>(square<KING>(c));
     else
     {
         Bitboard threats   = 0;

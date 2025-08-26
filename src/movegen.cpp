@@ -255,12 +255,9 @@ Move* generate_all(const Position& pos, Move* moveList, Bitboard threats) {
     if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
     {
         if (Type == NON_EVASIONS)
-        {
-            Color us = pos.side_to_move();
-            threats = pos.attacks_by<PAWN>(~us) | pos.attacks_by<PAWN>(~us)
-                        | pos.attacks_by<PAWN>(~us) | pos.attacks_by<QUEEN>(~us)
-                        | pos.attacks_by<KING>(~us);
-        }
+            threats = pos.attacks_by<PAWN>(~Us) | pos.attacks_by<PAWN>(~Us)
+                        | pos.attacks_by<PAWN>(~Us) | pos.attacks_by<QUEEN>(~Us)
+                        | pos.attacks_by<KING>(~Us);
         for (CastlingRights cr : {Us & KING_SIDE, Us & QUEEN_SIDE})
             if (!pos.castling_impeded(cr, threats) && pos.can_castle(cr))
                 *moveList++ = Move::make<CASTLING>(ksq, pos.castling_rook_square(cr));

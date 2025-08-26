@@ -534,18 +534,15 @@ bool Position::legal(Move m) const {
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
     }
 
+    // In case of Chess960, verify if the Rook blocks some checks.
+    // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
+    if (m.type_of() == CASTLING)
+        return !chess960 || !(blockers_for_king(us) & m.to_sq());
 
     // If the moving piece is a king, check whether the destination square is
     // attacked by the opponent.
     if (type_of(piece_on(from)) == KING)
-    {
-        // In case of Chess960, verify if the Rook blocks some checks.
-        // For instance an enemy queen in SQ_A1 when castling rook is in SQ_B1.
-        if (m.type_of() == CASTLING)
-            return !chess960 || !(blockers_for_king(us) & m.to_sq());
-
         return !(attackers_to_exist(to, pieces() ^ from, ~us));
-    }
 
     // A non-king move is legal if and only if it is not pinned or it
     // is moving along the ray towards or away from the king.
