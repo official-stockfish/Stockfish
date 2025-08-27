@@ -31,7 +31,7 @@ set_arch_loongarch64() {
   if check_flags 'lasx'; then
     true_arch='loongarch64-lasx'
   elif check_flags 'lsx'; then
-    true_arch='lonngarch64-lsx'
+    true_arch='loongarch64-lsx'
   else
     true_arch='loongarch64'
   fi
@@ -57,7 +57,7 @@ set_arch_x86_64() {
 }
 
 set_arch_ppc_64() {
-  if $(grep -q -w "altivec" /proc/cpuinfo); then
+  if grep -q -w "altivec" /proc/cpuinfo; then
     power=$(grep -oP -m 1 'cpu\t+: POWER\K\d+' /proc/cpuinfo)
     if [ "0$power" -gt 7 ]; then
       # VSX started with POWER8
