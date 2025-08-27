@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     for (Bitboard b = pos.checkers(); b;)
         os << UCIEngine::square(pop_lsb(b)) << " ";
 
-    if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
+    if (Tablebases::MaxCardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         StateInfo st;
 
