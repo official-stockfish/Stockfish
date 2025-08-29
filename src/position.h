@@ -183,8 +183,7 @@ class Position {
                      Square&           rfrom,
                      Square&           rto,
                      DirtyPiece* const dp = nullptr);
-    template<bool AfterMove>
-    Key adjust_key50(Key k) const;
+    Key  adjust_key50(Key k) const;
 
     // Data members
     Piece      board[SQUARE_NB];
@@ -283,11 +282,10 @@ inline Bitboard Position::pinners(Color c) const { return st->pinners[c]; }
 
 inline Bitboard Position::check_squares(PieceType pt) const { return st->checkSquares[pt]; }
 
-inline Key Position::key() const { return adjust_key50<false>(st->key); }
+inline Key Position::key() const { return adjust_key50(st->key); }
 
-template<bool AfterMove>
 inline Key Position::adjust_key50(Key k) const {
-    return st->rule50 < 14 - AfterMove ? k : k ^ make_key((st->rule50 - (14 - AfterMove)) / 8);
+    return st->rule50 < 14 ? k : k ^ make_key((st->rule50 - 14) / 8);
 }
 
 inline Key Position::pawn_key() const { return st->pawnKey; }
