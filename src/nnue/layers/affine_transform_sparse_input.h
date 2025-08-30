@@ -126,7 +126,7 @@ void find_nnz(const std::int32_t* RESTRICT input,
         // Get a bitmask and gather non zero indices
         const __mmask16 nnzMask = _mm512_test_epi32_mask(inputV, inputV);
         const __m512i   nnzV    = _mm512_maskz_compress_epi32(nnzMask, base);
-        _mm512_mask_cvtepi32_storeu_epi16(out + count, 0xFFFF, nnzV);
+        _mm512_cvtepi32_storeu_epi16(out + count, nnzV);
         count += popcount(nnzMask);
         base = _mm512_add_epi32(base, increment);
     }
