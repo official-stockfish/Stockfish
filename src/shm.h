@@ -148,6 +148,11 @@ inline std::string getExecutablePathHash() {
     return std::string(executable_path, path_length);
 }
 
+enum class SystemWideSharedConstantAllocationStatus {
+    NoAllocation,
+    LocalMemory,
+    SharedMemory
+};
 
 #if defined(_WIN32)
 
@@ -177,7 +182,6 @@ inline std::string GetLastErrorAsString(DWORD error) {
     return message;
 }
 
-
 // Utilizes shared memory to store the value. It is deduplicated system-wide (for the single user).
 template<typename T>
 class SharedMemoryBackend {
@@ -206,11 +210,11 @@ class SharedMemoryBackend {
 
     bool is_valid() const { return status == Status::Success; }
 
-    std::string get_error_message() const {
+    std::optional<std::string> get_error_message() const {
         switch (status)
         {
         case Status::Success :
-            return "Success";
+            return std::nullopt;
         case Status::LargePageAllocationError :
             return "Failed to allocate large page memory";
         case Status::FileMappingError :
@@ -262,6 +266,13 @@ class SharedMemoryBackend {
             other.status   = Status::NotInitialized;
         }
         return *this;
+    }
+    
+    SystemWideSharedConstantAllocationStatus get_status() const {
+        return 
+            status == Status::Success 
+            ? SystemWideSharedConstantAllocationStatus::SharedMemory 
+            : SystemWideSharedConstantAllocationStatus::NoAllocation;
     }
 
    private:
@@ -414,12 +425,25 @@ class SharedMemoryBackend {
     }
 
     bool is_valid() const { return shm1 && shm1->is_open() && shm1->is_initialized(); }
+    
+    SystemWideSharedConstantAllocationStatus get_status() const {
+        return 
+            is_valid() 
+            ? SystemWideSharedConstantAllocationStatus::SharedMemory 
+            : SystemWideSharedConstantAllocationStatus::NoAllocation;
+    }
 
-    std::string get_error_message() const {
+    std::optional<std::string> get_error_message() const {
         if (!shm1)
             return "Shared memory not initialized";
 
-        return "Shared memory is not open";
+        if (!shm1->is_open())
+            return "Shared memory is not open";
+
+        if (!shm1->is_initialized())
+            return "Not initialized";
+
+        return std::nullopt;
     }
 
    private:
@@ -443,9 +467,13 @@ class SharedMemoryBackend {
     }
 
     bool is_valid() const { return false; }
+    
+    SystemWideSharedConstantAllocationStatus get_status() const {
+        return SystemWideSharedConstantAllocationStatus::NoAllocation;
+    }
 
-    std::string get_error_message() const {
-        return "Shared memory not supported by the OS";
+    std::optional<std::string> get_error_message() const {
+        return "Dummy SharedMemoryBackend";
     }
 };
 
@@ -470,11 +498,24 @@ struct SharedMemoryBackendFallback {
         fallback_object = std::move(other.fallback_object);
         return *this;
     }
+    
+    SystemWideSharedConstantAllocationStatus get_status() const {
+        return 
+            fallback_object == nullptr 
+            ? SystemWideSharedConstantAllocationStatus::NoAllocation 
+            : SystemWideSharedConstantAllocationStatus::LocalMemory;
+    }
+
+    std::optional<std::string> get_error_message() const {
+        if (fallback_object == nullptr)
+            return "Not initialized";
+
+        return "Shared memory not supported by the OS. Local allocation fallback.";
+    }
 
    private:
     LargePagePtr<T> fallback_object;
 };
-
 
 // Platform-independent wrapper
 template<typename T>
@@ -514,22 +555,16 @@ struct SystemWideSharedConstant {
         shm_name = "/" + createHashString(shm_name);
 
         // hash name and make sure it is not longer than NAME_MAX
-        if (shm_name.size() > NAME_MAX)
-        {
+        if (shm_name.size() > NAME_MAX) {
             shm_name = shm_name.substr(0, NAME_MAX);
         }
 #endif
 
         SharedMemoryBackend<T> shm_backend(shm_name, value);
 
-        if (shm_backend.is_valid())
-        {
+        if (shm_backend.is_valid()) {
             backend = std::move(shm_backend);
-        }
-        else
-        {
-            std::cerr << "Failed to create shared memory backend: "
-                      << shm_backend.get_error_message() << std::endl;
+        } else {
             backend = SharedMemoryBackendFallback<T>(shm_name, value);
         }
     }
@@ -550,6 +585,36 @@ struct SystemWideSharedConstant {
     bool operator==(std::nullptr_t) const noexcept { return get_ptr() == nullptr; }
 
     bool operator!=(std::nullptr_t) const noexcept { return get_ptr() != nullptr; }
+
+    SystemWideSharedConstantAllocationStatus get_status() const {
+        return std::visit(
+          [](const auto& end) -> SystemWideSharedConstantAllocationStatus {
+              if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
+              {
+                  return SystemWideSharedConstantAllocationStatus::NoAllocation;
+              }
+              else
+              {
+                  return end.get_status();
+              }
+          },
+          backend);
+    }
+
+    std::optional<std::string> get_error_message() const {
+        return std::visit(
+          [](const auto& end) -> std::optional<std::string> {
+              if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
+              {
+                  return std::nullopt;
+              }
+              else
+              {
+                  return end.get_error_message();
+              }
+          },
+          backend);
+    }
 
    private:
     auto get_ptr() const {

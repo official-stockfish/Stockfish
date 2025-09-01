@@ -1311,6 +1311,17 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
 
     const T* operator->() const { return &*instances[0]; }
 
+    std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>> get_status_and_errors() const {
+        std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>> status;
+        status.reserve(instances.size());
+
+        for (const auto& instance : instances) {
+            status.emplace_back(instance.get_status(), instance.get_error_message());
+        }
+
+        return status;
+    }
+
     template<typename FuncT>
     void modify_and_replicate(FuncT&& f) {
         auto source = std::make_unique<T>(*instances[0]);
