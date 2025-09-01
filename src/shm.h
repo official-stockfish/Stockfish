@@ -36,8 +36,13 @@
 #include <variant>
 
 #if !defined(_WIN32) && !defined(__ANDROID__)
-#include "shm_linux.h"
-#define SHM_CLEANUP
+    #include "shm_linux.h"
+    #define SHM_CLEANUP
+#endif
+
+#if defined(__ANDROID__)
+    #include <limits.h>
+    #define SF_MAX_SEM_NAME_LEN NAME_MAX
 #endif
 
 #include "types.h"
@@ -550,13 +555,13 @@ struct SystemWideSharedConstant {
                              + std::to_string(executable_hash) + "$"
                              + std::to_string(discriminator);
 
-#ifndef _WIN32
+#if !defined(_WIN32)
         // POSIX shared memory names must start with a slash
         shm_name = "/" + createHashString(shm_name);
 
-        // hash name and make sure it is not longer than NAME_MAX
-        if (shm_name.size() > NAME_MAX) {
-            shm_name = shm_name.substr(0, NAME_MAX);
+        // hash name and make sure it is not longer than SF_MAX_SEM_NAME_LEN
+        if (shm_name.size() > SF_MAX_SEM_NAME_LEN) {
+            shm_name = shm_name.substr(0, SF_MAX_SEM_NAME_LEN - 1);
         }
 #endif
 

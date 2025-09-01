@@ -42,7 +42,7 @@
     #include <limits.h>
     #define SF_MAX_SEM_NAME_LEN NAME_MAX
 #elif defined(__APPLE__)
-    #define SF_MAX_SEM_NAME_LEN SEM_NAME_LEN
+    #define SF_MAX_SEM_NAME_LEN 31
 #else
     #define SF_MAX_SEM_NAME_LEN 255
 #endif
