@@ -72,6 +72,9 @@ using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
 
+// (*Scaler) All tuned parameters at time controls shorter than
+// optimized for require verifications at longer time controls
+
 int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
     const Color us    = pos.side_to_move();
     const auto  m     = (ss - 1)->currentMove;
