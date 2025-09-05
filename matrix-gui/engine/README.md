@@ -8,9 +8,9 @@ This directory should contain the Stockfish chess engine binary for the Matrix G
 
 1. Go to the official Stockfish releases: https://stockfishchess.org/download/
 2. Download the appropriate binary for your operating system:
-   - **Windows**: Download `stockfish_15_win_x64_avx2.zip` or similar
-   - **macOS**: Download `stockfish_15_mac.zip` or similar  
-   - **Linux**: Download `stockfish_15_linux_x64_avx2.zip` or similar
+   - **Windows**: Download the latest Windows x64 binary (e.g., `stockfish_*_win_x64_avx2.zip`)
+   - **macOS**: Download the latest macOS binary (e.g., `stockfish_*_mac.zip`)
+   - **Linux**: Download the latest Linux x64 binary (e.g., `stockfish_*_linux_x64_avx2.zip`)
 
 3. Extract the downloaded archive
 4. Copy the `stockfish` executable to this directory (`matrix-gui/engine/`)
@@ -32,7 +32,7 @@ If you want to compile Stockfish from source:
 - Make sure you have the required Visual C++ redistributables installed
 
 #### macOS
-- The binary should be named `stockfish` 
+- The binary should be named `stockfish`
 - You may need to allow the binary in Security & Privacy settings
 - On Apple Silicon Macs, use the ARM64 version if available
 
@@ -70,7 +70,7 @@ To verify the engine is working:
 
 ```
 [ ] Stockfish binary installed
-[ ] Binary permissions set correctly  
+[ ] Binary permissions set correctly
 [ ] Engine tested and working
 ```
 
@@ -78,4 +78,4 @@ Place your Stockfish binary in this directory and check off the items above once
 
 ---
 
-**Note**: This GUI is designed to work with Stockfish 14+ and uses the UCI (Universal Chess Interface) protocol for communication.
+**Note**: This GUI is designed to work with Stockfish 15+ and uses the UCI (Universal Chess Interface) protocol for communication.

@@ -95,7 +95,7 @@ This implementation provides a complete, polished chess GUI application with the
 The application follows a clean MVVM architecture:
 
 - **Model**: Chess game logic and UCI engine communication (NexusChess.Core)
-- **ViewModel**: Data binding and command handling (NexusChess.ViewModels)  
+- **ViewModel**: Data binding and command handling (NexusChess.ViewModels)
 - **View**: Avalonia UI with interactive chess board (NexusChess.Desktop)
 
 ### Chess Features
@@ -862,7 +862,7 @@ C#
             base.Render(context);
 
             if (Bounds.Width == 0 |
-    
+
     | Bounds.Height == 0) return;
 
             double squareSize = Math.Min(Bounds.Width, Bounds.Height) / BoardSize;
