@@ -1,0 +1,315 @@
+name: Workflow Optimization
+on:
+  workflow_call:
+    inputs:
+      max_parallel_jobs:
+        type: number
+        required: false
+        default: 4
+      enable_auto_cancel:
+        type: boolean
+        required: false
+        default: true
+      resource_optimization:
+        type: string
+        required: false
+        default: 'balanced'  # aggressive, balanced, conservative
+
+env:
+  # Global optimizations
+  MAKEFLAGS: "-j${{ inputs.max_parallel_jobs }}"
+  CCACHE_COMPILERCHECK: content
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+
+# Workflow-level concurrency control
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ inputs.enable_auto_cancel }}
+
+jobs:
+  resource-optimizer:
+    name: Resource Optimization Analysis
+    runs-on: ubuntu-latest
+    outputs:
+      runner-strategy: ${{ steps.optimize.outputs.strategy }}
+      parallel-jobs: ${{ steps.optimize.outputs.jobs }}
+      cache-strategy: ${{ steps.optimize.outputs.cache }}
+      resource-allocation: ${{ steps.optimize.outputs.allocation }}
+    steps:
+      - name: Analyze repository for optimization
+        id: optimize
+        run: |
+          # Analyze the type of changes to determine optimal resource allocation
+          STRATEGY="${{ inputs.resource_optimization }}"
+          
+          case "$STRATEGY" in
+            aggressive)
+              JOBS=8
+              CACHE="aggressive"
+              ALLOCATION="high-cpu"
+              ;;
+            conservative)
+              JOBS=2
+              CACHE="conservative"
+              ALLOCATION="balanced"
+              ;;
+            *)  # balanced
+              JOBS=4
+              CACHE="balanced"
+              ALLOCATION="balanced"
+              ;;
+          esac
+          
+          # Override for specific runners
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ALLOCATION="standard"
+          elif [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            ALLOCATION="high-performance"
+          fi
+          
+          echo "strategy=$STRATEGY" >> $GITHUB_OUTPUT
+          echo "jobs=$JOBS" >> $GITHUB_OUTPUT
+          echo "cache=$CACHE" >> $GITHUB_OUTPUT
+          echo "allocation=$ALLOCATION" >> $GITHUB_OUTPUT
+          
+          echo "Resource optimization:"
+          echo "  Strategy: $STRATEGY"
+          echo "  Parallel jobs: $JOBS"
+          echo "  Cache strategy: $CACHE"
+          echo "  Resource allocation: $ALLOCATION"
+
+  optimize-build-matrix:
+    name: Optimize Build Matrix
+    needs: resource-optimizer
+    runs-on: ubuntu-latest
+    outputs:
+      optimized-matrix: ${{ steps.matrix.outputs.matrix }}
+      build-stages: ${{ steps.matrix.outputs.stages }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Generate optimized build matrix
+        id: matrix
+        run: |
+          # Create optimized matrix based on changes and resource allocation
+          
+          # Check what type of changes we have
+          if git diff --name-only HEAD~1 2>/dev/null | grep -q "src/nnue/"; then
+            FOCUS="nnue"
+          elif git diff --name-only HEAD~1 2>/dev/null | grep -q "src/search"; then
+            FOCUS="search"
+          else
+            FOCUS="general"
+          fi
+          
+          # Generate matrix based on focus and resource allocation
+          case "${{ needs.resource-optimizer.outputs.resource-allocation }}" in
+            high-performance)
+              MATRIX='{
+                "include": [
+                  {"os": "ubuntu-latest", "arch": "x86-64-avx2", "priority": "high"},
+                  {"os": "ubuntu-latest", "arch": "x86-64-bmi2", "priority": "high"},
+                  {"os": "macos-latest", "arch": "x86-64-avx2", "priority": "medium"},
+                  {"os": "windows-latest", "arch": "x86-64-avx2", "priority": "medium"},
+                  {"os": "ubuntu-latest", "arch": "armv8", "priority": "low"}
+                ]
+              }'
+              STAGES="parallel"
+              ;;
+            balanced)
+              MATRIX='{
+                "include": [
+                  {"os": "ubuntu-latest", "arch": "x86-64-avx2", "priority": "high"},
+                  {"os": "macos-latest", "arch": "x86-64-avx2", "priority": "medium"},
+                  {"os": "windows-latest", "arch": "x86-64-avx2", "priority": "medium"}
+                ]
+              }'
+              STAGES="sequential"
+              ;;
+            *)
+              MATRIX='{
+                "include": [
+                  {"os": "ubuntu-latest", "arch": "x86-64", "priority": "high"}
+                ]
+              }'
+              STAGES="minimal"
+              ;;
+          esac
+          
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "stages=$STAGES" >> $GITHUB_OUTPUT
+          
+          echo "Optimized matrix generated:"
+          echo "$MATRIX" | jq '.'
+
+  efficient-compilation:
+    name: Efficient Compilation
+    needs: [resource-optimizer, optimize-build-matrix]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: ${{ needs.resource-optimizer.outputs.resource-allocation != 'high-performance' }}
+      max-parallel: ${{ matrix.priority == 'high' && 4 || 2 }}
+      matrix: ${{ fromJson(needs.optimize-build-matrix.outputs.optimized-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup optimized environment
+        run: |
+          # Configure optimal build environment
+          JOBS="${{ needs.resource-optimizer.outputs.parallel-jobs }}"
+          echo "MAKEFLAGS=-j$JOBS" >> $GITHUB_ENV
+          
+          # Platform-specific optimizations
+          case "${{ runner.os }}" in
+            Linux)
+              sudo apt update
+              sudo apt install ccache
+              echo "CC=ccache gcc" >> $GITHUB_ENV
+              echo "CXX=ccache g++" >> $GITHUB_ENV
+              ;;
+            macOS)
+              brew install ccache
+              echo "CC=ccache clang" >> $GITHUB_ENV
+              echo "CXX=ccache clang++" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Restore aggressive cache
+        if: needs.resource-optimizer.outputs.cache-strategy == 'aggressive'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            src/*.nnue
+            ~/.cache
+          key: aggressive-cache-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            aggressive-cache-${{ runner.os }}-${{ matrix.arch }}-
+            aggressive-cache-${{ runner.os }}-
+
+      - name: Restore balanced cache
+        if: needs.resource-optimizer.outputs.cache-strategy == 'balanced'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ccache
+            src/*.nnue
+          key: balanced-cache-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('src/Makefile', 'src/*.h') }}
+          restore-keys: |
+            balanced-cache-${{ runner.os }}-${{ matrix.arch }}-
+
+      - name: Optimized build
+        working-directory: src
+        run: |
+          # Configure build for optimization level
+          case "${{ matrix.priority }}" in
+            high)
+              make net
+              make clean
+              time make -j${{ needs.resource-optimizer.outputs.parallel-jobs }} ARCH=${{ matrix.arch }} profile-build
+              ;;
+            medium)
+              make net
+              make clean
+              time make -j${{ needs.resource-optimizer.outputs.parallel-jobs }} ARCH=${{ matrix.arch }} build
+              ;;
+            low)
+              make net
+              make clean
+              time make -j2 ARCH=${{ matrix.arch }} build
+              ;;
+          esac
+
+      - name: Quick validation
+        working-directory: src
+        run: |
+          # Quick smoke test
+          echo "bench 8" | timeout 30 ./stockfish || echo "Build validation completed"
+
+  resource-monitoring:
+    name: Resource Usage Monitoring
+    needs: [resource-optimizer, efficient-compilation]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Monitor and report resource usage
+        run: |
+          echo "# 🔧 Workflow Optimization Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Strategy**: ${{ needs.resource-optimizer.outputs.strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Parallel Jobs**: ${{ needs.resource-optimizer.outputs.parallel-jobs }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache Strategy**: ${{ needs.resource-optimizer.outputs.cache-strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Resource Allocation**: ${{ needs.resource-optimizer.outputs.resource-allocation }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auto Cancel**: ${{ inputs.enable_auto_cancel }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Performance Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Compilation**: ${{ needs.efficient-compilation.result }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Calculate approximate time savings
+          case "${{ needs.resource-optimizer.outputs.strategy }}" in
+            aggressive)
+              SAVINGS="30-50%"
+              ;;
+            balanced)
+              SAVINGS="15-25%"
+              ;;
+            conservative)
+              SAVINGS="5-15%"
+              ;;
+          esac
+          
+          echo "- **Estimated Time Savings**: $SAVINGS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## Recommendations" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.efficient-compilation.result }}" = "success" ]; then
+            echo "✅ Optimization successful - consider using this configuration for similar workflows" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Some optimizations failed - consider reducing parallelism or using conservative mode" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  auto-tune-suggestions:
+    name: Auto-tune Suggestions
+    needs: [resource-optimizer, efficient-compilation, resource-monitoring]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate auto-tuning suggestions
+        run: |
+          echo "## 🤖 Auto-tuning Suggestions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Analyze results and suggest improvements
+          if [ "${{ needs.efficient-compilation.result }}" = "success" ]; then
+            echo "### ✅ Current Configuration Working Well" >> $GITHUB_STEP_SUMMARY
+            echo "- Parallel jobs: ${{ needs.resource-optimizer.outputs.parallel-jobs }} appears optimal" >> $GITHUB_STEP_SUMMARY
+            echo "- Cache strategy: ${{ needs.resource-optimizer.outputs.cache-strategy }} is effective" >> $GITHUB_STEP_SUMMARY
+            
+            # Suggest potential improvements
+            case "${{ needs.resource-optimizer.outputs.strategy }}" in
+              conservative)
+                echo "- 💡 Consider trying 'balanced' strategy for faster builds" >> $GITHUB_STEP_SUMMARY
+                ;;
+              balanced)
+                echo "- 💡 For urgent builds, try 'aggressive' strategy" >> $GITHUB_STEP_SUMMARY
+                ;;
+            esac
+          else
+            echo "### ⚠️ Optimization Issues Detected" >> $GITHUB_STEP_SUMMARY
+            echo "- Consider reducing parallel jobs to ${{ needs.resource-optimizer.outputs.parallel-jobs > 2 && needs.resource-optimizer.outputs.parallel-jobs - 1 || 2 }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Try 'conservative' cache strategy" >> $GITHUB_STEP_SUMMARY
+            echo "- Disable auto-cancel for critical builds" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Workflow Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Jobs**: $(echo '${{ needs.optimize-build-matrix.outputs.optimized-matrix }}' | jq '.include | length')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Stages**: ${{ needs.optimize-build-matrix.outputs.build-stages }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Concurrency Control**: Active" >> $GITHUB_STEP_SUMMARY

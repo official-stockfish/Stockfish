@@ -1,0 +1,125 @@
+name: Cache Optimization
+on:
+  workflow_call:
+    inputs:
+      cache_key_prefix:
+        type: string
+        required: false
+        default: 'stockfish-cache'
+      enable_ccache:
+        type: boolean
+        required: false
+        default: true
+      enable_network_cache:
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  setup-cache:
+    name: Setup Optimized Caching
+    runs-on: ubuntu-latest
+    outputs:
+      cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          # Create cache key based on system info, dependencies, and source changes
+          CACHE_KEY="${{ inputs.cache_key_prefix }}-$(date +%Y-%m)-${{ runner.os }}-$(echo '${{ hashFiles('src/**/*.cpp', 'src/**/*.h', 'src/Makefile') }}' | cut -c1-8)"
+          echo "key=$CACHE_KEY" >> $GITHUB_OUTPUT
+          echo "Cache key: $CACHE_KEY"
+
+      - name: Setup ccache
+        if: inputs.enable_ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ steps.cache-key.outputs.key }}-ccache
+          max-size: 500M
+          create-symlink: true
+
+      - name: Cache network downloads
+        if: inputs.enable_network_cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/*.nnue
+            ~/.cache/stockfish
+          key: ${{ steps.cache-key.outputs.key }}-network-${{ hashFiles('src/evaluate.h') }}
+          restore-keys: |
+            ${{ inputs.cache_key_prefix }}-network-
+
+      - name: Cache build dependencies
+        id: cache-check
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/stockfish-deps
+            ~/.local/share/stockfish
+          key: ${{ steps.cache-key.outputs.key }}-deps
+          restore-keys: |
+            ${{ inputs.cache_key_prefix }}-deps-
+
+      - name: Prepare dependency cache
+        if: steps.cache-check.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/stockfish-deps
+          mkdir -p ~/.local/share/stockfish
+          echo "Dependencies cached at $(date)" > /tmp/stockfish-deps/cache-info.txt
+
+  optimize-compilation:
+    name: Optimized Compilation Cache
+    needs: setup-cache
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Restore ccache
+        if: inputs.enable_ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ needs.setup-cache.outputs.cache-key }}-ccache-${{ matrix.os }}
+          restore-keys: |
+            ${{ inputs.cache_key_prefix }}-ccache-${{ matrix.os }}-
+
+      - name: Cache compiler installations
+        uses: actions/cache@v4
+        with:
+          path: |
+            /opt/homebrew
+            /usr/local/bin
+            C:\msys64
+          key: compiler-cache-${{ matrix.os }}-${{ hashFiles('.github/workflows/*.yml') }}
+          restore-keys: |
+            compiler-cache-${{ matrix.os }}-
+
+      - name: Setup compilation environment with cache
+        shell: bash
+        run: |
+          if [ "${{ inputs.enable_ccache }}" = "true" ]; then
+            export CC="ccache gcc"
+            export CXX="ccache g++"
+            export CCACHE_DIR="$HOME/.ccache"
+            echo "CC=$CC" >> $GITHUB_ENV
+            echo "CXX=$CXX" >> $GITHUB_ENV
+            echo "CCACHE_DIR=$CCACHE_DIR" >> $GITHUB_ENV
+          fi
+
+      - name: Cache validation
+        run: |
+          echo "Cache status:"
+          echo "  - Cache hit: ${{ needs.setup-cache.outputs.cache-hit }}"
+          echo "  - Cache key: ${{ needs.setup-cache.outputs.cache-key }}"
+          if [ "${{ inputs.enable_ccache }}" = "true" ]; then
+            ccache -s || echo "ccache not available yet"
+          fi

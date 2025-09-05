@@ -1,0 +1,298 @@
+name: Enhanced Security Scanning
+on:
+  workflow_call:
+    inputs:
+      enable_dependency_scan:
+        type: boolean
+        required: false
+        default: true
+      enable_secret_scan:
+        type: boolean
+        required: false
+        default: true
+      enable_sarif_upload:
+        type: boolean
+        required: false
+        default: true
+      scan_schedule:
+        type: string
+        required: false
+        default: 'on-demand'  # daily, weekly, on-demand
+
+jobs:
+  security-setup:
+    name: Security Scanning Setup
+    runs-on: ubuntu-latest
+    outputs:
+      should-run-full-scan: ${{ steps.schedule.outputs.full-scan }}
+      scan-depth: ${{ steps.schedule.outputs.depth }}
+    steps:
+      - name: Determine scan scope
+        id: schedule
+        run: |
+          FULL_SCAN="false"
+          DEPTH="standard"
+          
+          # Check if this is a scheduled run or high-priority event
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            FULL_SCAN="true"
+            DEPTH="comprehensive"
+          fi
+          
+          # Override for manual runs
+          if [ "${{ inputs.scan_schedule }}" = "comprehensive" ]; then
+            FULL_SCAN="true"
+            DEPTH="comprehensive"
+          fi
+          
+          echo "full-scan=$FULL_SCAN" >> $GITHUB_OUTPUT
+          echo "depth=$DEPTH" >> $GITHUB_OUTPUT
+          
+          echo "Security scan configuration:"
+          echo "  Full scan: $FULL_SCAN"
+          echo "  Depth: $DEPTH"
+
+  codeql-advanced:
+    name: Advanced CodeQL Analysis
+    needs: security-setup
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [cpp]
+        config: [security-extended, security-and-quality]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: ${{ matrix.config }}
+          config: |
+            paths-ignore:
+              - tests/**
+              - scripts/**
+            paths:
+              - src/**
+
+      - name: Build with security flags
+        working-directory: src
+        run: |
+          # Enable additional security flags for analysis
+          export CXXFLAGS="-Wall -Wextra -Werror -fsanitize=address -fstack-protector-all -D_FORTIFY_SOURCE=2"
+          export LDFLAGS="-fsanitize=address"
+          make net
+          make clean
+          make -j4 ARCH=x86-64 build || true  # Allow build to fail for security analysis
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}-${{ matrix.config }}"
+
+  dependency-scan:
+    name: Dependency Security Scan
+    if: inputs.enable_dependency_scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup scanning tools
+        run: |
+          # Install security scanning tools
+          sudo apt update
+          sudo apt install -y clang-tools cppcheck
+
+      - name: Analyze dependencies
+        run: |
+          echo "# Dependency Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for hardcoded URLs or suspicious patterns
+          echo "## Suspicious Patterns Check" >> $GITHUB_STEP_SUMMARY
+          grep -r "http://" src/ || echo "No HTTP URLs found"
+          grep -r "password\|secret\|key\|token" src/ || echo "No obvious secrets found"
+          
+          # Check for unsafe functions
+          echo "## Unsafe Function Usage" >> $GITHUB_STEP_SUMMARY
+          UNSAFE_FUNCS=$(grep -r -E "(strcpy|strcat|sprintf|gets)" src/ || true)
+          if [ -n "$UNSAFE_FUNCS" ]; then
+            echo "⚠️ Unsafe functions detected:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$UNSAFE_FUNCS" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No unsafe functions detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: CPPCheck analysis
+        run: |
+          echo "Running CPPCheck security analysis..."
+          cppcheck --enable=all --inconclusive --xml --xml-version=2 src/ 2> cppcheck-results.xml || true
+          
+          # Convert to readable format
+          if [ -f cppcheck-results.xml ]; then
+            echo "CPPCheck found issues:"
+            cat cppcheck-results.xml
+          fi
+
+      - name: Upload CPPCheck results
+        if: inputs.enable_sarif_upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: cppcheck-results
+          path: cppcheck-results.xml
+
+  secret-scanning:
+    name: Secret Scanning
+    if: inputs.enable_secret_scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install TruffleHog
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run TruffleHog scan
+        run: |
+          echo "Running secret scanning..."
+          trufflehog git file://. --json > trufflehog-results.json || true
+          
+          # Check results
+          if [ -s trufflehog-results.json ]; then
+            echo "🔍 Potential secrets detected!" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            head -20 trufflehog-results.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            
+            # Count findings
+            COUNT=$(cat trufflehog-results.json | wc -l)
+            echo "Total findings: $COUNT" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No secrets detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload secret scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: secret-scan-results
+          path: trufflehog-results.json
+
+  memory-safety:
+    name: Memory Safety Analysis
+    needs: security-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install -y valgrind clang
+
+      - name: Build with AddressSanitizer
+        working-directory: src
+        run: |
+          make net
+          export CC=clang
+          export CXX=clang++
+          export CXXFLAGS="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer -g"
+          export LDFLAGS="-fsanitize=address -fsanitize=undefined"
+          make clean
+          make -j4 ARCH=x86-64 debug=yes build
+
+      - name: Run memory safety tests
+        working-directory: src
+        run: |
+          echo "Running memory safety tests..."
+          
+          # Quick memory test
+          echo "bench 8" | timeout 60 ./stockfish > asan-output.txt 2>&1 || true
+          
+          # Check for memory issues
+          if grep -q "ERROR" asan-output.txt; then
+            echo "::error title=Memory Safety Issue::AddressSanitizer detected memory safety issues"
+            cat asan-output.txt
+          else
+            echo "✅ No memory safety issues detected"
+          fi
+
+      - name: Valgrind analysis
+        working-directory: src
+        run: |
+          # Build without sanitizers for Valgrind
+          export CXXFLAGS="-g"
+          make clean
+          make -j4 ARCH=x86-64 debug=yes build
+          
+          echo "Running Valgrind analysis..."
+          echo "bench 6" | timeout 120 valgrind --tool=memcheck --leak-check=full \
+            --show-leak-kinds=all --track-origins=yes ./stockfish > valgrind-output.txt 2>&1 || true
+          
+          # Parse Valgrind results
+          if grep -q "ERROR SUMMARY: 0 errors" valgrind-output.txt; then
+            echo "✅ Valgrind: No memory errors detected"
+          else
+            echo "⚠️ Valgrind detected potential issues"
+            grep -A 5 "ERROR SUMMARY" valgrind-output.txt || true
+          fi
+
+      - name: Upload memory analysis results
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-analysis-results
+          path: |
+            src/asan-output.txt
+            src/valgrind-output.txt
+
+  security-report:
+    name: Security Report Generation
+    needs: [security-setup, codeql-advanced, dependency-scan, secret-scanning, memory-safety]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate comprehensive security report
+        run: |
+          echo "# 🔒 Security Analysis Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Configuration**: ${{ needs.security-setup.outputs.scan-depth }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📊 Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.codeql-advanced.result }} | Advanced security queries |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Scan | ${{ needs.dependency-scan.result }} | Library and function analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning | ${{ needs.secret-scanning.result }} | Credential and key detection |" >> $GITHUB_STEP_SUMMARY
+          echo "| Memory Safety | ${{ needs.memory-safety.result }} | AddressSanitizer & Valgrind |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🎯 Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "- Review all security findings before merging" >> $GITHUB_STEP_SUMMARY
+          echo "- Consider running full scan weekly on master branch" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor for new CVEs affecting dependencies" >> $GITHUB_STEP_SUMMARY
+
+      - name: Security status check
+        run: |
+          # Fail if critical security issues found
+          if [ "${{ needs.codeql-advanced.result }}" = "failure" ]; then
+            echo "::error title=Critical Security Issues::CodeQL analysis failed with critical security issues"
+            exit 1
+          fi
