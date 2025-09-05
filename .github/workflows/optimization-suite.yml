@@ -1,0 +1,306 @@
+name: Advanced GitHub Optimization Suite
+on:
+  push:
+    branches: [master, optimization-*]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
+  workflow_dispatch:
+    inputs:
+      optimization_level:
+        description: 'Optimization level'
+        required: true
+        default: 'balanced'
+        type: choice
+        options:
+          - conservative
+          - balanced
+          - aggressive
+      enable_all_features:
+        description: 'Enable all optimization features'
+        required: false
+        default: true
+        type: boolean
+      skip_heavy_tests:
+        description: 'Skip resource-intensive tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  OPTIMIZATION_LEVEL: ${{ inputs.optimization_level || 'balanced' }}
+  ENABLE_ALL_FEATURES: ${{ inputs.enable_all_features || 'true' }}
+
+# Global concurrency control
+concurrency:
+  group: optimization-suite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  optimization-coordinator:
+    name: 🚀 Optimization Coordinator
+    runs-on: ubuntu-latest
+    outputs:
+      run-cache-optimization: ${{ steps.features.outputs.cache }}
+      run-smart-testing: ${{ steps.features.outputs.testing }}
+      run-performance-monitoring: ${{ steps.features.outputs.performance }}
+      run-security-scanning: ${{ steps.features.outputs.security }}
+      run-artifact-management: ${{ steps.features.outputs.artifacts }}
+      run-workflow-optimization: ${{ steps.features.outputs.workflow }}
+      optimization-config: ${{ steps.config.outputs.config }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Determine optimization features
+        id: features
+        run: |
+          # Determine which optimization features to run based on context
+          
+          # Always run these core optimizations
+          echo "cache=true" >> $GITHUB_OUTPUT
+          echo "workflow=true" >> $GITHUB_OUTPUT
+          
+          # Conditional features based on trigger and settings
+          if [ "${{ env.ENABLE_ALL_FEATURES }}" = "true" ]; then
+            echo "testing=true" >> $GITHUB_OUTPUT
+            echo "performance=true" >> $GITHUB_OUTPUT
+            echo "security=true" >> $GITHUB_OUTPUT
+            echo "artifacts=true" >> $GITHUB_OUTPUT
+          else
+            # Minimal feature set for faster runs
+            echo "testing=${{ github.event_name == 'pull_request' }}" >> $GITHUB_OUTPUT
+            echo "performance=${{ github.ref == 'refs/heads/master' }}" >> $GITHUB_OUTPUT
+            echo "security=${{ github.event_name == 'schedule' }}" >> $GITHUB_OUTPUT
+            echo "artifacts=${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate optimization configuration
+        id: config
+        run: |
+          # Create comprehensive configuration for all optimization workflows
+          cat > optimization-config.json << EOF
+          {
+            "level": "${{ env.OPTIMIZATION_LEVEL }}",
+            "features": {
+              "cache": {
+                "enable_ccache": true,
+                "enable_network_cache": true,
+                "cache_key_prefix": "stockfish-optimized"
+              },
+              "testing": {
+                "test_selection_strategy": "${{ env.OPTIMIZATION_LEVEL }}",
+                "force_full_test": ${{ github.event_name == 'schedule' }}
+              },
+              "performance": {
+                "benchmark_depth": ${{ env.OPTIMIZATION_LEVEL == 'aggressive' && 16 || env.OPTIMIZATION_LEVEL == 'balanced' && 13 || 10 }},
+                "compare_with_master": true,
+                "performance_threshold": 5.0
+              },
+              "security": {
+                "enable_dependency_scan": true,
+                "enable_secret_scan": true,
+                "enable_sarif_upload": true,
+                "scan_schedule": "${{ github.event_name == 'schedule' && 'comprehensive' || 'standard' }}"
+              },
+              "artifacts": {
+                "retention_days": ${{ github.ref == 'refs/heads/master' && 90 || 30 }},
+                "enable_compression": true,
+                "enable_metadata": true,
+                "artifact_prefix": "stockfish-optimized"
+              },
+              "workflow": {
+                "max_parallel_jobs": ${{ env.OPTIMIZATION_LEVEL == 'aggressive' && 8 || env.OPTIMIZATION_LEVEL == 'balanced' && 4 || 2 }},
+                "enable_auto_cancel": true,
+                "resource_optimization": "${{ env.OPTIMIZATION_LEVEL }}"
+              }
+            },
+            "context": {
+              "event": "${{ github.event_name }}",
+              "ref": "${{ github.ref }}",
+              "is_master": ${{ github.ref == 'refs/heads/master' }},
+              "is_pr": ${{ github.event_name == 'pull_request' }},
+              "is_scheduled": ${{ github.event_name == 'schedule' }}
+            }
+          }
+          EOF
+          
+          CONFIG=$(cat optimization-config.json | jq -c .)
+          echo "config=$CONFIG" >> $GITHUB_OUTPUT
+          
+          echo "Generated optimization configuration:"
+          cat optimization-config.json | jq '.'
+
+      - name: Upload optimization config
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimization-config
+          path: optimization-config.json
+
+  # Cache Optimization (Always runs first)
+  cache-optimization:
+    name: 💾 Cache Optimization
+    needs: optimization-coordinator
+    if: needs.optimization-coordinator.outputs.run-cache-optimization == 'true'
+    uses: ./.github/workflows/cache-optimization.yml
+    with:
+      cache_key_prefix: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.cache.cache_key_prefix }}
+      enable_ccache: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.cache.enable_ccache }}
+      enable_network_cache: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.cache.enable_network_cache }}
+
+  # Workflow Optimization (Runs in parallel with cache)
+  workflow-optimization:
+    name: ⚙️ Workflow Optimization
+    needs: optimization-coordinator
+    if: needs.optimization-coordinator.outputs.run-workflow-optimization == 'true'
+    uses: ./.github/workflows/workflow-optimization.yml
+    with:
+      max_parallel_jobs: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.workflow.max_parallel_jobs }}
+      enable_auto_cancel: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.workflow.enable_auto_cancel }}
+      resource_optimization: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.workflow.resource_optimization }}
+
+  # Smart Testing (Depends on cache)
+  smart-testing:
+    name: 🧠 Smart Testing
+    needs: [optimization-coordinator, cache-optimization]
+    if: needs.optimization-coordinator.outputs.run-smart-testing == 'true'
+    uses: ./.github/workflows/smart-testing.yml
+    with:
+      test_selection_strategy: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.testing.test_selection_strategy }}
+      force_full_test: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.testing.force_full_test }}
+
+  # Performance Monitoring (Can run in parallel with testing)
+  performance-monitoring:
+    name: 📊 Performance Monitoring
+    needs: [optimization-coordinator, cache-optimization]
+    if: needs.optimization-coordinator.outputs.run-performance-monitoring == 'true'
+    uses: ./.github/workflows/performance-monitoring.yml
+    with:
+      benchmark_depth: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.performance.benchmark_depth }}
+      compare_with_master: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.performance.compare_with_master }}
+      performance_threshold: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.performance.performance_threshold }}
+
+  # Security Scanning (Independent, can run in parallel)
+  security-scanning:
+    name: 🔒 Enhanced Security
+    needs: optimization-coordinator
+    if: needs.optimization-coordinator.outputs.run-security-scanning == 'true'
+    uses: ./.github/workflows/security-enhanced.yml
+    with:
+      enable_dependency_scan: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.security.enable_dependency_scan }}
+      enable_secret_scan: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.security.enable_secret_scan }}
+      enable_sarif_upload: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.security.enable_sarif_upload }}
+      scan_schedule: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.security.scan_schedule }}
+
+  # Artifact Management (Depends on successful builds)
+  artifact-management:
+    name: 📦 Artifact Management
+    needs: [optimization-coordinator, smart-testing, performance-monitoring]
+    if: needs.optimization-coordinator.outputs.run-artifact-management == 'true' && (success() || failure())
+    uses: ./.github/workflows/artifact-management.yml
+    with:
+      retention_days: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.artifacts.retention_days }}
+      enable_compression: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.artifacts.enable_compression }}
+      enable_metadata: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.artifacts.enable_metadata }}
+      artifact_prefix: ${{ fromJson(needs.optimization-coordinator.outputs.optimization-config).features.artifacts.artifact_prefix }}
+
+  # Final optimization report
+  optimization-report:
+    name: 📋 Optimization Report
+    needs: [
+      optimization-coordinator,
+      cache-optimization,
+      workflow-optimization,
+      smart-testing,
+      performance-monitoring,
+      security-scanning,
+      artifact-management
+    ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download optimization config
+        uses: actions/download-artifact@v4
+        with:
+          name: optimization-config
+
+      - name: Generate comprehensive report
+        run: |
+          echo "# 🚀 GitHub Optimization Suite Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Optimization Level**: ${{ env.OPTIMIZATION_LEVEL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**All Features Enabled**: ${{ env.ENABLE_ALL_FEATURES }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📊 Feature Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Feature | Enabled | Status | Performance Impact |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|---------|---------------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cache Optimization | ${{ needs.optimization-coordinator.outputs.run-cache-optimization }} | ${{ needs.cache-optimization.result || 'skipped' }} | 🟢 High |" >> $GITHUB_STEP_SUMMARY
+          echo "| Workflow Optimization | ${{ needs.optimization-coordinator.outputs.run-workflow-optimization }} | ${{ needs.workflow-optimization.result || 'skipped' }} | 🟢 High |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smart Testing | ${{ needs.optimization-coordinator.outputs.run-smart-testing }} | ${{ needs.smart-testing.result || 'skipped' }} | 🟡 Medium |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Monitoring | ${{ needs.optimization-coordinator.outputs.run-performance-monitoring }} | ${{ needs.performance-monitoring.result || 'skipped' }} | 🟡 Medium |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scanning | ${{ needs.optimization-coordinator.outputs.run-security-scanning }} | ${{ needs.security-scanning.result || 'skipped' }} | 🟠 Low |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact Management | ${{ needs.optimization-coordinator.outputs.run-artifact-management }} | ${{ needs.artifact-management.result || 'skipped' }} | 🟢 High |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Calculate overall success rate
+          TOTAL_ENABLED=0
+          TOTAL_SUCCESS=0
+          
+          for result in '${{ needs.cache-optimization.result }}' '${{ needs.workflow-optimization.result }}' '${{ needs.smart-testing.result }}' '${{ needs.performance-monitoring.result }}' '${{ needs.security-scanning.result }}' '${{ needs.artifact-management.result }}'; do
+            if [ "$result" != "skipped" ] && [ "$result" != "" ]; then
+              TOTAL_ENABLED=$((TOTAL_ENABLED + 1))
+              if [ "$result" = "success" ]; then
+                TOTAL_SUCCESS=$((TOTAL_SUCCESS + 1))
+              fi
+            fi
+          done
+          
+          if [ $TOTAL_ENABLED -gt 0 ]; then
+            SUCCESS_RATE=$((TOTAL_SUCCESS * 100 / TOTAL_ENABLED))
+            echo "## 🎯 Overall Performance" >> $GITHUB_STEP_SUMMARY
+            echo "- **Success Rate**: ${SUCCESS_RATE}% ($TOTAL_SUCCESS/$TOTAL_ENABLED)" >> $GITHUB_STEP_SUMMARY
+            
+            if [ $SUCCESS_RATE -ge 80 ]; then
+              echo "- **Status**: ✅ Excellent - Optimizations working well" >> $GITHUB_STEP_SUMMARY
+            elif [ $SUCCESS_RATE -ge 60 ]; then
+              echo "- **Status**: ⚠️ Good - Some optimizations need attention" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Status**: ❌ Needs Improvement - Review optimization configuration" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 💡 Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "1. **For faster builds**: Use 'aggressive' optimization level" >> $GITHUB_STEP_SUMMARY
+          echo "2. **For stability**: Use 'conservative' optimization level" >> $GITHUB_STEP_SUMMARY
+          echo "3. **For PRs**: Enable smart testing to run only relevant tests" >> $GITHUB_STEP_SUMMARY
+          echo "4. **For releases**: Enable all features with comprehensive testing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "🔧 **Configuration**: Check the optimization-config artifact for detailed settings" >> $GITHUB_STEP_SUMMARY
+
+      - name: Optimization status check
+        run: |
+          # Check critical optimization components
+          CRITICAL_FAILED=0
+          
+          if [ "${{ needs.cache-optimization.result }}" = "failure" ]; then
+            echo "::warning title=Cache Optimization Failed::Cache optimization failed, builds may be slower"
+            CRITICAL_FAILED=$((CRITICAL_FAILED + 1))
+          fi
+          
+          if [ "${{ needs.workflow-optimization.result }}" = "failure" ]; then
+            echo "::warning title=Workflow Optimization Failed::Workflow optimization failed, resource usage may be suboptimal"
+            CRITICAL_FAILED=$((CRITICAL_FAILED + 1))
+          fi
+          
+          if [ $CRITICAL_FAILED -gt 1 ]; then
+            echo "::error title=Multiple Critical Optimizations Failed::Multiple critical optimizations failed, consider reviewing the configuration"
+          fi
+          
+          echo "Optimization suite completed with $CRITICAL_FAILED critical failures"

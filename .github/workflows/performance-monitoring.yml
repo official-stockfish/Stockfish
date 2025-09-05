@@ -1,0 +1,254 @@
+name: Performance Monitoring
+on:
+  workflow_call:
+    inputs:
+      benchmark_depth:
+        type: number
+        required: false
+        default: 13
+      compare_with_master:
+        type: boolean
+        required: false
+        default: true
+      performance_threshold:
+        type: number
+        required: false
+        default: 5.0  # percentage threshold for performance regression
+
+jobs:
+  performance-baseline:
+    name: Establish Performance Baseline
+    runs-on: ubuntu-latest
+    outputs:
+      baseline-nodes: ${{ steps.baseline.outputs.nodes }}
+      baseline-nps: ${{ steps.baseline.outputs.nps }}
+      baseline-time: ${{ steps.baseline.outputs.time }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install time
+
+      - name: Build baseline version
+        working-directory: src
+        run: |
+          make net
+          make clean
+          make -j4 ARCH=x86-64-avx2 profile-build
+          mv stockfish stockfish-baseline
+
+      - name: Run baseline benchmark
+        id: baseline
+        working-directory: src
+        run: |
+          echo "Running baseline benchmark..."
+          RESULT=$(echo "bench ${{ inputs.benchmark_depth }}" | timeout 300 ./stockfish-baseline | tail -n 1)
+          echo "Baseline result: $RESULT"
+          
+          # Parse benchmark results
+          NODES=$(echo "$RESULT" | grep -o '[0-9]* nodes' | cut -d' ' -f1)
+          NPS=$(echo "$RESULT" | grep -o '[0-9]* nps' | cut -d' ' -f1)
+          TIME=$(echo "$RESULT" | grep -o '[0-9]* ms' | cut -d' ' -f1)
+          
+          echo "nodes=$NODES" >> $GITHUB_OUTPUT
+          echo "nps=$NPS" >> $GITHUB_OUTPUT
+          echo "time=$TIME" >> $GITHUB_OUTPUT
+          
+          echo "Baseline performance:"
+          echo "  Nodes: $NODES"
+          echo "  NPS: $NPS"
+          echo "  Time: ${TIME}ms"
+
+      - name: Upload baseline binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: stockfish-baseline
+          path: src/stockfish-baseline
+
+  performance-test:
+    name: Performance Testing
+    needs: performance-baseline
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        arch: [x86-64-avx2, x86-64-bmi2]
+        exclude:
+          - os: macos-latest
+            arch: x86-64-bmi2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install time valgrind perf
+
+      - name: Setup environment (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install coreutils
+
+      - name: Build current version
+        working-directory: src
+        run: |
+          make net
+          make clean
+          make -j4 ARCH=${{ matrix.arch }} profile-build
+
+      - name: Run performance benchmark
+        id: current
+        working-directory: src
+        run: |
+          echo "Running current benchmark with arch ${{ matrix.arch }}..."
+          RESULT=$(echo "bench ${{ inputs.benchmark_depth }}" | timeout 300 ./stockfish | tail -n 1)
+          echo "Current result: $RESULT"
+          
+          # Parse benchmark results
+          NODES=$(echo "$RESULT" | grep -o '[0-9]* nodes' | cut -d' ' -f1)
+          NPS=$(echo "$RESULT" | grep -o '[0-9]* nps' | cut -d' ' -f1)
+          TIME=$(echo "$RESULT" | grep -o '[0-9]* ms' | cut -d' ' -f1)
+          
+          echo "nodes=$NODES" >> $GITHUB_OUTPUT
+          echo "nps=$NPS" >> $GITHUB_OUTPUT
+          echo "time=$TIME" >> $GITHUB_OUTPUT
+
+      - name: Memory usage analysis
+        if: runner.os == 'Linux'
+        working-directory: src
+        run: |
+          echo "Memory usage analysis:"
+          valgrind --tool=massif --massif-out-file=massif.out \
+            ./stockfish <<< "bench 8" > /dev/null 2>&1 || true
+          if [ -f massif.out ]; then
+            ms_print massif.out | head -20 || true
+          fi
+
+      - name: Performance regression check
+        if: inputs.compare_with_master
+        run: |
+          BASELINE_NPS=${{ needs.performance-baseline.outputs.baseline-nps }}
+          CURRENT_NPS=${{ steps.current.outputs.nps }}
+          THRESHOLD=${{ inputs.performance_threshold }}
+          
+          if [ -n "$BASELINE_NPS" ] && [ -n "$CURRENT_NPS" ] && [ "$BASELINE_NPS" -gt 0 ]; then
+            # Calculate percentage change
+            CHANGE=$(echo "scale=2; (($CURRENT_NPS - $BASELINE_NPS) * 100) / $BASELINE_NPS" | bc -l)
+            
+            echo "Performance comparison:"
+            echo "  Baseline NPS: $BASELINE_NPS"
+            echo "  Current NPS: $CURRENT_NPS"
+            echo "  Change: ${CHANGE}%"
+            
+            # Check for significant regression
+            if [ $(echo "$CHANGE < -$THRESHOLD" | bc -l) -eq 1 ]; then
+              echo "::warning title=Performance Regression::Performance decreased by ${CHANGE}% (threshold: -${THRESHOLD}%)"
+              echo "REGRESSION_DETECTED=true" >> $GITHUB_ENV
+            elif [ $(echo "$CHANGE > $THRESHOLD" | bc -l) -eq 1 ]; then
+              echo "::notice title=Performance Improvement::Performance improved by ${CHANGE}%"
+            fi
+          fi
+
+      - name: Upload performance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            src/massif.out
+            src/stockfish
+
+  benchmark-suite:
+    name: Extended Benchmark Suite
+    runs-on: ubuntu-latest
+    needs: performance-baseline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install expect bc
+
+      - name: Build optimized version
+        working-directory: src
+        run: |
+          make net
+          make clean
+          make -j4 ARCH=x86-64-avx2 profile-build
+
+      - name: Extended benchmark suite
+        working-directory: src
+        run: |
+          echo "Running extended benchmark suite..."
+          
+          # Multiple depth benchmarks
+          for DEPTH in 10 12 14 16; do
+            echo "Benchmark depth $DEPTH:"
+            RESULT=$(echo "bench $DEPTH" | timeout 600 ./stockfish | tail -n 1)
+            echo "  $RESULT"
+          done
+          
+          # Fixed time benchmarks
+          echo "Fixed time benchmarks:"
+          for TIME in 1000 5000 10000; do
+            echo "Time limit ${TIME}ms:"
+            RESULT=$(echo "go movetime $TIME" | ./stockfish < /dev/null | grep "bestmove" || echo "timeout")
+            echo "  $RESULT"
+          done
+
+      - name: Position-specific benchmarks
+        working-directory: src
+        run: |
+          echo "Position-specific benchmarks:"
+          
+          # Test specific positions for consistent performance
+          POSITIONS=(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"
+          )
+          
+          for i in "${!POSITIONS[@]}"; do
+            echo "Position $((i+1)):"
+            echo "position fen ${POSITIONS[$i]}" | ./stockfish <<< "go depth 10" | grep "bestmove" || true
+          done
+
+  performance-summary:
+    name: Performance Summary
+    needs: [performance-baseline, performance-test, benchmark-suite]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate performance summary
+        run: |
+          echo "# Performance Monitoring Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Benchmark Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Depth**: ${{ inputs.benchmark_depth }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Threshold**: ${{ inputs.performance_threshold }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Compare with Master**: ${{ inputs.compare_with_master }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Baseline Performance" >> $GITHUB_STEP_SUMMARY
+          echo "- **Nodes**: ${{ needs.performance-baseline.outputs.baseline-nodes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **NPS**: ${{ needs.performance-baseline.outputs.baseline-nps }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: ${{ needs.performance-baseline.outputs.baseline-time }}ms" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance Tests**: ${{ needs.performance-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Benchmark Suite**: ${{ needs.benchmark-suite.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for regressions
+        if: env.REGRESSION_DETECTED == 'true'
+        run: |
+          echo "::error title=Performance Regression Detected::Significant performance regression detected. Please review the changes."
+          exit 1

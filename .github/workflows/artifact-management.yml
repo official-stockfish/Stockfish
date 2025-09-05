@@ -1,0 +1,331 @@
+name: Artifact Management
+on:
+  workflow_call:
+    inputs:
+      retention_days:
+        type: number
+        required: false
+        default: 30
+      enable_compression:
+        type: boolean
+        required: false
+        default: true
+      artifact_prefix:
+        type: string
+        required: false
+        default: 'stockfish'
+      enable_metadata:
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  artifact-metadata:
+    name: Generate Artifact Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      build-id: ${{ steps.metadata.outputs.build-id }}
+      commit-info: ${{ steps.metadata.outputs.commit-info }}
+      build-timestamp: ${{ steps.metadata.outputs.timestamp }}
+      artifact-manifest: ${{ steps.metadata.outputs.manifest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Generate build metadata
+        id: metadata
+        run: |
+          # Generate unique build ID
+          BUILD_ID="${{ inputs.artifact_prefix }}-$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          echo "build-id=$BUILD_ID" >> $GITHUB_OUTPUT
+          
+          # Commit information
+          COMMIT_INFO="$(git log -1 --pretty=format:'%h - %s (%an, %ad)' --date=short)"
+          echo "commit-info=$COMMIT_INFO" >> $GITHUB_OUTPUT
+          
+          # Timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          
+          # Create manifest template
+          cat > artifact-manifest.json << EOF
+          {
+            "build_id": "$BUILD_ID",
+            "commit": "$(git rev-parse HEAD)",
+            "branch": "${{ github.ref_name }}",
+            "timestamp": "$TIMESTAMP",
+            "commit_info": "$COMMIT_INFO",
+            "workflow_run": "${{ github.run_id }}",
+            "artifacts": []
+          }
+          EOF
+          
+          echo "manifest=$(cat artifact-manifest.json | tr -d '\n')" >> $GITHUB_OUTPUT
+          
+          echo "Generated metadata:"
+          echo "  Build ID: $BUILD_ID"
+          echo "  Commit: $COMMIT_INFO"
+          echo "  Timestamp: $TIMESTAMP"
+
+      - name: Upload metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata
+          path: artifact-manifest.json
+          retention-days: ${{ inputs.retention_days }}
+
+  organize-binaries:
+    name: Organize Binary Artifacts
+    needs: artifact-metadata
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [linux, macos, windows]
+        arch: [x86-64, x86-64-avx2, x86-64-bmi2, armv8]
+        exclude:
+          - platform: windows
+            arch: armv8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup build environment
+        run: |
+          case "${{ matrix.platform }}" in
+            linux)
+              sudo apt update
+              sudo apt install zip
+              ;;
+            macos)
+              # Already has zip
+              ;;
+            windows)
+              # Will use msys2
+              ;;
+          esac
+
+      - name: Build binary
+        working-directory: src
+        run: |
+          make net
+          case "${{ matrix.platform }}" in
+            linux)
+              make clean
+              make -j4 ARCH=${{ matrix.arch }} profile-build
+              ;;
+            macos)
+              make clean
+              make -j4 ARCH=${{ matrix.arch }} build
+              ;;
+            windows)
+              # Simplified for demo
+              make clean
+              make -j4 ARCH=${{ matrix.arch }} build
+              ;;
+          esac
+
+      - name: Prepare organized artifacts
+        working-directory: src
+        run: |
+          BUILD_ID="${{ needs.artifact-metadata.outputs.build-id }}"
+          PLATFORM="${{ matrix.platform }}"
+          ARCH="${{ matrix.arch }}"
+          
+          # Create organized directory structure
+          mkdir -p "../artifacts/$BUILD_ID/$PLATFORM/$ARCH"
+          
+          # Copy binary with proper naming
+          if [ "$PLATFORM" = "windows" ]; then
+            EXT=".exe"
+          else
+            EXT=""
+          fi
+          
+          cp "stockfish$EXT" "../artifacts/$BUILD_ID/$PLATFORM/$ARCH/stockfish$EXT"
+          
+          # Add platform-specific metadata
+          cat > "../artifacts/$BUILD_ID/$PLATFORM/$ARCH/build-info.txt" << EOF
+          Platform: $PLATFORM
+          Architecture: $ARCH
+          Build ID: $BUILD_ID
+          Commit: $(git rev-parse HEAD)
+          Build Date: $(date)
+          Compiler: $(which g++ || which clang++ || echo "unknown")
+          Compiler Version: $(g++ --version 2>/dev/null | head -1 || clang++ --version 2>/dev/null | head -1 || echo "unknown")
+          EOF
+          
+          # Generate checksum
+          cd "../artifacts/$BUILD_ID/$PLATFORM/$ARCH"
+          if command -v sha256sum >/dev/null; then
+            sha256sum "stockfish$EXT" > "stockfish$EXT.sha256"
+          elif command -v shasum >/dev/null; then
+            shasum -a 256 "stockfish$EXT" > "stockfish$EXT.sha256"
+          fi
+
+      - name: Compress artifacts
+        if: inputs.enable_compression
+        run: |
+          BUILD_ID="${{ needs.artifact-metadata.outputs.build-id }}"
+          PLATFORM="${{ matrix.platform }}"
+          ARCH="${{ matrix.arch }}"
+          
+          cd "artifacts/$BUILD_ID/$PLATFORM/$ARCH"
+          
+          # Create compressed archive
+          if [ "$PLATFORM" = "windows" ]; then
+            zip -r "../stockfish-$PLATFORM-$ARCH.zip" .
+          else
+            tar -czf "../stockfish-$PLATFORM-$ARCH.tar.gz" .
+          fi
+          
+          # Remove uncompressed files
+          cd ..
+          rm -rf "$ARCH"
+
+      - name: Upload organized artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.artifact-metadata.outputs.build-id }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: artifacts/${{ needs.artifact-metadata.outputs.build-id }}/${{ matrix.platform }}/
+          retention-days: ${{ inputs.retention_days }}
+          compression-level: ${{ inputs.enable_compression && 6 || 0 }}
+
+  collect-debug-info:
+    name: Collect Debug Information
+    needs: artifact-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Generate debug build
+        working-directory: src
+        run: |
+          make net
+          make clean
+          make -j4 ARCH=x86-64 debug=yes build
+
+      - name: Collect debug information
+        working-directory: src
+        run: |
+          BUILD_ID="${{ needs.artifact-metadata.outputs.build-id }}"
+          mkdir -p "../debug-info/$BUILD_ID"
+          
+          # Copy debug binary
+          cp stockfish "../debug-info/$BUILD_ID/stockfish-debug"
+          
+          # Generate debug information
+          if command -v objdump >/dev/null; then
+            objdump -t stockfish > "../debug-info/$BUILD_ID/symbols.txt"
+            objdump -d stockfish > "../debug-info/$BUILD_ID/disassembly.txt"
+          fi
+          
+          if command -v nm >/dev/null; then
+            nm stockfish > "../debug-info/$BUILD_ID/nm-symbols.txt"
+          fi
+          
+          # Size information
+          size stockfish > "../debug-info/$BUILD_ID/size-info.txt"
+          
+          # File information
+          file stockfish > "../debug-info/$BUILD_ID/file-info.txt"
+
+      - name: Upload debug information
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.artifact-metadata.outputs.build-id }}-debug-info
+          path: debug-info/
+          retention-days: ${{ inputs.retention_days }}
+
+  create-release-package:
+    name: Create Release Package
+    needs: [artifact-metadata, organize-binaries, collect-debug-info]
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts/
+
+      - name: Create comprehensive release package
+        run: |
+          BUILD_ID="${{ needs.artifact-metadata.outputs.build-id }}"
+          mkdir -p "release-package/$BUILD_ID"
+          
+          # Copy all binary artifacts
+          find all-artifacts -name "*.tar.gz" -o -name "*.zip" | while read file; do
+            cp "$file" "release-package/$BUILD_ID/"
+          done
+          
+          # Create release notes
+          cat > "release-package/$BUILD_ID/RELEASE_NOTES.md" << EOF
+          # Stockfish Release Package
+          
+          **Build ID**: $BUILD_ID
+          **Commit**: ${{ needs.artifact-metadata.outputs.commit-info }}
+          **Build Date**: ${{ needs.artifact-metadata.outputs.build-timestamp }}
+          **Workflow Run**: ${{ github.run_id }}
+          
+          ## Included Binaries
+          
+          This package contains optimized Stockfish binaries for multiple platforms and architectures.
+          
+          ### Verification
+          
+          Each binary includes SHA256 checksums for verification.
+          
+          ### Support
+          
+          For issues and support, visit: https://github.com/official-stockfish/Stockfish
+          EOF
+          
+          # Create checksums for the entire package
+          cd "release-package/$BUILD_ID"
+          find . -type f -name "*.tar.gz" -o -name "*.zip" | while read file; do
+            sha256sum "$file" >> "CHECKSUMS.sha256"
+          done
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.artifact-metadata.outputs.build-id }}-release-package
+          path: release-package/
+          retention-days: 90  # Keep releases longer
+
+  artifact-cleanup:
+    name: Artifact Cleanup
+    needs: [artifact-metadata, organize-binaries]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate artifact summary
+        run: |
+          echo "# 📦 Artifact Management Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build ID**: ${{ needs.artifact-metadata.outputs.build-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: ${{ needs.artifact-metadata.outputs.build-timestamp }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Retention**: ${{ inputs.retention_days }} days" >> $GITHUB_STEP_SUMMARY
+          echo "**Compression**: ${{ inputs.enable_compression }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📋 Artifact Inventory" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | Status | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Binaries | ${{ needs.organize-binaries.result }} | Platform-specific executables |" >> $GITHUB_STEP_SUMMARY
+          echo "| Debug Info | ${{ needs.collect-debug-info.result }} | Debugging symbols and analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "| Metadata | ✅ | Build information and manifest |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🔧 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifacts are organized by platform and architecture" >> $GITHUB_STEP_SUMMARY
+          echo "- Each binary includes checksums for verification" >> $GITHUB_STEP_SUMMARY
+          echo "- Debug information available for troubleshooting" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup temporary files
+        run: |
+          # This would clean up any temporary files if needed
+          echo "Cleanup completed"

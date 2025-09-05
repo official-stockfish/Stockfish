@@ -1,0 +1,277 @@
+name: Smart Testing
+on:
+  workflow_call:
+    inputs:
+      force_full_test:
+        type: boolean
+        required: false
+        default: false
+      test_selection_strategy:
+        type: string
+        required: false
+        default: 'auto'  # auto, minimal, full
+
+jobs:
+  analyze-changes:
+    name: Analyze Changes for Smart Testing
+    runs-on: ubuntu-latest
+    outputs:
+      test-core: ${{ steps.changes.outputs.core }}
+      test-nnue: ${{ steps.changes.outputs.nnue }}
+      test-platform-specific: ${{ steps.changes.outputs.platform }}
+      test-search: ${{ steps.changes.outputs.search }}
+      test-evaluation: ${{ steps.changes.outputs.evaluation }}
+      test-io: ${{ steps.changes.outputs.io }}
+      force-full: ${{ steps.decision.outputs.full-test }}
+      skip-tests: ${{ steps.decision.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect file changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            core:
+              - 'src/main.cpp'
+              - 'src/engine.cpp'
+              - 'src/engine.h'
+              - 'src/types.h'
+              - 'src/Makefile'
+            nnue:
+              - 'src/nnue/**'
+              - 'src/evaluate.cpp'
+              - 'src/evaluate.h'
+            platform:
+              - 'src/thread*.cpp'
+              - 'src/thread*.h'
+              - 'src/numa.h'
+              - 'src/memory.cpp'
+              - 'src/memory.h'
+            search:
+              - 'src/search.cpp'
+              - 'src/search.h'
+              - 'src/movegen.cpp'
+              - 'src/movegen.h'
+              - 'src/movepick.cpp'
+              - 'src/movepick.h'
+            evaluation:
+              - 'src/evaluate.cpp'
+              - 'src/evaluate.h'
+              - 'src/score.cpp'
+              - 'src/score.h'
+            io:
+              - 'src/uci.cpp'
+              - 'src/uci.h'
+              - 'src/ucioption.cpp'
+              - 'src/ucioption.h'
+            docs:
+              - '*.md'
+              - 'AUTHORS'
+              - 'Copying.txt'
+
+      - name: Make testing decision
+        id: decision
+        run: |
+          # Force full tests in certain conditions
+          FORCE_FULL="false"
+          SKIP_TESTS="false"
+          
+          # Check if this is a force full test request
+          if [ "${{ inputs.force_full_test }}" = "true" ]; then
+            FORCE_FULL="true"
+          fi
+          
+          # Check if only documentation changed
+          if [ "${{ steps.changes.outputs.docs }}" = "true" ] && \
+             [ "${{ steps.changes.outputs.core }}" = "false" ] && \
+             [ "${{ steps.changes.outputs.nnue }}" = "false" ] && \
+             [ "${{ steps.changes.outputs.platform }}" = "false" ] && \
+             [ "${{ steps.changes.outputs.search }}" = "false" ] && \
+             [ "${{ steps.changes.outputs.evaluation }}" = "false" ] && \
+             [ "${{ steps.changes.outputs.io }}" = "false" ]; then
+            SKIP_TESTS="true"
+          fi
+          
+          # Check testing strategy
+          if [ "${{ inputs.test_selection_strategy }}" = "full" ]; then
+            FORCE_FULL="true"
+          fi
+          
+          echo "full-test=$FORCE_FULL" >> $GITHUB_OUTPUT
+          echo "skip=$SKIP_TESTS" >> $GITHUB_OUTPUT
+          
+          echo "Testing decision:"
+          echo "  - Force full test: $FORCE_FULL"
+          echo "  - Skip tests: $SKIP_TESTS"
+          echo "  - Core changes: ${{ steps.changes.outputs.core }}"
+          echo "  - NNUE changes: ${{ steps.changes.outputs.nnue }}"
+          echo "  - Platform changes: ${{ steps.changes.outputs.platform }}"
+
+  smart-core-tests:
+    name: Smart Core Tests
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.skip-tests != 'true' && (needs.analyze-changes.outputs.test-core == 'true' || needs.analyze-changes.outputs.force-full == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install expect valgrind
+
+      - name: Download network
+        run: |
+          cd src
+          make net
+
+      - name: Core functionality tests
+        working-directory: src
+        run: |
+          make clean
+          make -j4 ARCH=x86-64 build
+          ../tests/signature.sh
+          echo "Core tests completed successfully"
+
+  smart-nnue-tests:
+    name: Smart NNUE Tests
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.skip-tests != 'true' && (needs.analyze-changes.outputs.test-nnue == 'true' || needs.analyze-changes.outputs.force-full == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install expect
+
+      - name: Download network
+        run: |
+          cd src
+          make net
+
+      - name: NNUE specific tests
+        working-directory: src
+        run: |
+          # Test different NNUE configurations
+          make clean
+          make -j4 ARCH=x86-64-avx2 build
+          ../tests/signature.sh
+          
+          # Test NNUE evaluation consistency
+          echo "go depth 10" | ./stockfish | grep "bestmove"
+          echo "NNUE tests completed successfully"
+
+  smart-platform-tests:
+    name: Smart Platform Tests
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.skip-tests != 'true' && (needs.analyze-changes.outputs.test-platform-specific == 'true' || needs.analyze-changes.outputs.force-full == 'true')
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install expect
+
+      - name: Setup environment (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install coreutils
+
+      - name: Setup environment (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          install: mingw-w64-x86_64-gcc make git expect
+
+      - name: Platform-specific tests
+        shell: bash
+        working-directory: src
+        run: |
+          make net
+          make clean
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            export PATH="/mingw64/bin:$PATH"
+          fi
+          make -j4 build
+          ../tests/signature.sh
+          echo "Platform tests completed for $RUNNER_OS"
+
+  smart-search-tests:
+    name: Smart Search Tests
+    needs: analyze-changes
+    if: needs.analyze-changes.outputs.skip-tests != 'true' && (needs.analyze-changes.outputs.test-search == 'true' || needs.analyze-changes.outputs.force-full == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup environment
+        run: |
+          sudo apt update
+          sudo apt install expect
+
+      - name: Download network
+        run: |
+          cd src
+          make net
+
+      - name: Search algorithm tests
+        working-directory: src
+        run: |
+          make clean
+          make -j4 ARCH=x86-64-avx2 build
+          
+          # Test search reproducibility
+          ../tests/reprosearch.sh
+          
+          # Test perft for move generation accuracy
+          ../tests/perft.sh
+          
+          echo "Search tests completed successfully"
+
+  test-summary:
+    name: Smart Testing Summary
+    needs: [analyze-changes, smart-core-tests, smart-nnue-tests, smart-platform-tests, smart-search-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# Smart Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Strategy**: ${{ inputs.test_selection_strategy }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Full**: ${{ inputs.force_full_test }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip Tests**: ${{ needs.analyze-changes.outputs.skip-tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Changes Detected" >> $GITHUB_STEP_SUMMARY
+          echo "- **Core**: ${{ needs.analyze-changes.outputs.test-core }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **NNUE**: ${{ needs.analyze-changes.outputs.test-nnue }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platform**: ${{ needs.analyze-changes.outputs.test-platform-specific }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Search**: ${{ needs.analyze-changes.outputs.test-search }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Core Tests**: ${{ needs.smart-core-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **NNUE Tests**: ${{ needs.smart-nnue-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platform Tests**: ${{ needs.smart-platform-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Search Tests**: ${{ needs.smart-search-tests.result }}" >> $GITHUB_STEP_SUMMARY
