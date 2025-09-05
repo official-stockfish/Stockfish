@@ -42,7 +42,7 @@ jobs:
           - name: Run with glibcxx assertions
             make_option: ""
             cxx_extra_flags: -D_GLIBCXX_ASSERTIONS
-            instrumented_option: non
+            instrumented_option: none
     defaults:
       run:
         working-directory: src

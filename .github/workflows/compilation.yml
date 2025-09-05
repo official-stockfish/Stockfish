@@ -43,10 +43,10 @@ jobs:
 
       - name: Download SDE package
         if: runner.os == 'Linux' || runner.os == 'Windows'
-        uses: petarpetrovt/setup-sde@91a1a03434384e064706634125a15f7446d2aafb # @v2.3
+        uses: petarpetrovt/setup-sde@f0fa5971dc275704531e94264dd23250c442aa41 # @v2.4
         with:
           environmentVariableName: SDE_DIR
-          sdeVersion: 9.27.0
+          sdeVersion: 9.33.0
 
       - name: Download the used network from the fishtest framework
         run: make net
