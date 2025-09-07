@@ -12,20 +12,17 @@ on:
 jobs:
   Artifacts:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ubuntu-latest
     env:
-      COMPCXX: ${{ matrix.config.compiler }}
-      COMP: ${{ matrix.config.comp }}
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
       BINARY: ${{ matrix.binaries }}
-      SDE: ${{ matrix.config.sde }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(inputs.matrix) }}
     defaults:
       run:
-        shell: ${{ matrix.config.shell }}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,13 +33,6 @@ jobs:
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
           path: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-
-      - name: Setup msys and install required packages
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.config.msys_sys }}
-          install: mingw-w64-${{ matrix.config.msys_env }} make git zip
 
       - name: Create Package
         run: |
@@ -69,13 +59,13 @@ jobs:
           cp CONTRIBUTING.md ../stockfish/
 
       - name: Create tar
-        if: runner.os != 'Windows'
+        if: ${{ !startsWith(matrix.config.os, 'windows') }}
         run: |
           chmod +x ./stockfish/stockfish-$NAME-$BINARY$EXT
           tar -cvf stockfish-$NAME-$BINARY.tar stockfish
 
       - name: Create zip
-        if: runner.os == 'Windows'
+        if: ${{ startsWith(matrix.config.os, 'windows') }}
         run: |
           zip -r stockfish-$NAME-$BINARY.zip stockfish
 
