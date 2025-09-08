@@ -644,6 +644,15 @@ void UCIEngine::on_update_full(const Engine::InfoFull& info, bool showWDL) {
        << " pv " << info.pv;             //
 
     sync_cout << ss.str() << sync_endl;
+
+    if (engine.get_options()["UCI_ShowWDL"]) { //reuse existing option
+        std::stringstream debug_ss;
+        debug_ss << "info string debug"
+                 << " hash_mb " << (info.hashfull * 512 / 1000)  // rough hash usage in MB
+                 << " search_speed " << (info.nps > 1000000 ? "fast" : "normal")
+                 << " tb_efficiency " << (info.nodes > 0 ? info.tbHits * 100 / info.nodes : 0);
+        sync_cout << debug_ss.str() << sync_endl;
+    }
 }
 
 void UCIEngine::on_iter(const Engine::InfoIter& info) {
