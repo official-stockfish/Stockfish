@@ -1067,6 +1067,7 @@ moves_loop:  // When in check, search starts here
 
                 history += 76 * mainHistory[us][move.from_to()] / 32;
 
+                // (*Scaler): Generally, a lower divisor scales well
                 lmrDepth += history / 3220;
 
                 Value futilityValue = ss->staticEval + 47 + 171 * !bestMove + 134 * lmrDepth
@@ -1630,9 +1631,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 
             // Continuation history based pruning
             if (!capture
-                && (*contHist[0])[pos.moved_piece(move)][move.to_sq()]
-                       + pawnHistory[pawn_history_index(pos)][pos.moved_piece(move)][move.to_sq()]
-                     <= 5475)
+                && pawnHistory[pawn_history_index(pos)][pos.moved_piece(move)][move.to_sq()] < 7300)
                 continue;
 
             // Do not search moves with bad enough SEE values
