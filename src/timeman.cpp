@@ -43,7 +43,8 @@ void TimeManagement::advance_nodes_time(std::int64_t nodes) {
 // Called at the beginning of the search and calculates
 // the bounds of time allowed for the current game ply. We currently support:
 //      1) x basetime (+ z increment)
-//      2) x moves in y seconds (+ z increment)
+//      2) x basetime (sudden death)
+//      3) x moves in y seconds (+ z increment)
 void TimeManagement::init(Search::LimitsType& limits,
                           Color               us,
                           int                 ply,
@@ -99,27 +100,47 @@ void TimeManagement::init(Search::LimitsType& limits,
                limits.time[us]
                  + (limits.inc[us] * (centiMTG - 100) - moveOverhead * (200 + centiMTG)) / 100);
 
-    // x basetime (+ z increment)
-    // If there is a healthy increment, timeLeft can exceed the actual available
-    // game time for the current move, so also cap to a percentage of available game time.
     if (limits.movestogo == 0)
     {
-        // Extra time according to timeLeft
-        if (originalTimeAdjust < 0)
-            originalTimeAdjust = 0.3128 * std::log10(timeLeft) - 0.4354;
+        // Sudden death time control
+        if (limits.inc[us] == 0)
+        {
+            // Extra time according to timeLeft
+            if (originalTimeAdjust < 0)
+                originalTimeAdjust = 0.2862 * std::log10(timeLeft) - 0.4126;
 
-        // Calculate time constants based on current time left.
-        double logTimeInSec = std::log10(scaledTime / 1000.0);
-        double optConstant  = std::min(0.0032116 + 0.000321123 * logTimeInSec, 0.00508017);
-        double maxConstant  = std::max(3.3977 + 3.03950 * logTimeInSec, 2.94761);
+            // Calculate time constants based on current time left.
+            double logTimeInSec = std::log10(scaledTime / 1000.0);
+            double optConstant  = std::min(0.0034775 + 0.000284188 * logTimeInSec, 0.00406734);
+            double maxConstant  = std::max(3.6627 + 3.7269 * logTimeInSec, 2.75068);
 
-        optScale = std::min(0.0121431 + std::pow(ply + 2.94693, 0.461073) * optConstant,
-                            0.213035 * limits.time[us] / timeLeft)
-                 * originalTimeAdjust;
+            optScale = std::min(0.011299 + std::pow(ply + 2.82122, 0.466422) * optConstant,
+                                0.213035 * limits.time[us] / timeLeft)
+                     * originalTimeAdjust;
 
-        maxScale = std::min(6.67704, maxConstant + ply / 11.9847);
+            maxScale = std::min(6.35772, maxConstant + ply / 12.7592);
+        }
+        // x basetime (+ z increment)
+        // If there is a healthy increment, timeLeft can exceed the actual available
+        // game time for the current move, so also cap to a percentage of available game time.
+        else
+        {
+            // Extra time according to timeLeft
+            if (originalTimeAdjust < 0)
+                originalTimeAdjust = 0.3128 * std::log10(timeLeft) - 0.4354;
+
+            // Calculate time constants based on current time left.
+            double logTimeInSec = std::log10(scaledTime / 1000.0);
+            double optConstant  = std::min(0.0032116 + 0.000321123 * logTimeInSec, 0.00508017);
+            double maxConstant  = std::max(3.3977 + 3.03950 * logTimeInSec, 2.94761);
+
+            optScale = std::min(0.0121431 + std::pow(ply + 2.94693, 0.461073) * optConstant,
+                                0.213035 * limits.time[us] / timeLeft)
+                     * originalTimeAdjust;
+
+            maxScale = std::min(6.67704, maxConstant + ply / 11.9847);
+        }
     }
-
     // x moves in y seconds (+ z increment)
     else
     {
