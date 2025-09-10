@@ -1461,9 +1461,9 @@ moves_loop:  // When in check, search starts here
         && ((bestValue < ss->staticEval && bestValue < beta)  // negative correction & no fail high
             || (bestValue > ss->staticEval && bestMove)))     // positive correction & no fail low
     {
-        auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 8,
-                                -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
-        update_correction_history(pos, ss, *this, bonus);
+        auto bonus = std::clamp(int(bestValue - ss->staticEval) * depth / 2,
+                                -CORRECTION_HISTORY_LIMIT, CORRECTION_HISTORY_LIMIT);
+        update_correction_history(pos, ss, *this, bonus / 4);
     }
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
