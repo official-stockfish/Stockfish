@@ -1861,7 +1861,7 @@ void update_quiet_histories(
     workerThread.mainHistory[us][move.from_to()] << bonus;  // Untuned to prevent duplicate effort
 
     if (ss->ply < LOW_PLY_HISTORY_SIZE)
-        workerThread.lowPlyHistory[ss->ply][move.from_to()] << (bonus * 741 / 1024) + 38;
+        workerThread.lowPlyHistory[ss->ply][move.from_to()] << bonus * 761 / 1024;
 
     update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(), bonus * 955 / 1024);
 
