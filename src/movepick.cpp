@@ -188,7 +188,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
             {
                 m.value = (*mainHistory)[us][m.from_to()] + (*continuationHistory[0])[pc][to];
                 if (ply < LOW_PLY_HISTORY_SIZE)
-                    m.value += 2 * (*lowPlyHistory)[ply][m.from_to()] / (1 + ply);
+                    m.value += 2 * (*lowPlyHistory)[ply][m.from_to()];
             }
         }
     }
