@@ -2105,7 +2105,8 @@ void SearchManager::pv(Search::Worker&           worker,
         bool isExact = i != pvIdx || tb || !updated;  // tablebase- and previous-scores are exact
 
         // Potentially correct and extend the PV, and in exceptional cases v
-        if (is_decisive(v) && std::abs(v) < VALUE_MATE_IN_MAX_PLY
+        if (!(worker.threads.stop.load() && worker.limits.use_time_management())
+            && is_decisive(v) && std::abs(v) < VALUE_MATE_IN_MAX_PLY
             && ((!rootMoves[i].scoreLowerbound && !rootMoves[i].scoreUpperbound) || isExact))
             syzygy_extend_pv(worker.options, worker.limits, pos, rootMoves[i], v);
 
