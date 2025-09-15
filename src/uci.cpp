@@ -44,6 +44,101 @@ namespace Stockfish {
 constexpr auto BenchmarkCommand = "speedtest";
 
 constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+bool isValidFEN(const std::string& fen) {
+
+    size_t pos = 0;
+    std::string parts[6];
+    int partIndex = 0;
+    
+    for (size_t i = 0; i < fen.length() && partIndex < 6; i++) {
+        if (fen[i] == ' ') {
+            partIndex++;
+            continue;
+        }
+        if (partIndex < 6) {
+            parts[partIndex] += fen[i];
+        }
+    }
+    
+    
+    std::string board = parts[0];
+    int rows = 0;
+    int squaresInRow = 0;
+    
+    for (char c : board) {
+        if (c == '/') {
+            if (squaresInRow != 8) return false;
+            rows++;
+            squaresInRow = 0;
+        } 
+        else if (std::isdigit(c)) {
+            int count = c - '0';
+            if (count < 1 || count > 8) return false;
+            squaresInRow += count;
+            if (squaresInRow > 8) return false;
+        }
+        else if ((c == 'p' || c == 'n' || c == 'b' || c == 'r' || 
+                 c == 'q' || c == 'k' || c == 'P' || c == 'N' || 
+                 c == 'B' || c == 'R' || c == 'Q' || c == 'K')) {
+            squaresInRow++;
+            if (squaresInRow > 8) return false;
+        }
+        else {
+            return false;
+        }
+    }
+    
+    if (rows != 7 || squaresInRow != 8) return false;
+    
+
+    std::string activeColor = parts[1];
+    if (activeColor != "w" && activeColor != "b") return false;
+    
+
+    std::string castling = parts[2];
+    if (castling != "-") {
+        bool hasK = false, hasQ = false, hask = false, hasq = false;
+        
+        for (char c : castling) {
+            if (c == 'K') {
+                if (hasK) return false; // duplicate
+                hasK = true;
+            }
+            else if (c == 'Q') {
+                if (hasQ) return false;
+                hasQ = true;
+            }
+            else if (c == 'k') {
+                if (hask) return false;
+                hask = true;
+            }
+            else if (c == 'q') {
+                if (hasq) return false;
+                hasq = true;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+
+
+    std::string enPassant = parts[3];
+    if (enPassant != "-") {
+        if (enPassant.length() != 2) return false;
+        
+        char file = enPassant[0];
+        char rank = enPassant[1];
+        
+        if (file < 'a' || file > 'h') return false;
+        if (rank != '3' && rank != '6') return false;
+    }
+    
+    
+    return true;
+}
+
 template<typename... Ts>
 struct overload: Ts... {
     using Ts::operator()...;
@@ -494,6 +589,7 @@ void UCIEngine::position(std::istringstream& is) {
         moves.push_back(token);
     }
 
+    if(!isValidFEN(fen)) return;
     engine.set_position(fen, moves);
 }
 
