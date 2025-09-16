@@ -1604,7 +1604,12 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         // Step 6. Pruning
         if (!is_loss(bestValue))
         {
+            // Knight promotions deserve special consideration as they often lead to tactics
+            bool isKnightPromotion = move.type_of() == PROMOTION
+                                   && move.promotion_type() == KNIGHT;
+
             // Futility pruning and moveCount pruning
+            // Skip pruning for knight promotions as they are often tactical
             if (!givesCheck && move.to_sq() != prevSq && !is_loss(futilityBase)
                 && move.type_of() != PROMOTION)
             {
@@ -1631,14 +1636,20 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             }
 
             // Continuation history based pruning
-            if (!capture
+            // Skip for knight promotions as they can be tactical surprises
+            if (!capture && !isKnightPromotion
                 && (*contHist[0])[pos.moved_piece(move)][move.to_sq()]
                        + pawnHistory[pawn_history_index(pos)][pos.moved_piece(move)][move.to_sq()]
                      <= 5475)
                 continue;
 
             // Do not search moves with bad enough SEE values
-            if (!pos.see_ge(move, -78))
+            // Be more lenient with knight promotions, especially checking ones
+            int seeThreshold = -78;
+            if (isKnightPromotion)
+                seeThreshold = givesCheck ? -300 : -150;
+
+            if (!pos.see_ge(move, seeThreshold))
                 continue;
         }
 
