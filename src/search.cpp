@@ -1192,6 +1192,15 @@ moves_loop:  // When in check, search starts here
         if (move == ttData.move)
             r -= 2018;
 
+        // Reduce less for checking moves, especially in endgames
+        // Checks force responses and can lead to tactical opportunities
+        if (givesCheck)
+        {
+            // Larger bonus in endgames (when material is low)
+            int materialBonus = (pos.non_pawn_material() < 3000) ? 400 : 200;
+            r -= 350 + materialBonus;
+        }
+
         if (capture)
             ss->statScore = 803 * int(PieceValue[pos.captured_piece()]) / 128
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
