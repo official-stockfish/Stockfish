@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <vector>
 
 #include "search.h"
 #include "syzygy/tbprobe.h"
