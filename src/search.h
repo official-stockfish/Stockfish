@@ -29,7 +29,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include "history.h"
 #include "misc.h"
