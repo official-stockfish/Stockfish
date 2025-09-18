@@ -39,8 +39,8 @@ Move Skill::pick_best(const RootMoves& rootMoves, size_t multiPV) {
     double weakness = 120 - 2 * level;
 
     // Choose best move. For each move score we add two terms, both dependent on
-    // weakness. One is deterministic and bigger for weaker levels, and one is
-    // random. Then we choose the move with the resulting highest score.
+    // weakness. One is deterministic and bigger for weaker levels, and the other
+    // is random. Then we choose the move with the resulting highest score.
     for (size_t i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
