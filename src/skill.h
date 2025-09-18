@@ -20,8 +20,10 @@
 #define SKILL_H_INCLUDED
 
 #include <algorithm>
+#include <cstddef>
 
 #include "search.h"
+#include "syzygy/tbprobe.h"
 #include "types.h"
 
 namespace Stockfish::Search {
