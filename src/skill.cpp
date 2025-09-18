@@ -19,6 +19,7 @@
 #include "skill.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "misc.h"
 #include "search.h"
