@@ -42,7 +42,7 @@
 #include "nnue/network.h"
 #include "nnue/nnue_accumulator.h"
 #include "position.h"
-#include "skill.h
+#include "skill.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"
 #include "timeman.h"
