@@ -19,7 +19,6 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
-#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -29,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "history.h"
 #include "misc.h"
