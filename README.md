@@ -42,6 +42,42 @@ Stockfish with it.
 
 See also the Stockfish [documentation][wiki-usage-link] for further usage help.
 
+## Winibar Extension
+
+**Winibar** is a fork of Stockfish that enhances the evaluation bar with
+human-realistic metrics. Inspired by the WINIMAX algorithm, Winibar recognizes
+that not all lost positions are equal: some are technically decisive but still
+offer practical chances, while others are dead-lost.  
+
+Key additions:
+- 🎯 **Human Defensibility Index (HDI)** – how resilient a position is against human play  
+- ⚡ **Trap Density** – proportion of replies that are immediate blunders  
+- 🔀 **Volatility** – swing potential and tactical sharpness  
+- 🔄 **Practical Save Probability (Psave)** – estimated chance that the weaker side can hold  
+
+These signals combine into a **more human-friendly evaluation bar**, designed
+to help players and researchers understand *practical chances* beyond the raw
+centipawn score.
+
+> Academic background: the concept builds on the WINIMAX algorithm introduced in  
+> *H.A. Raboanary, T.H. Raboanary, J.A. Raboanary, “Towards Optimal Play Fanorona,” AFRICON 2015*:contentReference[oaicite:0]{index=0}.
+
+### Cite this work
+
+If you use **Winibar** in academic work, please cite:
+
+```bibtex
+@inproceedings{Raboanary2015Winimax,
+  author    = {Heriniaina Andry Raboanary and Toky Hajatiana Raboanary and Julien Amédée Raboanary},
+  title     = {Towards Optimal Play Fanorona},
+  booktitle = {2015 IEEE AFRICON},
+  year      = {2015},
+  pages     = {1--6},
+  doi       = {10.1109/AFRCON.2015.7331996}
+}
+
+
+
 ## Files
 
 This distribution of Stockfish consists of the following files:
