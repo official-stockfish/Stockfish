@@ -75,7 +75,7 @@ If you use **Winibar** in academic work, please cite:
   pages     = {1--6},
   doi       = {10.1109/AFRCON.2015.7331996}
 }
-
+```
 
 
 ## Files
