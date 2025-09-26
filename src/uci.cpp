@@ -140,6 +140,8 @@ void UCIEngine::loop() {
         // These commands must not be used during a search!
         else if (token == "flip")
             engine.flip();
+        else if (token == "mirror")
+            engine.mirror();
         else if (token == "bench")
             bench(is);
         else if (token == BenchmarkCommand)
