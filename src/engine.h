@@ -100,6 +100,7 @@ class Engine {
 
     std::string                            fen() const;
     void                                   flip();
+    void                                   mirror();
     std::string                            visualize() const;
     std::vector<std::pair<size_t, size_t>> get_bound_thread_count_by_numa_node() const;
     std::string                            get_numa_config_as_string() const;
