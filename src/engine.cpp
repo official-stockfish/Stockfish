@@ -304,6 +304,7 @@ OptionsMap&       Engine::get_options() { return options; }
 std::string Engine::fen() const { return pos.fen(); }
 
 void Engine::flip() { pos.flip(); }
+void Engine::mirror() { pos.mirror(); }
 
 std::string Engine::visualize() const {
     std::stringstream ss;
