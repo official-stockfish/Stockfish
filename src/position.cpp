@@ -1308,6 +1308,34 @@ void Position::flip() {
     assert(pos_is_ok());
 }
 
+void Position::mirror() {
+
+    string            f, token;
+    std::stringstream ss(fen());
+
+    // Mirror piece placement (horizontal flip)
+    for (Rank r = RANK_8; r >= RANK_1; --r) {
+        std::getline(ss, token, r > RANK_1 ? '/' : ' ');
+        std::reverse(token.begin(), token.end());
+        f += token + (r > RANK_1 ? "/" : " ");
+    }
+
+    ss >> token;   // Active color
+    f += token + " ";  // Color remains the same
+
+    ss >> token;                        
+    f += "- ";    // Disable all castling
+
+    ss >> token;                        
+    f += "- ";   // Disable en passant
+
+    std::getline(ss, token);   // Half and full moves
+    f += token;
+
+    set(f, is_chess960(), st);
+
+    assert(pos_is_ok());
+}
 
 // Performs some consistency checks for the position object
 // and raise an assert if something wrong is detected.
