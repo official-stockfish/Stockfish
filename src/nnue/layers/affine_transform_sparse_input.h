@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstddef>
 #include <iostream>
 
 #include "../../bitboard.h"
