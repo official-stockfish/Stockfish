@@ -537,6 +537,12 @@ bool Position::legal(Move m) const {
     // enemy attacks, it is delayed at a later time: now!
     if (m.type_of() == CASTLING)
     {
+
+      	if (!chess960)  {
+         if (from != (us == WHITE) ? SQ_E1 : SQ_E8)
+            return false;  
+          }
+
         // After castling, the rook and king final positions are the same in
         // Chess960 as they would be in standard chess.
         to             = relative_square(us, to > from ? SQ_G1 : SQ_C1);
