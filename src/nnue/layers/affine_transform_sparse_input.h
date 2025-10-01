@@ -284,7 +284,6 @@ class AffineTransformSparseInput {
 #else
             false;
 #endif
-        static_assert(SplitAccums && "Test not intended to run on this arch");
         constexpr IndexType NumRegs     = SplitAccums ? 2 * NumAccums : NumAccums;
         std::uint16_t       nnz[NumChunks];
         IndexType           count;
