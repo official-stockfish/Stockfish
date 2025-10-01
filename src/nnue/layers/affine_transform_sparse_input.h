@@ -278,13 +278,13 @@ class AffineTransformSparseInput {
         constexpr IndexType NumAccums = OutputDimensions / OutputSimdWidth;
         // If there's only one accumulator and we're using high-latency dot product instructions,
         // split it to create two dependency chains and merge at the end
-        constexpr bool      SplitAccums =
-#if defined(USE_VNNI)
-            NumAccums == 1;
-#else
-            false;
-#endif
-        constexpr IndexType NumRegs     = SplitAccums ? 2 * NumAccums : NumAccums;
+        constexpr bool SplitAccums =
+    #if defined(USE_VNNI)
+          NumAccums == 1;
+    #else
+          false;
+    #endif
+        constexpr IndexType NumRegs = SplitAccums ? 2 * NumAccums : NumAccums;
         std::uint16_t       nnz[NumChunks];
         IndexType           count;
 
