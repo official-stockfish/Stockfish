@@ -295,7 +295,7 @@ class AffineTransformSparseInput {
 
         const outvec_t* biasvec = reinterpret_cast<const outvec_t*>(biases);
         outvec_t        acc[NumRegs];
-        for (IndexType k = 0; k < NumRegs; ++k)
+        for (IndexType k = 0; k < NumAccums; ++k)
             acc[k] = biasvec[k];
 
         auto* start = nnz;
@@ -335,7 +335,7 @@ class AffineTransformSparseInput {
         }
 
         outvec_t* outptr = reinterpret_cast<outvec_t*>(output);
-        for (IndexType k = 0; k < NumRegs; ++k)
+        for (IndexType k = 0; k < NumAccums; ++k)
             outptr[k] = acc[k];
     #undef vec_set_32
     #undef vec_add_dpbusd_32
