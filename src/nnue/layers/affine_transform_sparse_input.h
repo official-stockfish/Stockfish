@@ -288,7 +288,7 @@ class AffineTransformSparseInput {
         std::uint16_t       nnz[NumChunks];
         IndexType           count;
 
-        auto input32 = reinterpret_cast<const std::int32_t*>(input);
+        const auto input32 = reinterpret_cast<const std::int32_t*>(input);
 
         // Find indices of nonzero 32-bit blocks
         find_nnz<NumChunks>(input32, nnz, count);
