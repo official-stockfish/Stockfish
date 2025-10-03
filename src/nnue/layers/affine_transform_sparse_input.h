@@ -325,8 +325,7 @@ class AffineTransformSparseInput {
 
         while (start < end)
         {
-            const std::ptrdiff_t i = *start;
-            start++;
+            const std::ptrdiff_t i = *start++;
             const invec_t in = vec_set_32(input32[i]);
             const auto    col =
               reinterpret_cast<const invec_t*>(&weights_cp[i * OutputDimensions * ChunkSize]);
