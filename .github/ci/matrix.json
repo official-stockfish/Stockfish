@@ -61,7 +61,6 @@
     "x86-64-bmi2",
     "x86-64-avxvnni",
     "x86-64-avx512",
-    "x86-64-vnni256",
     "x86-64-vnni512",
     "x86-64-avx512icl",
     "apple-silicon",
@@ -106,12 +105,6 @@
       }
     },
     {
-      "binaries": "x86-64-vnni256",
-      "config": {
-        "os": "macos-14"
-      }
-    },
-    {
       "binaries": "x86-64-vnni512",
       "config": {
         "os": "macos-14"
@@ -131,12 +124,6 @@
     },
     {
       "binaries": "x86-64-avx512",
-      "config": {
-        "os": "macos-15-intel"
-      }
-    },
-    {
-      "binaries": "x86-64-vnni256",
       "config": {
         "os": "macos-15-intel"
       }
@@ -185,12 +172,6 @@
     },
     {
       "binaries": "x86-64-avx512",
-      "config": {
-        "os": "windows-11-arm"
-      }
-    },
-    {
-      "binaries": "x86-64-vnni256",
       "config": {
         "os": "windows-11-arm"
       }

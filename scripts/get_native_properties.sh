@@ -42,7 +42,7 @@ set_arch_x86_64() {
   if check_flags 'avx512f' 'avx512cd' 'avx512vl' 'avx512dq' 'avx512bw' 'avx512ifma' 'avx512vbmi' 'avx512vbmi2' 'avx512vpopcntdq' 'avx512bitalg' 'avx512vnni' 'vpclmulqdq' 'gfni' 'vaes'; then
     true_arch='x86-64-avx512icl'
   elif check_flags 'avx512vnni' 'avx512dq' 'avx512f' 'avx512bw' 'avx512vl'; then
-    true_arch='x86-64-vnni256'
+    true_arch='x86-64-vnni512'
   elif check_flags 'avx512f' 'avx512bw'; then
     true_arch='x86-64-avx512'
   elif [ -z "${znver_1_2+1}" ] && check_flags 'bmi2'; then
@@ -83,7 +83,7 @@ case $uname_s in
       'x86_64')
         flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '_.')
         set_arch_x86_64
-        if [ "$true_arch" = 'x86-64-vnni256' ] || [ "$true_arch" = 'x86-64-avx512' ]; then
+        if [ "$true_arch" = 'x86-64-avx512' ]; then
            file_arch='x86-64-bmi2'
         fi
         ;;
