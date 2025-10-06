@@ -1105,6 +1105,8 @@ bool Position::see_ge(Move m, int threshold) const {
 
     Square from = m.from_sq(), to = m.to_sq();
 
+    assert(piece_on(from) != NO_PIECE);
+
     int swap = PieceValue[piece_on(to)] - threshold;
     if (swap < 0)
         return false;
