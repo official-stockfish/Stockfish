@@ -37,6 +37,7 @@
 #include "perft.h"
 #include "position.h"
 #include "search.h"
+#include "skill.h"
 #include "syzygy/tbprobe.h"
 #include "types.h"
 #include "uci.h"
