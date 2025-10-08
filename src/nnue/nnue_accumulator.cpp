@@ -565,7 +565,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
                 sizeof(int32_t) * PSQTBuckets);
 #endif
 
-#ifdef USE_AVX512ICL
+#ifndef USE_AVX512ICL
     for (Color c : {WHITE, BLACK})
         entry.byColorBB[c] = pos.pieces(c);
 
