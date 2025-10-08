@@ -388,6 +388,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
         _mm256_loadu_si256((const __m256i*)&Features::HalfKAv2_hm::PieceSquareIndex[Perspective]));
     lut = _mm512_add_epi16(lut, king_buckets);
     auto to_indices = [&] (__m512i squares, __m512i pieces) {
+        // Implement the same algorithm as given in HalfKAv2_hm
         const __m512i lookup = _mm512_permutexvar_epi16(pieces, lut);
         return _mm512_add_epi16(_mm512_xor_si512(squares, orient_table), lookup);
     };
@@ -405,6 +406,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
 
     removed.size_ = popcount(removed_mask);
     added.size_ = popcount(added_mask);
+    // Split into two halves (first 32 squares and last 32 squares)
     for (int group = 0; group < 2; group++) {
         const auto neue = unpack_half(neue_all, group);
         const auto old = unpack_half(old_all, group);
@@ -412,8 +414,9 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
         const auto neue_indices = to_indices(squares, neue);
         const auto old_indices = to_indices(squares, old);
 
-        auto i = group * popcount((unsigned)removed_mask);
+        auto i = group * popcount((unsigned)removed_mask);  // get # of ones in first 32 bits only
         auto j = group * popcount((unsigned)added_mask);
+        // Don't use compressstoreu because it's slow on Zen 4
         auto removed_indices = _mm512_maskz_compress_epi16(removed_mask >> 32 * group, old_indices);
         _mm512_storeu_si512(&removed.values_[i], removed_indices);
         auto added_indices = _mm512_maskz_compress_epi16(added_mask >> 32 * group, neue_indices);
