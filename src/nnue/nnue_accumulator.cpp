@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cstdint>
 #include <initializer_list>
+#include <numeric>
 #include <type_traits>
 
 #include "../bitboard.h"
@@ -362,6 +363,12 @@ void update_accumulator_incremental(
     (target_state.acc<TransformedFeatureDimensions>()).computed[Perspective] = true;
 }
 
+alignas(64) constexpr int16_t all_squares[64] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+    60, 61, 62, 63
+};
+
 template<Color Perspective, IndexType Dimensions>
 void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& featureTransformer,
                                       const Position&                       pos,
@@ -372,10 +379,49 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
 
     const Square          ksq   = pos.square<KING>(Perspective);
     auto&                 entry = cache[ksq][Perspective];
-    FeatureSet::IndexList removed, added;
+    ValueList<uint16_t, 64> removed, added;
 
-    for (Color c : {WHITE, BLACK})
-    {
+#ifdef USE_AVX512ICL
+    const __m512i orient_table = _mm512_set1_epi16(Features::HalfKAv2_hm::OrientTBL[Perspective][ksq]);
+    const __m512i king_buckets = _mm512_set1_epi16(Features::HalfKAv2_hm::KingBuckets[Perspective][ksq]);
+    __m512i lut = _mm512_castsi256_si512(
+        _mm256_loadu_si256((const __m256i*)&Features::HalfKAv2_hm::PieceSquareIndex[Perspective]));
+    lut = _mm512_add_epi16(lut, king_buckets);
+    auto to_indices = [&] (__m512i squares, __m512i pieces) {
+        const __m512i lookup = _mm512_permutexvar_epi16(pieces, lut);
+        return _mm512_add_epi16(_mm512_xor_si512(squares, orient_table), lookup);
+    };
+
+    auto unpack_half = [&] (__m512i pieces, int half) {
+        assert(half == 0 || half == 1);
+        return _mm512_cvtepu8_epi16(half == 0 ? _mm512_castsi512_si256(pieces) : _mm512_extracti64x4_epi64(pieces, 1));
+    };
+
+    auto neue_all = _mm512_loadu_si512(&pos);
+    auto old_all = _mm512_loadu_si512(&entry.pieces);
+    const __mmask64 neq = _mm512_cmpneq_epi8_mask(neue_all, old_all);
+    const __mmask64 added_mask = _mm512_mask_test_epi8_mask(neq, neue_all, neue_all);
+    const __mmask64 removed_mask = _mm512_mask_test_epi8_mask(neq, old_all, old_all);
+
+    removed.size_ = popcount(removed_mask);
+    added.size_ = popcount(added_mask);
+    for (int group = 0; group < 2; group++) {
+        const auto neue = unpack_half(neue_all, group);
+        const auto old = unpack_half(old_all, group);
+        const __m512i squares = _mm512_load_si512(all_squares + group * 32);
+        const auto neue_indices = to_indices(squares, neue);
+        const auto old_indices = to_indices(squares, old);
+
+        auto i = group * popcount((unsigned)removed_mask);
+        auto j = group * popcount((unsigned)added_mask);
+        auto removed_indices = _mm512_maskz_compress_epi16(removed_mask >> 32 * group, old_indices);
+        _mm512_storeu_si512(&removed.values_[i], removed_indices);
+        auto added_indices = _mm512_maskz_compress_epi16(added_mask >> 32 * group, neue_indices);
+        _mm512_storeu_si512(&added.values_[j], added_indices);
+    }
+#else
+#error "This test not intended for this arch ;)"
+    for (Color c : {WHITE, BLACK}) {
         for (PieceType pt = PAWN; pt <= KING; ++pt)
         {
             const Piece    piece    = make_piece(c, pt);
@@ -387,7 +433,6 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
             while (toRemove)
             {
                 Square sq = pop_lsb(toRemove);
-                removed.push_back(FeatureSet::make_index<Perspective>(sq, piece, ksq));
             }
             while (toAdd)
             {
@@ -396,6 +441,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
             }
         }
     }
+#endif
 
     auto& accumulator                 = accumulatorState.acc<Dimensions>();
     accumulator.computed[Perspective] = true;
@@ -519,11 +565,15 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
                 sizeof(int32_t) * PSQTBuckets);
 #endif
 
+#ifdef USE_AVX512ICL
     for (Color c : {WHITE, BLACK})
         entry.byColorBB[c] = pos.pieces(c);
 
     for (PieceType pt = PAWN; pt <= KING; ++pt)
         entry.byTypeBB[pt] = pos.pieces(pt);
+#endif
+
+    memcpy(&entry.pieces[0], &pos, sizeof(entry.pieces));
 }
 
 }
