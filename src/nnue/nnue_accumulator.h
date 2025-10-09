@@ -47,7 +47,7 @@ template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
     std::int16_t               accumulation[COLOR_NB][Size];
     std::int32_t               psqtAccumulation[COLOR_NB][PSQTBuckets];
-    std::array<bool, COLOR_NB> computed;
+    std::array<bool, COLOR_NB> computed = {};
 };
 
 
