@@ -25,7 +25,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <vector>
 
 #include "../types.h"
 #include "nnue_architecture.h"
@@ -140,11 +139,8 @@ struct AccumulatorState {
 };
 
 
-class AccumulatorStack {
+struct AccumulatorStack {
    public:
-    AccumulatorStack() :
-        accumulators(MAX_PLY + 1),
-        size{1} {}
 
     [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
@@ -178,8 +174,8 @@ class AccumulatorStack {
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;
 
-    std::vector<AccumulatorState> accumulators;
-    std::size_t                   size;
+    AccumulatorState accumulators[MAX_PLY + 1];
+    std::size_t      size = 1;
 };
 
 }  // namespace Stockfish::Eval::NNUE
