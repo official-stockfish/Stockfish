@@ -106,8 +106,6 @@ class Network {
 
     template<IndexType Size>
     friend struct AccumulatorCaches::Cache;
-
-    friend struct AccumulatorStack;
 };
 
 // Definitions of the network types
