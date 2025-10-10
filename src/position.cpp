@@ -1276,6 +1276,9 @@ bool Position::upcoming_repetition(int ply) const {
     return false;
 }
 
+static char change_case(char c) {
+  return char(islower(c) ? toupper(c) : tolower(c));
+}
 
 // Flips position with the white and black sides reversed. This
 // is only useful for debugging e.g. for finding evaluation symmetry bugs.
@@ -1296,8 +1299,7 @@ void Position::flip() {
     ss >> token;  // Castling availability
     f += token + " ";
 
-    std::transform(f.begin(), f.end(), f.begin(),
-                   [](char c) { return char(islower(c) ? toupper(c) : tolower(c)); });
+    std::transform(f.begin(), f.end(), f.begin(), change_case);
 
     ss >> token;  // En passant square
     f += (token == "-" ? token : token.replace(1, 1, token[1] == '3' ? "6" : "3"));
