@@ -28,6 +28,7 @@
 #include <mutex>
 #include <vector>
 
+#include "memory.h"
 #include "numa.h"
 #include "position.h"
 #include "search.h"
@@ -93,8 +94,8 @@ class Thread {
     void   wait_for_search_finished();
     size_t id() const { return idx; }
 
-    std::unique_ptr<Search::Worker> worker;
-    std::function<void()>           jobFunc;
+    LargePagePtr<Search::Worker> worker;
+    std::function<void()>        jobFunc;
 
    private:
     std::mutex                mutex;
