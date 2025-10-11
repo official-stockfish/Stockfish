@@ -93,7 +93,7 @@ class Thread {
     void   wait_for_search_finished();
     size_t id() const { return idx; }
 
-    std::unique_ptr<Search::Worker> worker;
+    Search::Worker* worker = nullptr;
     std::function<void()>           jobFunc;
 
    private:
@@ -168,7 +168,7 @@ class ThreadPool {
 
         uint64_t sum = 0;
         for (auto&& th : threads)
-            sum += (th->worker.get()->*member).load(std::memory_order_relaxed);
+            sum += (th->worker->*member).load(std::memory_order_relaxed);
         return sum;
     }
 };

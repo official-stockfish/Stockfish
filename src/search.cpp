@@ -217,7 +217,7 @@ void Search::Worker::start_searching() {
 
     if (int(options["MultiPV"]) == 1 && !limits.depth && !limits.mate && !skill.enabled()
         && rootMoves[0].pv[0] != Move::none())
-        bestThread = threads.get_best_thread()->worker.get();
+        bestThread = threads.get_best_thread()->worker;
 
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
     main_manager()->bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
