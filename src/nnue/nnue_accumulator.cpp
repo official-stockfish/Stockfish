@@ -21,7 +21,6 @@
 #include <cassert>
 #include <cstdint>
 #include <initializer_list>
-#include <numeric>
 #include <type_traits>
 
 #include "../bitboard.h"
