@@ -19,6 +19,7 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
+#include <array>
 #include <cassert>
 #include <deque>
 #include <iosfwd>
@@ -73,7 +74,7 @@ using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
 // do_move() and undo_move(), used by the search to update node info when
 // traversing the search tree.
 class Position {
-   public:
+public:
     static void init();
 
     Position()                           = default;
@@ -93,6 +94,7 @@ class Position {
     template<typename... PieceTypes>
     Bitboard pieces(Color c, PieceTypes... pts) const;
     Piece    piece_on(Square s) const;
+    std::array<Piece, SQUARE_NB> board_array() const;
     Square   ep_square() const;
     bool     empty(Square s) const;
     template<PieceType Pt>
@@ -213,6 +215,13 @@ inline bool Position::empty(Square s) const { return piece_on(s) == NO_PIECE; }
 inline Piece Position::moved_piece(Move m) const { return piece_on(m.from_sq()); }
 
 inline Bitboard Position::pieces() const { return byTypeBB[ALL_PIECES]; }
+
+inline std::array<Piece, SQUARE_NB> Position::board_array() const {
+    std::array<Piece, SQUARE_NB> array{};
+    std::copy(board, board + SQUARE_NB, array.begin());
+    return array;
+}
+
 
 template<typename... PieceTypes>
 inline Bitboard Position::pieces(PieceTypes... pts) const {

@@ -134,8 +134,10 @@ class ValueList {
     const T*    begin() const { return values_; }
     const T*    end() const { return values_ + size_; }
     const T&    operator[](int index) const { return values_[index]; }
+    T&          operator[](int index) { return values_[index]; }
+    void        set_size(std::size_t new_size) { size_ = new_size; }
 
-//   private:
+private:
     T           values_[MaxSize];
     std::size_t size_ = 0;
 };

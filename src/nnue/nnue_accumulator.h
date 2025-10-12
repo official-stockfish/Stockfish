@@ -73,7 +73,7 @@ struct AccumulatorCaches {
             PSQTWeightType psqtAccumulation[PSQTBuckets];
             Bitboard       byColorBB[COLOR_NB];
             Bitboard       byTypeBB[PIECE_TYPE_NB];
-            alignas(CacheLineSize) Piece          pieces[SQUARE_NB];
+            Piece          board[SQUARE_NB];
 
             // To initialize a refresh entry, we set all its bitboards empty,
             // so we put the biases in the accumulation, without any weights on top

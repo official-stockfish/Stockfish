@@ -363,11 +363,63 @@ void update_accumulator_incremental(
     (target_state.acc<TransformedFeatureDimensions>()).computed[Perspective] = true;
 }
 
-alignas(64) constexpr int16_t all_squares[64] = {
+#ifdef USE_AVX512ICL
+alignas(64) constexpr int16_t AllSquares[64] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
     31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
     60, 61, 62, 63
 };
+
+template <bool Perspective>
+void list_changed_indices_avx512(const __m512i old_pieces, const __m512i new_pieces, Square ksq, ValueList<uint16_t, 64> &removed, ValueList<uint16_t, 64>& added) {
+    // Index mapping depends on the king's square
+    const __m512i orient_table = _mm512_set1_epi16(Features::HalfKAv2_hm::OrientTBL[Perspective][ksq]);
+    const __m512i king_buckets = _mm512_set1_epi16(Features::HalfKAv2_hm::KingBuckets[Perspective][ksq]);
+    __m512i lookup_table = _mm512_castsi256_si512(
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&Features::HalfKAv2_hm::PieceSquareIndex[Perspective])));
+    lookup_table = _mm512_add_epi16(lookup_table, king_buckets);
+    auto to_indices = [&] (__m512i squares, __m512i pieces) {
+        // Implement the same algorithm as given in HalfKAv2_hm
+        const __m512i lookup = _mm512_permutexvar_epi16(pieces, lookup_table);
+        return _mm512_add_epi16(_mm512_xor_si512(squares, orient_table), lookup);
+    };
+
+    // Get either the lower or higher half of a 512-bit register
+    auto unpack_half = [&] (__m512i pieces, int half) {
+        assert(half == 0 || half == 1);
+        return _mm512_cvtepu8_epi16(half == 0 ? _mm512_castsi512_si256(pieces) : _mm512_extracti64x4_epi64(pieces, 1));
+    };
+
+    // All pieces that were changed
+    const __mmask64 changed = _mm512_cmpneq_epi8_mask(new_pieces, old_pieces);
+    // Pieces, i.e. nonzero entries, that were added or removed
+    const __mmask64 added_mask = _mm512_mask_test_epi8_mask(changed, new_pieces, new_pieces);
+    const __mmask64 removed_mask = _mm512_mask_test_epi8_mask(changed, old_pieces, old_pieces);
+
+    removed.set_size(popcount(removed_mask));
+    added.set_size(popcount(added_mask));
+
+    // Split into two halves (first 32 squares and last 32 squares)
+    for (int half = 0; half < 2; half++) {
+        const auto new_half = unpack_half(new_pieces, half);
+        const auto old_half = unpack_half(old_pieces, half);
+        const __m512i squares = _mm512_load_si512(AllSquares + half * 32);
+
+        const auto new_indices = to_indices(squares, new_half);
+        const auto old_indices = to_indices(squares, old_half);
+
+        // For the second halves, get # of elements among first 32 only
+        auto i = half * popcount(static_cast<std::uint32_t>(removed_mask));
+        auto j = half * popcount(static_cast<std::uint32_t>(added_mask));
+
+        // Don't use compressstoreu because it's slow on Zen 4
+        auto removed_indices = _mm512_maskz_compress_epi16(removed_mask >> 32 * half, old_indices);
+        _mm512_storeu_si512(&removed[i], removed_indices);
+        auto added_indices = _mm512_maskz_compress_epi16(added_mask >> 32 * half, new_indices);
+        _mm512_storeu_si512(&added[j], added_indices);
+    }
+}
+#endif
 
 template<Color Perspective, IndexType Dimensions>
 void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& featureTransformer,
@@ -382,48 +434,11 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     ValueList<uint16_t, 64> removed, added;
 
 #ifdef USE_AVX512ICL
-    const __m512i orient_table = _mm512_set1_epi16(Features::HalfKAv2_hm::OrientTBL[Perspective][ksq]);
-    const __m512i king_buckets = _mm512_set1_epi16(Features::HalfKAv2_hm::KingBuckets[Perspective][ksq]);
-    __m512i lut = _mm512_castsi256_si512(
-        _mm256_loadu_si256((const __m256i*)&Features::HalfKAv2_hm::PieceSquareIndex[Perspective]));
-    lut = _mm512_add_epi16(lut, king_buckets);
-    auto to_indices = [&] (__m512i squares, __m512i pieces) {
-        // Implement the same algorithm as given in HalfKAv2_hm
-        const __m512i lookup = _mm512_permutexvar_epi16(pieces, lut);
-        return _mm512_add_epi16(_mm512_xor_si512(squares, orient_table), lookup);
-    };
-
-    auto unpack_half = [&] (__m512i pieces, int half) {
-        assert(half == 0 || half == 1);
-        return _mm512_cvtepu8_epi16(half == 0 ? _mm512_castsi512_si256(pieces) : _mm512_extracti64x4_epi64(pieces, 1));
-    };
-
-    auto neue_all = _mm512_loadu_si512(&pos);
-    auto old_all = _mm512_loadu_si512(&entry.pieces);
-    const __mmask64 neq = _mm512_cmpneq_epi8_mask(neue_all, old_all);
-    const __mmask64 added_mask = _mm512_mask_test_epi8_mask(neq, neue_all, neue_all);
-    const __mmask64 removed_mask = _mm512_mask_test_epi8_mask(neq, old_all, old_all);
-
-    removed.size_ = popcount(removed_mask);
-    added.size_ = popcount(added_mask);
-    // Split into two halves (first 32 squares and last 32 squares)
-    for (int group = 0; group < 2; group++) {
-        const auto neue = unpack_half(neue_all, group);
-        const auto old = unpack_half(old_all, group);
-        const __m512i squares = _mm512_load_si512(all_squares + group * 32);
-        const auto neue_indices = to_indices(squares, neue);
-        const auto old_indices = to_indices(squares, old);
-
-        auto i = group * popcount((unsigned)removed_mask);  // get # of ones in first 32 bits only
-        auto j = group * popcount((unsigned)added_mask);
-        // Don't use compressstoreu because it's slow on Zen 4
-        auto removed_indices = _mm512_maskz_compress_epi16(removed_mask >> 32 * group, old_indices);
-        _mm512_storeu_si512(&removed.values_[i], removed_indices);
-        auto added_indices = _mm512_maskz_compress_epi16(added_mask >> 32 * group, neue_indices);
-        _mm512_storeu_si512(&added.values_[j], added_indices);
-    }
+    auto board = pos.board_array();
+    auto new_pieces = _mm512_loadu_si512(&board);
+    auto old_pieces = _mm512_loadu_si512(entry.board);
+    list_changed_indices_avx512<Perspective>(old_pieces, new_pieces, ksq, removed, added);
 #else
-#error "This test not intended for this arch ;)"
     for (Color c : {WHITE, BLACK}) {
         for (PieceType pt = PAWN; pt <= KING; ++pt)
         {
@@ -436,6 +451,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
             while (toRemove)
             {
                 Square sq = pop_lsb(toRemove);
+                removed.push_back(FeatureSet::make_index<Perspective>(sq, piece, ksq));
             }
             while (toAdd)
             {
@@ -568,15 +584,16 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
                 sizeof(int32_t) * PSQTBuckets);
 #endif
 
-#ifndef USE_AVX512ICL
+#ifdef USE_AVX512ICL
+    static_assert(sizeof(board) == sizeof(entry.board));
+    std::copy_n(board.begin(), SQUARE_NB, entry.board);
+#else
     for (Color c : {WHITE, BLACK})
         entry.byColorBB[c] = pos.pieces(c);
 
     for (PieceType pt = PAWN; pt <= KING; ++pt)
         entry.byTypeBB[pt] = pos.pieces(pt);
 #endif
-
-    memcpy(&entry.pieces[0], &pos, sizeof(entry.pieces));
 }
 
 }
