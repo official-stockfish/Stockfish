@@ -19,6 +19,7 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <deque>
