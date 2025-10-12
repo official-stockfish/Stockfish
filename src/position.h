@@ -74,7 +74,7 @@ using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
 // do_move() and undo_move(), used by the search to update node info when
 // traversing the search tree.
 class Position {
-public:
+   public:
     static void init();
 
     Position()                           = default;
@@ -92,11 +92,11 @@ public:
     Bitboard pieces(PieceTypes... pts) const;
     Bitboard pieces(Color c) const;
     template<typename... PieceTypes>
-    Bitboard pieces(Color c, PieceTypes... pts) const;
-    Piece    piece_on(Square s) const;
+    Bitboard                     pieces(Color c, PieceTypes... pts) const;
+    Piece                        piece_on(Square s) const;
     std::array<Piece, SQUARE_NB> board_array() const;
-    Square   ep_square() const;
-    bool     empty(Square s) const;
+    Square                       ep_square() const;
+    bool                         empty(Square s) const;
     template<PieceType Pt>
     int count(Color c) const;
     template<PieceType Pt>

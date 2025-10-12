@@ -137,7 +137,7 @@ class ValueList {
     T&          operator[](int index) { return values_[index]; }
     void        set_size(std::size_t new_size) { size_ = new_size; }
 
-private:
+   private:
     T           values_[MaxSize];
     std::size_t size_ = 0;
 };
