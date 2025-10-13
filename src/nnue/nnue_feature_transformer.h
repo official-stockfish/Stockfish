@@ -91,6 +91,7 @@ class FeatureTransformer {
     // Number of input/output dimensions
     static constexpr IndexType InputDimensions       = FeatureSet::Dimensions;
     static constexpr IndexType ThreatInputDimensions = ThreatFeatureSet::Dimensions;
+    static constexpr IndexType TotalInputDimensions  = InputDimensions + ThreatInputDimensions;
     static constexpr IndexType OutputDimensions      = HalfDimensions;
 
     // Size of forward propagation buffer
@@ -121,6 +122,7 @@ class FeatureTransformer {
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
+        // TODO: Fix this
         return ThreatFeatureSet::HashValue ^ (OutputDimensions * 2);
     }
 
