@@ -19,6 +19,7 @@
 #ifndef POSITION_H_INCLUDED
 #define POSITION_H_INCLUDED
 
+#include <array>
 #include <cassert>
 #include <deque>
 #include <iosfwd>
@@ -31,6 +32,9 @@
 namespace Stockfish {
 
 class TranspositionTable;
+namespace Eval::NNUE::Features {
+class FullThreats;
+}
 
 // StateInfo struct stores information needed to restore a Position object to
 // its previous state when we retract a move. Whenever a move is made on the
@@ -187,9 +191,10 @@ class Position {
     Key  adjust_key50(Key k) const;
 
     // Data members
-    Piece      board[SQUARE_NB];
-    Bitboard   byTypeBB[PIECE_TYPE_NB];
-    Bitboard   byColorBB[COLOR_NB];
+    std::array<Piece, SQUARE_NB>        board;
+    std::array<Bitboard, PIECE_TYPE_NB> byTypeBB;
+    std::array<Bitboard, COLOR_NB>      byColorBB;
+
     int        pieceCount[PIECE_NB];
     int        castlingRightsMask[SQUARE_NB];
     Square     castlingRookSquare[CASTLING_RIGHT_NB];
@@ -198,6 +203,9 @@ class Position {
     int        gamePly;
     Color      sideToMove;
     bool       chess960;
+
+    // TODO: Remove this
+    friend Eval::NNUE::Features::FullThreats;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
