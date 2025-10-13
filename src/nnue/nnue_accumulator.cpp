@@ -75,7 +75,7 @@ void AccumulatorStack::reset() noexcept {
 }
 
 void AccumulatorStack::push(const DirtyPiece& dirtyPiece) noexcept {
-    assert(size < MAX_PLY);
+    assert(size + 1 < accumulators.size());
     accumulators[size].reset(dirtyPiece);
     size++;
 }
@@ -134,7 +134,7 @@ void AccumulatorStack::forward_update_incremental(
   const FeatureTransformer<Dimensions>& featureTransformer,
   const std::size_t                     begin) noexcept {
 
-    assert(begin <= MAX_PLY);
+    assert(begin < accumulators.size());
     assert((accumulators[begin].acc<Dimensions>()).computed[Perspective]);
 
     const Square ksq = pos.square<KING>(Perspective);
@@ -171,8 +171,8 @@ void AccumulatorStack::backward_update_incremental(
   const FeatureTransformer<Dimensions>& featureTransformer,
   const std::size_t                     end) noexcept {
 
+    assert(end < accumulators.size());
     assert(end < size);
-    assert(size <= MAX_PLY);
     assert((latest().acc<Dimensions>()).computed[Perspective]);
 
     const Square ksq = pos.square<KING>(Perspective);

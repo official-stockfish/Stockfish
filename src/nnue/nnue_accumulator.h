@@ -141,7 +141,6 @@ struct AccumulatorState {
 
 struct AccumulatorStack {
    public:
-
     [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
     void reset() noexcept;
@@ -174,8 +173,8 @@ struct AccumulatorStack {
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;
 
-    AccumulatorState accumulators[MAX_PLY + 1];
-    std::size_t      size = 1;
+    std::array<AccumulatorState, MAX_PLY + 1> accumulators;
+    std::size_t size = 1;
 };
 
 }  // namespace Stockfish::Eval::NNUE
