@@ -528,14 +528,14 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
 void Search::Worker::do_move(
   Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
     bool       capture = pos.capture_stage(move);
-    DirtyPiece dp      = pos.do_move(move, st, givesCheck, &tt);
+    DirtyBoardData dbd = pos.do_move(move, st, givesCheck, &tt);
     nodes.fetch_add(1, std::memory_order_relaxed);
-    accumulatorStack.push(dp);
+    accumulatorStack.push(dbd.first);
     if (ss != nullptr)
     {
         ss->currentMove         = move;
-        ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
-        ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
+        ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dbd.first.pc][move.to_sq()];
+        ss->continuationCorrectionHistory = &continuationCorrectionHistory[dbd.first.pc][move.to_sq()];
     }
 }
 

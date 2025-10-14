@@ -29,9 +29,10 @@ namespace Stockfish {
 uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
+Bitboard  LineBB[SQUARE_NB][SQUARE_NB];
+Bitboard  BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard  PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
+Direction DirectionBetween[SQUARE_NB][SQUARE_NB];
 
 alignas(64) Magic Magics[SQUARE_NB][2];
 
@@ -42,12 +43,6 @@ Bitboard BishopTable[0x1480];  // To store bishop attacks
 
 void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]);
 
-// Returns the bitboard of target square for the given step
-// from the given square. If the step is off the board, returns empty bitboard.
-Bitboard safe_destination(Square s, int step) {
-    Square to = Square(s + step);
-    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
-}
 }
 
 // Returns an ASCII representation of a bitboard suitable
@@ -108,6 +103,22 @@ void Bitboards::init() {
                 }
                 BetweenBB[s1][s2] |= s2;
             }
+        
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2) {
+            DirectionBetween[s1][s2] = NOWHERE;
+            if (file_of(s1) == file_of(s2)) {
+                DirectionBetween[s1][s2] = s2 > s1 ? NORTH : SOUTH;
+            } else if (rank_of(s1) == rank_of(s2)) {
+                DirectionBetween[s1][s2] = s2 > s1 ? EAST : WEST;
+            } else if (std::abs(file_of(s1) - file_of(s2)) == std::abs(rank_of(s1) - rank_of(s2))) {
+                if (s2 > s1) {
+                    DirectionBetween[s1][s2] = file_of(s2) > file_of(s1) ? NORTH_EAST : NORTH_WEST;
+                } else {
+                    DirectionBetween[s1][s2] = file_of(s2) > file_of(s1) ? SOUTH_EAST : SOUTH_WEST;
+                }
+            }
+        }
+
     }
 }
 

@@ -40,6 +40,7 @@
     #include <cstddef>
     #include <cstdint>
     #include <type_traits>
+    #include "misc.h"
 
     #if defined(_MSC_VER)
         // Disable some silly and noisy warnings from MSVC compiler
@@ -243,6 +244,7 @@ enum Square : int8_t {
 // clang-format on
 
 enum Direction : int8_t {
+    NOWHERE = 0,
     NORTH = 8,
     EAST  = 1,
     SOUTH = -NORTH,
@@ -289,6 +291,16 @@ struct DirtyPiece {
     Square remove_sq, add_sq;
     Piece  remove_pc, add_pc;
 };
+
+// Keep track of what threats change on the board (used by NNUE)
+struct DirtyThreat {
+  Piece pc, threatened_pc;
+  Square pc_sq, threatened_sq;
+  bool add;
+};
+
+using DirtyThreatList = ValueList<DirtyThreat, 64>; // 32 is not enough, find better upper bound?
+using DirtyBoardData = std::pair<DirtyPiece, DirtyThreatList>;
 
     #define ENABLE_INCR_OPERATORS_ON(T) \
         constexpr T& operator++(T& d) { return d = T(int(d) + 1); } \
