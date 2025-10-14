@@ -28,6 +28,7 @@
 #include <mutex>
 #include <vector>
 
+#include "memory.h"
 #include "numa.h"
 #include "position.h"
 #include "search.h"
