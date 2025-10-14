@@ -25,7 +25,6 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <memory>
 
 #include "memory.h"
 #include "movegen.h"
@@ -55,8 +54,8 @@ Thread::Thread(Search::SharedState&                    sharedState,
         // the Worker allocation. Ideally we would also allocate the SearchManager
         // here, but that's minor.
         this->numaAccessToken = binder();
-        this->worker = static_cast<Search::Worker*>(aligned_large_pages_alloc(sizeof(Search::Worker)));
-        new (this->worker) Search::Worker(sharedState, std::move(sm), n, this->numaAccessToken);
+        this->worker = make_unique_large_page<Search::Worker>(sharedState, std::move(sm), n,
+                                                              this->numaAccessToken);
     });
 
     wait_for_search_finished();
@@ -72,9 +71,6 @@ Thread::~Thread() {
     exit = true;
     start_searching();
     stdThread.join();
-
-    this->worker->~Worker();
-    aligned_large_pages_free(this->worker);
 }
 
 // Wakes up the thread that will start the search
