@@ -24,7 +24,7 @@ jobs:
         with:
           repository: vondele/matetrack
           path: matetrack
-          ref: 4f8a80860ed8f3607f05a9195df8b40203bdc360
+          ref: 2d96fa3373f90edb032b7ea7468473fb9e6f0343
           persist-credentials: false
 
       - name: matetrack install deps
