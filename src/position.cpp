@@ -1089,13 +1089,12 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
                 st->threatsToSquare[threatened_sq] |= square_bb(slider_sq);
 
             Piece threatened_pc = piece_on(threatened_sq);
+
             if (threatened_pc)
                 dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
 
             if (occupied & threatened_sq)
-            {
                 break;
-            }
         }
     }
 
