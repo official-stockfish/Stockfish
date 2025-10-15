@@ -727,7 +727,7 @@ Value Search::Worker::search(
     }
 
     // Step 5. Tablebases probe
-    if (!rootNode && !excludedMove && tbConfig.cardinality > 0)
+    if (!rootNode && !excludedMove && tbConfig.cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -1556,9 +1556,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             else if (PvNode && is_valid(ttData.value) && is_decisive(ttData.value) && std::abs(ttData.value) != VALUE_MATE)
             {
                 // navigate to the mate to avoid truncated PV's (turn off TB-probing while doing it)
-                tbConfig.cardinality *= -1;
+                int tb = tbConfig.cardinality;
+                tbConfig.cardinality =0;
                 value = search<PV>(pos, ss, alpha, beta, 1, false);
-                tbConfig.cardinality *= -1;
+                tbConfig.cardinality = tb;
                 return value;
             }
         }
