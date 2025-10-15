@@ -587,9 +587,13 @@ Value Search::Worker::search(
     constexpr bool PvNode   = nodeType != NonPV;
     constexpr bool rootNode = nodeType == Root;
     const bool     allNode  = !(PvNode || cutNode);
+    bool tbProbe = true;
+
+    if (depth == -1000)
+      depth = 1, tbProbe = false;
 
     // Dive into quiescence search when the depth reaches zero
-    if (depth <= 0)
+    else if (depth <= 0)
         return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
 
     // Limit the depth if extensions made it too large
@@ -727,7 +731,7 @@ Value Search::Worker::search(
     }
 
     // Step 5. Tablebases probe
-    if (!rootNode && !excludedMove && tbConfig.cardinality)
+    if (!rootNode && !excludedMove && tbConfig.cardinality && tbProbe)
     {
         int piecesCount = pos.count<ALL_PIECES>();
 
@@ -1554,14 +1558,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                 && (ttData.bound & (ttData.value > bestValue ? BOUND_LOWER : BOUND_UPPER)))
                 bestValue = ttData.value;
             else if (PvNode && is_valid(ttData.value) && is_decisive(ttData.value) && std::abs(ttData.value) != VALUE_MATE)
-            {
                 // navigate to the mate to avoid truncated PV's (turn off TB-probing while doing it)
-                int tb = tbConfig.cardinality;
-                tbConfig.cardinality =0;
-                value = search<PV>(pos, ss, alpha, beta, 1, false);
-                tbConfig.cardinality = tb;
-                return value;
-            }
+                return  search<PV>(pos, ss, alpha, beta, -1000, false);
         }
         else
         {
