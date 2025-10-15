@@ -1553,7 +1553,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             if (is_valid(ttData.value) && !is_decisive(ttData.value)
                 && (ttData.bound & (ttData.value > bestValue ? BOUND_LOWER : BOUND_UPPER)))
                 bestValue = ttData.value;
-            else if (PvNode && hasMateDistance(ttData.value))
+            else if (PvNode && hasMateDistance(std::abs(ttData.value)))
                 // we navigate to the mate to avoid truncated PV's
                 return search<PV>(pos, ss, alpha, beta, 1, false);
         }
