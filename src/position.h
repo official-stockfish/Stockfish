@@ -44,15 +44,15 @@ class FullThreats;
 struct StateInfo {
 
     // Copied when making a move
-    Key    materialKey;
-    Key    pawnKey;
-    Key    minorPieceKey;
-    Key    nonPawnKey[COLOR_NB];
-    Value  nonPawnMaterial[COLOR_NB];
-    int    castlingRights;
-    int    rule50;
-    int    pliesFromNull;
-    Square epSquare;
+    Key                             materialKey;
+    Key                             pawnKey;
+    Key                             minorPieceKey;
+    Key                             nonPawnKey[COLOR_NB];
+    Value                           nonPawnMaterial[COLOR_NB];
+    int                             castlingRights;
+    int                             rule50;
+    int                             pliesFromNull;
+    Square                          epSquare;
     std::array<Bitboard, SQUARE_NB> threatsToSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
@@ -172,8 +172,8 @@ class Position {
 
     StateInfo* state() const;
 
-    void put_piece(Piece pc, Square s, DirtyThreatList* const dts = nullptr);
-    void remove_piece(Square s, DirtyThreatList* const dts = nullptr);
+    void put_piece(Piece pc, Square s, DirtyThreats* const dts = nullptr);
+    void remove_piece(Square s, DirtyThreats* const dts = nullptr);
 
    private:
     // Initialization helpers (used while setting up a position)
@@ -183,16 +183,16 @@ class Position {
 
     // Other helpers
     template<bool put_piece>
-    void update_piece_threats(Piece pc, Square s, DirtyThreatList* const dts);
-    void move_piece(Square from, Square to, DirtyThreatList* const dts = nullptr);
+    void update_piece_threats(Piece pc, Square s, DirtyThreats* const dts);
+    void move_piece(Square from, Square to, DirtyThreats* const dts = nullptr);
     template<bool Do>
-    void do_castling(Color                  us,
-                     Square                 from,
-                     Square&                to,
-                     Square&                rfrom,
-                     Square&                rto,
-                     DirtyThreatList* const dts = nullptr,
-                     DirtyPiece* const      dp  = nullptr);
+    void do_castling(Color               us,
+                     Square              from,
+                     Square&             to,
+                     Square&             rfrom,
+                     Square&             rto,
+                     DirtyThreats* const dts = nullptr,
+                     DirtyPiece* const   dp  = nullptr);
     Key  adjust_key50(Key k) const;
 
     // Data members
@@ -339,20 +339,22 @@ inline bool Position::capture_stage(Move m) const {
 
 inline Piece Position::captured_piece() const { return st->capturedPiece; }
 
-inline void Position::put_piece(Piece pc, Square s, DirtyThreatList* const dts) {
+inline void Position::put_piece(Piece pc, Square s, DirtyThreats* const dts) {
     board[s] = pc;
     byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
     byColorBB[color_of(pc)] |= s;
     pieceCount[pc]++;
     pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
-    
-    if (dts) update_piece_threats<true>(pc, s, dts);
+
+    if (dts)
+        update_piece_threats<true>(pc, s, dts);
 }
 
-inline void Position::remove_piece(Square s, DirtyThreatList* const dts) {
+inline void Position::remove_piece(Square s, DirtyThreats* const dts) {
     Piece pc = board[s];
 
-    if (dts) update_piece_threats<false>(pc, s, dts);
+    if (dts)
+        update_piece_threats<false>(pc, s, dts);
 
     byTypeBB[ALL_PIECES] ^= s;
     byTypeBB[type_of(pc)] ^= s;
@@ -362,11 +364,12 @@ inline void Position::remove_piece(Square s, DirtyThreatList* const dts) {
     pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
 }
 
-inline void Position::move_piece(Square from, Square to, DirtyThreatList* const dts) {
+inline void Position::move_piece(Square from, Square to, DirtyThreats* const dts) {
     Piece    pc     = board[from];
     Bitboard fromTo = from | to;
 
-    if (dts) update_piece_threats<false>(pc, from, dts);
+    if (dts)
+        update_piece_threats<false>(pc, from, dts);
 
     byTypeBB[ALL_PIECES] ^= fromTo;
     byTypeBB[type_of(pc)] ^= fromTo;
@@ -374,7 +377,8 @@ inline void Position::move_piece(Square from, Square to, DirtyThreatList* const 
     board[from] = NO_PIECE;
     board[to]   = pc;
 
-    if (dts) update_piece_threats<true>(pc, to, dts);
+    if (dts)
+        update_piece_threats<true>(pc, to, dts);
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {

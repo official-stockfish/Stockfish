@@ -75,7 +75,7 @@ class FullThreats {
 
     // clang-format off
     // Orient a square according to perspective (rotates by 180 for black)
-    static constexpr int OrientTBLT[COLOR_NB][SQUARE_NB] = {
+    static constexpr int OrientTBL[COLOR_NB][SQUARE_NB] = {
       { SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
         SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
         SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
@@ -107,6 +107,7 @@ class FullThreats {
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 128;
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
+    using DiffType                                 = DirtyThreats;
 
     FullThreats() { init_threat_offsets(); };
 
@@ -120,11 +121,11 @@ class FullThreats {
     // Get a list of indices for recently changed features
     template<Color Perspective>
     static void
-    append_changed_indices(Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
+    append_changed_indices(Square ksq, const DiffType& diff, IndexList& removed, IndexList& added);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.
-    static bool requires_refresh(const DirtyPiece& dirtyPiece, Color perspective);
+    static bool requires_refresh(const DiffType& diff, Color perspective);
 };
 
 }  // namespace Stockfish::Eval::NNUE::Features

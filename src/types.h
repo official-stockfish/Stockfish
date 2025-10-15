@@ -245,10 +245,10 @@ enum Square : int8_t {
 
 enum Direction : int8_t {
     NOWHERE = 0,
-    NORTH = 8,
-    EAST  = 1,
-    SOUTH = -NORTH,
-    WEST  = -EAST,
+    NORTH   = 8,
+    EAST    = 1,
+    SOUTH   = -NORTH,
+    WEST    = -EAST,
 
     NORTH_EAST = NORTH + EAST,
     SOUTH_EAST = SOUTH + EAST,
@@ -294,13 +294,23 @@ struct DirtyPiece {
 
 // Keep track of what threats change on the board (used by NNUE)
 struct DirtyThreat {
-  Piece pc, threatened_pc;
-  Square pc_sq, threatened_sq;
-  bool add;
+    Piece  pc, threatened_pc;
+    Square pc_sq, threatened_sq;
+    bool   add;
 };
 
-using DirtyThreatList = ValueList<DirtyThreat, 64>; // 32 is not enough, find better upper bound?
-using DirtyBoardData = std::pair<DirtyPiece, DirtyThreatList>;
+using DirtyThreatList = ValueList<DirtyThreat, 64>;  // 32 is not enough, find better upper bound?
+
+struct DirtyThreats {
+    DirtyThreatList list;
+    Color           us;
+    Square          prevKsq, ksq;
+};
+
+struct DirtyBoardData {
+    DirtyPiece   dp;
+    DirtyThreats dts;
+};
 
     #define ENABLE_INCR_OPERATORS_ON(T) \
         constexpr T& operator++(T& d) { return d = T(int(d) + 1); } \

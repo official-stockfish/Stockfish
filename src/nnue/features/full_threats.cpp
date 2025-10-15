@@ -70,8 +70,8 @@ void init_threat_offsets() {
 template<Color Perspective>
 IndexType FullThreats::make_index(Piece attkr, Square from, Square to, Piece attkd, Square ksq) {
     bool enemy = ((attkr ^ attkd) & 8);
-    from       = (Square) (int(from) ^ OrientTBLT[Perspective][ksq]);
-    to         = (Square) (int(to) ^ OrientTBLT[Perspective][ksq]);
+    from       = (Square) (int(from) ^ OrientTBL[Perspective][ksq]);
+    to         = (Square) (int(to) ^ OrientTBL[Perspective][ksq]);
 
     if (Perspective == BLACK)
     {
@@ -79,6 +79,8 @@ IndexType FullThreats::make_index(Piece attkr, Square from, Square to, Piece att
         attkd = ~attkd;
     }
 
+    // Some threats imply the existence of the corresponding ones in the opposite
+    // direction. We filter them here to ensure only one such threat is active.
     if ((map[type_of(attkr) - 1][type_of(attkd) - 1] < 0)
         || (type_of(attkr) == type_of(attkd) && (enemy || type_of(attkr) != PAWN) && from < to))
     {
@@ -187,21 +189,37 @@ FullThreats::make_index<BLACK>(Piece attkr, Square from, Square to, Piece attkd,
 
 // Get a list of indices for recently changed features
 template<Color Perspective>
-void FullThreats::append_changed_indices(Square            ksq,
-                                         const DirtyPiece& dp,
-                                         IndexList&        removed,
-                                         IndexList&        added) {}
+void FullThreats::append_changed_indices(Square          ksq,
+                                         const DiffType& diff,
+                                         IndexList&      removed,
+                                         IndexList&      added) {
+    for (const auto [attacker, attacked, from, to, add] : diff.list)
+    {
+        IndexType index = make_index<Perspective>(attacker, from, to, attacked, ksq);
+
+        if (index == Dimensions)
+            continue;
+
+        if (add)
+            added.push_back(index);
+        else
+            removed.push_back(index);
+    }
+}
 
 // Explicit template instantiations
-template void FullThreats::append_changed_indices<WHITE>(Square            ksq,
-                                                         const DirtyPiece& dp,
-                                                         IndexList&        removed,
-                                                         IndexList&        added);
-template void FullThreats::append_changed_indices<BLACK>(Square            ksq,
-                                                         const DirtyPiece& dp,
-                                                         IndexList&        removed,
-                                                         IndexList&        added);
+template void FullThreats::append_changed_indices<WHITE>(Square          ksq,
+                                                         const DiffType& diff,
+                                                         IndexList&      removed,
+                                                         IndexList&      added);
+template void FullThreats::append_changed_indices<BLACK>(Square          ksq,
+                                                         const DiffType& diff,
+                                                         IndexList&      removed,
+                                                         IndexList&      added);
 
-bool FullThreats::requires_refresh(const DirtyPiece& dirtyPiece, Color perspective) { return true; }
+bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
+    return perspective == diff.us
+        && OrientTBL[diff.us][diff.ksq] != OrientTBL[diff.us][diff.prevKsq];
+}
 
 }  // namespace Stockfish::Eval::NNUE::Features

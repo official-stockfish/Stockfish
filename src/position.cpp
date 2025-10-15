@@ -48,6 +48,7 @@ Key psq[PIECE_NB][SQUARE_NB];
 Key enpassant[FILE_NB];
 Key castling[CASTLING_RIGHT_NB];
 Key side, noPawns;
+
 }
 
 namespace {
@@ -703,9 +704,9 @@ bool Position::gives_check(Move m) const {
 // If a pointer to the TT table is passed, the entry for the new position
 // will be prefetched
 DirtyBoardData Position::do_move(Move                      m,
-                             StateInfo&                newSt,
-                             bool                      givesCheck,
-                             const TranspositionTable* tt = nullptr) {
+                                 StateInfo&                newSt,
+                                 bool                      givesCheck,
+                                 const TranspositionTable* tt = nullptr) {
 
     assert(m.is_ok());
     assert(&newSt != st);
@@ -739,7 +740,9 @@ DirtyBoardData Position::do_move(Move                      m,
     dp.from   = from;
     dp.to     = to;
     dp.add_sq = SQ_NONE;
-    DirtyThreatList dts;
+    DirtyThreats dts;
+    dts.us      = us;
+    dts.prevKsq = square<KING>(us);
 
     assert(color_of(pc) == us);
     assert(captured == NO_PIECE || color_of(captured) == (m.type_of() != CASTLING ? them : us));
@@ -965,13 +968,16 @@ DirtyBoardData Position::do_move(Move                      m,
         }
     }
 
+    dts.ksq = square<KING>(us);
+
     assert(pos_is_ok());
 
     assert(dp.pc != NO_PIECE);
     assert(!(bool(captured) || m.type_of() == CASTLING) ^ (dp.remove_sq != SQ_NONE));
     assert(dp.from != SQ_NONE);
     assert(!(dp.add_sq != SQ_NONE) ^ (m.type_of() == PROMOTION || m.type_of() == CASTLING));
-    return std::make_pair(dp, dts);
+
+    return {dp, dts};
 }
 
 
@@ -1038,18 +1044,19 @@ void Position::undo_move(Move m) {
 }
 
 template<bool put_piece>
-void Position::update_piece_threats(Piece pc, Square s, DirtyThreatList* const dts) {
+void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts) {
     // Add newly threatened pieces
-    Bitboard occupied = pieces();
+    Bitboard occupied   = pieces();
     Bitboard threatened = attacks_bb(pc, s, occupied);
-    while (threatened) {
+    while (threatened)
+    {
         Square threatened_sq = pop_lsb(threatened);
         Piece  threatened_pc = piece_on(threatened_sq);
 
         assert(threatened_sq != s);
 
         if (threatened_pc)
-            dts->push_back({ pc, threatened_pc, s, threatened_sq, put_piece });
+            dts->list.push_back({pc, threatened_pc, s, threatened_sq, put_piece});
 
         if (put_piece)
             st->threatsToSquare[threatened_sq] |= square_bb(s);
@@ -1059,9 +1066,10 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreatList* const d
 
     // Remove threats of sliders that are now blocked by pc
     Bitboard sliders = pieces(BISHOP, ROOK, QUEEN) & ~square_bb(s) & st->threatsToSquare[s];
-    while (sliders) {
+    while (sliders)
+    {
         Square slider_sq = pop_lsb(sliders);
-        Piece  slider = piece_on(slider_sq);
+        Piece  slider    = piece_on(slider_sq);
 
         // Move along the slider direction, starting at s
         Direction direction = DirectionBetween[slider_sq][s];
@@ -1082,7 +1090,7 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreatList* const d
 
             Piece threatened_pc = piece_on(threatened_sq);
             if (threatened_pc)
-                dts->push_back({ slider, threatened_pc, slider_sq, threatened_sq, !put_piece });
+                dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
 
             if (occupied & threatened_sq)
             {
@@ -1093,22 +1101,28 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreatList* const d
 
     // Add threats of sliders that were already threatening s
     Bitboard incoming_threats = st->threatsToSquare[s];
-    while (incoming_threats) {
+    while (incoming_threats)
+    {
         Square src_sq = pop_lsb(incoming_threats);
         Piece  src_pc = piece_on(src_sq);
 
         assert(src_sq != s);
         assert(src_pc != NO_PIECE);
 
-        dts->push_back({ src_pc, pc, src_sq, s, put_piece });
+        dts->list.push_back({src_pc, pc, src_sq, s, put_piece});
     }
 }
 
 // Helper used to do/undo a castling move. This is a bit
 // tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
-void Position::do_castling(
-  Color us, Square from, Square& to, Square& rfrom, Square& rto, DirtyThreatList* const dts, DirtyPiece* const dp) {
+void Position::do_castling(Color               us,
+                           Square              from,
+                           Square&             to,
+                           Square&             rfrom,
+                           Square&             rto,
+                           DirtyThreats* const dts,
+                           DirtyPiece* const   dp) {
 
     bool kingSide = to > from;
     rfrom         = to;  // Castling is encoded as "king captures friendly rook"

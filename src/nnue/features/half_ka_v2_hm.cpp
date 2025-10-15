@@ -55,33 +55,33 @@ template IndexType HalfKAv2_hm::make_index<BLACK>(Square s, Piece pc, Square ksq
 
 // Get a list of indices for recently changed features
 template<Color Perspective>
-void HalfKAv2_hm::append_changed_indices(Square            ksq,
-                                         const DirtyPiece& dp,
-                                         IndexList&        removed,
-                                         IndexList&        added) {
-    removed.push_back(make_index<Perspective>(dp.from, dp.pc, ksq));
-    if (dp.to != SQ_NONE)
-        added.push_back(make_index<Perspective>(dp.to, dp.pc, ksq));
+void HalfKAv2_hm::append_changed_indices(Square          ksq,
+                                         const DiffType& diff,
+                                         IndexList&      removed,
+                                         IndexList&      added) {
+    removed.push_back(make_index<Perspective>(diff.from, diff.pc, ksq));
+    if (diff.to != SQ_NONE)
+        added.push_back(make_index<Perspective>(diff.to, diff.pc, ksq));
 
-    if (dp.remove_sq != SQ_NONE)
-        removed.push_back(make_index<Perspective>(dp.remove_sq, dp.remove_pc, ksq));
+    if (diff.remove_sq != SQ_NONE)
+        removed.push_back(make_index<Perspective>(diff.remove_sq, diff.remove_pc, ksq));
 
-    if (dp.add_sq != SQ_NONE)
-        added.push_back(make_index<Perspective>(dp.add_sq, dp.add_pc, ksq));
+    if (diff.add_sq != SQ_NONE)
+        added.push_back(make_index<Perspective>(diff.add_sq, diff.add_pc, ksq));
 }
 
 // Explicit template instantiations
-template void HalfKAv2_hm::append_changed_indices<WHITE>(Square            ksq,
-                                                         const DirtyPiece& dp,
-                                                         IndexList&        removed,
-                                                         IndexList&        added);
-template void HalfKAv2_hm::append_changed_indices<BLACK>(Square            ksq,
-                                                         const DirtyPiece& dp,
-                                                         IndexList&        removed,
-                                                         IndexList&        added);
+template void HalfKAv2_hm::append_changed_indices<WHITE>(Square          ksq,
+                                                         const DiffType& dp,
+                                                         IndexList&      removed,
+                                                         IndexList&      added);
+template void HalfKAv2_hm::append_changed_indices<BLACK>(Square          ksq,
+                                                         const DiffType& dp,
+                                                         IndexList&      removed,
+                                                         IndexList&      added);
 
-bool HalfKAv2_hm::requires_refresh(const DirtyPiece& dirtyPiece, Color perspective) {
-    return dirtyPiece.pc == make_piece(perspective, KING);
+bool HalfKAv2_hm::requires_refresh(const DiffType& diff, Color perspective) {
+    return diff.pc == make_piece(perspective, KING);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

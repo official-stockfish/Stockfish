@@ -89,7 +89,7 @@ class FeatureTransformer {
     using OutputType = TransformedFeatureType;
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions       = FeatureSet::Dimensions;
+    static constexpr IndexType InputDimensions       = PSQFeatureSet::Dimensions;
     static constexpr IndexType ThreatInputDimensions = ThreatFeatureSet::Dimensions;
     static constexpr IndexType TotalInputDimensions  = InputDimensions + ThreatInputDimensions;
     static constexpr IndexType OutputDimensions      = HalfDimensions;
@@ -234,8 +234,8 @@ class FeatureTransformer {
         using namespace SIMD;
 
         accumulatorStack.evaluate(pos, *this, *cache);
-        const auto& accumulatorState       = accumulatorStack.latest();
-        const auto& threatAccumulatorState = accumulatorStack.latest_threat();
+        const auto& accumulatorState       = accumulatorStack.latest<PSQFeatureSet>();
+        const auto& threatAccumulatorState = accumulatorStack.latest<ThreatFeatureSet>();
 
         const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
         const auto& psqtAccumulation = (accumulatorState.acc<HalfDimensions>()).psqtAccumulation;
