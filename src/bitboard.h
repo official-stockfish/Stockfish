@@ -59,10 +59,10 @@ constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 extern uint8_t PopCnt16[1 << 16];
 extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard  BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard  LineBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard  PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-extern Direction DirectionBetween[SQUARE_NB][SQUARE_NB];
+extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 
 // Magic holds all magic bitboards relevant data for a single square

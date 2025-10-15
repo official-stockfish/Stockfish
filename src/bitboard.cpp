@@ -29,10 +29,10 @@ namespace Stockfish {
 uint8_t PopCnt16[1 << 16];
 uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
-Bitboard  LineBB[SQUARE_NB][SQUARE_NB];
-Bitboard  BetweenBB[SQUARE_NB][SQUARE_NB];
-Bitboard  PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-Direction DirectionBetween[SQUARE_NB][SQUARE_NB];
+Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
+Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 alignas(64) Magic Magics[SQUARE_NB][2];
 
@@ -100,25 +100,11 @@ void Bitboards::init() {
                     LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
                     BetweenBB[s1][s2] =
                       (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
+
+                    RayPassBB[s1][s2] = attacks_bb(pt, s1, 0) & (attacks_bb(pt, s2, square_bb(s1)) | s2);
                 }
                 BetweenBB[s1][s2] |= s2;
             }
-        
-        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2) {
-            DirectionBetween[s1][s2] = NOWHERE;
-            if (file_of(s1) == file_of(s2)) {
-                DirectionBetween[s1][s2] = s2 > s1 ? NORTH : SOUTH;
-            } else if (rank_of(s1) == rank_of(s2)) {
-                DirectionBetween[s1][s2] = s2 > s1 ? EAST : WEST;
-            } else if (std::abs(file_of(s1) - file_of(s2)) == std::abs(rank_of(s1) - rank_of(s2))) {
-                if (s2 > s1) {
-                    DirectionBetween[s1][s2] = file_of(s2) > file_of(s1) ? NORTH_EAST : NORTH_WEST;
-                } else {
-                    DirectionBetween[s1][s2] = file_of(s2) > file_of(s1) ? SOUTH_EAST : SOUTH_WEST;
-                }
-            }
-        }
-
     }
 }
 

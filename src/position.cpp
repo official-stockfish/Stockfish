@@ -1071,30 +1071,25 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         Square slider_sq = pop_lsb(sliders);
         Piece  slider    = piece_on(slider_sq);
 
-        // Move along the slider direction, starting at s
-        Direction direction = DirectionBetween[slider_sq][s];
-        assert(direction != NOWHERE);
+        Bitboard ray = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
+        Bitboard threatened = ray & attacks_bb<QUEEN>(s, occupied) & occupied;
 
-        Square threatened_sq = s;
-        while (safe_destination(threatened_sq, direction))
+        assert(!more_than_one(threatened));
+        if (threatened)
         {
-            threatened_sq += direction;
-
-            assert(threatened_sq != s);
-            assert(threatened_sq != slider_sq);
-
-            if (put_piece)
-                st->threatsToSquare[threatened_sq] &= ~square_bb(slider_sq);
-            else
-                st->threatsToSquare[threatened_sq] |= square_bb(slider_sq);
+            Square threatened_sq = lsb(threatened);
+            ray &= BetweenBB[s][threatened_sq];
 
             Piece threatened_pc = piece_on(threatened_sq);
+            dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
+        }
 
-            if (threatened_pc)
-                dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
-
-            if (occupied & threatened_sq)
-                break;
+        while (ray) {
+            Square ray_sq = pop_lsb(ray);
+            if (put_piece)
+                st->threatsToSquare[ray_sq] &= ~square_bb(slider_sq);
+            else
+                st->threatsToSquare[ray_sq] |= square_bb(slider_sq);
         }
     }
 
