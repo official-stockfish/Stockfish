@@ -355,11 +355,14 @@ class FeatureTransformer {
 
             for (IndexType j = 0; j < HalfDimensions / 2; ++j)
             {
-                BiasType sum0 = accumulation[static_cast<int>(perspectives[p])][j + 0];
+                BiasType sum0  = accumulation[static_cast<int>(perspectives[p])][j + 0];
+                BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                sum0               = std::clamp<BiasType>(sum0, 0, 127 * 2);
-                sum1               = std::clamp<BiasType>(sum1, 0, 127 * 2);
+                BiasType sum1t =
+                  threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
+                sum0               = std::clamp<BiasType>(sum0 + sum0t, 0, 127 * 2);
+                sum1               = std::clamp<BiasType>(sum1 + sum1t, 0, 127 * 2);
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
             }
 
