@@ -1554,8 +1554,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                 && (ttData.bound & (ttData.value > bestValue ? BOUND_LOWER : BOUND_UPPER)))
                 bestValue = ttData.value;
             else if (PvNode && is_valid(ttData.value) && is_decisive(ttData.value) && std::abs(ttData.value) != VALUE_MATE)
-                // navigate to the mate to avoid truncated PV's (turn off TB-probing while doing it)
-                return  search<PV>(pos, ss, alpha, beta, 1, false);
+                // navigate to the mate to avoid truncated PV's
+                return search<PV>(pos, ss, alpha, beta, 1, false);
         }
         else
         {
@@ -1637,9 +1637,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                 }
             }
 
-            // Continuation history based pruning
-            if (!capture
-                && pawnHistory[pawn_history_index(pos)][pos.moved_piece(move)][move.to_sq()] < 7300)
+            // Skip non-captures
+            if (!capture)
                 continue;
 
             // Do not search moves with bad enough SEE values
