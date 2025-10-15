@@ -178,6 +178,10 @@ constexpr bool is_loss(Value value) {
 
 constexpr bool is_decisive(Value value) { return is_win(value) || is_loss(value); }
 
+constexpr bool hasMateDistance(Value value) {
+  return  std::abs(value) >= VALUE_MATE_IN_MAX_PLY && std::abs(value) < VALUE_MATE;
+}
+
 // In the code, we make the assumption that these values
 // are such that non_pawn_material() can be used to uniquely
 // identify the material on the board.
