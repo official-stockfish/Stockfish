@@ -171,12 +171,8 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                 }
             }
 
-            std::sort(indices.begin(), indices.end());
-
             for (auto threat : indices)
-            {
                 active.push_back(threat);
-            }
         }
     }
 }
