@@ -379,7 +379,7 @@ Bitboard get_changed_pieces(const Piece old[SQUARE_NB], const Piece new_[SQUARE_
     Bitboard changed = 0;
     for (Square sq = SQUARE_ZERO; sq < SQUARE_NB; ++sq)
     {
-        changed |= static_cast<Bitboard>(old[sq] != new_.piece_on(sq)) << sq;
+        changed |= static_cast<Bitboard>(old[sq] != new_[sq]) << sq;
     }
     return changed;
 #endif
