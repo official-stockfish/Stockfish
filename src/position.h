@@ -53,7 +53,6 @@ struct StateInfo {
     int                             rule50;
     int                             pliesFromNull;
     Square                          epSquare;
-    std::array<Bitboard, SQUARE_NB> threatsToSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
     Key        key;

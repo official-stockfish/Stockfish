@@ -379,22 +379,6 @@ void Position::set_state() const {
     for (Piece pc : Pieces)
         for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
             st->materialKey ^= Zobrist::psq[pc][8 + cnt];
-
-    std::memset(&st->threatsToSquare, 0, sizeof(st->threatsToSquare));
-    for (Piece pc : Pieces)
-    {
-        Bitboard pieceBB = pieces(color_of(pc), type_of(pc));
-        while (pieceBB)
-        {
-            Square   square       = pop_lsb(pieceBB);
-            Bitboard pieceAttacks = attacks_bb(pc, square, pieces());
-            while (pieceAttacks)
-            {
-                Square attackedSquare = pop_lsb(pieceAttacks);
-                st->threatsToSquare[attackedSquare] |= square_bb(square);
-            }
-        }
-    }
 }
 
 // Overload to initialize the position object with the given endgame code string
@@ -1047,32 +1031,37 @@ template<bool put_piece>
 void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts) {
     // Add newly threatened pieces
     Bitboard occupied   = pieces();
-    Bitboard threatened = attacks_bb(pc, s, occupied);
+    Bitboard threatened = attacks_bb(pc, s, occupied) & occupied;
     while (threatened)
     {
         Square threatened_sq = pop_lsb(threatened);
         Piece  threatened_pc = piece_on(threatened_sq);
 
         assert(threatened_sq != s);
+        assert(threatened_pc);
 
-        if (threatened_pc)
-            dts->list.push_back({pc, threatened_pc, s, threatened_sq, put_piece});
-
-        if (put_piece)
-            st->threatsToSquare[threatened_sq] |= square_bb(s);
-        else
-            st->threatsToSquare[threatened_sq] &= ~square_bb(s);
+        dts->list.push_back({pc, threatened_pc, s, threatened_sq, put_piece});
     }
 
-    // Remove threats of sliders that are now blocked by pc
-    Bitboard sliders = pieces(BISHOP, ROOK, QUEEN) & ~square_bb(s) & st->threatsToSquare[s];
+    Bitboard rAttacks = attacks_bb<ROOK>(s, pieces());
+    Bitboard bAttacks = attacks_bb<BISHOP>(s, pieces());
+    Bitboard qAttacks = rAttacks | bAttacks;
+
+    Bitboard sliders =   (pieces(ROOK, QUEEN) & rAttacks)
+                       | (pieces(BISHOP, QUEEN) & bAttacks);
+
+    Bitboard incoming_threats =   (attacks_bb<KNIGHT>(s, pieces()) & pieces(KNIGHT))
+                                | (pawn_attacks_bb<WHITE>(square_bb(s)) & pieces(BLACK, PAWN))
+                                | (pawn_attacks_bb<BLACK>(square_bb(s)) & pieces(WHITE, PAWN))
+                                | (attacks_bb<KING>(s, pieces()) & pieces(KING));
+
     while (sliders)
     {
         Square slider_sq = pop_lsb(sliders);
         Piece  slider    = piece_on(slider_sq);
 
         Bitboard ray = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
-        Bitboard threatened = ray & attacks_bb<QUEEN>(s, occupied) & occupied;
+        Bitboard threatened = ray & qAttacks & occupied;
 
         assert(!more_than_one(threatened));
         if (threatened)
@@ -1084,17 +1073,12 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
             dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
         }
 
-        while (ray) {
-            Square ray_sq = pop_lsb(ray);
-            if (put_piece)
-                st->threatsToSquare[ray_sq] &= ~square_bb(slider_sq);
-            else
-                st->threatsToSquare[ray_sq] |= square_bb(slider_sq);
-        }
+        dts->list.push_back({slider, pc, slider_sq, s, put_piece});
     }
 
-    // Add threats of sliders that were already threatening s
-    Bitboard incoming_threats = st->threatsToSquare[s];
+    // Add threats of sliders that were already threatening s,
+    // sliders are already handled in the loop above
+
     while (incoming_threats)
     {
         Square src_sq = pop_lsb(incoming_threats);
