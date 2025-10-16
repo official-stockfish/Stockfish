@@ -80,7 +80,7 @@ void permute(T (&data)[N], const std::array<std::size_t, OrderSize>& order) {
 // Input feature converter
 template<IndexType TransformedFeatureDimensions>
 class FeatureTransformer {
-
+    static constexpr bool use_threats = (TransformedFeatureDimensions == TransformedFeatureDimensionsBig);
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
 
@@ -123,19 +123,23 @@ class FeatureTransformer {
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
         // TODO: Fix this
-        return ThreatFeatureSet::HashValue ^ (OutputDimensions * 2);
+        return (use_threats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue) ^ (OutputDimensions * 2);
     }
 
     void permute_weights() {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
-        permute<16>(threatWeights, PackusEpi16Order);
+        if (use_threats) {
+            permute<16>(threatWeights, PackusEpi16Order);
+        }
     }
 
     void unpermute_weights() {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
-        permute<16>(threatWeights, InversePackusEpi16Order);
+        if (use_threats) {
+            permute<16>(threatWeights, InversePackusEpi16Order);
+        }
     }
 
     inline void scale_weights(bool read) {
@@ -160,7 +164,7 @@ class FeatureTransformer {
     // Read network parameters
     // TODO: This is ugly. Fix
     bool read_parameters(std::istream& stream) {
-
+        if (use_threats) {
         read_leb_128<BiasType>(stream, biases, HalfDimensions);
 
         std::vector<WeightType>     combinedWeights(HalfDimensions
@@ -191,7 +195,12 @@ class FeatureTransformer {
                   combinedPsqtWeights.begin()
                     + (ThreatInputDimensions + InputDimensions) * PSQTBuckets,
                   std::begin(psqtWeights));
-
+        }
+        else {
+            read_leb_128<BiasType>(stream, biases, HalfDimensions);
+            read_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
+            read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
+        }
         permute_weights();
         scale_weights(true);
 
@@ -232,21 +241,25 @@ class FeatureTransformer {
                            int                                       bucket) const {
 
         using namespace SIMD;
-
         accumulatorStack.evaluate(pos, *this, *cache);
         const auto& accumulatorState       = accumulatorStack.latest<PSQFeatureSet>();
         const auto& threatAccumulatorState = accumulatorStack.latest<ThreatFeatureSet>();
 
         const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
         const auto& psqtAccumulation = (accumulatorState.acc<HalfDimensions>()).psqtAccumulation;
+        auto psqt = (psqtAccumulation[perspectives[0]][bucket]
+                           - psqtAccumulation[perspectives[1]][bucket]);
+        if (use_threats) {
         const auto& threatPsqtAccumulation =
           (threatAccumulatorState.acc<HalfDimensions>()).psqtAccumulation;
-        const auto psqt = (psqtAccumulation[perspectives[0]][bucket]
-                           + threatPsqtAccumulation[perspectives[0]][bucket]
-                           - psqtAccumulation[perspectives[1]][bucket]
-                           - threatPsqtAccumulation[perspectives[1]][bucket])
+            psqt = (psqt
+                    + threatPsqtAccumulation[perspectives[0]][bucket]
+                    - threatPsqtAccumulation[perspectives[1]][bucket])
                         / 2;
-
+        }
+        else {
+            psqt /= 2;
+        }
         const auto& accumulation = (accumulatorState.acc<HalfDimensions>()).accumulation;
         const auto& threatAccumulation =
           (threatAccumulatorState.acc<HalfDimensions>()).accumulation;
@@ -267,10 +280,6 @@ class FeatureTransformer {
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
               reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
-            const vec_t* tin0 =
-              reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
-            const vec_t* tin1 = reinterpret_cast<const vec_t*>(
-              &(threatAccumulation[perspectives[p]][HalfDimensions / 2]));
             vec_t* out = reinterpret_cast<vec_t*>(output + offset);
 
             // Per the NNUE architecture, here we want to multiply pairs of
@@ -332,23 +341,44 @@ class FeatureTransformer {
     #else
               6;
     #endif
+            if (use_threats) {
+                const vec_t* tin0 =
+                reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
+                const vec_t* tin1 = reinterpret_cast<const vec_t*>(
+              &(threatAccumulation[perspectives[p]][HalfDimensions / 2]));
+                for (IndexType j = 0; j < NumOutputChunks; ++j)
+                {
+                    const vec_t acc0a = vec_add_16(in0[j * 2 + 0], tin0[j * 2 + 0]);
+                    const vec_t acc0b = vec_add_16(in0[j * 2 + 1], tin0[j * 2 + 1]);
+                    const vec_t acc1a = vec_add_16(in1[j * 2 + 0], tin1[j * 2 + 0]);
+                    const vec_t acc1b = vec_add_16(in1[j * 2 + 1], tin1[j * 2 + 1]);
 
-            for (IndexType j = 0; j < NumOutputChunks; ++j)
-            {
-                const vec_t acc0a = vec_add_16(in0[j * 2 + 0], tin0[j * 2 + 0]);
-                const vec_t acc0b = vec_add_16(in0[j * 2 + 1], tin0[j * 2 + 1]);
-                const vec_t acc1a = vec_add_16(in1[j * 2 + 0], tin1[j * 2 + 0]);
-                const vec_t acc1b = vec_add_16(in1[j * 2 + 1], tin1[j * 2 + 1]);
+                    const vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
+                    const vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
+                    const vec_t sum1a = vec_min_16(acc1a, One);
+                    const vec_t sum1b = vec_min_16(acc1b, One);
 
-                const vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
-                const vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
-                const vec_t sum1a = vec_min_16(acc1a, One);
-                const vec_t sum1b = vec_min_16(acc1b, One);
+                    const vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                    const vec_t pb = vec_mulhi_16(sum0b, sum1b);
 
-                const vec_t pa = vec_mulhi_16(sum0a, sum1a);
-                const vec_t pb = vec_mulhi_16(sum0b, sum1b);
+                    out[j] = vec_packus_16(pa, pb);
+                }
+            }
+            else {
+                for (IndexType j = 0; j < NumOutputChunks; ++j)
+                {
+                    const vec_t sum0a =
+                    vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero), shift);
+                    const vec_t sum0b =
+                    vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 1], One), Zero), shift);
+                    const vec_t sum1a = vec_min_16(in1[j * 2 + 0], One);
+                    const vec_t sum1b = vec_min_16(in1[j * 2 + 1], One);
 
-                out[j] = vec_packus_16(pa, pb);
+                    const vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                    const vec_t pb = vec_mulhi_16(sum0b, sum1b);
+
+                    out[j] = vec_packus_16(pa, pb);
+                }
             }
 
 #else
@@ -356,13 +386,19 @@ class FeatureTransformer {
             for (IndexType j = 0; j < HalfDimensions / 2; ++j)
             {
                 BiasType sum0  = accumulation[static_cast<int>(perspectives[p])][j + 0];
-                BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                BiasType sum1t =
-                  threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                sum0               = std::clamp<BiasType>(sum0 + sum0t, 0, 127 * 2);
-                sum1               = std::clamp<BiasType>(sum1 + sum1t, 0, 127 * 2);
+                if (use_threats) {
+                    BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
+                    BiasType sum1t =
+                    threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
+                    sum0               = std::clamp<BiasType>(sum0 + sum0t, 0, 127 * 2);
+                    sum1               = std::clamp<BiasType>(sum1 + sum1t, 0, 127 * 2);
+                }
+                else {
+                    sum0               = std::clamp<BiasType>(sum0, 0, 127 * 2);
+                    sum1               = std::clamp<BiasType>(sum1, 0, 127 * 2);
+                }
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
             }
 
