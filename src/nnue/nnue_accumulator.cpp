@@ -327,24 +327,7 @@ struct AccumulatorUpdateContext {
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = fromTile[k];
 
-            IndexType i = 0;
-
-            for (; i < std::min(removed.size(), added.size()); ++i)
-            {
-                IndexType       indexR  = removed[i];
-                const IndexType offsetR = Dimensions * indexR + j * Tiling::TileHeight;
-                auto*           columnR =
-                  reinterpret_cast<const vec_t*>(&featureTransformer.threatWeights[offsetR]);
-                IndexType       indexA  = added[i];
-                const IndexType offsetA = Dimensions * indexA + j * Tiling::TileHeight;
-                auto*           columnA =
-                  reinterpret_cast<const vec_t*>(&featureTransformer.threatWeights[offsetA]);
-
-                for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                    acc[k] = fused<Vec16Wrapper, Add, Sub>(acc[k], columnA[k], columnR[k]);
-            }
-
-            for (; i < removed.size(); ++i)
+            for (IndexType i = 0; i < removed.size(); ++i)
             {
                 IndexType       index  = removed[i];
                 const IndexType offset = Dimensions * index + j * Tiling::TileHeight;
@@ -355,7 +338,7 @@ struct AccumulatorUpdateContext {
                     acc[k] = vec_sub_16(acc[k], column[k]);
             }
 
-            for (; i < added.size(); ++i)
+            for (IndexType i = 0; i < added.size(); ++i)
             {
                 IndexType       index  = added[i];
                 const IndexType offset = Dimensions * index + j * Tiling::TileHeight;
