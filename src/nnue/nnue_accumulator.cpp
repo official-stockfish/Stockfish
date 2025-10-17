@@ -18,9 +18,9 @@
 
 #include "nnue_accumulator.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <initializer_list>
 #include <type_traits>
 
 #include "../bitboard.h"
