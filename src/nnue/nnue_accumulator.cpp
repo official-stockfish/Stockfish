@@ -75,7 +75,7 @@ void AccumulatorStack::reset() noexcept {
 }
 
 void AccumulatorStack::push(const DirtyPiece& dirtyPiece) noexcept {
-    assert(size + 1 < accumulators.size());
+    assert(size < accumulators.size());
     accumulators[size].reset(dirtyPiece);
     size++;
 }
