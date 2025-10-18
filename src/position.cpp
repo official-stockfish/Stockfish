@@ -858,6 +858,10 @@ DirtyPiece Position::do_move(Move                      m,
             st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
     }
 
+    st->key = k;
+    if (tt && !checkEP)
+        prefetch(tt->first_entry(key()));
+
     // Set capture piece
     st->capturedPiece = captured;
 
