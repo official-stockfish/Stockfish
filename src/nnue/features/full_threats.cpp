@@ -69,7 +69,7 @@ void init_threat_offsets() {
 // Index of a feature for a given king position and another piece on some square
 template<Color Perspective>
 IndexType FullThreats::make_index(Piece attkr, Square from, Square to, Piece attkd, Square ksq) {
-    bool enemy = ((attkr ^ attkd) & 8);
+    bool enemy = (attkr ^ attkd) == 8;
     from       = (Square) (int(from) ^ OrientTBL[Perspective][ksq]);
     to         = (Square) (int(to) ^ OrientTBL[Perspective][ksq]);
 
@@ -87,14 +87,11 @@ IndexType FullThreats::make_index(Piece attkr, Square from, Square to, Piece att
         return Dimensions;
     }
 
-    Bitboard attacks = (type_of(attkr) == PAWN)
-                       ? ((color_of(attkr) == WHITE) ? pawn_attacks_bb<WHITE>(square_bb(from))
-                                                     : pawn_attacks_bb<BLACK>(square_bb(from)))
-                       : attacks_bb(type_of(attkr), from, 0ULL);
+    Bitboard attacks = attacks_bb(attkr, from);
 
     return IndexType(
       offsets[attkr][65]
-      + ((attkd / 8) * (numValidTargets[attkr] / 2) + map[type_of(attkr) - 1][type_of(attkd) - 1])
+      + (color_of(attkd) * (numValidTargets[attkr] / 2) + map[type_of(attkr) - 1][type_of(attkd) - 1])
           * offsets[attkr][64]
       + offsets[attkr][from] + popcount((square_bb(to) - 1) & attacks));
 }
