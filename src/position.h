@@ -173,6 +173,7 @@ class Position {
 
     void put_piece(Piece pc, Square s, DirtyThreats* const dts = nullptr);
     void remove_piece(Square s, DirtyThreats* const dts = nullptr);
+    void swap_piece(Square s, Piece pc, DirtyThreats* const dts = nullptr);
 
    private:
     // Initialization helpers (used while setting up a position)
@@ -181,7 +182,7 @@ class Position {
     void set_check_info() const;
 
     // Other helpers
-    template<bool put_piece>
+    template<bool put_piece, bool compute_ray = true>
     void update_piece_threats(Piece pc, Square s, DirtyThreats* const dts);
     void move_piece(Square from, Square to, DirtyThreats* const dts = nullptr);
     template<bool Do>
@@ -378,6 +379,20 @@ inline void Position::move_piece(Square from, Square to, DirtyThreats* const dts
 
     if (dts)
         update_piece_threats<true>(pc, to, dts);
+}
+
+inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
+    Piece old = board[s];
+
+    remove_piece(s);
+
+    if (dts)
+        update_piece_threats<false, false>(old, s, dts);
+
+    put_piece(pc, s);
+
+    if (dts)
+        update_piece_threats<true, false>(pc, s, dts);
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {

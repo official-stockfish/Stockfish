@@ -761,6 +761,9 @@ DirtyBoardData Position::do_move(Move                      m,
                 assert(relative_rank(us, to) == RANK_6);
                 assert(piece_on(to) == NO_PIECE);
                 assert(piece_on(capsq) == make_piece(them, PAWN));
+
+                // Update board and piece lists in ep case, normal captures are updated later
+                remove_piece(capsq, &dts);
             }
 
             st->pawnKey ^= Zobrist::psq[captured][capsq];
@@ -776,9 +779,6 @@ DirtyBoardData Position::do_move(Move                      m,
 
         dp.remove_pc = captured;
         dp.remove_sq = capsq;
-
-        // Update board and piece lists
-        remove_piece(capsq, &dts);
 
         k ^= Zobrist::psq[captured][capsq];
         st->materialKey ^= Zobrist::psq[captured][8 + pieceCount[captured]];
@@ -808,8 +808,13 @@ DirtyBoardData Position::do_move(Move                      m,
     }
 
     // Move the piece. The tricky Chess960 castling is handled earlier
-    if (m.type_of() != CASTLING)
-        move_piece(from, to, &dts);
+    if (m.type_of() != CASTLING) {
+        if (captured && m.type_of() != EN_PASSANT) {
+            remove_piece(from, &dts);
+            swap_piece(to, pc, &dts);  
+        } else
+            move_piece(from, to, &dts);
+    }
 
     // If the moving piece is a pawn do some special extra work
     if (type_of(pc) == PAWN)
@@ -826,8 +831,7 @@ DirtyBoardData Position::do_move(Move                      m,
             assert(relative_rank(us, to) == RANK_8);
             assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
 
-            remove_piece(to, &dts);
-            put_piece(promotion, to, &dts);
+            swap_piece(to, promotion, &dts);
 
             dp.add_pc = promotion;
             dp.add_sq = to;
@@ -1027,7 +1031,7 @@ void Position::undo_move(Move m) {
     assert(pos_is_ok());
 }
 
-template<bool put_piece>
+template<bool put_piece, bool compute_ray>
 void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts) {
     // Add newly threatened pieces
     Bitboard occupied   = pieces();
@@ -1064,7 +1068,7 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         Bitboard threatened = ray & qAttacks & occupied;
 
         assert(!more_than_one(threatened));
-        if (threatened)
+        if (compute_ray && threatened)
         {
             Square threatened_sq = lsb(threatened);
             ray &= BetweenBB[s][threatened_sq];
