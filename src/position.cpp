@@ -858,9 +858,9 @@ DirtyPiece Position::do_move(Move                      m,
             st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
     }
 
-    st->key = k;
+    // If en passant is impossible, then k will not change and we can prefetch earlier
     if (tt && !checkEP)
-        prefetch(tt->first_entry(key()));
+        prefetch(tt->first_entry(adjust_key50(k)));
 
     // Set capture piece
     st->capturedPiece = captured;
