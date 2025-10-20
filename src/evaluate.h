@@ -39,7 +39,7 @@ namespace Eval {
 namespace NNUE {
 struct Networks;
 struct AccumulatorCaches;
-struct AccumulatorStack;
+class AccumulatorStack;
 }
 
 std::string trace(Position& pos, const Eval::NNUE::Networks& networks);

@@ -139,7 +139,7 @@ struct AccumulatorState {
 };
 
 
-struct AccumulatorStack {
+class AccumulatorStack {
    public:
     [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
