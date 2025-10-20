@@ -155,7 +155,7 @@ void AccumulatorStack::forward_update_incremental(
                 const Square captureSq = dp1.to;
                 dp1.to = dp2.remove_sq = SQ_NONE;
                 double_inc_update(Perspective, featureTransformer, ksq, accumulators[next],
-                                               accumulators[next + 1], accumulators[next - 1]);
+                                  accumulators[next + 1], accumulators[next - 1]);
                 dp1.to = dp2.remove_sq = captureSq;
 
                 next++;
@@ -183,7 +183,7 @@ void AccumulatorStack::backward_update_incremental(
     const Square ksq = pos.square<KING>(Perspective);
 
     for (std::int64_t next = std::int64_t(size) - 2; next >= std::int64_t(end); next--)
-        update_accumulator_incremental< false>(Perspective,
+        update_accumulator_incremental<false>(Perspective,
           featureTransformer, ksq, accumulators[next], accumulators[next + 1]);
 
     assert((accumulators[end].acc<Dimensions>()).computed[Perspective]);
@@ -254,7 +254,8 @@ struct AccumulatorUpdateContext {
 };
 
 template<IndexType Dimensions>
-auto make_accumulator_update_context(Color Perspective, const FeatureTransformer<Dimensions>& featureTransformer,
+auto make_accumulator_update_context(Color Perspective,
+                                     const FeatureTransformer<Dimensions>& featureTransformer,
                                      const AccumulatorState&               accumulatorFrom,
                                      AccumulatorState&                     accumulatorTo) noexcept {
     return AccumulatorUpdateContext<Dimensions>{Perspective, featureTransformer, accumulatorFrom,
