@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <string>
 
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -155,29 +156,19 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                       : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
-constexpr Bitboard table[64][2] ={
-{pawn_attacks_bb<WHITE>(square_bb(Square(0))),pawn_attacks_bb<BLACK>(square_bb(Square(0)))},{pawn_attacks_bb<WHITE>(square_bb(Square(1))),pawn_attacks_bb<BLACK>(square_bb(Square(1)))},{pawn_attacks_bb<WHITE>(square_bb(Square(2))),pawn_attacks_bb<BLACK>(square_bb(Square(2)))},{pawn_attacks_bb<WHITE>(square_bb(Square(3))),pawn_attacks_bb<BLACK>(square_bb(Square(3)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(4))),pawn_attacks_bb<BLACK>(square_bb(Square(4)))},{pawn_attacks_bb<WHITE>(square_bb(Square(5))),pawn_attacks_bb<BLACK>(square_bb(Square(5)))},{pawn_attacks_bb<WHITE>(square_bb(Square(6))),pawn_attacks_bb<BLACK>(square_bb(Square(6)))},{pawn_attacks_bb<WHITE>(square_bb(Square(7))),pawn_attacks_bb<BLACK>(square_bb(Square(7)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(8))),pawn_attacks_bb<BLACK>(square_bb(Square(8)))},{pawn_attacks_bb<WHITE>(square_bb(Square(9))),pawn_attacks_bb<BLACK>(square_bb(Square(9)))},{pawn_attacks_bb<WHITE>(square_bb(Square(10))),pawn_attacks_bb<BLACK>(square_bb(Square(10)))},{pawn_attacks_bb<WHITE>(square_bb(Square(11))),pawn_attacks_bb<BLACK>(square_bb(Square(11)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(12))),pawn_attacks_bb<BLACK>(square_bb(Square(12)))},{pawn_attacks_bb<WHITE>(square_bb(Square(13))),pawn_attacks_bb<BLACK>(square_bb(Square(13)))},{pawn_attacks_bb<WHITE>(square_bb(Square(14))),pawn_attacks_bb<BLACK>(square_bb(Square(14)))},{pawn_attacks_bb<WHITE>(square_bb(Square(15))),pawn_attacks_bb<BLACK>(square_bb(Square(15)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(16))),pawn_attacks_bb<BLACK>(square_bb(Square(16)))},{pawn_attacks_bb<WHITE>(square_bb(Square(17))),pawn_attacks_bb<BLACK>(square_bb(Square(17)))},{pawn_attacks_bb<WHITE>(square_bb(Square(18))),pawn_attacks_bb<BLACK>(square_bb(Square(18)))},{pawn_attacks_bb<WHITE>(square_bb(Square(19))),pawn_attacks_bb<BLACK>(square_bb(Square(19)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(20))),pawn_attacks_bb<BLACK>(square_bb(Square(20)))},{pawn_attacks_bb<WHITE>(square_bb(Square(21))),pawn_attacks_bb<BLACK>(square_bb(Square(21)))},{pawn_attacks_bb<WHITE>(square_bb(Square(22))),pawn_attacks_bb<BLACK>(square_bb(Square(22)))},{pawn_attacks_bb<WHITE>(square_bb(Square(23))),pawn_attacks_bb<BLACK>(square_bb(Square(23)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(24))),pawn_attacks_bb<BLACK>(square_bb(Square(24)))},{pawn_attacks_bb<WHITE>(square_bb(Square(25))),pawn_attacks_bb<BLACK>(square_bb(Square(25)))},{pawn_attacks_bb<WHITE>(square_bb(Square(26))),pawn_attacks_bb<BLACK>(square_bb(Square(26)))},{pawn_attacks_bb<WHITE>(square_bb(Square(27))),pawn_attacks_bb<BLACK>(square_bb(Square(27)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(28))),pawn_attacks_bb<BLACK>(square_bb(Square(28)))},{pawn_attacks_bb<WHITE>(square_bb(Square(29))),pawn_attacks_bb<BLACK>(square_bb(Square(29)))},{pawn_attacks_bb<WHITE>(square_bb(Square(30))),pawn_attacks_bb<BLACK>(square_bb(Square(30)))},{pawn_attacks_bb<WHITE>(square_bb(Square(31))),pawn_attacks_bb<BLACK>(square_bb(Square(31)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(32))),pawn_attacks_bb<BLACK>(square_bb(Square(32)))},{pawn_attacks_bb<WHITE>(square_bb(Square(33))),pawn_attacks_bb<BLACK>(square_bb(Square(33)))},{pawn_attacks_bb<WHITE>(square_bb(Square(34))),pawn_attacks_bb<BLACK>(square_bb(Square(34)))},{pawn_attacks_bb<WHITE>(square_bb(Square(35))),pawn_attacks_bb<BLACK>(square_bb(Square(35)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(36))),pawn_attacks_bb<BLACK>(square_bb(Square(36)))},{pawn_attacks_bb<WHITE>(square_bb(Square(37))),pawn_attacks_bb<BLACK>(square_bb(Square(37)))},{pawn_attacks_bb<WHITE>(square_bb(Square(38))),pawn_attacks_bb<BLACK>(square_bb(Square(38)))},{pawn_attacks_bb<WHITE>(square_bb(Square(39))),pawn_attacks_bb<BLACK>(square_bb(Square(39)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(40))),pawn_attacks_bb<BLACK>(square_bb(Square(40)))},{pawn_attacks_bb<WHITE>(square_bb(Square(41))),pawn_attacks_bb<BLACK>(square_bb(Square(41)))},{pawn_attacks_bb<WHITE>(square_bb(Square(42))),pawn_attacks_bb<BLACK>(square_bb(Square(42)))},{pawn_attacks_bb<WHITE>(square_bb(Square(43))),pawn_attacks_bb<BLACK>(square_bb(Square(43)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(44))),pawn_attacks_bb<BLACK>(square_bb(Square(44)))},{pawn_attacks_bb<WHITE>(square_bb(Square(45))),pawn_attacks_bb<BLACK>(square_bb(Square(45)))},{pawn_attacks_bb<WHITE>(square_bb(Square(46))),pawn_attacks_bb<BLACK>(square_bb(Square(46)))},{pawn_attacks_bb<WHITE>(square_bb(Square(47))),pawn_attacks_bb<BLACK>(square_bb(Square(47)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(48))),pawn_attacks_bb<BLACK>(square_bb(Square(48)))},{pawn_attacks_bb<WHITE>(square_bb(Square(49))),pawn_attacks_bb<BLACK>(square_bb(Square(49)))},{pawn_attacks_bb<WHITE>(square_bb(Square(50))),pawn_attacks_bb<BLACK>(square_bb(Square(50)))},{pawn_attacks_bb<WHITE>(square_bb(Square(51))),pawn_attacks_bb<BLACK>(square_bb(Square(51)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(52))),pawn_attacks_bb<BLACK>(square_bb(Square(52)))},{pawn_attacks_bb<WHITE>(square_bb(Square(53))),pawn_attacks_bb<BLACK>(square_bb(Square(53)))},{pawn_attacks_bb<WHITE>(square_bb(Square(54))),pawn_attacks_bb<BLACK>(square_bb(Square(54)))},{pawn_attacks_bb<WHITE>(square_bb(Square(55))),pawn_attacks_bb<BLACK>(square_bb(Square(55)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(56))),pawn_attacks_bb<BLACK>(square_bb(Square(56)))},{pawn_attacks_bb<WHITE>(square_bb(Square(57))),pawn_attacks_bb<BLACK>(square_bb(Square(57)))},{pawn_attacks_bb<WHITE>(square_bb(Square(58))),pawn_attacks_bb<BLACK>(square_bb(Square(58)))},{pawn_attacks_bb<WHITE>(square_bb(Square(59))),pawn_attacks_bb<BLACK>(square_bb(Square(59)))},
-{pawn_attacks_bb<WHITE>(square_bb(Square(60))),pawn_attacks_bb<BLACK>(square_bb(Square(60)))},{pawn_attacks_bb<WHITE>(square_bb(Square(61))),pawn_attacks_bb<BLACK>(square_bb(Square(61)))},{pawn_attacks_bb<WHITE>(square_bb(Square(62))),pawn_attacks_bb<BLACK>(square_bb(Square(62)))},{pawn_attacks_bb<WHITE>(square_bb(Square(63))),pawn_attacks_bb<BLACK>(square_bb(Square(63)))}
-};
-
 
 template<Color C>
-constexpr Bitboard pawn_attacks_bb(Square s){
-    return table[s][C];
+constexpr Bitboard pawn_attacks_bb(Square sq) {
+    constexpr MultiArray<Bitboard, SQUARE_NB> pawn_attacks_table = [] {
+        MultiArray<Bitboard, SQUARE_NB> table{};
+
+        for (Square s = SQ_A1; s <= SQ_H8; ++s)
+            table[s] = pawn_attacks_bb<C>(square_bb(s));
+
+        return table;
+    }();
+
+    return pawn_attacks_table[sq];
 }
 
 
@@ -286,7 +277,8 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 }
 
 inline Bitboard attacks_bb(Piece pc, Square s) {
-    if (type_of(pc) == PAWN) {
+    if (type_of(pc) == PAWN)
+    {
         return PseudoAttacks[color_of(pc)][s];
     }
     return PseudoAttacks[type_of(pc)][s];
@@ -294,7 +286,8 @@ inline Bitboard attacks_bb(Piece pc, Square s) {
 
 
 inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
-    if (type_of(pc) == PAWN) {
+    if (type_of(pc) == PAWN)
+    {
         return PseudoAttacks[color_of(pc)][s];
     }
     return attacks_bb(type_of(pc), s, occupied);

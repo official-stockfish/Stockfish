@@ -808,11 +808,14 @@ DirtyBoardData Position::do_move(Move                      m,
     }
 
     // Move the piece. The tricky Chess960 castling is handled earlier
-    if (m.type_of() != CASTLING) {
-        if (captured && m.type_of() != EN_PASSANT) {
+    if (m.type_of() != CASTLING)
+    {
+        if (captured && m.type_of() != EN_PASSANT)
+        {
             remove_piece(from, &dts);
-            swap_piece(to, pc, &dts);  
-        } else
+            swap_piece(to, pc, &dts);
+        }
+        else
             move_piece(from, to, &dts);
     }
 
@@ -1034,32 +1037,35 @@ void Position::undo_move(Move m) {
 template<bool put_piece, bool compute_ray>
 void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts) {
     // Add newly threatened pieces
-    Bitboard occupied   = pieces();
+    Bitboard occupied = pieces();
 
     Bitboard rAttacks = attacks_bb<ROOK>(s, occupied);
     Bitboard bAttacks = attacks_bb<BISHOP>(s, occupied);
     Bitboard qAttacks = rAttacks | bAttacks;
 
-    //Bitboard threatened = attacks_bb(pc, s, occupied) & occupied;
     Bitboard threatened;
-    switch(type_of(pc)){
-    case PAWN:
+
+    switch (type_of(pc))
+    {
+    case PAWN :
         threatened = PseudoAttacks[color_of(pc)][s];
         break;
-    case BISHOP:
+    case BISHOP :
         threatened = bAttacks;
         break;
-    case ROOK:
+    case ROOK :
         threatened = rAttacks;
         break;
-    case QUEEN:
+    case QUEEN :
         threatened = qAttacks;
         break;
 
-    default:
+    default :
         threatened = PseudoAttacks[type_of(pc)][s];
     }
+
     threatened &= occupied;
+
     while (threatened)
     {
         Square threatened_sq = pop_lsb(threatened);
@@ -1071,20 +1077,19 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         dts->list.push_back({pc, threatened_pc, s, threatened_sq, put_piece});
     }
 
-    Bitboard sliders =   (pieces(ROOK, QUEEN) & rAttacks)
-                       | (pieces(BISHOP, QUEEN) & bAttacks);
+    Bitboard sliders = (pieces(ROOK, QUEEN) & rAttacks) | (pieces(BISHOP, QUEEN) & bAttacks);
 
-    Bitboard incoming_threats =   (attacks_bb<KNIGHT>(s, occupied) & pieces(KNIGHT))
-                                | (pawn_attacks_bb<WHITE>(s) & pieces(BLACK, PAWN))
-                                | (pawn_attacks_bb<BLACK>(s) & pieces(WHITE, PAWN))
-                                | (attacks_bb<KING>(s, occupied) & pieces(KING));
+    Bitboard incoming_threats = (attacks_bb<KNIGHT>(s, occupied) & pieces(KNIGHT))
+                              | (pawn_attacks_bb<WHITE>(s) & pieces(BLACK, PAWN))
+                              | (pawn_attacks_bb<BLACK>(s) & pieces(WHITE, PAWN))
+                              | (attacks_bb<KING>(s, occupied) & pieces(KING));
 
     while (sliders)
     {
         Square slider_sq = pop_lsb(sliders);
         Piece  slider    = piece_on(slider_sq);
 
-        Bitboard ray = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
+        Bitboard ray        = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
         Bitboard threatened = ray & qAttacks & occupied;
 
         assert(!more_than_one(threatened));
