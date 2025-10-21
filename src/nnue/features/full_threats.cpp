@@ -114,7 +114,6 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
             Color     c     = order[Perspective][color];
             Piece     attkr = make_piece(c, pt);
             Bitboard  bb    = colorBB[c] & pieceBB[pt];
-            IndexList indices;
 
             if (pt == PAWN)
             {
@@ -134,7 +133,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
 
                     if (index < Dimensions)
                     {
-                        indices.push_back(index);
+                        active.push_back(index);
                     }
                 }
 
@@ -147,7 +146,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
 
                     if (index < Dimensions)
                     {
-                        indices.push_back(index);
+                        active.push_back(index);
                     }
                 }
             }
@@ -164,14 +163,11 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                         IndexType index = make_index<Perspective>(attkr, from, to, attkd, ksq);
                         if (index < Dimensions)
                         {
-                            indices.push_back(index);
+                            active.push_back(index);
                         }
                     }
                 }
             }
-
-            for (auto threat : indices)
-                active.push_back(threat);
         }
     }
 }

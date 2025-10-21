@@ -1096,7 +1096,6 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         if (compute_ray && threatened)
         {
             Square threatened_sq = lsb(threatened);
-            ray &= BetweenBB[s][threatened_sq];
 
             Piece threatened_pc = piece_on(threatened_sq);
             dts->list.push_back({slider, threatened_pc, slider_sq, threatened_sq, !put_piece});
