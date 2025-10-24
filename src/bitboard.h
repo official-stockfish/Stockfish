@@ -156,22 +156,6 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                       : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
-
-template<Color C>
-constexpr Bitboard pawn_attacks_bb(Square sq) {
-    constexpr MultiArray<Bitboard, SQUARE_NB> pawn_attacks_table = [] {
-        MultiArray<Bitboard, SQUARE_NB> table{};
-
-        for (Square s = SQ_A1; s <= SQ_H8; ++s)
-            table[s] = pawn_attacks_bb<C>(square_bb(s));
-
-        return table;
-    }();
-
-    return pawn_attacks_table[sq];
-}
-
-
 // Returns a bitboard representing an entire line (from board edge
 // to board edge) that intersects the two given squares. If the given squares
 // are not on a same file/rank/diagonal, the function returns 0. For instance,
