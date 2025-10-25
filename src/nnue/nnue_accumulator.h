@@ -160,23 +160,23 @@ class AccumulatorStack {
    private:
     [[nodiscard]] AccumulatorState& mut_latest() noexcept;
 
-    template< IndexType Dimensions>
-    void evaluate_side(Color Perspective,
+    template<IndexType Dimensions>
+    void evaluate_side(Color                                 perspective,
                        const Position&                       pos,
                        const FeatureTransformer<Dimensions>& featureTransformer,
                        AccumulatorCaches::Cache<Dimensions>& cache) noexcept;
 
     template<IndexType Dimensions>
-    [[nodiscard]] std::size_t find_last_usable_accumulator(Color Perspective) const noexcept;
+    [[nodiscard]] std::size_t find_last_usable_accumulator(Color perspective) const noexcept;
 
-    template< IndexType Dimensions>
-    void forward_update_incremental(Color Perspective,
+    template<IndexType Dimensions>
+    void forward_update_incremental(Color                                 perspective,
                                     const Position&                       pos,
                                     const FeatureTransformer<Dimensions>& featureTransformer,
                                     const std::size_t                     begin) noexcept;
 
-    template< IndexType Dimensions>
-    void backward_update_incremental(Color Perspective,
+    template<IndexType Dimensions>
+    void backward_update_incremental(Color                                 perspective,
                                      const Position&                       pos,
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;

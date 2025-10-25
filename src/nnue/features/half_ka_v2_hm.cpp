@@ -31,11 +31,13 @@ namespace Stockfish::Eval::NNUE::Features {
 IndexType HalfKAv2_hm::make_index(Color Perspective, Square s, Piece pc, Square ksq) {
     const IndexType flip = 56 * Perspective;
     return (IndexType(s) ^ OrientTBL[ksq] ^ flip) + PieceSquareIndex[Perspective][pc]
-    + KingBuckets[int(ksq) ^ flip];
+        + KingBuckets[int(ksq) ^ flip];
 }
 
 // Get a list of indices for active features
-void HalfKAv2_hm::append_active_indices(Color Perspective, const Position& pos, IndexList& active) {
+void HalfKAv2_hm::append_active_indices(Color Perspective,
+                                        const Position& pos,
+                                        IndexList& active) {
     Square   ksq = pos.square<KING>(Perspective);
     Bitboard bb  = pos.pieces();
     while (bb)
