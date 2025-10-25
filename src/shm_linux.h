@@ -28,6 +28,7 @@
 #include <mutex>
 #include <new>
 #include <optional>
+#include <pthread.h>
 #include <string>
 #include <type_traits>
 #include <unordered_set>
@@ -56,9 +57,11 @@ namespace shm {
 namespace detail {
 
 struct ShmHeader {
-    static constexpr uint32_t SHM_MAGIC   = 0xAD5F1A12;
-    static constexpr uint32_t MAX_CLIENTS = 256;
+    static constexpr uint32_t SHM_MAGIC      = 0xAD5F1A12;
+    static constexpr uint32_t MAX_CLIENTS    = 256;
+    static constexpr pid_t    EMPTY_CLIENTID = 0;
 
+    pthread_mutex_t mutex;
     std::atomic<uint32_t> ref_count{0};
     std::atomic<bool>     initialized{false};
     uint32_t              magic = SHM_MAGIC;
@@ -66,7 +69,7 @@ struct ShmHeader {
 
     ShmHeader() {
         for (auto& slot : clients)
-            slot.store(0, std::memory_order_relaxed);
+            slot.store(EMPTY_CLIENTID, std::memory_order_relaxed);
     }
 };
 
@@ -103,6 +106,37 @@ class SharedMemoryRegistry {
 
 inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
 inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
+
+class CleanupHooks {
+   private:
+    static std::once_flag register_once_;
+
+    static void handle_signal(int sig) noexcept {
+        SharedMemoryRegistry::cleanup_all();
+        _Exit(128 + sig);
+    }
+
+    static void register_signal_handlers() noexcept {
+        std::atexit([]() { SharedMemoryRegistry::cleanup_all(); });
+
+        constexpr int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL,  SIGABRT, SIGFPE,
+                                   SIGSEGV, SIGTERM, SIGBUS,  SIGSYS,  SIGXCPU, SIGXFSZ};
+
+        struct sigaction sa;
+        sa.sa_handler = handle_signal;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+
+        for (int sig : signals)
+            sigaction(sig, &sa, nullptr);
+    }
+
+   public:
+    static void ensure_registered() noexcept { std::call_once(register_once_, register_signal_handlers); }
+};
+
+inline std::once_flag CleanupHooks::register_once_;
+
 
 inline int portable_fallocate(int fd, off_t offset, off_t length) {
 #ifdef __APPLE__
@@ -191,6 +225,8 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     [[nodiscard]] bool open(const T& initial_value) noexcept {
+        detail::CleanupHooks::ensure_registered();
+
         bool retried_stale = false;
 
         while (true)
@@ -239,16 +275,38 @@ class SharedMemory: public detail::SharedMemoryBase {
                 return false;
             }
 
+            if (!lock_shared_mutex())
+            {
+                if (created_new)
+                    shm_unlink(name_.c_str());
+                if (mapped_ptr_)
+                    unmap_region();
+                unlock_file();
+                ::close(fd_);
+                reset();
+
+                if (!created_new && !retried_stale)
+                {
+                    retried_stale = true;
+                    continue;
+                }
+                return false;
+            }
+
             cleanup_dead_slots_locked();
             if (!register_process_slot_locked())
             {
+                unlock_shared_mutex();
                 unmap_region();
+                if (created_new)
+                    shm_unlink(name_.c_str());
                 unlock_file();
                 ::close(fd_);
                 reset();
                 return false;
             }
 
+            unlock_shared_mutex();
             unlock_file();
             detail::SharedMemoryRegistry::register_instance(this);
             return true;
@@ -260,13 +318,18 @@ class SharedMemory: public detail::SharedMemoryBase {
             return;
 
         bool remove_region = false;
-        bool locked        = lock_file(LOCK_EX);
+        bool file_locked   = lock_file(LOCK_EX);
+        bool mutex_locked  = false;
 
-        if (locked && header_ptr_ != nullptr)
+        if (file_locked && header_ptr_ != nullptr)
+            mutex_locked = lock_shared_mutex();
+
+        if (mutex_locked)
         {
             cleanup_dead_slots_locked();
             release_process_slot_locked();
             remove_region = !has_live_clients_locked();
+            unlock_shared_mutex();
         }
 
         unmap_region();
@@ -274,7 +337,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (remove_region)
             shm_unlink(name_.c_str());
 
-        if (locked)
+        if (file_locked)
             unlock_file();
 
         if (fd_ != -1)
@@ -362,6 +425,58 @@ class SharedMemory: public detail::SharedMemoryBase {
         return errno == EPERM;
     }
 
+    [[nodiscard]] bool initialize_shared_mutex() noexcept {
+        if (!header_ptr_)
+            return false;
+
+        pthread_mutexattr_t attr;
+        if (pthread_mutexattr_init(&attr) != 0)
+            return false;
+
+        bool success = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) == 0;
+#ifdef PTHREAD_MUTEX_ROBUST
+        if (success)
+            success = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST) == 0;
+#endif
+
+        if (success)
+            success = pthread_mutex_init(&header_ptr_->mutex, &attr) == 0;
+
+        pthread_mutexattr_destroy(&attr);
+        return success;
+    }
+
+    [[nodiscard]] bool lock_shared_mutex() noexcept {
+        if (!header_ptr_)
+            return false;
+
+        while (true)
+        {
+            int rc = pthread_mutex_lock(&header_ptr_->mutex);
+            if (rc == 0)
+                return true;
+
+#ifdef PTHREAD_MUTEX_ROBUST
+            if (rc == EOWNERDEAD)
+            {
+                if (pthread_mutex_consistent(&header_ptr_->mutex) == 0)
+                    return true;
+                return false;
+            }
+#endif
+
+            if (rc == EINTR)
+                continue;
+
+            return false;
+        }
+    }
+
+    void unlock_shared_mutex() noexcept {
+        if (header_ptr_)
+            pthread_mutex_unlock(&header_ptr_->mutex);
+    }
+
     void cleanup_dead_slots_locked() noexcept {
         if (!header_ptr_)
             return;
@@ -369,9 +484,10 @@ class SharedMemory: public detail::SharedMemoryBase {
         for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
         {
             pid_t pid = header_ptr_->clients[i].load(std::memory_order_acquire);
-            if (pid != 0 && !pid_is_alive(pid))
+            if (pid != detail::ShmHeader::EMPTY_CLIENTID && !pid_is_alive(pid))
             {
-                header_ptr_->clients[i].store(0, std::memory_order_release);
+                header_ptr_->clients[i].store(detail::ShmHeader::EMPTY_CLIENTID,
+                                              std::memory_order_release);
                 decrement_refcount_locked();
             }
         }
@@ -403,7 +519,7 @@ class SharedMemory: public detail::SharedMemoryBase {
                 return true;
             }
 
-            if (pid == 0)
+            if (pid == detail::ShmHeader::EMPTY_CLIENTID)
             {
                 if (free_idx == -1)
                     free_idx = static_cast<int>(i);
@@ -412,7 +528,8 @@ class SharedMemory: public detail::SharedMemoryBase {
 
             if (!pid_is_alive(pid))
             {
-                header_ptr_->clients[i].store(0, std::memory_order_release);
+                header_ptr_->clients[i].store(detail::ShmHeader::EMPTY_CLIENTID,
+                                              std::memory_order_release);
                 decrement_refcount_locked();
                 if (free_idx == -1)
                     free_idx = static_cast<int>(i);
@@ -434,7 +551,8 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (!header_ptr_ || slot_index_ < 0)
             return;
 
-        header_ptr_->clients[slot_index_].store(0, std::memory_order_release);
+        header_ptr_->clients[slot_index_].store(detail::ShmHeader::EMPTY_CLIENTID,
+                                                std::memory_order_release);
         slot_index_ = -1;
         decrement_refcount_locked();
     }
@@ -444,7 +562,8 @@ class SharedMemory: public detail::SharedMemoryBase {
             return false;
 
         for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
-            if (header_ptr_->clients[i].load(std::memory_order_acquire) != 0)
+            if (header_ptr_->clients[i].load(std::memory_order_acquire)
+                != detail::ShmHeader::EMPTY_CLIENTID)
                 return true;
 
         return false;
@@ -470,6 +589,9 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         new (header_ptr_) detail::ShmHeader{};
         new (data_ptr_) T{initial_value};
+
+        if (!initialize_shared_mutex())
+            return false;
 
         header_ptr_->ref_count.store(0, std::memory_order_release);
         header_ptr_->initialized.store(true, std::memory_order_release);
@@ -516,4 +638,3 @@ template<typename T>
 }  // namespace Stockfish
 
 #endif  // #ifndef SHM_LINUX_H_INCLUDED
-
