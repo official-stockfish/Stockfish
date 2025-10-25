@@ -19,21 +19,22 @@
 #ifndef SHM_LINUX_H_INCLUDED
 #define SHM_LINUX_H_INCLUDED
 
+#include <array>
 #include <atomic>
 #include <cassert>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <new>
 #include <optional>
 #include <string>
-#include <thread>
 #include <type_traits>
 #include <unordered_set>
 
 #include <fcntl.h>
-#include <semaphore.h>
 #include <signal.h>
+#include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -53,13 +54,20 @@ namespace Stockfish {
 namespace shm {
 
 namespace detail {
-// Header placed after the data
+
 struct ShmHeader {
-    static constexpr uint32_t SHM_MAGIC = 0xDEADBEEF;
+    static constexpr uint32_t SHM_MAGIC   = 0xAD5F1A12;
+    static constexpr uint32_t MAX_CLIENTS = 256;
 
     std::atomic<uint32_t> ref_count{0};
     std::atomic<bool>     initialized{false};
     uint32_t              magic = SHM_MAGIC;
+    std::array<std::atomic<pid_t>, MAX_CLIENTS> clients;
+
+    ShmHeader() {
+        for (auto& slot : clients)
+            slot.store(0, std::memory_order_relaxed);
+    }
 };
 
 class SharedMemoryBase {
@@ -69,7 +77,6 @@ class SharedMemoryBase {
     virtual const std::string& name() const noexcept = 0;
 };
 
-// Static registry for cleanup
 class SharedMemoryRegistry {
    private:
     static std::mutex                            registry_mutex_;
@@ -90,10 +97,12 @@ class SharedMemoryRegistry {
         std::lock_guard<std::mutex> lock(registry_mutex_);
         for (auto* instance : active_instances_)
             instance->close();
-
         active_instances_.clear();
     }
 };
+
+inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
+inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
 inline int portable_fallocate(int fd, off_t offset, off_t length) {
 #ifdef __APPLE__
@@ -105,17 +114,12 @@ inline int portable_fallocate(int fd, off_t offset, off_t length) {
         ret             = fcntl(fd, F_PREALLOCATE, &store);
     }
     if (ret != -1)
-    {
         ret = ftruncate(fd, offset + length);
-    }
     return ret;
 #else
     return posix_fallocate(fd, offset, length);
 #endif
 }
-
-inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
-inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
 }  // namespace detail
 
@@ -130,17 +134,11 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
-    sem_t*             sem_        = nullptr;
     size_t             total_size_ = 0;
+    int                slot_index_ = -1;
 
     static constexpr size_t calculate_total_size() noexcept {
         return sizeof(T) + sizeof(detail::ShmHeader);
-    }
-
-    std::string get_semaphore_name() const {
-        auto name = "/" + name_ + "_mutex";
-        assert(name.size() < SF_MAX_SEM_NAME_LEN - 4 && "Semaphore name too long");
-        return name;
     }
 
    public:
@@ -153,7 +151,6 @@ class SharedMemory: public detail::SharedMemoryBase {
         close();
     }
 
-    // Non-copyable but movable
     SharedMemory(const SharedMemory&)            = delete;
     SharedMemory& operator=(const SharedMemory&) = delete;
 
@@ -163,13 +160,11 @@ class SharedMemory: public detail::SharedMemoryBase {
         mapped_ptr_(other.mapped_ptr_),
         data_ptr_(other.data_ptr_),
         header_ptr_(other.header_ptr_),
-        sem_(other.sem_),
-        total_size_(other.total_size_) {
+        total_size_(other.total_size_),
+        slot_index_(other.slot_index_) {
 
-        // Update registry
         detail::SharedMemoryRegistry::unregister_instance(&other);
         detail::SharedMemoryRegistry::register_instance(this);
-
         other.reset();
     }
 
@@ -184,8 +179,8 @@ class SharedMemory: public detail::SharedMemoryBase {
             mapped_ptr_ = other.mapped_ptr_;
             data_ptr_   = other.data_ptr_;
             header_ptr_ = other.header_ptr_;
-            sem_        = other.sem_;
             total_size_ = other.total_size_;
+            slot_index_ = other.slot_index_;
 
             detail::SharedMemoryRegistry::unregister_instance(&other);
             detail::SharedMemoryRegistry::register_instance(this);
@@ -195,89 +190,106 @@ class SharedMemory: public detail::SharedMemoryBase {
         return *this;
     }
 
-    // Create or open shared memory region
     [[nodiscard]] bool open(const T& initial_value) noexcept {
-        if (is_open())
-            return false;
+        bool retried_stale = false;
 
-        std::string sem_name = get_semaphore_name();
-        sem_                 = sem_open(sem_name.c_str(), O_CREAT, 0666, 1);
-
-        if (sem_ == SEM_FAILED)
+        while (true)
         {
-            sem_ = nullptr;
-            return false;
-        }
+            if (is_open())
+                return false;
 
-        // Try to create new shared memory
-        fd_ = shm_open(name_.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
-        if (fd_ != -1)
-        {
-            if (!setup_new_region(initial_value))
+            bool created_new = false;
+            fd_              = shm_open(name_.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
+
+            if (fd_ == -1)
             {
-                close();
-                shm_unlink(name_.c_str());
+                fd_ = shm_open(name_.c_str(), O_RDWR, 0666);
+                if (fd_ == -1)
+                    return false;
+            }
+            else
+                created_new = true;
+
+            if (!lock_file(LOCK_EX))
+            {
+                ::close(fd_);
+                reset();
                 return false;
             }
+
+            bool invalid_header = false;
+            bool success =
+              created_new ? setup_new_region(initial_value) : setup_existing_region(invalid_header);
+
+            if (!success)
+            {
+                if (created_new || invalid_header)
+                    shm_unlink(name_.c_str());
+                if (mapped_ptr_)
+                    unmap_region();
+                unlock_file();
+                ::close(fd_);
+                reset();
+
+                if (!created_new && invalid_header && !retried_stale)
+                {
+                    retried_stale = true;
+                    continue;
+                }
+                return false;
+            }
+
+            cleanup_dead_slots_locked();
+            if (!register_process_slot_locked())
+            {
+                unmap_region();
+                unlock_file();
+                ::close(fd_);
+                reset();
+                return false;
+            }
+
+            unlock_file();
             detail::SharedMemoryRegistry::register_instance(this);
             return true;
         }
-
-        // If creation failed, try to open existing
-        fd_ = shm_open(name_.c_str(), O_RDWR, 0666);
-        if (fd_ == -1)
-        {
-            cleanup_semaphore();
-            return false;
-        }
-
-        bool success = setup_existing_region();
-        if (success)
-        {
-            detail::SharedMemoryRegistry::register_instance(this);
-        }
-        else
-        {
-            cleanup_semaphore();
-        }
-        return success;
     }
 
     void close() noexcept override {
-        if (mapped_ptr_ != nullptr)
+        if (fd_ == -1 && mapped_ptr_ == nullptr)
+            return;
+
+        bool remove_region = false;
+        bool locked        = lock_file(LOCK_EX);
+
+        if (locked && header_ptr_ != nullptr)
         {
-            if (header_ptr_ != nullptr)
-            {
-                auto old_count = header_ptr_->ref_count.fetch_sub(1, std::memory_order_acq_rel);
-
-                // remove shm
-                if (old_count == 1)
-                {
-                    shm_unlink(name_.c_str());
-                    sem_unlink(get_semaphore_name().c_str());
-                }
-            }
-
-            munmap(mapped_ptr_, total_size_);
-
-            mapped_ptr_ = nullptr;
-            data_ptr_   = nullptr;
-            header_ptr_ = nullptr;
+            cleanup_dead_slots_locked();
+            release_process_slot_locked();
+            remove_region = !has_live_clients_locked();
         }
+
+        unmap_region();
+
+        if (remove_region)
+            shm_unlink(name_.c_str());
+
+        if (locked)
+            unlock_file();
 
         if (fd_ != -1)
         {
             ::close(fd_);
+            fd_ = -1;
         }
 
-        cleanup_semaphore();
         reset();
     }
 
     const std::string& name() const noexcept override { return name_; }
 
     [[nodiscard]] bool is_open() const noexcept {
-        return fd_ != -1 && mapped_ptr_ != nullptr && data_ptr_ != nullptr;
+        return fd_ != -1 && mapped_ptr_ && data_ptr_;
     }
 
     [[nodiscard]] const T& get() const noexcept { return *data_ptr_; }
@@ -294,7 +306,6 @@ class SharedMemory: public detail::SharedMemoryBase {
         return header_ptr_ ? header_ptr_->initialized.load(std::memory_order_acquire) : false;
     }
 
-    // Static cleanup method for atexit
     static void cleanup_all_instances() noexcept { detail::SharedMemoryRegistry::cleanup_all(); }
 
    private:
@@ -303,111 +314,201 @@ class SharedMemory: public detail::SharedMemoryBase {
         mapped_ptr_ = nullptr;
         data_ptr_   = nullptr;
         header_ptr_ = nullptr;
-        sem_        = nullptr;
+        slot_index_ = -1;
     }
 
-    void cleanup_semaphore() noexcept {
-        if (sem_ && sem_ != SEM_FAILED)
+    void unmap_region() noexcept {
+        if (mapped_ptr_)
         {
-            sem_close(sem_);
-            sem_ = nullptr;
+            munmap(mapped_ptr_, total_size_);
+            mapped_ptr_ = nullptr;
+            data_ptr_   = nullptr;
+            header_ptr_ = nullptr;
         }
+    }
+
+    [[nodiscard]] bool lock_file(int operation) noexcept {
+        if (fd_ == -1)
+            return false;
+
+        while (flock(fd_, operation) == -1)
+        {
+            if (errno == EINTR)
+                continue;
+            return false;
+        }
+        return true;
+    }
+
+    void unlock_file() noexcept {
+        if (fd_ == -1)
+            return;
+
+        while (flock(fd_, LOCK_UN) == -1)
+        {
+            if (errno == EINTR)
+                continue;
+            break;
+        }
+    }
+
+    static bool pid_is_alive(pid_t pid) noexcept {
+        if (pid <= 0)
+            return false;
+
+        if (kill(pid, 0) == 0)
+            return true;
+
+        return errno == EPERM;
+    }
+
+    void cleanup_dead_slots_locked() noexcept {
+        if (!header_ptr_)
+            return;
+
+        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
+        {
+            pid_t pid = header_ptr_->clients[i].load(std::memory_order_acquire);
+            if (pid != 0 && !pid_is_alive(pid))
+            {
+                header_ptr_->clients[i].store(0, std::memory_order_release);
+                decrement_refcount_locked();
+            }
+        }
+    }
+
+    void decrement_refcount_locked() noexcept {
+        if (!header_ptr_)
+            return;
+
+        uint32_t value = header_ptr_->ref_count.load(std::memory_order_relaxed);
+        if (value > 0)
+            header_ptr_->ref_count.store(value - 1, std::memory_order_relaxed);
+    }
+
+    bool register_process_slot_locked() noexcept {
+        if (!header_ptr_)
+            return false;
+
+        const pid_t self_pid = getpid();
+        int         free_idx = -1;
+
+        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
+        {
+            pid_t pid = header_ptr_->clients[i].load(std::memory_order_acquire);
+
+            if (pid == self_pid)
+            {
+                slot_index_ = static_cast<int>(i);
+                return true;
+            }
+
+            if (pid == 0)
+            {
+                if (free_idx == -1)
+                    free_idx = static_cast<int>(i);
+                continue;
+            }
+
+            if (!pid_is_alive(pid))
+            {
+                header_ptr_->clients[i].store(0, std::memory_order_release);
+                decrement_refcount_locked();
+                if (free_idx == -1)
+                    free_idx = static_cast<int>(i);
+            }
+        }
+
+        if (free_idx != -1)
+        {
+            header_ptr_->clients[free_idx].store(self_pid, std::memory_order_release);
+            header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
+            slot_index_ = free_idx;
+            return true;
+        }
+
+        return false;
+    }
+
+    void release_process_slot_locked() noexcept {
+        if (!header_ptr_ || slot_index_ < 0)
+            return;
+
+        header_ptr_->clients[slot_index_].store(0, std::memory_order_release);
+        slot_index_ = -1;
+        decrement_refcount_locked();
+    }
+
+    bool has_live_clients_locked() const noexcept {
+        if (!header_ptr_)
+            return false;
+
+        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
+            if (header_ptr_->clients[i].load(std::memory_order_acquire) != 0)
+                return true;
+
+        return false;
     }
 
     [[nodiscard]] bool setup_new_region(const T& initial_value) noexcept {
-        // Wait on semaphore to ensure exclusive access during initialization
-        if (sem_wait(sem_) == -1)
-        {
-            return false;
-        }
-
-        // Set the size of the shared memory region
         if (ftruncate(fd_, static_cast<off_t>(total_size_)) == -1)
-        {
-            sem_post(sem_);
             return false;
-        }
 
-        int r = detail::portable_fallocate(fd_, 0, static_cast<off_t>(total_size_));
-        if (r != 0)
-        {
-            sem_post(sem_);
+        if (detail::portable_fallocate(fd_, 0, static_cast<off_t>(total_size_)) != 0)
             return false;
-        }
 
-        // Map the memory
-        auto flags  = PROT_READ | PROT_WRITE;
-        mapped_ptr_ = mmap(nullptr, total_size_, flags, MAP_SHARED, fd_, 0);
-
+        mapped_ptr_ = mmap(nullptr, total_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
         if (mapped_ptr_ == MAP_FAILED)
         {
             mapped_ptr_ = nullptr;
-            sem_post(sem_);
             return false;
         }
 
-        // Set up pointers - data first, header immediately after
-        data_ptr_ = static_cast<T*>(mapped_ptr_);
+        data_ptr_   = static_cast<T*>(mapped_ptr_);
         header_ptr_ =
           reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
 
         new (header_ptr_) detail::ShmHeader{};
         new (data_ptr_) T{initial_value};
 
-        // Initialize header
-        header_ptr_->ref_count.store(1, std::memory_order_release);
+        header_ptr_->ref_count.store(0, std::memory_order_release);
         header_ptr_->initialized.store(true, std::memory_order_release);
-
-        if (sem_post(sem_) == -1)
-            return false;
-
         return true;
     }
 
-    [[nodiscard]] bool setup_existing_region() noexcept {
-        // Wait on semaphore to ensure proper initialization
-        if (sem_wait(sem_) == -1)
-            return false;
+    [[nodiscard]] bool setup_existing_region(bool& invalid_header) noexcept {
+        invalid_header = false;
 
-        // Map the memory
-        auto flags  = PROT_READ | PROT_WRITE;
-        mapped_ptr_ = mmap(nullptr, total_size_, flags, MAP_SHARED, fd_, 0);
-
+        mapped_ptr_ = mmap(nullptr, total_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
         if (mapped_ptr_ == MAP_FAILED)
         {
             mapped_ptr_ = nullptr;
-            sem_post(sem_);
             return false;
         }
 
         data_ptr_   = static_cast<T*>(mapped_ptr_);
-        header_ptr_ = std::launder(
-          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
+        header_ptr_ =
+          std::launder(reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_)
+                                                            + sizeof(T)));
 
-        assert(header_ptr_->initialized.load(std::memory_order_acquire));
-
-        if (header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
+        if (!header_ptr_->initialized.load(std::memory_order_acquire)
+            || header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
         {
-            sem_post(sem_);
+            invalid_header = true;
+            unmap_region();
             return false;
         }
-
-        header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
-
-        if (sem_post(sem_) == -1)
-            return false;
 
         return true;
     }
 };
 
-// Convenience function to create shared memory
 template<typename T>
 [[nodiscard]] std::optional<SharedMemory<T>> create_shared(const std::string& name,
                                                            const T& initial_value) noexcept {
     SharedMemory<T> shm(name);
     if (shm.open(initial_value))
-        return shm;  // copy elision is guaranteed here
+        return shm;
     return std::nullopt;
 }
 
@@ -415,3 +516,4 @@ template<typename T>
 }  // namespace Stockfish
 
 #endif  // #ifndef SHM_LINUX_H_INCLUDED
+
