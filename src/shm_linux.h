@@ -19,17 +19,19 @@
 #ifndef SHM_LINUX_H_INCLUDED
 #define SHM_LINUX_H_INCLUDED
 
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
+#include <dirent.h>
 #include <mutex>
 #include <new>
 #include <optional>
 #include <pthread.h>
 #include <string>
+#include <inttypes.h>
 #include <type_traits>
 #include <unordered_set>
 
@@ -58,19 +60,10 @@ namespace detail {
 
 struct ShmHeader {
     static constexpr uint32_t SHM_MAGIC      = 0xAD5F1A12;
-    static constexpr uint32_t MAX_CLIENTS    = 256;
-    static constexpr pid_t    EMPTY_CLIENTID = 0;
-
-    pthread_mutex_t mutex;
+    pthread_mutex_t          mutex;
     std::atomic<uint32_t> ref_count{0};
     std::atomic<bool>     initialized{false};
     uint32_t              magic = SHM_MAGIC;
-    std::array<std::atomic<pid_t>, MAX_CLIENTS> clients;
-
-    ShmHeader() {
-        for (auto& slot : clients)
-            slot.store(EMPTY_CLIENTID, std::memory_order_relaxed);
-    }
 };
 
 class SharedMemoryBase {
@@ -168,17 +161,26 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
-    size_t             total_size_ = 0;
-    int                slot_index_ = -1;
+    size_t             total_size_       = 0;
+    std::string        sentinel_base_;
+    std::string        sentinel_path_;
 
     static constexpr size_t calculate_total_size() noexcept {
         return sizeof(T) + sizeof(detail::ShmHeader);
     }
 
+    static std::string make_sentinel_base(const std::string& name) {
+        uint64_t hash = std::hash<std::string>{}(name);
+        char     buf[32];
+        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIx64, static_cast<uint64_t>(hash));
+        return buf;
+    }
+
    public:
     explicit SharedMemory(const std::string& name) noexcept :
         name_(name),
-        total_size_(calculate_total_size()) {}
+        total_size_(calculate_total_size()),
+        sentinel_base_(make_sentinel_base(name)) {}
 
     ~SharedMemory() noexcept {
         detail::SharedMemoryRegistry::unregister_instance(this);
@@ -195,7 +197,8 @@ class SharedMemory: public detail::SharedMemoryBase {
         data_ptr_(other.data_ptr_),
         header_ptr_(other.header_ptr_),
         total_size_(other.total_size_),
-        slot_index_(other.slot_index_) {
+        sentinel_base_(std::move(other.sentinel_base_)),
+        sentinel_path_(std::move(other.sentinel_path_)) {
 
         detail::SharedMemoryRegistry::unregister_instance(&other);
         detail::SharedMemoryRegistry::register_instance(this);
@@ -213,8 +216,9 @@ class SharedMemory: public detail::SharedMemoryBase {
             mapped_ptr_ = other.mapped_ptr_;
             data_ptr_   = other.data_ptr_;
             header_ptr_ = other.header_ptr_;
-            total_size_ = other.total_size_;
-            slot_index_ = other.slot_index_;
+            total_size_      = other.total_size_;
+            sentinel_base_   = std::move(other.sentinel_base_);
+            sentinel_path_   = std::move(other.sentinel_path_);
 
             detail::SharedMemoryRegistry::unregister_instance(&other);
             detail::SharedMemoryRegistry::register_instance(this);
@@ -293,8 +297,7 @@ class SharedMemory: public detail::SharedMemoryBase {
                 return false;
             }
 
-            cleanup_dead_slots_locked();
-            if (!register_process_slot_locked())
+            if (!create_sentinel_file_locked())
             {
                 unlock_shared_mutex();
                 unmap_region();
@@ -305,6 +308,8 @@ class SharedMemory: public detail::SharedMemoryBase {
                 reset();
                 return false;
             }
+
+            header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
 
             unlock_shared_mutex();
             unlock_file();
@@ -326,10 +331,18 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         if (mutex_locked)
         {
-            cleanup_dead_slots_locked();
-            release_process_slot_locked();
-            remove_region = !has_live_clients_locked();
+            if (header_ptr_)
+            {
+                header_ptr_->ref_count.fetch_sub(1, std::memory_order_acq_rel);
+            }
+            remove_sentinel_file();
+            remove_region = !has_other_live_sentinels_locked();
             unlock_shared_mutex();
+        }
+        else
+        {
+            remove_sentinel_file();
+            decrement_refcount_relaxed();
         }
 
         unmap_region();
@@ -374,10 +387,10 @@ class SharedMemory: public detail::SharedMemoryBase {
    private:
     void reset() noexcept {
         fd_         = -1;
-        mapped_ptr_ = nullptr;
-        data_ptr_   = nullptr;
-        header_ptr_ = nullptr;
-        slot_index_ = -1;
+        mapped_ptr_    = nullptr;
+        data_ptr_      = nullptr;
+        header_ptr_    = nullptr;
+        sentinel_path_.clear();
     }
 
     void unmap_region() noexcept {
@@ -412,6 +425,65 @@ class SharedMemory: public detail::SharedMemoryBase {
             if (errno == EINTR)
                 continue;
             break;
+        }
+    }
+
+    std::string sentinel_full_path(pid_t pid) const {
+        std::string path = "/dev/shm/";
+        path += sentinel_base_;
+        path.push_back('.');
+        path += std::to_string(pid);
+        return path;
+    }
+
+    void decrement_refcount_relaxed() noexcept {
+        if (!header_ptr_)
+            return;
+
+        uint32_t expected = header_ptr_->ref_count.load(std::memory_order_relaxed);
+        while (expected != 0
+               && !header_ptr_->ref_count.compare_exchange_weak(expected, expected - 1,
+                                                                std::memory_order_acq_rel,
+                                                                std::memory_order_relaxed))
+        {
+        }
+    }
+
+    bool create_sentinel_file_locked() noexcept {
+        if (!header_ptr_)
+            return false;
+
+        const pid_t self_pid = getpid();
+        sentinel_path_       = sentinel_full_path(self_pid);
+
+        for (int attempt = 0; attempt < 2; ++attempt)
+        {
+            int fd = ::open(sentinel_path_.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0600);
+            if (fd != -1)
+            {
+                ::close(fd);
+                return true;
+            }
+
+            if (errno == EEXIST)
+            {
+                ::unlink(sentinel_path_.c_str());
+                decrement_refcount_relaxed();
+                continue;
+            }
+
+            break;
+        }
+
+        sentinel_path_.clear();
+        return false;
+    }
+
+    void remove_sentinel_file() noexcept {
+        if (!sentinel_path_.empty())
+        {
+            ::unlink(sentinel_path_.c_str());
+            sentinel_path_.clear();
         }
     }
 
@@ -477,96 +549,40 @@ class SharedMemory: public detail::SharedMemoryBase {
             pthread_mutex_unlock(&header_ptr_->mutex);
     }
 
-    void cleanup_dead_slots_locked() noexcept {
-        if (!header_ptr_)
-            return;
-
-        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
-        {
-            pid_t pid = header_ptr_->clients[i].load(std::memory_order_acquire);
-            if (pid != detail::ShmHeader::EMPTY_CLIENTID && !pid_is_alive(pid))
-            {
-                header_ptr_->clients[i].store(detail::ShmHeader::EMPTY_CLIENTID,
-                                              std::memory_order_release);
-                decrement_refcount_locked();
-            }
-        }
-    }
-
-    void decrement_refcount_locked() noexcept {
-        if (!header_ptr_)
-            return;
-
-        uint32_t value = header_ptr_->ref_count.load(std::memory_order_relaxed);
-        if (value > 0)
-            header_ptr_->ref_count.store(value - 1, std::memory_order_relaxed);
-    }
-
-    bool register_process_slot_locked() noexcept {
-        if (!header_ptr_)
+    bool has_other_live_sentinels_locked() const noexcept {
+        DIR* dir = opendir("/dev/shm");
+        if (!dir)
             return false;
 
-        const pid_t self_pid = getpid();
-        int         free_idx = -1;
+        std::string prefix = sentinel_base_ + ".";
+        bool        found  = false;
 
-        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
+        while (dirent* entry = readdir(dir))
         {
-            pid_t pid = header_ptr_->clients[i].load(std::memory_order_acquire);
-
-            if (pid == self_pid)
-            {
-                slot_index_ = static_cast<int>(i);
-                return true;
-            }
-
-            if (pid == detail::ShmHeader::EMPTY_CLIENTID)
-            {
-                if (free_idx == -1)
-                    free_idx = static_cast<int>(i);
+            std::string name = entry->d_name;
+            if (name.rfind(prefix, 0) != 0)
                 continue;
-            }
 
-            if (!pid_is_alive(pid))
+            auto pid_str = name.substr(prefix.size());
+            char* end    = nullptr;
+            long  value  = std::strtol(pid_str.c_str(), &end, 10);
+            if (!end || *end != '\0')
+                continue;
+
+            pid_t pid = static_cast<pid_t>(value);
+            if (pid_is_alive(pid))
             {
-                header_ptr_->clients[i].store(detail::ShmHeader::EMPTY_CLIENTID,
-                                              std::memory_order_release);
-                decrement_refcount_locked();
-                if (free_idx == -1)
-                    free_idx = static_cast<int>(i);
+                found = true;
+                break;
             }
+
+            std::string stale_path = std::string("/dev/shm/") + name;
+            ::unlink(stale_path.c_str());
+            const_cast<SharedMemory*>(this)->decrement_refcount_relaxed();
         }
 
-        if (free_idx != -1)
-        {
-            header_ptr_->clients[free_idx].store(self_pid, std::memory_order_release);
-            header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
-            slot_index_ = free_idx;
-            return true;
-        }
-
-        return false;
-    }
-
-    void release_process_slot_locked() noexcept {
-        if (!header_ptr_ || slot_index_ < 0)
-            return;
-
-        header_ptr_->clients[slot_index_].store(detail::ShmHeader::EMPTY_CLIENTID,
-                                                std::memory_order_release);
-        slot_index_ = -1;
-        decrement_refcount_locked();
-    }
-
-    bool has_live_clients_locked() const noexcept {
-        if (!header_ptr_)
-            return false;
-
-        for (uint32_t i = 0; i < detail::ShmHeader::MAX_CLIENTS; ++i)
-            if (header_ptr_->clients[i].load(std::memory_order_acquire)
-                != detail::ShmHeader::EMPTY_CLIENTID)
-                return true;
-
-        return false;
+        closedir(dir);
+        return found;
     }
 
     [[nodiscard]] bool setup_new_region(const T& initial_value) noexcept {
