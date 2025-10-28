@@ -59,11 +59,11 @@ namespace shm {
 namespace detail {
 
 struct ShmHeader {
-    static constexpr uint32_t SHM_MAGIC      = 0xAD5F1A12;
-    pthread_mutex_t          mutex;
-    std::atomic<uint32_t> ref_count{0};
-    std::atomic<bool>     initialized{false};
-    uint32_t              magic = SHM_MAGIC;
+    static constexpr uint32_t SHM_MAGIC = 0xAD5F1A12;
+    pthread_mutex_t           mutex;
+    std::atomic<uint32_t>     ref_count{0};
+    std::atomic<bool>         initialized{false};
+    uint32_t                  magic = SHM_MAGIC;
 };
 
 class SharedMemoryBase {
@@ -112,8 +112,8 @@ class CleanupHooks {
     static void register_signal_handlers() noexcept {
         std::atexit([]() { SharedMemoryRegistry::cleanup_all(); });
 
-        constexpr int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL,  SIGABRT, SIGFPE,
-                                   SIGSEGV, SIGTERM, SIGBUS,  SIGSYS,  SIGXCPU, SIGXFSZ};
+        constexpr int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,
+                                   SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
 
         struct sigaction sa;
         sa.sa_handler = handle_signal;
@@ -125,7 +125,9 @@ class CleanupHooks {
     }
 
    public:
-    static void ensure_registered() noexcept { std::call_once(register_once_, register_signal_handlers); }
+    static void ensure_registered() noexcept {
+        std::call_once(register_once_, register_signal_handlers);
+    }
 };
 
 inline std::once_flag CleanupHooks::register_once_;
@@ -161,7 +163,7 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
-    size_t             total_size_       = 0;
+    size_t             total_size_ = 0;
     std::string        sentinel_base_;
     std::string        sentinel_path_;
 
@@ -211,14 +213,14 @@ class SharedMemory: public detail::SharedMemoryBase {
             detail::SharedMemoryRegistry::unregister_instance(this);
             close();
 
-            name_       = std::move(other.name_);
-            fd_         = other.fd_;
-            mapped_ptr_ = other.mapped_ptr_;
-            data_ptr_   = other.data_ptr_;
-            header_ptr_ = other.header_ptr_;
-            total_size_      = other.total_size_;
-            sentinel_base_   = std::move(other.sentinel_base_);
-            sentinel_path_   = std::move(other.sentinel_path_);
+            name_          = std::move(other.name_);
+            fd_            = other.fd_;
+            mapped_ptr_    = other.mapped_ptr_;
+            data_ptr_      = other.data_ptr_;
+            header_ptr_    = other.header_ptr_;
+            total_size_    = other.total_size_;
+            sentinel_base_ = std::move(other.sentinel_base_);
+            sentinel_path_ = std::move(other.sentinel_path_);
 
             detail::SharedMemoryRegistry::unregister_instance(&other);
             detail::SharedMemoryRegistry::register_instance(this);
@@ -364,9 +366,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     const std::string& name() const noexcept override { return name_; }
 
-    [[nodiscard]] bool is_open() const noexcept {
-        return fd_ != -1 && mapped_ptr_ && data_ptr_;
-    }
+    [[nodiscard]] bool is_open() const noexcept { return fd_ != -1 && mapped_ptr_ && data_ptr_; }
 
     [[nodiscard]] const T& get() const noexcept { return *data_ptr_; }
 
@@ -387,9 +387,9 @@ class SharedMemory: public detail::SharedMemoryBase {
    private:
     void reset() noexcept {
         fd_         = -1;
-        mapped_ptr_    = nullptr;
-        data_ptr_      = nullptr;
-        header_ptr_    = nullptr;
+        mapped_ptr_ = nullptr;
+        data_ptr_   = nullptr;
+        header_ptr_ = nullptr;
         sentinel_path_.clear();
     }
 
@@ -442,11 +442,9 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         uint32_t expected = header_ptr_->ref_count.load(std::memory_order_relaxed);
         while (expected != 0
-               && !header_ptr_->ref_count.compare_exchange_weak(expected, expected - 1,
-                                                                std::memory_order_acq_rel,
-                                                                std::memory_order_relaxed))
-        {
-        }
+               && !header_ptr_->ref_count.compare_exchange_weak(
+                 expected, expected - 1, std::memory_order_acq_rel, std::memory_order_relaxed))
+        {}
     }
 
     bool create_sentinel_file_locked() noexcept {
@@ -563,9 +561,9 @@ class SharedMemory: public detail::SharedMemoryBase {
             if (name.rfind(prefix, 0) != 0)
                 continue;
 
-            auto pid_str = name.substr(prefix.size());
-            char* end    = nullptr;
-            long  value  = std::strtol(pid_str.c_str(), &end, 10);
+            auto  pid_str = name.substr(prefix.size());
+            char* end     = nullptr;
+            long  value   = std::strtol(pid_str.c_str(), &end, 10);
             if (!end || *end != '\0')
                 continue;
 
@@ -599,7 +597,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             return false;
         }
 
-        data_ptr_   = static_cast<T*>(mapped_ptr_);
+        data_ptr_ = static_cast<T*>(mapped_ptr_);
         header_ptr_ =
           reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
 
@@ -617,6 +615,14 @@ class SharedMemory: public detail::SharedMemoryBase {
     [[nodiscard]] bool setup_existing_region(bool& invalid_header) noexcept {
         invalid_header = false;
 
+        struct stat st;
+        fstat(fd_, &st);
+        if (static_cast<size_t>(st.st_size) < total_size_)
+        {
+            invalid_header = true;
+            return false;
+        }
+
         mapped_ptr_ = mmap(nullptr, total_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
         if (mapped_ptr_ == MAP_FAILED)
         {
@@ -625,9 +631,8 @@ class SharedMemory: public detail::SharedMemoryBase {
         }
 
         data_ptr_   = static_cast<T*>(mapped_ptr_);
-        header_ptr_ =
-          std::launder(reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_)
-                                                            + sizeof(T)));
+        header_ptr_ = std::launder(
+          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
 
         if (!header_ptr_->initialized.load(std::memory_order_acquire)
             || header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
