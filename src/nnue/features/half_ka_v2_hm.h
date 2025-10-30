@@ -106,17 +106,14 @@ class HalfKAv2_hm {
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
 
     // Index of a feature for a given king position and another piece on some square
-    template<Color Perspective>
-    static IndexType make_index(Square s, Piece pc, Square ksq);
+    static IndexType make_index(Color, Square s, Piece pc, Square ksq);
 
     // Get a list of indices for active features
-    template<Color Perspective>
-    static void append_active_indices(const Position& pos, IndexList& active);
+    static void append_active_indices(Color perspective, const Position& pos, IndexList& active);
 
     // Get a list of indices for recently changed features
-    template<Color Perspective>
     static void
-    append_changed_indices(Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
+    append_changed_indices(Color perspective, Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.
