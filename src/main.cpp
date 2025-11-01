@@ -26,10 +26,6 @@
 #include "types.h"
 #include "uci.h"
 
-namespace Stockfish::Eval::NNUE {
-struct Networks;
-}
-
 using namespace Stockfish;
 
 int main(int argc, char* argv[]) {
