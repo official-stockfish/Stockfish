@@ -90,7 +90,8 @@ AccumulatorState<T>& AccumulatorStack::mut_latest() noexcept {
 }
 
 template<typename T>
-const std::vector<AccumulatorState<T>>& AccumulatorStack::accumulators() const noexcept {
+const std::array<AccumulatorState<T>, AccumulatorStack::MaxSize>&
+AccumulatorStack::accumulators() const noexcept {
     static_assert(std::is_same_v<T, PSQFeatureSet> || std::is_same_v<T, ThreatFeatureSet>,
                   "Invalid Feature Set Type");
 
@@ -102,7 +103,8 @@ const std::vector<AccumulatorState<T>>& AccumulatorStack::accumulators() const n
 }
 
 template<typename T>
-std::vector<AccumulatorState<T>>& AccumulatorStack::mut_accumulators() noexcept {
+std::array<AccumulatorState<T>, AccumulatorStack::MaxSize>&
+AccumulatorStack::mut_accumulators() noexcept {
     static_assert(std::is_same_v<T, PSQFeatureSet> || std::is_same_v<T, ThreatFeatureSet>,
                   "Invalid Feature Set Type");
 
@@ -120,7 +122,7 @@ void AccumulatorStack::reset() noexcept {
 }
 
 void AccumulatorStack::push(const DirtyBoardData& dirtyBoardData) noexcept {
-    assert(size < accumulators.size());
+    assert(size < MaxSize);
     psq_accumulators[size].reset(dirtyBoardData.dp);
     threat_accumulators[size].reset(dirtyBoardData.dts);
     size++;
@@ -137,11 +139,13 @@ void AccumulatorStack::evaluate(const Position&                       pos,
                                 AccumulatorCaches::Cache<Dimensions>& cache) noexcept {
     constexpr bool use_threats = (Dimensions == TransformedFeatureDimensionsBig);
     evaluate_side<WHITE, PSQFeatureSet>(pos, featureTransformer, cache);
-    if (use_threats) {
+    if (use_threats)
+    {
         evaluate_side<WHITE, ThreatFeatureSet>(pos, featureTransformer, cache);
     }
     evaluate_side<BLACK, PSQFeatureSet>(pos, featureTransformer, cache);
-    if (use_threats) {
+    if (use_threats)
+    {
         evaluate_side<BLACK, ThreatFeatureSet>(pos, featureTransformer, cache);
     }
 }
@@ -208,14 +212,19 @@ void AccumulatorStack::forward_update_incremental(
             DirtyPiece& dp1 = psq_accumulators[next].diff;
             DirtyPiece& dp2 = psq_accumulators[next + 1].diff;
 
-            if (std::is_same_v<FeatureSet, ThreatFeatureSet> && dp2.remove_sq != SQ_NONE && ((threat_accumulators[next].diff.threateningSqs & square_bb(dp2.remove_sq)) || (threat_accumulators[next].diff.threatenedSqs & square_bb(dp2.remove_sq)))) 
+            if (std::is_same_v<FeatureSet, ThreatFeatureSet> && dp2.remove_sq != SQ_NONE
+                && ((threat_accumulators[next].diff.threateningSqs & square_bb(dp2.remove_sq))
+                    || (threat_accumulators[next].diff.threatenedSqs & square_bb(dp2.remove_sq))))
             {
-                double_inc_update<Perspective>(featureTransformer, ksq, threat_accumulators[next], threat_accumulators[next + 1], threat_accumulators[next - 1], dp2);
+                double_inc_update<Perspective>(featureTransformer, ksq, threat_accumulators[next],
+                                               threat_accumulators[next + 1],
+                                               threat_accumulators[next - 1], dp2);
                 next++;
                 continue;
-            } 
+            }
 
-            if (std::is_same_v<FeatureSet, PSQFeatureSet> && dp1.to != SQ_NONE && dp1.to == dp2.remove_sq)
+            if (std::is_same_v<FeatureSet, PSQFeatureSet> && dp1.to != SQ_NONE
+                && dp1.to == dp2.remove_sq)
             {
                 const Square captureSq = dp1.to;
                 dp1.to = dp2.remove_sq = SQ_NONE;
@@ -502,8 +511,10 @@ bool double_inc_update(const FeatureTransformer<TransformedFeatureDimensions>& f
     fusedData.dp2removed = dp2.remove_sq;
 
     ThreatFeatureSet::IndexList removed, added;
-    ThreatFeatureSet::append_changed_indices<Perspective>(ksq, middle_state.diff, removed, added, &fusedData, true);
-    ThreatFeatureSet::append_changed_indices<Perspective>(ksq, target_state.diff, removed, added, &fusedData, false);
+    ThreatFeatureSet::append_changed_indices<Perspective>(ksq, middle_state.diff, removed, added,
+                                                          &fusedData, true);
+    ThreatFeatureSet::append_changed_indices<Perspective>(ksq, target_state.diff, removed, added,
+                                                          &fusedData, false);
 
     auto updateContext =
       make_accumulator_update_context<Perspective>(featureTransformer, computed, target_state);
@@ -621,7 +632,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     auto&                    entry = cache[ksq][Perspective];
     PSQFeatureSet::IndexList removed, added;
 
-    const Bitboard changed_bb = get_changed_pieces(entry.pieces, pos.piece_array());
+    const Bitboard changed_bb = get_changed_pieces(entry.pieces, pos.piece_array().data());
     Bitboard       removed_bb = changed_bb & entry.pieceBB;
     Bitboard       added_bb   = changed_bb & pos.pieces();
 
@@ -637,7 +648,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     }
 
     entry.pieceBB = pos.pieces();
-    std::copy_n(pos.piece_array(), SQUARE_NB, entry.pieces);
+    std::copy_n(pos.piece_array().begin(), SQUARE_NB, entry.pieces);
 
     auto& accumulator                 = accumulatorState.acc<Dimensions>();
     accumulator.computed[Perspective] = true;

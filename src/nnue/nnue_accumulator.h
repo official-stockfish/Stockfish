@@ -147,6 +147,8 @@ struct AccumulatorState {
 
 class AccumulatorStack {
    public:
+    static constexpr std::size_t MaxSize = MAX_PLY + 1;
+
     template<typename T>
     [[nodiscard]] const AccumulatorState<T>& latest() const noexcept;
 
@@ -164,10 +166,10 @@ class AccumulatorStack {
     [[nodiscard]] AccumulatorState<T>& mut_latest() noexcept;
 
     template<typename T>
-    [[nodiscard]] const std::vector<AccumulatorState<T>>& accumulators() const noexcept;
+    [[nodiscard]] const std::array<AccumulatorState<T>, MaxSize>& accumulators() const noexcept;
 
     template<typename T>
-    [[nodiscard]] std::vector<AccumulatorState<T>>& mut_accumulators() noexcept;
+    [[nodiscard]] std::array<AccumulatorState<T>, MaxSize>& mut_accumulators() noexcept;
 
     template<Color Perspective, typename FeatureSet, IndexType Dimensions>
     void evaluate_side(const Position&                       pos,
@@ -187,9 +189,9 @@ class AccumulatorStack {
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;
 
-    std::array<AccumulatorState<PSQFeatureSet>, MAX_PLY + 1>    psq_accumulators;
-    std::array<AccumulatorState<ThreatFeatureSet>, MAX_PLY + 1> threat_accumulators;
-    std::size_t                                                 size = 1;
+    std::array<AccumulatorState<PSQFeatureSet>, MaxSize>    psq_accumulators;
+    std::array<AccumulatorState<ThreatFeatureSet>, MaxSize> threat_accumulators;
+    std::size_t                                             size = 1;
 };
 
 }  // namespace Stockfish::Eval::NNUE
