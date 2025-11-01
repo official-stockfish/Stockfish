@@ -182,7 +182,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         total_size_(calculate_total_size()),
         sentinel_base_(make_sentinel_base(name)) {}
 
-    ~SharedMemory() noexcept {
+    ~SharedMemory() noexcept override {
         detail::SharedMemoryRegistry::unregister_instance(this);
         close();
     }
