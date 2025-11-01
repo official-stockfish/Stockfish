@@ -32,17 +32,13 @@
     #include <cstdlib>
     #include <cstdio>
 
-    #include <signal.h>
+    #include <csignal>
 
     #include "shm_linux.h"
 #endif
 
-namespace Stockfish {
-namespace Eval {
-namespace NNUE {
+namespace Stockfish::Eval::NNUE {
 struct Networks;
-}
-}
 }
 
 using namespace Stockfish;
