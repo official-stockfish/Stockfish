@@ -333,8 +333,8 @@ std::size_t Network<Arch, Transformer>::get_content_hash() const {
 
     std::size_t h = 0;
     hash_combine(h, featureTransformer);
-    for (IndexType i = 0; i < LayerStacks; ++i)
-        hash_combine(h, network[i]);
+    for (auto&& layerstack : network)
+        hash_combine(h, layerstack);
     hash_combine(h, evalFile);
     hash_combine(h, static_cast<int>(embeddedType));
     return h;
