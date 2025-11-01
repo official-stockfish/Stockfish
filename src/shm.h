@@ -203,7 +203,7 @@ class SharedMemoryBackend {
     static constexpr DWORD IS_INITIALIZED_VALUE = 1;
 
     SharedMemoryBackend() :
-        status(Status::NotInitialized) {}
+        status(Status::NotInitialized) {};
 
     SharedMemoryBackend(const std::string& shm_name, const T& value) :
         status(Status::NotInitialized) {
@@ -417,7 +417,7 @@ class SharedMemoryBackend {
 template<typename T>
 class SharedMemoryBackend {
    public:
-    SharedMemoryBackend() {}
+    SharedMemoryBackend() = default;
 
     SharedMemoryBackend(const std::string& shm_name, const T& value) :
         shm1(shm::create_shared<T>(shm_name, value)) {}
@@ -461,7 +461,7 @@ class SharedMemoryBackend {
 template<typename T>
 class SharedMemoryBackend {
    public:
-    SharedMemoryBackend() {}
+    SharedMemoryBackend() = default;
 
     SharedMemoryBackend(const std::string& shm_name, const T& value) {}
 
