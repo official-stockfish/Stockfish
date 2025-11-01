@@ -52,9 +52,7 @@
 #endif
 
 
-namespace Stockfish {
-
-namespace shm {
+namespace Stockfish::shm {
 
 namespace detail {
 
@@ -655,7 +653,6 @@ template<typename T>
     return std::nullopt;
 }
 
-}  // namespace shm
-}  // namespace Stockfish
+}  // namespace Stockfish::shm
 
 #endif  // #ifndef SHM_LINUX_H_INCLUDED
