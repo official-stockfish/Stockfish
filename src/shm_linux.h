@@ -78,17 +78,17 @@ class SharedMemoryRegistry {
 
    public:
     static void register_instance(SharedMemoryBase* instance) {
-        std::lock_guard<std::mutex> lock(registry_mutex_);
+        std::scoped_lock lock(registry_mutex_);
         active_instances_.insert(instance);
     }
 
     static void unregister_instance(SharedMemoryBase* instance) {
-        std::lock_guard<std::mutex> lock(registry_mutex_);
+        std::scoped_lock lock(registry_mutex_);
         active_instances_.erase(instance);
     }
 
     static void cleanup_all() noexcept {
-        std::lock_guard<std::mutex> lock(registry_mutex_);
+        std::scoped_lock lock(registry_mutex_);
         for (auto* instance : active_instances_)
             instance->close();
         active_instances_.clear();
