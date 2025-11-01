@@ -96,10 +96,12 @@ namespace Stockfish {
 // Just using a path is not fully resilient either, as the executable could
 // have changed if it wasn't locked by the OS. Ideally we would hash the executable
 // but it's not really that important at this point.
+// If the path is longer than 4095 bytes the hash will be computed from an unspecified
+// amount of bytes of the path; in particular it can a hash of an empty string.
 
 inline std::string getExecutablePathHash() {
-    char executable_path[4096] = {0};
-    int  path_length           = 0;
+    char         executable_path[4096] = {0};
+    std::size_t  path_length           = 0;
 
 #if defined(_WIN32)
     path_length = GetModuleFileNameA(NULL, executable_path, sizeof(executable_path));
@@ -108,7 +110,7 @@ inline std::string getExecutablePathHash() {
     uint32_t size = sizeof(executable_path);
     if (_NSGetExecutablePath(executable_path, &size) == 0)
     {
-        path_length = static_cast<int>(std::strlen(executable_path));
+        path_length = std::strlen(executable_path);
     }
 
 #elif defined(__sun)  // Solaris
@@ -116,7 +118,7 @@ inline std::string getExecutablePathHash() {
     if (path)
     {
         std::strncpy(executable_path, path, sizeof(executable_path) - 1);
-        path_length = static_cast<int>(std::strlen(executable_path));
+        path_length = std::strlen(executable_path);
     }
 
 #elif defined(__FreeBSD__)
@@ -124,32 +126,28 @@ inline std::string getExecutablePathHash() {
     int    mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     if (sysctl(mib, 4, executable_path, &size, NULL, 0) == 0)
     {
-        path_length = static_cast<int>(std::strlen(executable_path));
+        path_length = std::strlen(executable_path);
     }
 
 #elif defined(__NetBSD__) || defined(__DragonFly__)
     ssize_t len = readlink("/proc/curproc/exe", executable_path, sizeof(executable_path) - 1);
-    if (len != -1)
+    if (len >= 0)
     {
         executable_path[len] = '\0';
-        path_length          = static_cast<int>(len);
+        path_length          = len;
     }
 
 #elif defined(__linux__)
     ssize_t len = readlink("/proc/self/exe", executable_path, sizeof(executable_path) - 1);
-    if (len != -1)
+    if (len >= 0)
     {
         executable_path[len] = '\0';
-        path_length          = static_cast<int>(len);
+        path_length          = len;
     }
 
 #endif
 
-    if (path_length <= 0)
-    {
-        return "";  // fallback
-    }
-
+    // In case of any error the path will be empty.
     return std::string(executable_path, path_length);
 }
 
