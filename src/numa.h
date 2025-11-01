@@ -1311,11 +1311,14 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
 
     const T* operator->() const { return &*instances[0]; }
 
-    std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>> get_status_and_errors() const {
-        std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>> status;
+    std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>>
+    get_status_and_errors() const {
+        std::vector<std::pair<SystemWideSharedConstantAllocationStatus, std::optional<std::string>>>
+          status;
         status.reserve(instances.size());
 
-        for (const auto& instance : instances) {
+        for (const auto& instance : instances)
+        {
             status.emplace_back(instance.get_status(), instance.get_error_message());
         }
 
