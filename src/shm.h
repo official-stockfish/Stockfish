@@ -551,13 +551,13 @@ struct SystemWideSharedConstant {
         std::size_t content_hash    = std::hash<T>{}(value);
         std::size_t executable_hash = std::hash<std::string>{}(getExecutablePathHash());
 
-        std::string shm_name = std::string("Local\\") + std::to_string(content_hash) + "$"
+        std::string shm_name = std::string("Local\\sf_") + std::to_string(content_hash) + "$"
                              + std::to_string(executable_hash) + "$"
                              + std::to_string(discriminator);
 
 #if !defined(_WIN32)
         // POSIX shared memory names must start with a slash
-        shm_name = "/" + createHashString(shm_name);
+        shm_name = "/sf_" + createHashString(shm_name);
 
         // hash name and make sure it is not longer than SF_MAX_SEM_NAME_LEN
         if (shm_name.size() > SF_MAX_SEM_NAME_LEN) {
