@@ -37,7 +37,6 @@
 
 #if !defined(_WIN32) && !defined(__ANDROID__)
     #include "shm_linux.h"
-    #define SHM_CLEANUP
 #endif
 
 #if defined(__ANDROID__)
