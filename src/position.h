@@ -91,10 +91,11 @@ class Position {
     Bitboard pieces(PieceTypes... pts) const;
     Bitboard pieces(Color c) const;
     template<typename... PieceTypes>
-    Bitboard pieces(Color c, PieceTypes... pts) const;
-    Piece    piece_on(Square s) const;
-    Square   ep_square() const;
-    bool     empty(Square s) const;
+    Bitboard     pieces(Color c, PieceTypes... pts) const;
+    Piece        piece_on(Square s) const;
+    const Piece* piece_array() const;
+    Square       ep_square() const;
+    bool         empty(Square s) const;
     template<PieceType Pt>
     int count(Color c) const;
     template<PieceType Pt>
@@ -207,6 +208,8 @@ inline Piece Position::piece_on(Square s) const {
     assert(is_ok(s));
     return board[s];
 }
+
+inline const Piece* Position::piece_array() const { return board; }
 
 inline bool Position::empty(Square s) const { return piece_on(s) == NO_PIECE; }
 

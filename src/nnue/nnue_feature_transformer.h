@@ -157,18 +157,26 @@ class FeatureTransformer {
     }
 
     // Write network parameters
-    bool write_parameters(std::ostream& stream) {
+    bool write_parameters(std::ostream& stream) const {
+        std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
-        unpermute_weights();
-        scale_weights(false);
+        copy->unpermute_weights();
+        copy->scale_weights(false);
 
-        write_leb_128<BiasType>(stream, biases, HalfDimensions);
-        write_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
-        write_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
+        write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
+        write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
+        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
 
-        permute_weights();
-        scale_weights(true);
         return !stream.fail();
+    }
+
+    std::size_t get_content_hash() const {
+        std::size_t h = 0;
+        hash_combine(h, get_raw_data_hash(biases));
+        hash_combine(h, get_raw_data_hash(weights));
+        hash_combine(h, get_raw_data_hash(psqtWeights));
+        hash_combine(h, get_hash_value());
+        return h;
     }
 
     // Convert input features
@@ -308,5 +316,15 @@ class FeatureTransformer {
 };
 
 }  // namespace Stockfish::Eval::NNUE
+
+
+template<Stockfish::Eval::NNUE::IndexType TransformedFeatureDimensions>
+struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>> {
+    std::size_t
+    operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft)
+      const noexcept {
+        return ft.get_content_hash();
+    }
+};
 
 #endif  // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED
