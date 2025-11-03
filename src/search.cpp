@@ -539,7 +539,12 @@ void Search::Worker::do_move(
     }
 }
 
-void Search::Worker::do_null_move(Position& pos, StateInfo& st) { pos.do_null_move(st, tt); }
+void Search::Worker::do_null_move(Position& pos, StateInfo& st, Stack* const ss) {
+  pos.do_null_move(st, tt);
+  ss->currentMove                   = Move::null();
+  ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
+  ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
+}
 
 void Search::Worker::undo_move(Position& pos, const Move move) {
     pos.undo_move(move);
@@ -863,12 +868,7 @@ Value Search::Worker::search(
 
         // Null move dynamic reduction based on depth
         Depth R = 6 + depth / 3 + improving;
-
-        ss->currentMove                   = Move::null();
-        ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
-        ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
-
-        do_null_move(pos, st);
+        do_null_move(pos, st, ss);
 
         Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, false);
 
@@ -1575,8 +1575,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         futilityBase = ss->staticEval + 352;
     }
 
-    const PieceToHistory* contHist[] = {(ss - 1)->continuationHistory,
-                                        (ss - 2)->continuationHistory};
+    const PieceToHistory* contHist[] = {(ss - 1)->continuationHistory};
 
     Square prevSq = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
 
