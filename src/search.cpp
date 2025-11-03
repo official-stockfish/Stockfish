@@ -739,7 +739,7 @@ Value Search::Worker::search(
 
             if (err != TB::ProbeState::FAIL)
             {
-                tbHits.fetch_add(1, std::memory_order_relaxed);
+                tbHits.store(tbHits.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
                 int drawScore = tbConfig.useRule50 ? 1 : 0;
 
