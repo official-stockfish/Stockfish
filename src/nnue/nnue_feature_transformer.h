@@ -123,12 +123,12 @@ class FeatureTransformer {
     }
 
     void permute_weights() {
-        permute<16>(biases, PackusEpi16Order);
+        // permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
     }
 
     void unpermute_weights() {
-        permute<16>(biases, InversePackusEpi16Order);
+        // permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
     }
 
@@ -140,14 +140,14 @@ class FeatureTransformer {
                 w[i] = read ? w[i] * 2 : w[i] / 2;
         }
 
-        for (IndexType i = 0; i < HalfDimensions; ++i)
-            biases[i] = read ? biases[i] * 2 : biases[i] / 2;
+        // for (IndexType i = 0; i < HalfDimensions; ++i)
+        //     biases[i] = read ? biases[i] * 2 : biases[i] / 2;
     }
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
 
-        read_leb_128<BiasType>(stream, biases, HalfDimensions);
+        // read_leb_128<BiasType>(stream, biases, HalfDimensions);
         read_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
@@ -156,14 +156,14 @@ class FeatureTransformer {
         return !stream.fail();
     }
 
-    // Write network parameters
+
     bool write_parameters(std::ostream& stream) const {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
-
+    // Write network parameters
         copy->unpermute_weights();
         copy->scale_weights(false);
 
-        write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
+        //write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
         write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
         write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
 
@@ -310,7 +310,6 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
-    alignas(CacheLineSize) BiasType biases[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];
     alignas(CacheLineSize) PSQTWeightType psqtWeights[InputDimensions * PSQTBuckets];
 };
