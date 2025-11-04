@@ -91,7 +91,7 @@ class FeatureTransformer {
     // Number of input/output dimensions
     static constexpr IndexType InputDimensions       = PSQFeatureSet::Dimensions;
     static constexpr IndexType ThreatInputDimensions = ThreatFeatureSet::Dimensions;
-    static constexpr IndexType TotalInputDimensions  = InputDimensions + ThreatInputDimensions;
+    static constexpr IndexType TotalInputDimensions  = InputDimensions + (use_threats ? ThreatInputDimensions : 0);
     static constexpr IndexType OutputDimensions      = HalfDimensions;
 
     // Size of forward propagation buffer
@@ -149,12 +149,14 @@ class FeatureTransformer {
             for (IndexType i = 0; i < HalfDimensions; ++i)
                 w[i] = read ? w[i] * 2 : w[i] / 2;
         }
-
-        for (IndexType j = 0; j < ThreatInputDimensions; ++j)
+        if (use_threats)
         {
-            WeightType* w = &threatWeights[j * HalfDimensions];
-            for (IndexType i = 0; i < HalfDimensions; ++i)
-                w[i] = read ? w[i] * 2 : w[i] / 2;
+            for (IndexType j = 0; j < ThreatInputDimensions; ++j)
+            {
+                WeightType* w = &threatWeights[j * HalfDimensions];
+                for (IndexType i = 0; i < HalfDimensions; ++i)
+                    w[i] = read ? w[i] * 2 : w[i] / 2;
+            }
         }
 
         for (IndexType i = 0; i < HalfDimensions; ++i)
@@ -410,9 +412,9 @@ class FeatureTransformer {
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];
-    alignas(CacheLineSize) WeightType threatWeights[HalfDimensions * ThreatInputDimensions];
+    alignas(CacheLineSize) WeightType threatWeights[use_threats ? HalfDimensions * ThreatInputDimensions : 128];
     alignas(CacheLineSize) PSQTWeightType psqtWeights[InputDimensions * PSQTBuckets];
-    alignas(CacheLineSize) PSQTWeightType threatPsqtWeights[ThreatInputDimensions * PSQTBuckets];
+    alignas(CacheLineSize) PSQTWeightType threatPsqtWeights[use_threats ? ThreatInputDimensions * PSQTBuckets : 128];
 };
 
 }  // namespace Stockfish::Eval::NNUE
