@@ -53,7 +53,7 @@ using NetworkOutput = std::tuple<Value, Value>;
 
 // The network must be a trivial type, i.e. the memory must be in-line.
 // This is required to allow sharing the network via shared memory, as
-
+// there is no way to run destructors.
 template<typename Arch, typename Transformer>
 class Network {
     static constexpr IndexType FTDimensions = Arch::TransformedFeatureDimensions;
@@ -64,10 +64,10 @@ class Network {
         embeddedType(type) {}
 
     Network(const Network& other) = default;
-    Network(Network&& other) = default;
+    Network(Network&& other)      = default;
 
     Network& operator=(const Network& other) = default;
-    Network& operator=(Network&& other) = default;
+    Network& operator=(Network&& other)      = default;
 
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;

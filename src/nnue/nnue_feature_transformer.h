@@ -156,10 +156,10 @@ class FeatureTransformer {
         return !stream.fail();
     }
 
-
+    // Write network parameters
     bool write_parameters(std::ostream& stream) const {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
-    // Write network parameters
+
         copy->unpermute_weights();
         copy->scale_weights(false);
 
@@ -172,7 +172,6 @@ class FeatureTransformer {
 
     std::size_t get_content_hash() const {
         std::size_t h = 0;
-        hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_raw_data_hash(psqtWeights));
         hash_combine(h, get_hash_value());
