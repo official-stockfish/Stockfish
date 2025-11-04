@@ -123,12 +123,10 @@ class FeatureTransformer {
     }
 
     void permute_weights() {
-        // permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
     }
 
     void unpermute_weights() {
-        // permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
     }
 
@@ -139,15 +137,11 @@ class FeatureTransformer {
             for (IndexType i = 0; i < HalfDimensions; ++i)
                 w[i] = read ? w[i] * 2 : w[i] / 2;
         }
-
-        // for (IndexType i = 0; i < HalfDimensions; ++i)
-        //     biases[i] = read ? biases[i] * 2 : biases[i] / 2;
     }
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
 
-        // read_leb_128<BiasType>(stream, biases, HalfDimensions);
         read_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
@@ -163,7 +157,6 @@ class FeatureTransformer {
         copy->unpermute_weights();
         copy->scale_weights(false);
 
-        //write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
         write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
         write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
 
@@ -253,15 +246,14 @@ class FeatureTransformer {
             // values being interpreted as negative after the shift.
 
             // There is a way, however, to get around this limitation. When
-            // loading the network, scale accumulator weights and biases by
-            // 2. To get the same pairwise multiplication result as before,
-            // we need to divide the product by 128 * 2 * 2 = 512, which
-            // amounts to a right shift of 9 bits. So now we only have to
-            // shift left by 7 bits, perform mulhi (shifts right by 16 bits)
-            // and net a 9 bit right shift. Since we scaled everything by
-            // two, the values are clipped at 127 * 2 = 254, which occupies
-            // 8 bits. Shifting it by 7 bits left will no longer occupy the
-            // signed bit, so we are safe.
+            // loading the network, scale accumulator weights by 2. To get
+            // the same pairwise multiplication result as before, we need to
+            // divide the product by 128 * 2 * 2 = 512, which amounts to a
+            // right shift of 9 bits. So now we only have to shift left by 7
+            // bits, perform mulhi (shifts right by 16 bits) and net a 9 bit
+            // right shift. Since we scaled everything by two, the values are
+            // clipped at 127 * 2 = 254, which occupies 8 bits. Shifting it
+            // by 7 bits left will no longer occupy the signed bit, so we are safe.
 
             // Note that on NEON processors, we shift left by 6 instead
             // because the instruction "vqdmulhq_s16" also doubles the
