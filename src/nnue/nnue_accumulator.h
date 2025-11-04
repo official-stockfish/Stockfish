@@ -27,6 +27,7 @@
 #include <cstring>
 #include <utility>
 
+#include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
@@ -46,9 +47,9 @@ class FeatureTransformer;
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t               accumulation[COLOR_NB][Size];
-    std::int32_t               psqtAccumulation[COLOR_NB][PSQTBuckets];
-    std::array<bool, COLOR_NB> computed = {};
+    MultiArray<std::int16_t, COLOR_NB, Size>        accumulation;
+    MultiArray<std::int32_t, COLOR_NB, PSQTBuckets> psqtAccumulation;
+    std::array<bool, COLOR_NB>                      computed = {};
 };
 
 
@@ -71,7 +72,7 @@ struct AccumulatorCaches {
         struct alignas(CacheLineSize) Entry {
             std::array<BiasType, Size>              accumulation;
             std::array<PSQTWeightType, PSQTBuckets> psqtAccumulation;
-            Piece                                   pieces[SQUARE_NB];
+            std::array<Piece, SQUARE_NB>            pieces;
             Bitboard                                pieceBB;
 
             // To initialize a refresh entry, we set all its bitboards empty,
@@ -92,7 +93,7 @@ struct AccumulatorCaches {
 
         std::array<Entry, COLOR_NB>& operator[](Square sq) { return entries[sq]; }
 
-        std::array<std::array<Entry, COLOR_NB>, SQUARE_NB> entries;
+        MultiArray<Entry, SQUARE_NB, COLOR_NB> entries;
     };
 
     template<typename Networks>

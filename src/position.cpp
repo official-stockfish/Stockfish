@@ -27,6 +27,7 @@
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -38,16 +39,14 @@
 #include "tt.h"
 #include "uci.h"
 
-using std::string;
-
 namespace Stockfish {
 
 namespace Zobrist {
 
-Key psq[PIECE_NB][SQUARE_NB];
-Key enpassant[FILE_NB];
-Key castling[CASTLING_RIGHT_NB];
-Key side, noPawns;
+MultiArray<Key, PIECE_NB, SQUARE_NB> psq;
+std::array<Key, FILE_NB>             enpassant;
+std::array<Key, CASTLING_RIGHT_NB>   castling;
+Key                                  side, noPawns;
 
 }
 
@@ -55,8 +54,8 @@ namespace {
 
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
-static constexpr Piece Pieces[] = {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                                   B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING};
+static constexpr std::array<Piece, 12> Pieces{W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+                                              B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING};
 }  // namespace
 
 
@@ -118,9 +117,10 @@ void Position::init() {
     for (Piece pc : Pieces)
         for (Square s = SQ_A1; s <= SQ_H8; ++s)
             Zobrist::psq[pc][s] = rng.rand<Key>();
+
     // pawns on these squares will promote
-    std::fill_n(Zobrist::psq[W_PAWN] + SQ_A8, 8, 0);
-    std::fill_n(Zobrist::psq[B_PAWN], 8, 0);
+    std::fill_n(Zobrist::psq[W_PAWN].begin() + SQ_A8, 8, 0);
+    std::fill_n(Zobrist::psq[B_PAWN].begin(), 8, 0);
 
     for (File f = FILE_A; f <= FILE_H; ++f)
         Zobrist::enpassant[f] = rng.rand<Key>();
@@ -160,7 +160,7 @@ void Position::init() {
 // Initializes the position object with the given FEN string.
 // This function is not very robust - make sure that input FENs are correct,
 // this is assumed to be the responsibility of the GUI.
-Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
+Position& Position::set(const std::string& fenStr, bool isChess960, StateInfo* si) {
     /*
    A FEN string defines a particular position using only the ASCII character set.
 
@@ -216,7 +216,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         else if (token == '/')
             sq += 2 * SOUTH;
 
-        else if ((idx = PieceToChar.find(token)) != string::npos)
+        else if ((idx = PieceToChar.find(token)) != std::string::npos)
         {
             put_piece(Piece(idx), sq);
             ++sq;
@@ -389,20 +389,21 @@ Key Position::compute_material_key() const {
 
 // Overload to initialize the position object with the given endgame code string
 // like "KBPKN". It's mainly a helper to get the material key out of an endgame code.
-Position& Position::set(const string& code, Color c, StateInfo* si) {
+Position& Position::set(const std::string& code, Color c, StateInfo* si) {
 
     assert(code[0] == 'K');
 
-    string sides[] = {code.substr(code.find('K', 1)),                                // Weak
-                      code.substr(0, std::min(code.find('v'), code.find('K', 1)))};  // Strong
+    std::array<std::string, COLOR_NB> sides{
+      code.substr(code.find('K', 1)),                                // Weak
+      code.substr(0, std::min(code.find('v'), code.find('K', 1)))};  // Strong
 
     assert(sides[0].length() > 0 && sides[0].length() < 8);
     assert(sides[1].length() > 0 && sides[1].length() < 8);
 
     std::transform(sides[c].begin(), sides[c].end(), sides[c].begin(), tolower);
 
-    string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/" + sides[1]
-                  + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
+    std::string fenStr = "8/" + sides[0] + char(8 - sides[0].length() + '0') + "/8/8/8/8/"
+                       + sides[1] + char(8 - sides[1].length() + '0') + "/8 w - - 0 10";
 
     return set(fenStr, false, si);
 }
@@ -410,7 +411,7 @@ Position& Position::set(const string& code, Color c, StateInfo* si) {
 
 // Returns a FEN representation of the position. In case of
 // Chess960 the Shredder-FEN notation is used. This is mainly a debugging function.
-string Position::fen() const {
+std::string Position::fen() const {
 
     int                emptyCnt;
     std::ostringstream ss;
@@ -1422,7 +1423,7 @@ bool Position::upcoming_repetition(int ply) const {
 // is only useful for debugging e.g. for finding evaluation symmetry bugs.
 void Position::flip() {
 
-    string            f, token;
+    std::string       f, token;
     std::stringstream ss(fen());
 
     for (Rank r = RANK_8; r >= RANK_1; --r)  // Piece placement
@@ -1489,7 +1490,7 @@ bool Position::pos_is_ok() const {
 
     for (Piece pc : Pieces)
         if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
-            || pieceCount[pc] != std::count(board.begin(), board.end(), pc))
+            || pieceCount[pc] != std::count(std::begin(board), std::end(board), pc))
             assert(0 && "pos_is_ok: Pieces");
 
     for (Color c : {WHITE, BLACK})

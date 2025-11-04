@@ -19,6 +19,8 @@
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
+#include <array>
+
 #include "history.h"
 #include "movegen.h"
 #include "types.h"
@@ -59,20 +61,20 @@ class MovePicker {
     ExtMove* begin() { return cur; }
     ExtMove* end() { return endCur; }
 
-    const Position&              pos;
-    const ButterflyHistory*      mainHistory;
-    const LowPlyHistory*         lowPlyHistory;
-    const CapturePieceToHistory* captureHistory;
-    const PieceToHistory**       continuationHistory;
-    const PawnHistory*           pawnHistory;
-    Move                         ttMove;
-    ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated;
-    int                          stage;
-    int                          threshold;
-    Depth                        depth;
-    int                          ply;
-    bool                         skipQuiets = false;
-    ExtMove                      moves[MAX_MOVES];
+    const Position&                pos;
+    const ButterflyHistory*        mainHistory;
+    const LowPlyHistory*           lowPlyHistory;
+    const CapturePieceToHistory*   captureHistory;
+    const PieceToHistory**         continuationHistory;
+    const PawnHistory*             pawnHistory;
+    Move                           ttMove;
+    ExtMove *                      cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated;
+    int                            stage;
+    int                            threshold;
+    Depth                          depth;
+    int                            ply;
+    bool                           skipQuiets = false;
+    std::array<ExtMove, MAX_MOVES> moves;
 };
 
 }  // namespace Stockfish

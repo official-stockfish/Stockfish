@@ -99,11 +99,13 @@ struct NetworkArchitecture {
             && fc_2.write_parameters(stream);
     }
 
-    std::int32_t propagate(const TransformedFeatureType* transformedFeatures) const {
+    std::int32_t propagate(const std::array<TransformedFeatureType, TransformedFeatureDimensions>&
+                             transformedFeatures) const {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
-            alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
-              ac_sqr_0_out[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)];
+            alignas(CacheLineSize)
+              std::array<typename decltype(ac_sqr_0)::OutputType,
+                         ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)> ac_sqr_0_out;
             alignas(CacheLineSize) typename decltype(ac_0)::OutputBuffer ac_0_out;
             alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
             alignas(CacheLineSize) typename decltype(ac_1)::OutputBuffer ac_1_out;
@@ -121,14 +123,14 @@ struct NetworkArchitecture {
         alignas(CacheLineSize) static thread_local Buffer buffer;
 #endif
 
-        fc_0.propagate(transformedFeatures, buffer.fc_0_out);
-        ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
-        ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
-        std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out,
+        fc_0.propagate(transformedFeatures.data(), buffer.fc_0_out.data());
+        ac_sqr_0.propagate(buffer.fc_0_out.data(), buffer.ac_sqr_0_out.data());
+        ac_0.propagate(buffer.fc_0_out.data(), buffer.ac_0_out.data());
+        std::memcpy(&buffer.ac_sqr_0_out[FC_0_OUTPUTS], buffer.ac_0_out.data(),
                     FC_0_OUTPUTS * sizeof(typename decltype(ac_0)::OutputType));
-        fc_1.propagate(buffer.ac_sqr_0_out, buffer.fc_1_out);
-        ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
-        fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
+        fc_1.propagate(buffer.ac_sqr_0_out.data(), buffer.fc_1_out.data());
+        ac_1.propagate(buffer.fc_1_out.data(), buffer.ac_1_out.data());
+        fc_2.propagate(buffer.ac_1_out.data(), buffer.fc_2_out.data());
 
         // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale

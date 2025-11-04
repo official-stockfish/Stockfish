@@ -101,12 +101,12 @@ inline IntType read_little_endian(std::istream& stream) {
         stream.read(reinterpret_cast<char*>(&result), sizeof(IntType));
     else
     {
-        std::uint8_t                  u[sizeof(IntType)];
-        std::make_unsigned_t<IntType> v = 0;
+        std::array<std::byte, sizeof(IntType)> u;
+        std::make_unsigned_t<IntType>          v = 0;
 
-        stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
+        stream.read(reinterpret_cast<char*>(u.data()), sizeof(IntType));
         for (std::size_t i = 0; i < sizeof(IntType); ++i)
-            v = (v << 8) | u[sizeof(IntType) - i - 1];
+            v = (v << 8) | IntType(u[sizeof(IntType) - i - 1]);
 
         std::memcpy(&result, &v, sizeof(IntType));
     }
@@ -116,9 +116,9 @@ inline IntType read_little_endian(std::istream& stream) {
 
 
 // Utility to write an integer (signed or unsigned, any size)
-// to a stream in little-endian order. We swap the byte order before the write if
-// necessary to always write in little-endian order, independently of the byte
-// ordering of the compiling machine.
+// to a stream in little-endian order. We swap the byte order before the write
+// if necessary to always write in little-endian order, independently of the
+// byte ordering of the compiling machine.
 template<typename IntType>
 inline void write_little_endian(std::ostream& stream, IntType value) {
 
@@ -126,8 +126,8 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         stream.write(reinterpret_cast<const char*>(&value), sizeof(IntType));
     else
     {
-        std::uint8_t                  u[sizeof(IntType)];
-        std::make_unsigned_t<IntType> v = value;
+        std::array<std::byte, sizeof(IntType)> u;
+        std::make_unsigned_t<IntType>          v = value;
 
         std::size_t i = 0;
         // if constexpr to silence the warning about shift by 8
@@ -135,37 +135,37 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = std::uint8_t(v);
+                u[i] = std::byte(v);
                 v >>= 8;
             }
         }
-        u[i] = std::uint8_t(v);
+        u[i] = std::byte(v);
 
-        stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
+        stream.write(reinterpret_cast<char*>(u.data()), sizeof(IntType));
     }
 }
 
 
 // Read integers in bulk from a little-endian stream.
 // This reads N integers from stream s and puts them in array out.
-template<typename IntType>
-inline void read_little_endian(std::istream& stream, IntType* out, std::size_t count) {
+template<typename IntType, std::size_t Count>
+inline void read_little_endian(std::istream& stream, std::array<IntType, Count>& out) {
     if (IsLittleEndian)
-        stream.read(reinterpret_cast<char*>(out), sizeof(IntType) * count);
+        stream.read(reinterpret_cast<char*>(out.data()), sizeof(IntType) * Count);
     else
-        for (std::size_t i = 0; i < count; ++i)
+        for (std::size_t i = 0; i < Count; ++i)
             out[i] = read_little_endian<IntType>(stream);
 }
 
 
 // Write integers in bulk to a little-endian stream.
 // This takes N integers from array values and writes them on stream s.
-template<typename IntType>
-inline void write_little_endian(std::ostream& stream, const IntType* values, std::size_t count) {
+template<typename IntType, std::size_t Count>
+inline void write_little_endian(std::ostream& stream, const std::array<IntType, Count>& values) {
     if (IsLittleEndian)
-        stream.write(reinterpret_cast<const char*>(values), sizeof(IntType) * count);
+        stream.write(reinterpret_cast<const char*>(values.data()), sizeof(IntType) * Count);
     else
-        for (std::size_t i = 0; i < count; ++i)
+        for (std::size_t i = 0; i < Count; ++i)
             write_little_endian<IntType>(stream, values[i]);
 }
 
@@ -183,8 +183,8 @@ inline void read_leb_128(std::istream& stream, std::array<IntType, Count>& out) 
 
     static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
 
-    const std::uint32_t BUF_SIZE = 4096;
-    std::uint8_t        buf[BUF_SIZE];
+    constexpr std::uint32_t            BUF_SIZE = 4096;
+    std::array<std::uint8_t, BUF_SIZE> buf;
 
     auto bytes_left = read_little_endian<std::uint32_t>(stream);
 
@@ -197,7 +197,7 @@ inline void read_leb_128(std::istream& stream, std::array<IntType, Count>& out) 
         {
             if (buf_pos == BUF_SIZE)
             {
-                stream.read(reinterpret_cast<char*>(buf), std::min(bytes_left, BUF_SIZE));
+                stream.read(reinterpret_cast<char*>(buf.data()), std::min(bytes_left, BUF_SIZE));
                 buf_pos = 0;
             }
 
@@ -247,14 +247,14 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
 
     write_little_endian(stream, byte_count);
 
-    const std::uint32_t BUF_SIZE = 4096;
-    std::uint8_t        buf[BUF_SIZE];
-    std::uint32_t       buf_pos = 0;
+    constexpr std::uint32_t            BUF_SIZE = 4096;
+    std::array<std::uint8_t, BUF_SIZE> buf;
+    std::uint32_t                      buf_pos = 0;
 
     auto flush = [&]() {
         if (buf_pos > 0)
         {
-            stream.write(reinterpret_cast<char*>(buf), buf_pos);
+            stream.write(reinterpret_cast<char*>(buf.data()), buf_pos);
             buf_pos = 0;
         }
     };

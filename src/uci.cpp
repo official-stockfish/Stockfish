@@ -19,6 +19,7 @@
 #include "uci.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
@@ -44,6 +45,7 @@ namespace Stockfish {
 constexpr auto BenchmarkCommand = "speedtest";
 
 constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 template<typename... Ts>
 struct overload: Ts... {
     using Ts::operator()...;
@@ -152,7 +154,7 @@ void UCIEngine::loop() {
             sync_cout << compiler_info() << sync_endl;
         else if (token == "export_net")
         {
-            std::pair<std::optional<std::string>, std::string> files[2];
+            std::array<std::pair<std::optional<std::string>, std::string>, 2> files;
 
             if (is >> std::skipws >> files[0].second)
                 files[0].first = files[0].second;
@@ -366,10 +368,10 @@ void UCIEngine::benchmark(std::istream& args) {
     cnt   = 1;
     nodes = 0;
 
-    int           numHashfullReadings = 0;
-    constexpr int hashfullAges[]      = {0, 999};  // Only normal hashfull and touched hash.
-    int           totalHashfull[std::size(hashfullAges)] = {0};
-    int           maxHashfull[std::size(hashfullAges)]   = {0};
+    int                          numHashfullReadings = 0;
+    constexpr std::array<int, 2> hashfullAges{0, 999};  // Only normal hashfull and touched hash.
+    std::array<int, std::size(hashfullAges)> totalHashfull{};
+    std::array<int, std::size(hashfullAges)> maxHashfull{};
 
     auto updateHashfullReadings = [&]() {
         numHashfullReadings += 1;

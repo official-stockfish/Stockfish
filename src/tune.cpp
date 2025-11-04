@@ -27,8 +27,6 @@
 
 #include "ucioption.h"
 
-using std::string;
-
 namespace Stockfish {
 
 bool          Tune::update_on_last;
@@ -46,7 +44,7 @@ std::optional<std::string> on_tune(const Option& o) {
 }
 }
 
-void Tune::make_option(OptionsMap* opts, const string& n, int v, const SetRange& r) {
+void Tune::make_option(OptionsMap* opts, const std::string& n, int v, const SetRange& r) {
 
     // Do not generate option when there is nothing to tune (ie. min = max)
     if (r(v).first == r(v).second)
@@ -67,13 +65,13 @@ void Tune::make_option(OptionsMap* opts, const string& n, int v, const SetRange&
               << "0.0020" << std::endl;
 }
 
-string Tune::next(string& names, bool pop) {
+std::string Tune::next(std::string& names, bool pop) {
 
-    string name;
+    std::string name;
 
     do
     {
-        string token = names.substr(0, names.find(','));
+        std::string token = names.substr(0, names.find(','));
 
         if (pop)
             names.erase(0, token.size() + 1);

@@ -25,15 +25,16 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <exception>  // IWYU pragma: keep
 // IWYU pragma: no_include <__exception/terminate.h>
 #include <functional>
 #include <iosfwd>
 #include <optional>
-#include <cstring>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #define stringify2(x) #x
@@ -138,13 +139,13 @@ class ValueList {
         assert(size_ < MaxSize);
         values_[size_++] = value;
     }
-    const T* begin() const { return values_; }
-    const T* end() const { return values_ + size_; }
+    const T* begin() const { return values_.begin(); }
+    const T* end() const { return begin() + size_; }
     const T& operator[](int index) const { return values_[index]; }
 
    private:
-    T           values_[MaxSize];
-    std::size_t size_ = 0;
+    std::array<T, MaxSize> values_;
+    std::size_t            size_ = 0;
 };
 
 
@@ -167,6 +168,19 @@ template<typename To, typename From>
 constexpr bool is_strictly_assignable_v =
   std::is_assignable_v<To&, From> && (std::is_same_v<To, From> || !std::is_convertible_v<From, To>);
 
+template<typename T, std::size_t Size, std::size_t... Sizes>
+struct MultiStdArrayDef {
+    using type = std::array<typename MultiStdArrayDef<T, Sizes...>::type, Size>;
+};
+
+template<typename T, std::size_t Size>
+struct MultiStdArrayDef<T, Size> {
+    using type = std::array<T, Size>;
+};
+
+template<typename T, std::size_t Size, std::size_t... Sizes>
+using MultiStdArray = typename MultiStdArrayDef<T, Size, Sizes...>::type;
+
 }
 
 // MultiArray is a generic N-dimensional array.
@@ -175,9 +189,10 @@ template<typename T, std::size_t Size, std::size_t... Sizes>
 class MultiArray {
     using ChildType = typename Detail::MultiArrayHelper<T, Size, Sizes...>::ChildType;
     using ArrayType = std::array<ChildType, Size>;
-    ArrayType data_;
 
    public:
+    ArrayType data_;
+
     using value_type             = typename ArrayType::value_type;
     using size_type              = typename ArrayType::size_type;
     using difference_type        = typename ArrayType::difference_type;
@@ -236,6 +251,24 @@ class MultiArray {
     }
 
     constexpr void swap(MultiArray<T, Size, Sizes...>& other) noexcept { data_.swap(other.data_); }
+
+    template<bool NoExtraDimension = sizeof...(Sizes) == 0,
+             typename              = typename std::enable_if_t<NoExtraDimension, bool>>
+    constexpr operator std::array<T, Size>&() noexcept {
+        return data_;
+    }
+
+    template<bool NoExtraDimension = sizeof...(Sizes) == 0,
+             typename              = typename std::enable_if_t<NoExtraDimension, bool>>
+    constexpr operator const std::array<T, Size>&() const noexcept {
+        return data_;
+    }
+
+    constexpr MultiArray& operator=(const Detail::MultiStdArray<T, Size, Sizes...>& other) {
+        for (std::size_t i = 0; i < Size; i++)
+            data_[i] = other[i];
+        return *this;
+    }
 };
 
 
@@ -327,7 +360,7 @@ class FixedString {
         size_t len = std::strlen(str);
         if (len > Capacity)
             std::terminate();
-        std::memcpy(data_, str, len);
+        std::memcpy(data_.data(), str, len);
         length_        = len;
         data_[length_] = '\0';
     }
@@ -335,7 +368,7 @@ class FixedString {
     FixedString(const std::string& str) {
         if (str.size() > Capacity)
             std::terminate();
-        std::memcpy(data_, str.data(), str.size());
+        std::memcpy(data_.data(), str.data(), str.size());
         length_        = str.size();
         data_[length_] = '\0';
     }
@@ -362,18 +395,18 @@ class FixedString {
 
     FixedString& operator+=(const FixedString& other) { return (*this += other.c_str()); }
 
-    operator std::string() const { return std::string(data_, length_); }
+    operator std::string() const { return std::string(data_.data(), length_); }
 
-    operator std::string_view() const { return std::string_view(data_, length_); }
+    operator std::string_view() const { return std::string_view(data_.data(), length_); }
 
     template<typename T>
     bool operator==(const T& other) const noexcept {
-        return (std::string_view) (*this) == other;
+        return (std::string_view)(*this) == other;
     }
 
     template<typename T>
     bool operator!=(const T& other) const noexcept {
-        return (std::string_view) (*this) != other;
+        return (std::string_view)(*this) != other;
     }
 
     void clear() {
@@ -382,8 +415,8 @@ class FixedString {
     }
 
    private:
-    char        data_[Capacity + 1];  // +1 for null terminator
-    std::size_t length_;
+    std::array<char, Capacity + 1> data_;  // +1 for null terminator
+    std::size_t                    length_;
 };
 
 struct CommandLine {

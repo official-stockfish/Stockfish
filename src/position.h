@@ -41,25 +41,25 @@ class TranspositionTable;
 struct StateInfo {
 
     // Copied when making a move
-    Key    materialKey;
-    Key    pawnKey;
-    Key    minorPieceKey;
-    Key    nonPawnKey[COLOR_NB];
-    Value  nonPawnMaterial[COLOR_NB];
-    int    castlingRights;
-    int    rule50;
-    int    pliesFromNull;
-    Square epSquare;
+    Key                         materialKey;
+    Key                         pawnKey;
+    Key                         minorPieceKey;
+    std::array<Key, COLOR_NB>   nonPawnKey;
+    std::array<Value, COLOR_NB> nonPawnMaterial;
+    int                         castlingRights;
+    int                         rule50;
+    int                         pliesFromNull;
+    Square                      epSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
-    Key        key;
-    Bitboard   checkersBB;
-    StateInfo* previous;
-    Bitboard   blockersForKing[COLOR_NB];
-    Bitboard   pinners[COLOR_NB];
-    Bitboard   checkSquares[PIECE_TYPE_NB];
-    Piece      capturedPiece;
-    int        repetition;
+    Key                                 key;
+    Bitboard                            checkersBB;
+    StateInfo*                          previous;
+    std::array<Bitboard, COLOR_NB>      blockersForKing;
+    std::array<Bitboard, COLOR_NB>      pinners;
+    std::array<Bitboard, PIECE_TYPE_NB> checkSquares;
+    Piece                               capturedPiece;
+    int                                 repetition;
 };
 
 

@@ -177,9 +177,10 @@ Network<Arch, Transformer>::evaluate(const Position&                         pos
     constexpr uint64_t alignment = CacheLineSize;
 
     alignas(alignment)
-      TransformedFeatureType transformedFeatures[FeatureTransformer<FTDimensions>::BufferSize];
+      std::array<TransformedFeatureType, FeatureTransformer<FTDimensions>::BufferSize>
+        transformedFeatures;
 
-    ASSERT_ALIGNED(transformedFeatures, alignment);
+    ASSERT_ALIGNED(transformedFeatures.data(), alignment);
 
     const int  bucket = (pos.count<ALL_PIECES>() - 1) / 4;
     const auto psqt =
@@ -239,9 +240,10 @@ Network<Arch, Transformer>::trace_evaluate(const Position&                      
     constexpr uint64_t alignment = CacheLineSize;
 
     alignas(alignment)
-      TransformedFeatureType transformedFeatures[FeatureTransformer<FTDimensions>::BufferSize];
+      std::array<TransformedFeatureType, FeatureTransformer<FTDimensions>::BufferSize>
+        transformedFeatures;
 
-    ASSERT_ALIGNED(transformedFeatures, alignment);
+    ASSERT_ALIGNED(transformedFeatures.data(), alignment);
 
     NnueEvalTrace t{};
     t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;

@@ -36,6 +36,7 @@
 // -DUSE_PEXT    | Add runtime support for use of pext asm-instruction. Works
 //               | only in 64-bit mode and requires hardware with pext support.
 
+    #include <array>
     #include <cassert>
     #include <cstddef>
     #include <cstdint>
@@ -204,7 +205,7 @@ enum Piece : std::int8_t {
 };
 // clang-format on
 
-constexpr Value PieceValue[PIECE_NB] = {
+constexpr std::array<Value, PIECE_NB> PieceValue{
   VALUE_ZERO, PawnValue, KnightValue, BishopValue, RookValue, QueenValue, VALUE_ZERO, VALUE_ZERO,
   VALUE_ZERO, PawnValue, KnightValue, BishopValue, RookValue, QueenValue, VALUE_ZERO, VALUE_ZERO};
 

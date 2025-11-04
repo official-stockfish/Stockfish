@@ -18,7 +18,6 @@
 
 #include "nnue_accumulator.h"
 
-#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <new>
@@ -330,22 +329,23 @@ struct AccumulatorUpdateContext {
         };
 
         fused_row_reduce<Vec16Wrapper, Dimensions, ops...>(
-          (from.template acc<Dimensions>()).accumulation[Perspective],
-          (to.template acc<Dimensions>()).accumulation[Perspective], to_weight_vector(indices)...);
+          (from.template acc<Dimensions>()).accumulation[Perspective].data(),
+          (to.template acc<Dimensions>()).accumulation[Perspective].data(),
+          to_weight_vector(indices)...);
 
         fused_row_reduce<Vec32Wrapper, PSQTBuckets, ops...>(
-          (from.template acc<Dimensions>()).psqtAccumulation[Perspective],
-          (to.template acc<Dimensions>()).psqtAccumulation[Perspective],
+          (from.template acc<Dimensions>()).psqtAccumulation[Perspective].data(),
+          (to.template acc<Dimensions>()).psqtAccumulation[Perspective].data(),
           to_psqt_weight_vector(indices)...);
     }
 
     void apply(const typename FeatureSet::IndexList& added,
                const typename FeatureSet::IndexList& removed) {
-        const auto fromAcc = from.template acc<Dimensions>().accumulation[Perspective];
-        const auto toAcc   = to.template acc<Dimensions>().accumulation[Perspective];
+        const auto& fromAcc = from.template acc<Dimensions>().accumulation[Perspective];
+        auto&       toAcc   = to.template acc<Dimensions>().accumulation[Perspective];
 
-        const auto fromPsqtAcc = from.template acc<Dimensions>().psqtAccumulation[Perspective];
-        const auto toPsqtAcc   = to.template acc<Dimensions>().psqtAccumulation[Perspective];
+        const auto& fromPsqtAcc = from.template acc<Dimensions>().psqtAccumulation[Perspective];
+        auto&       toPsqtAcc   = to.template acc<Dimensions>().psqtAccumulation[Perspective];
 
 #ifdef VECTOR
         using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
@@ -440,8 +440,8 @@ struct AccumulatorUpdateContext {
 
 #else
 
-        std::copy_n(fromAcc, Dimensions, toAcc);
-        std::copy_n(fromPsqtAcc, PSQTBuckets, toPsqtAcc);
+        toAcc     = fromAcc;
+        toPsqtAcc = fromPsqtAcc;
 
         for (const auto index : removed)
         {
@@ -582,13 +582,10 @@ void update_accumulator_incremental(
         auto&       targetAcc = target_state.template acc<TransformedFeatureDimensions>();
         const auto& sourceAcc = computed.template acc<TransformedFeatureDimensions>();
 
-        std::memcpy(targetAcc.accumulation[Perspective], sourceAcc.accumulation[Perspective],
-                    sizeof(targetAcc.accumulation[Perspective]));
-        std::memcpy(targetAcc.psqtAccumulation[Perspective],
-                    sourceAcc.psqtAccumulation[Perspective],
-                    sizeof(targetAcc.psqtAccumulation[Perspective]));
+        targetAcc.accumulation[Perspective]     = sourceAcc.accumulation[Perspective];
+        targetAcc.psqtAccumulation[Perspective] = sourceAcc.psqtAccumulation[Perspective];
+        targetAcc.computed[Perspective]         = true;
 
-        targetAcc.computed[Perspective] = true;
         return;
     }
 
@@ -636,15 +633,16 @@ void update_accumulator_incremental(
     (target_state.template acc<TransformedFeatureDimensions>()).computed[Perspective] = true;
 }
 
-Bitboard get_changed_pieces(const Piece oldPieces[SQUARE_NB], const Piece newPieces[SQUARE_NB]) {
+Bitboard get_changed_pieces(const std::array<Piece, SQUARE_NB>& oldPieces,
+                            const std::array<Piece, SQUARE_NB>& newPieces) {
 #if defined(USE_AVX512) || defined(USE_AVX2)
     static_assert(sizeof(Piece) == 1);
     Bitboard sameBB = 0;
 
     for (int i = 0; i < 64; i += 32)
     {
-        const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(oldPieces + i));
-        const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(newPieces + i));
+        const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&oldPieces[i]));
+        const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&newPieces[i]));
         const __m256i cmpEqual        = _mm256_cmpeq_epi8(old_v, new_v);
         const std::uint32_t equalMask = _mm256_movemask_epi8(cmpEqual);
         sameBB |= static_cast<Bitboard>(equalMask) << i;
@@ -672,7 +670,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     auto&                    entry = cache[ksq][Perspective];
     PSQFeatureSet::IndexList removed, added;
 
-    const Bitboard changedBB = get_changed_pieces(entry.pieces, pos.piece_array().data());
+    const Bitboard changedBB = get_changed_pieces(entry.pieces, pos.piece_array());
     Bitboard       removedBB = changedBB & entry.pieceBB;
     Bitboard       addedBB   = changedBB & pos.pieces();
 
@@ -688,7 +686,7 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     }
 
     entry.pieceBB = pos.pieces();
-    std::copy_n(pos.piece_array().begin(), SQUARE_NB, entry.pieces);
+    entry.pieces  = pos.piece_array();
 
     auto& accumulator                 = accumulatorState.acc<Dimensions>();
     accumulator.computed[Perspective] = true;
@@ -804,12 +802,8 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
 
     // The accumulator of the refresh entry has been updated.
     // Now copy its content to the actual accumulator we were refreshing.
-
-    std::memcpy(accumulator.accumulation[Perspective], entry.accumulation.data(),
-                sizeof(BiasType) * Dimensions);
-
-    std::memcpy(accumulator.psqtAccumulation[Perspective], entry.psqtAccumulation.data(),
-                sizeof(int32_t) * PSQTBuckets);
+    accumulator.accumulation[Perspective]     = entry.accumulation;
+    accumulator.psqtAccumulation[Perspective] = entry.psqtAccumulation;
 #endif
 }
 

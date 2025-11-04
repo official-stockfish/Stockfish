@@ -122,11 +122,12 @@ struct LimitsType {
 
     bool use_time_management() const { return time[WHITE] || time[BLACK]; }
 
-    std::vector<std::string> searchmoves;
-    TimePoint                time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-    int                      movestogo, depth, mate, perft, infinite;
-    uint64_t                 nodes;
-    bool                     ponderMode;
+    std::vector<std::string>        searchmoves;
+    std::array<TimePoint, COLOR_NB> time, inc;
+    TimePoint                       npmsec, movetime, startTime;
+    int                             movestogo, depth, mate, perft, infinite;
+    uint64_t                        nodes;
+    bool                            ponderMode;
 };
 
 
@@ -282,9 +283,9 @@ class Worker {
     ButterflyHistory mainHistory;
     LowPlyHistory    lowPlyHistory;
 
-    CapturePieceToHistory captureHistory;
-    ContinuationHistory   continuationHistory[2][2];
-    PawnHistory           pawnHistory;
+    CapturePieceToHistory                 captureHistory;
+    MultiArray<ContinuationHistory, 2, 2> continuationHistory;
+    PawnHistory                           pawnHistory;
 
     CorrectionHistory<Pawn>         pawnCorrectionHistory;
     CorrectionHistory<Minor>        minorPieceCorrectionHistory;
@@ -330,7 +331,7 @@ class Worker {
     std::atomic<uint64_t> nodes, tbHits, bestMoveChanges;
     int                   selDepth, nmpMinPly;
 
-    Value optimism[COLOR_NB];
+    std::array<Value, COLOR_NB> optimism;
 
     Position  rootPos;
     StateInfo rootState;

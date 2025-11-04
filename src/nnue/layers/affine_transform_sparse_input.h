@@ -37,7 +37,7 @@
 namespace Stockfish::Eval::NNUE::Layers {
 
 #if (USE_SSSE3 | (USE_NEON >= 8))
-static constexpr int lsb_index64[64] = {
+static constexpr std::array<int, 64> lsb_index64 = {
   0,  47, 1,  56, 48, 27, 2,  60, 57, 49, 41, 37, 28, 16, 3,  61, 54, 58, 35, 52, 50, 42,
   21, 44, 38, 32, 29, 23, 17, 11, 4,  62, 46, 55, 26, 59, 40, 36, 15, 53, 34, 51, 20, 43,
   31, 22, 10, 45, 25, 39, 14, 33, 19, 30, 9,  24, 13, 18, 8,  12, 7,  6,  5,  63};
@@ -50,7 +50,7 @@ constexpr int constexpr_lsb(uint64_t bb) {
 
 alignas(CacheLineSize) static constexpr struct OffsetIndices {
 
-    std::uint16_t offset_indices[256][8];
+    MultiArray<std::uint16_t, 256, 8> offset_indices;
 
     constexpr OffsetIndices() :
         offset_indices() {
@@ -199,7 +199,7 @@ class AffineTransformSparseInput {
     static constexpr IndexType ChunkSize = 1;
 #endif
 
-    using OutputBuffer = OutputType[PaddedOutputDimensions];
+    using OutputBuffer = std::array<OutputType, PaddedOutputDimensions>;
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
@@ -225,7 +225,7 @@ class AffineTransformSparseInput {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-        read_little_endian<BiasType>(stream, biases, OutputDimensions);
+        read_little_endian<BiasType>(stream, biases);
         for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
             weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
 
@@ -234,7 +234,7 @@ class AffineTransformSparseInput {
 
     // Write network parameters
     bool write_parameters(std::ostream& stream) const {
-        write_little_endian<BiasType>(stream, biases, OutputDimensions);
+        write_little_endian<BiasType>(stream, biases);
 
         for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
             write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
@@ -296,12 +296,12 @@ class AffineTransformSparseInput {
         std::uint16_t nnz[NumChunks];
         IndexType     count;
 
-        const auto input32 = reinterpret_cast<const std::int32_t*>(input);
+        const auto input32 = reinterpret_cast<const std::int32_t*>(&input[0]);
 
         // Find indices of nonzero 32-bit blocks
         find_nnz<NumChunks>(input32, nnz, count);
 
-        const outvec_t* biasvec = reinterpret_cast<const outvec_t*>(biases);
+        const outvec_t* biasvec = reinterpret_cast<const outvec_t*>(&biases[0]);
         outvec_t        acc[NumRegs];
         for (IndexType k = 0; k < NumAccums; ++k)
             acc[k] = biasvec[k];
@@ -310,7 +310,7 @@ class AffineTransformSparseInput {
         const auto* end   = nnz + count;
 
         // convince GCC to not do weird pointer arithmetic in the following loop
-        const std::int8_t* weights_cp = weights;
+        const std::int8_t* weights_cp = weights.data();
     #if defined(USE_VNNI)
         for (IndexType k = NumAccums; k < NumRegs; ++k)
             acc[k] = vec_zero();
@@ -369,8 +369,8 @@ class AffineTransformSparseInput {
     using BiasType   = OutputType;
     using WeightType = std::int8_t;
 
-    alignas(CacheLineSize) BiasType biases[OutputDimensions];
-    alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];
+    alignas(CacheLineSize) std::array<BiasType, OutputDimensions> biases;
+    alignas(CacheLineSize) std::array<WeightType, OutputDimensions * PaddedInputDimensions> weights;
 };
 
 }  // namespace Stockfish::Eval::NNUE::Layers
