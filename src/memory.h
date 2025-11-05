@@ -41,6 +41,13 @@
     #endif
     #include <windows.h>
 
+    // Some Windows headers (RPC/old headers) define short macros such
+    // as 'small' expanding to 'char', which breaks identifiers in the code.
+    // Undefine those macros immediately after including <windows.h>.
+    #ifdef small
+        #undef small
+    #endif
+
     #include <psapi.h>
 
 extern "C" {
