@@ -508,7 +508,7 @@ if __name__ == "__main__":
 
     framework = MiniTestFramework()
 
-    # Each test suite will be ran inside a temporary directory
+    # Each test suite will be run inside a temporary directory
     framework.run([TestCLI, TestInteractive, TestSyzygy])
 
     EPD.delete_bench_epd()
