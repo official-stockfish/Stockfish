@@ -301,6 +301,7 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
+    alignas(CacheLineSize) BiasType padding[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];
     alignas(CacheLineSize) PSQTWeightType psqtWeights[InputDimensions * PSQTBuckets];
 };
