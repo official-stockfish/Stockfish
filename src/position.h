@@ -133,11 +133,16 @@ class Position {
     Piece captured_piece() const;
 
     // Doing and undoing moves
-    void           do_move(Move m, StateInfo& newSt, const TranspositionTable* tt);
-    DirtyBoardData do_move(Move m, StateInfo& newSt, bool givesCheck, const TranspositionTable* tt);
-    void           undo_move(Move m);
-    void           do_null_move(StateInfo& newSt, const TranspositionTable& tt);
-    void           undo_null_move();
+    void do_move(Move m, StateInfo& newSt, const TranspositionTable* tt);
+    void do_move(Move                      m,
+                 StateInfo&                newSt,
+                 bool                      givesCheck,
+                 DirtyPiece&               dp,
+                 DirtyThreats&             dts,
+                 const TranspositionTable* tt);
+    void undo_move(Move m);
+    void do_null_move(StateInfo& newSt, const TranspositionTable& tt);
+    void undo_null_move();
 
     // Static Exchange Evaluation
     bool see_ge(Move m, int threshold = 0) const;
@@ -196,14 +201,16 @@ class Position {
     std::array<Bitboard, PIECE_TYPE_NB> byTypeBB;
     std::array<Bitboard, COLOR_NB>      byColorBB;
 
-    int        pieceCount[PIECE_NB];
-    int        castlingRightsMask[SQUARE_NB];
-    Square     castlingRookSquare[CASTLING_RIGHT_NB];
-    Bitboard   castlingPath[CASTLING_RIGHT_NB];
-    StateInfo* st;
-    int        gamePly;
-    Color      sideToMove;
-    bool       chess960;
+    int          pieceCount[PIECE_NB];
+    int          castlingRightsMask[SQUARE_NB];
+    Square       castlingRookSquare[CASTLING_RIGHT_NB];
+    Bitboard     castlingPath[CASTLING_RIGHT_NB];
+    StateInfo*   st;
+    int          gamePly;
+    Color        sideToMove;
+    bool         chess960;
+    DirtyPiece   scratch_dp;
+    DirtyThreats scratch_dts;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -389,7 +396,8 @@ inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
 }
 
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
-    do_move(m, newSt, gives_check(m), tt);
+    new (&scratch_dts) DirtyThreats;
+    do_move(m, newSt, gives_check(m), scratch_dp, scratch_dts, tt);
 }
 
 inline StateInfo* Position::state() const { return st; }
