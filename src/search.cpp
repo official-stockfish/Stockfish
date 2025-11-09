@@ -531,16 +531,16 @@ void Search::Worker::do_move(
     bool capture = pos.capture_stage(move);
     nodes.fetch_add(1, std::memory_order_relaxed);
 
-    DirtyBoardData dirtyBoardData = pos.do_move(move, st, givesCheck, &tt);
-    accumulatorStack.push(dirtyBoardData);
+    auto [dirtyPiece, dirtyThreats] = accumulatorStack.push();
+    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, &tt);
 
     if (ss != nullptr)
     {
         ss->currentMove = move;
         ss->continuationHistory =
-          &continuationHistory[ss->inCheck][capture][dirtyBoardData.dp.pc][move.to_sq()];
+          &continuationHistory[ss->inCheck][capture][dirtyPiece.pc][move.to_sq()];
         ss->continuationCorrectionHistory =
-          &continuationCorrectionHistory[dirtyBoardData.dp.pc][move.to_sq()];
+          &continuationCorrectionHistory[dirtyPiece.pc][move.to_sq()];
     }
 }
 

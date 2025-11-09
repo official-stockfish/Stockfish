@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <new>
 #include <type_traits>
 
 #include "../bitboard.h"
@@ -122,11 +123,13 @@ void AccumulatorStack::reset() noexcept {
     size = 1;
 }
 
-void AccumulatorStack::push(const DirtyBoardData& dirtyBoardData) noexcept {
+std::pair<DirtyPiece&, DirtyThreats&> AccumulatorStack::push() noexcept {
     assert(size < MaxSize);
-    psq_accumulators[size].reset(dirtyBoardData.dp);
-    threat_accumulators[size].reset(dirtyBoardData.dts);
+    auto& dp  = psq_accumulators[size].reset();
+    auto& dts = threat_accumulators[size].reset();
+    new (&dts) DirtyThreats;
     size++;
+    return {dp, dts};
 }
 
 void AccumulatorStack::pop() noexcept {
