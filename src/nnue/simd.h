@@ -47,11 +47,13 @@ namespace Stockfish::Eval::NNUE::SIMD {
 
 #ifdef USE_AVX512
 using vec_t      = __m512i;
+using vec_i8_t   = __m256i;
 using vec128_t   = __m128i;
 using psqt_vec_t = __m256i;
 using vec_uint_t = __m512i;
     #define vec_load(a) _mm512_load_si512(a)
     #define vec_store(a, b) _mm512_store_si512(a, b)
+    #define vec_convert_8_16(a) _mm512_cvtepi8_epi16(a)
     #define vec_add_16(a, b) _mm512_add_epi16(a, b)
     #define vec_sub_16(a, b) _mm512_sub_epi16(a, b)
     #define vec_mulhi_16(a, b) _mm512_mulhi_epi16(a, b)
@@ -82,11 +84,13 @@ using vec_uint_t = __m512i;
 
 #elif USE_AVX2
 using vec_t      = __m256i;
+using vec_i8_t   = __m128i;
 using vec128_t   = __m128i;
 using psqt_vec_t = __m256i;
 using vec_uint_t = __m256i;
     #define vec_load(a) _mm256_load_si256(a)
     #define vec_store(a, b) _mm256_store_si256(a, b)
+    #define vec_convert_8_16(a) _mm256_cvtepi8_epi16(a)
     #define vec_add_16(a, b) _mm256_add_epi16(a, b)
     #define vec_sub_16(a, b) _mm256_sub_epi16(a, b)
     #define vec_mulhi_16(a, b) _mm256_mulhi_epi16(a, b)
@@ -119,7 +123,7 @@ using vec_uint_t = __m256i;
     #define vec128_storeu(a, b) _mm_storeu_si128(a, b)
     #define vec128_add(a, b) _mm_add_epi16(a, b)
 
-    #define NumRegistersSIMD 16
+    #define NumRegistersSIMD 12
     #define MaxChunkSize 32
 
 #elif USE_SSE2
@@ -160,6 +164,7 @@ using vec_uint_t = __m128i;
 
 #elif USE_NEON
 using vec_t      = int16x8_t;
+using vec_i8_t   = int8x16_t;
 using psqt_vec_t = int32x4_t;
 using vec128_t   = uint16x8_t;
 using vec_uint_t = uint32x4_t;

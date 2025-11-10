@@ -130,7 +130,7 @@ class FeatureTransformer {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
         if (use_threats) {
-            permute<16>(threatWeights, PackusEpi16Order);
+            permute<8>(threatWeights, PackusEpi16Order);
         }
     }
 
@@ -138,7 +138,7 @@ class FeatureTransformer {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
         if (use_threats) {
-            permute<16>(threatWeights, InversePackusEpi16Order);
+            permute<8>(threatWeights, InversePackusEpi16Order);
         }
     }
 
@@ -148,15 +148,6 @@ class FeatureTransformer {
             WeightType* w = &weights[j * HalfDimensions];
             for (IndexType i = 0; i < HalfDimensions; ++i)
                 w[i] = read ? w[i] * 2 : w[i] / 2;
-        }
-        if (use_threats)
-        {
-            for (IndexType j = 0; j < ThreatInputDimensions; ++j)
-            {
-                WeightType* w = &threatWeights[j * HalfDimensions];
-                for (IndexType i = 0; i < HalfDimensions; ++i)
-                    w[i] = read ? w[i] * 2 : w[i] / 2;
-            }
         }
 
         for (IndexType i = 0; i < HalfDimensions; ++i)
@@ -204,7 +195,7 @@ class FeatureTransformer {
             read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
         }
         permute_weights();
-        scale_weights(true);
+        if (!use_threats) { scale_weights(true); }
 
         return !stream.fail();
     }
@@ -215,10 +206,10 @@ class FeatureTransformer {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
         copy->unpermute_weights();
-        copy->scale_weights(false);
+        if (!use_threats) { copy->scale_weights(false); }
 
         write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
-        write_leb_128<WeightType>(stream, copy->threatWeights,
+        write_leb_128<ThreatWeightType>(stream, copy->threatWeights,
                                   HalfDimensions * ThreatInputDimensions);
         write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
         write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
@@ -277,7 +268,7 @@ class FeatureTransformer {
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
             const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(127 * 2);
+            const vec_t One  = vec_set_16(use_threats ? 255 : 127 * 2);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -394,8 +385,8 @@ class FeatureTransformer {
                     BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
                     BiasType sum1t =
                     threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                    sum0               = std::clamp<BiasType>(sum0 + sum0t, 0, 127 * 2);
-                    sum1               = std::clamp<BiasType>(sum1 + sum1t, 0, 127 * 2);
+                    sum0               = std::clamp<BiasType>(sum0 + sum0t, 0, 255);
+                    sum1               = std::clamp<BiasType>(sum1 + sum1t, 0, 255);
                 }
                 else {
                     sum0               = std::clamp<BiasType>(sum0, 0, 127 * 2);
@@ -412,9 +403,9 @@ class FeatureTransformer {
 
     alignas(CacheLineSize) BiasType biases[HalfDimensions];
     alignas(CacheLineSize) WeightType weights[HalfDimensions * InputDimensions];
-    alignas(CacheLineSize) WeightType threatWeights[use_threats ? HalfDimensions * ThreatInputDimensions : 128];
+    alignas(CacheLineSize) ThreatWeightType threatWeights[use_threats ? HalfDimensions * ThreatInputDimensions : 64];
     alignas(CacheLineSize) PSQTWeightType psqtWeights[InputDimensions * PSQTBuckets];
-    alignas(CacheLineSize) PSQTWeightType threatPsqtWeights[use_threats ? ThreatInputDimensions * PSQTBuckets : 128];
+    alignas(CacheLineSize) PSQTWeightType threatPsqtWeights[use_threats ? ThreatInputDimensions * PSQTBuckets : 1];
 };
 
 }  // namespace Stockfish::Eval::NNUE
