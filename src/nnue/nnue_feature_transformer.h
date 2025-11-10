@@ -132,19 +132,17 @@ class FeatureTransformer {
     void permute_weights() {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
+
         if (use_threats)
-        {
             permute<8>(threatWeights, PackusEpi16Order);
-        }
     }
 
     void unpermute_weights() {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
+
         if (use_threats)
-        {
             permute<8>(threatWeights, InversePackusEpi16Order);
-        }
     }
 
     inline void scale_weights(bool read) {
