@@ -208,9 +208,6 @@ class Position {
     int        gamePly;
     Color      sideToMove;
     bool       chess960;
-
-    // TODO: Remove this
-    friend Eval::NNUE::Features::FullThreats;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
