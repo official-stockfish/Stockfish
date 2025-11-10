@@ -200,7 +200,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                 while (bb)
                 {
                     Square   from    = pop_lsb(bb);
-                    Bitboard attacks = (attacks_bb(pt, from, occupied)) &occupied;
+                    Bitboard attacks = (attacks_bb(pt, from, occupied)) & occupied;
                     while (attacks)
                     {
                         Square    to    = pop_lsb(attacks);

@@ -431,16 +431,18 @@ struct AccumulatorUpdateContext {
 
 #else
 
+        std::copy_n(fromAcc, Dimensions, toAcc);
+        std::copy_n(fromPsqtAcc, PSQTBuckets, toPsqtAcc);
+
         for (const auto index : removed)
         {
             const IndexType offset = Dimensions * index;
 
             for (IndexType j = 0; j < Dimensions; ++j)
-                toAcc[j] = fromAcc[j] - featureTransformer.threatWeights[offset + j];
+                toAcc[j] -= featureTransformer.threatWeights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                toPsqtAcc[k] =
-                  fromPsqtAcc[k] - featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
+                toPsqtAcc[k] -= featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
         }
 
         for (const auto index : added)
@@ -448,11 +450,10 @@ struct AccumulatorUpdateContext {
             const IndexType offset = Dimensions * index;
 
             for (IndexType j = 0; j < Dimensions; ++j)
-                toAcc[j] = fromAcc[j] + featureTransformer.threatWeights[offset + j];
+                toAcc[j] += featureTransformer.threatWeights[offset + j];
 
             for (std::size_t k = 0; k < PSQTBuckets; ++k)
-                toPsqtAcc[k] =
-                  fromPsqtAcc[k] + featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
+                toPsqtAcc[k] += featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
         }
 
 #endif
