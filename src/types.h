@@ -244,10 +244,10 @@ enum Square : int8_t {
 // clang-format on
 
 enum Direction : int8_t {
-    NORTH   = 8,
-    EAST    = 1,
-    SOUTH   = -NORTH,
-    WEST    = -EAST,
+    NORTH = 8,
+    EAST  = 1,
+    SOUTH = -NORTH,
+    WEST  = -EAST,
 
     NORTH_EAST = NORTH + EAST,
     SOUTH_EAST = SOUTH + EAST,
@@ -298,16 +298,17 @@ struct DirtyThreat {
         data = (add << 28) | (pc << 20) | (threatened_pc << 16) | (threatened_sq << 8) | (pc_sq);
     }
 
-    Piece pc() const { return static_cast<Piece>(data >> 20 & 0xff); }
-    Piece threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
+    Piece  pc() const { return static_cast<Piece>(data >> 20 & 0xff); }
+    Piece  threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
     Square threatened_sq() const { return static_cast<Square>(data >> 8 & 0xff); }
     Square pc_sq() const { return static_cast<Square>(data & 0xff); }
-    bool add() const {
+    bool   add() const {
         uint32_t b = data >> 28;
         sf_assume(b == 0 || b == 1);
         return b;
     }
-private:
+
+   private:
     uint32_t data;
 };
 

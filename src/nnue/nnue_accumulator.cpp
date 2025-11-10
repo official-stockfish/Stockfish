@@ -358,15 +358,16 @@ struct AccumulatorUpdateContext {
                 auto*           column =
                   reinterpret_cast<const vec_i8_t*>(&featureTransformer.threatWeights[offset]);
 
-#ifdef USE_NEON
-                for (IndexType k = 0; k < Tiling::NumRegs; k += 2) {
-                    acc[k] = vec_sub_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
+    #ifdef USE_NEON
+                for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+                {
+                    acc[k]     = vec_sub_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
                     acc[k + 1] = vec_sub_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
                 }
-#else
+    #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                     acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
-#endif
+    #endif
             }
 
             for (IndexType i = 0; i < added.size(); ++i)
@@ -376,15 +377,16 @@ struct AccumulatorUpdateContext {
                 auto*           column =
                   reinterpret_cast<const vec_i8_t*>(&featureTransformer.threatWeights[offset]);
 
-#ifdef USE_NEON
-                for (IndexType k = 0; k < Tiling::NumRegs; k += 2) {
-                    acc[k] = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
+    #ifdef USE_NEON
+                for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+                {
+                    acc[k]     = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
                     acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
                 }
-#else
+    #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                     acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-#endif
+    #endif
             }
 
             for (IndexType k = 0; k < Tiling::NumRegs; k++)
@@ -820,15 +822,16 @@ void update_threats_accumulator_full(const FeatureTransformer<Dimensions>& featu
             auto*           column =
               reinterpret_cast<const vec_i8_t*>(&featureTransformer.threatWeights[offset]);
 
-#ifdef USE_NEON
-                for (IndexType k = 0; k < Tiling::NumRegs; k += 2) {
-                    acc[k] = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
-                    acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
-                }
-#else
+    #ifdef USE_NEON
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                acc[k]     = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
+                acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
+            }
+    #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-#endif
+    #endif
         }
 
         for (IndexType k = 0; k < Tiling::NumRegs; k++)

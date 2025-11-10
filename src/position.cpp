@@ -725,8 +725,8 @@ DirtyBoardData Position::do_move(Move                      m,
     dp.to     = to;
     dp.add_sq = SQ_NONE;
     DirtyThreats dts;
-    dts.us      = us;
-    dts.prevKsq = square<KING>(us);
+    dts.us            = us;
+    dts.prevKsq       = square<KING>(us);
     dts.threatenedSqs = dts.threateningSqs = 0;
 
     assert(color_of(pc) == us);
@@ -1036,9 +1036,11 @@ void Position::undo_move(Move m) {
 }
 
 template<bool put_piece>
-inline void addDirtyThreat(DirtyThreats* const dts, Piece pc, Piece threatened_pc, Square s, Square threatened_sq) {
-    if (put_piece) {
-        dts->threatenedSqs  |= square_bb(threatened_sq);
+inline void addDirtyThreat(
+  DirtyThreats* const dts, Piece pc, Piece threatened_pc, Square s, Square threatened_sq) {
+    if (put_piece)
+    {
+        dts->threatenedSqs |= square_bb(threatened_sq);
         dts->threateningSqs |= square_bb(s);
     }
 
