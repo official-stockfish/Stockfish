@@ -28,46 +28,57 @@ namespace Stockfish::Eval::NNUE::Features {
 // Lookup array for indexing threats
 IndexType offsets[PIECE_NB][SQUARE_NB + 2];
 
+// Information on a particular pair of pieces and whether they should be excluded
 struct PiecePairData {
+    // Layout: bits 8..31 are the index contribution of this piece pair, bits 0 and 1 are exclusion info
     uint32_t data;
     PiecePairData() {}
     PiecePairData(bool excluded_pair, bool semi_excluded_pair, IndexType feature_index_base) {
-        assert(shamt <= 63);
         data =
-          (excluded_pair << 1 | (semi_excluded_pair && !excluded_pair)) | feature_index_base << 8;
+          excluded_pair << 1 | (semi_excluded_pair && !excluded_pair) | feature_index_base << 8;
     }
-    // lsb: sometimes excluded, 2nd lsb: always excluded
+    // lsb: excluded if from < to; 2nd lsb: always excluded
     uint8_t   excluded_pair_info() const { return (uint8_t) data; }
     IndexType feature_index_base() const { return data >> 8; }
 };
 
-static_assert(sizeof(PiecePairData) == 4);
+constexpr std::array<Piece, 12> AllPieces = {
+  W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+  B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
+};
 
+// The final index is calculated from summing data found in these two LUTs, as well
+// as offsets[attkr][65]
 PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attkr][attkd]
 uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attkr][from][to]
-static void   init() {
-    for (int attkr = 0; attkr < PIECE_NB; attkr++)
+
+static void init_index_luts() {
+    for (Piece attkr : AllPieces)
     {
-        for (int attkd = 0; attkd < PIECE_NB; ++attkd)
+        for (Piece attkd : AllPieces)
         {
-            bool enemy = (attkr ^ attkd) == 8;
-            auto map   = FullThreats::map[type_of(Piece(attkr)) - 1][type_of(Piece(attkd)) - 1];
-            bool semi_excluded = type_of(Piece(attkr)) == type_of(Piece(attkd))
-                              && (enemy || type_of(Piece(attkr)) != PAWN);
+            bool      enemy      = (attkr ^ attkd) == 8;
+            PieceType attkr_type = type_of(attkr);
+            PieceType attkd_type = type_of(attkd);
+
+            int       map           = FullThreats::map[attkr_type - 1][attkd_type - 1];
+            bool      semi_excluded = attkr_type == attkd_type && (enemy || attkr_type != PAWN);
             IndexType feature =
               offsets[attkr][65]
-              + (color_of(Piece(attkd)) * (numValidTargets[attkr] / 2) + map) * offsets[attkr][64];
-            index_lut1[attkr][attkd] = PiecePairData(map < 0, semi_excluded, feature);
+              + (color_of(attkd) * (numValidTargets[attkr] / 2) + map) * offsets[attkr][64];
+
+            bool excluded            = map < 0;
+            index_lut1[attkr][attkd] = PiecePairData(excluded, semi_excluded, feature);
         }
     }
 
-    for (int attkr = 0; attkr < PIECE_NB; attkr++)
+    for (Piece attkr : AllPieces)
     {
         for (int from = 0; from < SQUARE_NB; ++from)
         {
             for (int to = 0; to < SQUARE_NB; ++to)
             {
-                Bitboard attacks            = attacks_bb(Piece(attkr), Square(from));
+                Bitboard attacks            = attacks_bb(attkr, Square(from));
                 index_lut2[attkr][from][to] = popcount((square_bb(Square(to)) - 1) & attacks);
             }
         }
@@ -111,7 +122,7 @@ void init_threat_offsets() {
         cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
     }
 
-    init();
+    init_index_luts();
 }
 
 // Index of a feature for a given king position and another piece on some square
@@ -130,7 +141,12 @@ IndexType FullThreats::make_index(Piece attkr, Square from, Square to, Piece att
 
     // Some threats imply the existence of the corresponding ones in the opposite
     // direction. We filter them here to ensure only one such threat is active.
-    if ((piece_pair_data.excluded_pair_info() + (int(from) < int(to))) & 2)
+
+    // In the below addition, the 2nd lsb gets set iff either the pair is always excluded,
+    // or the pair is semi-excluded and from < to. By using an unsigned compare, the following
+    // sequence can use an add-with-carry instruction.
+    bool less_than = static_cast<uint8_t>(from) < static_cast<uint8_t>(to);
+    if ((piece_pair_data.excluded_pair_info() + less_than) & 2)
     {
         return Dimensions;
     }
