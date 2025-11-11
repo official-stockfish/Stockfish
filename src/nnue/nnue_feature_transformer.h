@@ -196,11 +196,11 @@ class FeatureTransformer {
             read_leb_128<WeightType>(stream, weights);
             read_leb_128<PSQTWeightType>(stream, psqtWeights);
         }
+
         permute_weights();
+
         if (!use_threats)
-        {
             scale_weights(true);
-        }
 
         return !stream.fail();
     }
@@ -211,10 +211,9 @@ class FeatureTransformer {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
         copy->unpermute_weights();
+
         if (!use_threats)
-        {
             copy->scale_weights(false);
-        }
 
         write_leb_128<BiasType>(stream, copy->biases);
 
@@ -279,6 +278,7 @@ class FeatureTransformer {
         const auto& psqtAccumulation = (accumulatorState.acc<HalfDimensions>()).psqtAccumulation;
         auto        psqt =
           (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket]);
+
         if (use_threats)
         {
             const auto& threatPsqtAccumulation =
@@ -288,9 +288,8 @@ class FeatureTransformer {
                  / 2;
         }
         else
-        {
             psqt /= 2;
-        }
+
         const auto& accumulation = (accumulatorState.acc<HalfDimensions>()).accumulation;
         const auto& threatAccumulation =
           (threatAccumulatorState.acc<HalfDimensions>()).accumulation;
@@ -423,6 +422,7 @@ class FeatureTransformer {
                 BiasType sum0 = accumulation[static_cast<int>(perspectives[p])][j + 0];
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
+
                 if (use_threats)
                 {
                     BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
@@ -436,6 +436,7 @@ class FeatureTransformer {
                     sum0 = std::clamp<BiasType>(sum0, 0, 127 * 2);
                     sum1 = std::clamp<BiasType>(sum1, 0, 127 * 2);
                 }
+
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
             }
 

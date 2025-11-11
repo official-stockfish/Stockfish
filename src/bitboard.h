@@ -262,18 +262,16 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
 inline Bitboard attacks_bb(Piece pc, Square s) {
     if (type_of(pc) == PAWN)
-    {
         return PseudoAttacks[color_of(pc)][s];
-    }
+
     return PseudoAttacks[type_of(pc)][s];
 }
 
 
 inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
     if (type_of(pc) == PAWN)
-    {
         return PseudoAttacks[color_of(pc)][s];
-    }
+
     return attacks_bb(type_of(pc), s, occupied);
 }
 
