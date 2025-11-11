@@ -206,7 +206,6 @@ class FeatureTransformer {
     }
 
     // Write network parameters
-    // TODO: Fix this
     bool write_parameters(std::ostream& stream) const {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
