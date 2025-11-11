@@ -213,6 +213,11 @@ static constexpr std::uint32_t Mask[4] = {1, 2, 4, 8};
     #define NumRegistersSIMD 16
     #define MaxChunkSize 16
 
+    #ifndef __aarch64__
+// Single instruction doesn't exist on 32-bit ARM
+inline int8x16_t vmovl_high_s8(int8x16_t val) { return vmovl_s8(vget_high_s8(val)); }
+    #endif
+
 #else
     #undef VECTOR
 
