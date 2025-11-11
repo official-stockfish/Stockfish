@@ -21,9 +21,9 @@
 
 #include "bitboard.h"
 #include "misc.h"
+#include "nnue/features/full_threats.h"
 #include "position.h"
 #include "tune.h"
-#include "types.h"
 #include "uci.h"
 
 using namespace Stockfish;

@@ -27,8 +27,6 @@
 #include <cstring>
 
 #include "../types.h"
-#include "features/full_threats.h"
-#include "features/half_ka_v2_hm.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 

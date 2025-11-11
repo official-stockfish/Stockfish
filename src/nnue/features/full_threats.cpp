@@ -19,9 +19,15 @@
 //Definition of input features FullThreats of NNUE evaluation function
 
 #include "full_threats.h"
+
+#include <array>
+#include <initializer_list>
+
 #include "../../bitboard.h"
+#include "../../misc.h"
 #include "../../position.h"
 #include "../../types.h"
+#include "../nnue_common.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 
@@ -216,7 +222,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                 while (bb)
                 {
                     Square   from    = pop_lsb(bb);
-                    Bitboard attacks = (attacks_bb(pt, from, occupied)) & occupied;
+                    Bitboard attacks = (attacks_bb(pt, from, occupied)) &occupied;
                     while (attacks)
                     {
                         Square    to    = pop_lsb(attacks);

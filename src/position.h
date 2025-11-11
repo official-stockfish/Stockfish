@@ -25,7 +25,6 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
-#include <iostream>
 
 #include "bitboard.h"
 #include "types.h"

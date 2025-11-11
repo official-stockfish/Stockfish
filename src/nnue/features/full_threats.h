@@ -25,7 +25,6 @@
 #include "../nnue_common.h"
 
 namespace Stockfish {
-struct StateInfo;
 class Position;
 }
 
@@ -117,8 +116,6 @@ class FullThreats {
     static constexpr IndexType MaxActiveDimensions = 128;
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
     using DiffType                                 = DirtyThreats;
-
-    FullThreats() { init_threat_offsets(); };
 
     template<Color Perspective>
     static IndexType make_index(Piece attkr, Square from, Square to, Piece attkd, Square ksq);
