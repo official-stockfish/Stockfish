@@ -27,7 +27,6 @@
 #include <cstdlib>
 #include <string>
 
-#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {

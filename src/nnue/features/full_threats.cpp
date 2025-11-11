@@ -19,9 +19,15 @@
 //Definition of input features FullThreats of NNUE evaluation function
 
 #include "full_threats.h"
+
+#include <array>
+#include <initializer_list>
+
 #include "../../bitboard.h"
+#include "../../misc.h"
 #include "../../position.h"
 #include "../../types.h"
+#include "../nnue_common.h"
 
 namespace Stockfish::Eval::NNUE::Features {
 
