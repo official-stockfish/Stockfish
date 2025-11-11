@@ -138,7 +138,7 @@ FullThreats::make_index(Piece attacker, Square from, Square to, Piece attacked, 
         attacked = ~attacked;
     }
 
-    auto piece_pair_data = index_lut1[attacker][attacked];
+    auto piecePairData = index_lut1[attacker][attacked];
 
     // Some threats imply the existence of the corresponding ones in the opposite
     // direction. We filter them here to ensure only one such threat is active.
@@ -147,11 +147,11 @@ FullThreats::make_index(Piece attacker, Square from, Square to, Piece attacked, 
     // or the pair is semi-excluded and from < to. By using an unsigned compare, the following
     // sequence can use an add-with-carry instruction.
     bool less_than = static_cast<uint8_t>(from) < static_cast<uint8_t>(to);
-    if ((piece_pair_data.excluded_pair_info() + less_than) & 2)
+    if ((piecePairData.excluded_pair_info() + less_than) & 2)
         return Dimensions;
 
-    IndexType index = piece_pair_data.feature_index_base() + offsets[attacker][from]
-                    + index_lut2[attacker][from][to];
+    IndexType index =
+      piecePairData.feature_index_base() + offsets[attacker][from] + index_lut2[attacker][from][to];
 
     sf_assume(index != Dimensions);
     return index;
