@@ -250,6 +250,7 @@ void FullThreats::append_changed_indices(Square           ksq,
         auto from     = dirty.pc_sq();
         auto to       = dirty.threatened_sq();
         auto add      = dirty.add();
+
         if (fusedData)
         {
             if (from == fusedData->dp2removed)
@@ -263,9 +264,7 @@ void FullThreats::append_changed_indices(Square           ksq,
                     }
                 }
                 else if (fusedData->dp2removedOriginBoard & square_bb(to))
-                {
                     continue;
-                }
             }
 
             if (to != SQ_NONE && to == fusedData->dp2removed)
@@ -279,18 +278,14 @@ void FullThreats::append_changed_indices(Square           ksq,
                     }
                 }
                 else if (fusedData->dp2removedTargetBoard & square_bb(from))
-                {
                     continue;
-                }
             }
         }
 
         IndexType index = make_index<Perspective>(attacker, from, to, attacked, ksq);
 
         if (index != Dimensions)
-        {
             (add ? added : removed).push_back(index);
-        }
     }
 }
 
