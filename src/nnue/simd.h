@@ -39,7 +39,6 @@
 #include "nnue_common.h"
 
 namespace Stockfish::Eval::NNUE::SIMD {
-
 // If vector instructions are enabled, we update and refresh the
 // accumulator tile by tile such that each tile fits in the CPU's
 // vector registers.
@@ -152,6 +151,12 @@ using vec_uint_t = __m128i;
     #ifdef USE_SSSE3
         #define vec_nnz(a) \
             _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
+    #endif
+
+    #ifdef __i386__
+inline __m128i _mm_cvtsi64_si128(int64_t val) {
+    return _mm_loadl_epi64(reinterpret_cast<const __m128i*>(&val));
+}
     #endif
 
     #ifdef USE_SSE41
