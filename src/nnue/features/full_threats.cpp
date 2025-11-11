@@ -48,38 +48,38 @@ constexpr std::array<Piece, 12> AllPieces = {
 };
 
 // The final index is calculated from summing data found in these two LUTs, as well
-// as offsets[attkr][65]
-PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attkr][attkd]
-uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attkr][from][to]
+// as offsets[attacker][65]
+PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attacker][attacked]
+uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attacker][from][to]
 
 static void init_index_luts() {
-    for (Piece attkr : AllPieces)
+    for (Piece attacker : AllPieces)
     {
-        for (Piece attkd : AllPieces)
+        for (Piece attacked : AllPieces)
         {
-            bool      enemy      = (attkr ^ attkd) == 8;
-            PieceType attkr_type = type_of(attkr);
-            PieceType attkd_type = type_of(attkd);
+            bool      enemy        = (attacker ^ attacked) == 8;
+            PieceType attackerType = type_of(attacker);
+            PieceType attackedType = type_of(attacked);
 
-            int       map           = FullThreats::map[attkr_type - 1][attkd_type - 1];
-            bool      semi_excluded = attkr_type == attkd_type && (enemy || attkr_type != PAWN);
-            IndexType feature =
-              offsets[attkr][65]
-              + (color_of(attkd) * (numValidTargets[attkr] / 2) + map) * offsets[attkr][64];
+            int  map           = FullThreats::map[attackerType - 1][attackedType - 1];
+            bool semi_excluded = attackerType == attackedType && (enemy || attackerType != PAWN);
+            IndexType feature  = offsets[attacker][65]
+                              + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
+                                  * offsets[attacker][64];
 
-            bool excluded            = map < 0;
-            index_lut1[attkr][attkd] = PiecePairData(excluded, semi_excluded, feature);
+            bool excluded                  = map < 0;
+            index_lut1[attacker][attacked] = PiecePairData(excluded, semi_excluded, feature);
         }
     }
 
-    for (Piece attkr : AllPieces)
+    for (Piece attacker : AllPieces)
     {
         for (int from = 0; from < SQUARE_NB; ++from)
         {
             for (int to = 0; to < SQUARE_NB; ++to)
             {
-                Bitboard attacks            = attacks_bb(attkr, Square(from));
-                index_lut2[attkr][from][to] = popcount((square_bb(Square(to)) - 1) & attacks);
+                Bitboard attacks               = attacks_bb(attacker, Square(from));
+                index_lut2[attacker][from][to] = popcount((square_bb(Square(to)) - 1) & attacks);
             }
         }
     }
