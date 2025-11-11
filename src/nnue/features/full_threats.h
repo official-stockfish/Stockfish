@@ -80,10 +80,8 @@ class FullThreats {
     struct FusedUpdateData {
         Bitboard dp2removedOriginBoard = 0;
         Bitboard dp2removedTargetBoard = 0;
-        Bitboard dp2fromBoard          = 0;
 
         Square dp2removed;
-        Square dp2from;
     };
 
     // Maximum number of simultaneously active features.
