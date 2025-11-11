@@ -1103,7 +1103,7 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         Piece  slider    = piece_on(slider_sq);
 
         Bitboard ray        = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
-        Bitboard threatened = ray & qAttacks & occupied;
+        threatened = ray & qAttacks & occupied;
 
         assert(!more_than_one(threatened));
         if (compute_ray && threatened)

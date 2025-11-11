@@ -219,10 +219,41 @@ class FeatureTransformer {
             copy->scale_weights(false);
 
         write_leb_128<BiasType>(stream, copy->biases, HalfDimensions);
-        write_leb_128<ThreatWeightType>(stream, copy->threatWeights,
-                                        HalfDimensions * ThreatInputDimensions);
-        write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
-        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
+
+        if (use_threats) 
+        {
+            std::vector<WeightType>     combinedWeights(HalfDimensions
+                                                        * (ThreatInputDimensions + InputDimensions));
+            std::vector<PSQTWeightType> combinedPsqtWeights(
+              (ThreatInputDimensions + InputDimensions) * PSQTBuckets);
+
+            std::copy(std::begin(copy->threatWeights),
+                      std::begin(copy->threatWeights) + ThreatInputDimensions * HalfDimensions,
+                      combinedWeights.begin());
+
+            std::copy(std::begin(copy->weights),
+                      std::begin(copy->weights) + InputDimensions * HalfDimensions,
+                      combinedWeights.begin() + ThreatInputDimensions * HalfDimensions);
+            
+            write_leb_128<WeightType>(stream, combinedWeights.data(), 
+                                      HalfDimensions * (ThreatInputDimensions + InputDimensions));
+
+            std::copy(std::begin(copy->threatPsqtWeights), 
+                      std::begin(copy->threatPsqtWeights) + ThreatInputDimensions * PSQTBuckets,
+                      combinedPsqtWeights.begin());
+
+            std::copy(std::begin(copy->psqtWeights),
+                      std::begin(copy->psqtWeights) + InputDimensions * PSQTBuckets,
+                      combinedPsqtWeights.begin() + ThreatInputDimensions * PSQTBuckets);
+            
+            write_leb_128<PSQTWeightType>(stream, combinedPsqtWeights.data(),
+                                         PSQTBuckets * (ThreatInputDimensions + InputDimensions));
+        }
+        else
+        {
+            write_leb_128<WeightType>(stream, copy->weights, HalfDimensions * InputDimensions);
+            write_leb_128<PSQTWeightType>(stream, copy->psqtWeights, PSQTBuckets * InputDimensions);
+        }
 
         return !stream.fail();
     }
