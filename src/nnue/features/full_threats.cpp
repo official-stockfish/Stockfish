@@ -54,7 +54,7 @@ constexpr std::array<Piece, 12> AllPieces = {
 };
 
 // The final index is calculated from summing data found in these two LUTs, as well
-// as offsets[attacker][65]
+// as offsets[attacker][from]
 PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attacker][attacked]
 uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attacker][from][to]
 
@@ -93,24 +93,18 @@ static void init_index_luts() {
 
 void init_threat_offsets() {
     int       cumulativeOffset     = 0;
-    PieceType idxToPiece[PIECE_NB] = {
-      NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, NO_PIECE_TYPE,
-      NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, NO_PIECE_TYPE};
-
-    for (int pieceIdx = 0; pieceIdx < 16; pieceIdx++)
+    for (Piece piece : AllPieces)
     {
-        if (idxToPiece[pieceIdx] == NO_PIECE_TYPE)
-            continue;
-
+        int pieceIdx = piece;
         int cumulativePieceOffset = 0;
 
         for (Square from = SQ_A1; from <= SQ_H8; ++from)
         {
             offsets[pieceIdx][from] = cumulativePieceOffset;
 
-            if (idxToPiece[pieceIdx] != PAWN)
+            if (type_of(piece) != PAWN)
             {
-                Bitboard attacks = attacks_bb(idxToPiece[pieceIdx], from, 0ULL);
+                Bitboard attacks = attacks_bb(piece, from, 0ULL);
                 cumulativePieceOffset += popcount(attacks);
             }
 
