@@ -298,7 +298,7 @@ struct DirtyThreat {
         data = (add << 28) | (pc << 20) | (threatened_pc << 16) | (threatened_sq << 8) | (pc_sq);
     }
 
-    Piece  pc() const { return static_cast<Piece>(data >> 20 & 0xff); }
+    Piece  pc() const { return static_cast<Piece>(data >> 20 & 0xf); }
     Piece  threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
     Square threatened_sq() const { return static_cast<Square>(data >> 8 & 0xff); }
     Square pc_sq() const { return static_cast<Square>(data & 0xff); }

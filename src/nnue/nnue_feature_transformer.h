@@ -124,7 +124,6 @@ class FeatureTransformer {
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
-        // TODO: Fix this
         return (use_threats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
              ^ (OutputDimensions * 2);
     }
@@ -158,7 +157,8 @@ class FeatureTransformer {
     }
 
     // Read network parameters
-    // TODO: This is ugly. Fix
+    // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates 
+    // reading the weights into a combined array, and then splitting.
     bool read_parameters(std::istream& stream) {
         read_leb_128<BiasType>(stream, biases);
 
