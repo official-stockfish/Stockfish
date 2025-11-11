@@ -374,10 +374,15 @@ void Position::set_state() const {
         st->key ^= Zobrist::side;
 
     st->key ^= Zobrist::castling[st->castlingRights];
+    st->materialKey = compute_material_key();
+}
 
+Key Position::compute_material_key() const {
+    Key k = 0;
     for (Piece pc : Pieces)
         for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
-            st->materialKey ^= Zobrist::psq[pc][8 + cnt];
+            k ^= Zobrist::psq[pc][8 + cnt];
+    return k;
 }
 
 
@@ -1315,6 +1320,12 @@ void Position::flip() {
 }
 
 
+bool Position::material_key_is_ok() const {
+    assert(compute_material_key() == st->materialKey);
+    return true;
+}
+
+
 // Performs some consistency checks for the position object
 // and raise an assert if something wrong is detected.
 // This is meant to be helpful when debugging.
@@ -1363,6 +1374,8 @@ bool Position::pos_is_ok() const {
                 || (castlingRightsMask[square<KING>(c)] & cr) != cr)
                 assert(0 && "pos_is_ok: Castling");
         }
+
+    material_key_is_ok();
 
     return true;
 }
