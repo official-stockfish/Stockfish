@@ -134,10 +134,13 @@ class ValueList {
 
    public:
     std::size_t size() const { return size_; }
-    void        push_back(const T& value) { values_[size_++] = value; }
-    const T*    begin() const { return values_; }
-    const T*    end() const { return values_ + size_; }
-    const T&    operator[](int index) const { return values_[index]; }
+    void        push_back(const T& value) {
+        assert(size_ < MaxSize);
+        values_[size_++] = value;
+    }
+    const T* begin() const { return values_; }
+    const T* end() const { return values_ + size_; }
+    const T& operator[](int index) const { return values_[index]; }
 
    private:
     T           values_[MaxSize];
@@ -365,12 +368,12 @@ class FixedString {
 
     template<typename T>
     bool operator==(const T& other) const noexcept {
-        return (std::string_view) (*this) == other;
+        return (std::string_view)(*this) == other;
     }
 
     template<typename T>
     bool operator!=(const T& other) const noexcept {
-        return (std::string_view) (*this) != other;
+        return (std::string_view)(*this) != other;
     }
 
     void clear() {
