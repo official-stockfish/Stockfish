@@ -105,9 +105,9 @@ class Position {
     Square square(Color c) const;
 
     // Castling
-    bool   can_castle(CastlingRights cr) const;
-    bool   castling_impeded(CastlingRights cr) const;
-    Square castling_rook_square(CastlingRights cr) const;
+    bool           can_castle(CastlingRights cr) const;
+    bool           castling_impeded(CastlingRights cr, Bitboard threats) const;
+    Square         castling_rook_square(CastlingRights cr) const;
 
     // Checking
     Bitboard checkers() const;
@@ -200,6 +200,7 @@ class Position {
     int        castlingRightsMask[SQUARE_NB];
     Square     castlingRookSquare[CASTLING_RIGHT_NB];
     Bitboard   castlingPath[CASTLING_RIGHT_NB];
+    Bitboard   castlingKingPath[CASTLING_RIGHT_NB];
     StateInfo* st;
     int        gamePly;
     Color      sideToMove;
@@ -255,9 +256,9 @@ inline Square Position::ep_square() const { return st->epSquare; }
 
 inline bool Position::can_castle(CastlingRights cr) const { return st->castlingRights & cr; }
 
-inline bool Position::castling_impeded(CastlingRights cr) const {
+inline bool Position::castling_impeded(CastlingRights cr, Bitboard threats) const {
     assert(cr == WHITE_OO || cr == WHITE_OOO || cr == BLACK_OO || cr == BLACK_OOO);
-    return pieces() & castlingPath[cr];
+    return pieces() & castlingPath[cr] || threats & castlingKingPath[cr];
 }
 
 inline Square Position::castling_rook_square(CastlingRights cr) const {
