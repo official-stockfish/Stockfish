@@ -31,6 +31,7 @@ uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
+Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 alignas(64) Magic Magics[SQUARE_NB][2];
@@ -105,6 +106,8 @@ void Bitboards::init() {
                     LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
                     BetweenBB[s1][s2] =
                       (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
+                    RayPassBB[s1][s2] =
+                      attacks_bb(pt, s1, 0) & (attacks_bb(pt, s2, square_bb(s1)) | s2);
                 }
                 BetweenBB[s1][s2] |= s2;
             }
