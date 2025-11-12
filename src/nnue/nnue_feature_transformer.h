@@ -80,7 +80,7 @@ void permute(std::array<T, N>& data, const std::array<std::size_t, OrderSize>& o
 // Input feature converter
 template<IndexType TransformedFeatureDimensions>
 class FeatureTransformer {
-    static constexpr bool use_threats =
+    static constexpr bool UseThreats =
       (TransformedFeatureDimensions == TransformedFeatureDimensionsBig);
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
@@ -93,7 +93,7 @@ class FeatureTransformer {
     static constexpr IndexType InputDimensions       = PSQFeatureSet::Dimensions;
     static constexpr IndexType ThreatInputDimensions = ThreatFeatureSet::Dimensions;
     static constexpr IndexType TotalInputDimensions =
-      InputDimensions + (use_threats ? ThreatInputDimensions : 0);
+      InputDimensions + (UseThreats ? ThreatInputDimensions : 0);
     static constexpr IndexType OutputDimensions = HalfDimensions;
 
     // Size of forward propagation buffer
@@ -124,7 +124,7 @@ class FeatureTransformer {
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
-        return (use_threats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
+        return (UseThreats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
              ^ (OutputDimensions * 2);
     }
 
@@ -132,7 +132,7 @@ class FeatureTransformer {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
 
-        if (use_threats)
+        if (UseThreats)
             permute<8>(threatWeights, PackusEpi16Order);
     }
 
@@ -140,7 +140,7 @@ class FeatureTransformer {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
 
-        if (use_threats)
+        if (UseThreats)
             permute<8>(threatWeights, InversePackusEpi16Order);
     }
 
@@ -157,12 +157,12 @@ class FeatureTransformer {
     }
 
     // Read network parameters
-    // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates 
+    // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates
     // reading the weights into a combined array, and then splitting.
     bool read_parameters(std::istream& stream) {
         read_leb_128<BiasType>(stream, biases);
 
-        if (use_threats)
+        if (UseThreats)
         {
             auto combinedWeights =
               std::make_unique<std::array<WeightType, HalfDimensions * TotalInputDimensions>>();
@@ -199,7 +199,7 @@ class FeatureTransformer {
 
         permute_weights();
 
-        if (!use_threats)
+        if (!UseThreats)
             scale_weights(true);
 
         return !stream.fail();
@@ -211,12 +211,12 @@ class FeatureTransformer {
 
         copy->unpermute_weights();
 
-        if (!use_threats)
+        if (!UseThreats)
             copy->scale_weights(false);
 
         write_leb_128<BiasType>(stream, copy->biases);
 
-        if (use_threats)
+        if (UseThreats)
         {
             auto combinedWeights =
               std::make_unique<std::array<WeightType, HalfDimensions * TotalInputDimensions>>();
@@ -278,7 +278,7 @@ class FeatureTransformer {
         auto        psqt =
           (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket]);
 
-        if (use_threats)
+        if (UseThreats)
         {
             const auto& threatPsqtAccumulation =
               (threatAccumulatorState.acc<HalfDimensions>()).psqtAccumulation;
@@ -304,7 +304,7 @@ class FeatureTransformer {
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
             const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(use_threats ? 255 : 127 * 2);
+            const vec_t One  = vec_set_16(UseThreats ? 255 : 127 * 2);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -370,7 +370,7 @@ class FeatureTransformer {
     #else
               6;
     #endif
-            if (use_threats)
+            if (UseThreats)
             {
                 const vec_t* tin0 =
                   reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
@@ -422,7 +422,7 @@ class FeatureTransformer {
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
 
-                if (use_threats)
+                if (UseThreats)
                 {
                     BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
                     BiasType sum1t =
@@ -449,11 +449,11 @@ class FeatureTransformer {
     alignas(CacheLineSize) std::array<WeightType, HalfDimensions * InputDimensions> weights;
     alignas(CacheLineSize)
       std::array<ThreatWeightType,
-                 use_threats ? HalfDimensions * ThreatInputDimensions : 0> threatWeights;
+                 UseThreats ? HalfDimensions * ThreatInputDimensions : 0> threatWeights;
     alignas(CacheLineSize) std::array<PSQTWeightType, InputDimensions * PSQTBuckets> psqtWeights;
     alignas(CacheLineSize)
       std::array<PSQTWeightType,
-                 use_threats ? ThreatInputDimensions * PSQTBuckets : 0> threatPsqtWeights;
+                 UseThreats ? ThreatInputDimensions * PSQTBuckets : 0> threatPsqtWeights;
 };
 
 }  // namespace Stockfish::Eval::NNUE
