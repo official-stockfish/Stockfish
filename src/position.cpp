@@ -381,6 +381,7 @@ void Position::set_state() const {
             st->materialKey ^= Zobrist::psq[pc][8 + cnt];
 }
 
+
 // Overload to initialize the position object with the given endgame code string
 // like "KBPKN". It's mainly a helper to get the material key out of an endgame code.
 Position& Position::set(const string& code, Color c, StateInfo* si) {
@@ -1048,7 +1049,7 @@ inline void add_dirty_threat(
     dts->list.push_back({pc, threatened, s, threatenedSq, PutPiece});
 }
 
-template<bool PutPiece, bool compute_ray>
+template<bool PutPiece, bool ComputeRay>
 void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts) {
     // Add newly threatened pieces
     Bitboard occupied = pieces();
@@ -1107,7 +1108,7 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         threatened   = ray & qAttacks & occupied;
 
         assert(!more_than_one(threatened));
-        if (compute_ray && threatened)
+        if (ComputeRay && threatened)
         {
             Square threatened_sq = lsb(threatened);
 

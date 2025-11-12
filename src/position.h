@@ -178,7 +178,7 @@ class Position {
     void set_check_info() const;
 
     // Other helpers
-    template<bool put_piece, bool compute_ray = true>
+    template<bool PutPiece, bool ComputeRay = true>
     void update_piece_threats(Piece pc, Square s, DirtyThreats* const dts);
     void move_piece(Square from, Square to, DirtyThreats* const dts = nullptr);
     template<bool Do>
