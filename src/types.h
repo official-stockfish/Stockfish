@@ -312,13 +312,13 @@ struct DirtyThreat {
     uint32_t data;
 };
 
-using DirtyThreatList = ValueList<DirtyThreat, 64>;
-/*
-A piece can be involved in at most 16 threat features, or 9 if it lies on the edge of the board.
-This implies that a non-castling move can change at most 16 * 3 = 48 features.
-A castling move can change at most 9 * 4 = 36 features. 
-Thus, 48 should work as an upper bound, but we use 64 to be safe.
-*/
+using DirtyThreatList = ValueList<DirtyThreat, 80>;
+
+// A piece can be involved in at most 8 outgoing attacks and 16 incoming attacks.
+// Moving a piece also can reveal at most 8 discovered attacks.
+// This implies that a non-castling move can change at most (8 + 16) * 3 + 8 = 80 features.
+// By similar logic, a castling move can change at most (5 + 1 + 3 + 9) * 2 = 36 features. 
+// Thus, 80 should work as an upper bound.
 
 struct DirtyThreats {
     DirtyThreatList list;
