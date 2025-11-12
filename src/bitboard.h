@@ -155,6 +155,7 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                       : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
+
 // Returns a bitboard representing an entire line (from board edge
 // to board edge) that intersects the two given squares. If the given squares
 // are not on a same file/rank/diagonal, the function returns 0. For instance,
@@ -201,13 +202,6 @@ inline int distance<Square>(Square x, Square y) {
 }
 
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
-
-// Returns the bitboard of target square for the given step
-// from the given square. If the step is off the board, returns empty bitboard.
-inline Bitboard safe_destination(Square s, int step) {
-    Square to = Square(s + step);
-    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
-}
 
 // Returns the pseudo attacks of the given piece type
 // assuming an empty board.
