@@ -1938,6 +1938,43 @@ void SearchManager::check_time(Search::Worker& worker) {
         worker.threads.stop = worker.threads.abortedSearch = true;
 }
 
+// Time-managed ranking of root moves.
+static Tablebases::Config timed_rank_root_moves(const OptionsMap&            options,
+                                                Position&                    pos,
+                                                Search::RootMoves&           rootMoves,
+                                                const std::function<bool()>& time_abort,
+                                                const bool                   useDTZ = false) {
+    Tablebases::Config config;
+
+    for (auto& move : rootMoves)
+    {
+        RootMoves singleMove = {move};
+        config               = Tablebases::rank_root_moves(options, pos, singleMove, useDTZ);
+        move.tbRank          = singleMove[0].tbRank;
+
+        if (time_abort() || !config.rootInTB)
+        {
+            config.rootInTB = false;
+            break;
+        }
+    }
+
+    if (config.rootInTB)
+    {
+        std::stable_sort(
+          rootMoves.begin(), rootMoves.end(),
+          [](const Search::RootMove& a, const Search::RootMove& b) { return a.tbRank > b.tbRank; });
+    }
+    else
+    {
+        for (auto& m : rootMoves)
+            m.tbRank = 0;
+    }
+
+    return config;
+}
+
+
 // Used to correct and extend PVs for moves that have a TB (but not a mate) score.
 // Keeps the search based PV for as long as it is verified to maintain the game
 // outcome, truncates afterwards. Finally, extends to mate the PV, providing a
@@ -1976,7 +2013,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         for (const auto& m : MoveList<LEGAL>(pos))
             legalMoves.emplace_back(m);
 
-        Tablebases::Config config = Tablebases::rank_root_moves(options, pos, legalMoves);
+        Tablebases::Config config = timed_rank_root_moves(options, pos, legalMoves, time_abort);
         RootMove&          rm     = *std::find(legalMoves.begin(), legalMoves.end(), pvMove);
 
         if (legalMoves[0].tbRank != rm.tbRank)
@@ -2036,7 +2073,8 @@ void syzygy_extend_pv(const OptionsMap&         options,
           [](const Search::RootMove& a, const Search::RootMove& b) { return a.tbRank > b.tbRank; });
 
         // The winning side tries to minimize DTZ, the losing side maximizes it
-        Tablebases::Config config = Tablebases::rank_root_moves(options, pos, legalMoves, true);
+        Tablebases::Config config =
+          timed_rank_root_moves(options, pos, legalMoves, time_abort, true);
 
         // If DTZ is not available we might not find a mate, so we bail out
         if (!config.rootInTB || config.cardinality > 0)
