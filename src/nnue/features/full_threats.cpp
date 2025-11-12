@@ -58,6 +58,38 @@ constexpr std::array<Piece, 12> AllPieces = {
 PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attacker][attacked]
 uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attacker][from][to]
 
+namespace {
+
+template<Color Perspective>
+IndexType make_index_with_orientation(Piece attacker,
+                                      Square from,
+                                      Square to,
+                                      Piece  attacked,
+                                      int     orientation) {
+    from = Square(int(from) ^ orientation);
+    to   = Square(int(to) ^ orientation);
+
+    if constexpr (Perspective == BLACK)
+    {
+        attacker = ~attacker;
+        attacked = ~attacked;
+    }
+
+    const auto piecePairData = index_lut1[attacker][attacked];
+
+    const bool less_than = static_cast<unsigned>(from) < static_cast<unsigned>(to);
+    if ((piecePairData.excluded_pair_info() + less_than) & 2)
+        return FullThreats::Dimensions;
+
+    const IndexType index = piecePairData.feature_index_base() + offsets[attacker][from]
+                          + index_lut2[attacker][from][to];
+
+    sf_assume(index != FullThreats::Dimensions);
+    return index;
+}
+
+}  // namespace
+
 static void init_index_luts() {
     for (Piece attacker : AllPieces)
     {
@@ -129,32 +161,8 @@ void init_threat_offsets() {
 template<Color Perspective>
 IndexType
 FullThreats::make_index(Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    from = (Square) (int(from) ^ OrientTBL[Perspective][ksq]);
-    to   = (Square) (int(to) ^ OrientTBL[Perspective][ksq]);
-
-    if (Perspective == BLACK)
-    {
-        attacker = ~attacker;
-        attacked = ~attacked;
-    }
-
-    auto piecePairData = index_lut1[attacker][attacked];
-
-    // Some threats imply the existence of the corresponding ones in the opposite
-    // direction. We filter them here to ensure only one such threat is active.
-
-    // In the below addition, the 2nd lsb gets set iff either the pair is always excluded,
-    // or the pair is semi-excluded and from < to. By using an unsigned compare, the following
-    // sequence can use an add-with-carry instruction.
-    bool less_than = static_cast<uint8_t>(from) < static_cast<uint8_t>(to);
-    if ((piecePairData.excluded_pair_info() + less_than) & 2)
-        return Dimensions;
-
-    IndexType index =
-      piecePairData.feature_index_base() + offsets[attacker][from] + index_lut2[attacker][from][to];
-
-    sf_assume(index != Dimensions);
-    return index;
+    return make_index_with_orientation<Perspective>(attacker, from, to, attacked,
+                                                    OrientTBL[Perspective][ksq]);
 }
 
 // Get a list of indices for active features in ascending order
@@ -163,6 +171,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
     static constexpr Color order[2][2] = {{WHITE, BLACK}, {BLACK, WHITE}};
 
     Square   ksq      = pos.square<KING>(Perspective);
+    const int orientation = OrientTBL[Perspective][ksq];
     Bitboard occupied = pos.pieces();
 
     for (Color color : {WHITE, BLACK})
@@ -187,7 +196,8 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     Square    to       = pop_lsb(attacks_left);
                     Square    from     = to - right;
                     Piece     attacked = pos.piece_on(to);
-                    IndexType index    = make_index<Perspective>(attacker, from, to, attacked, ksq);
+                    IndexType index = make_index_with_orientation<Perspective>(
+                      attacker, from, to, attacked, orientation);
 
                     if (index < Dimensions)
                         active.push_back(index);
@@ -198,7 +208,8 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     Square    to       = pop_lsb(attacks_right);
                     Square    from     = to - left;
                     Piece     attacked = pos.piece_on(to);
-                    IndexType index    = make_index<Perspective>(attacker, from, to, attacked, ksq);
+                    IndexType index = make_index_with_orientation<Perspective>(
+                      attacker, from, to, attacked, orientation);
 
                     if (index < Dimensions)
                         active.push_back(index);
@@ -215,8 +226,8 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     {
                         Square    to       = pop_lsb(attacks);
                         Piece     attacked = pos.piece_on(to);
-                        IndexType index =
-                          make_index<Perspective>(attacker, from, to, attacked, ksq);
+                        IndexType index = make_index_with_orientation<Perspective>(
+                          attacker, from, to, attacked, orientation);
 
                         if (index < Dimensions)
                             active.push_back(index);
@@ -243,8 +254,11 @@ void FullThreats::append_changed_indices(Square           ksq,
                                          IndexList&       added,
                                          FusedUpdateData* fusedData,
                                          bool             first) {
-    for (const auto dirty : diff.list)
+    const int orientation = OrientTBL[Perspective][ksq];
+
+    for (std::size_t idx = 0; idx < diff.list.size(); ++idx)
     {
+        const DirtyThreat& dirty = diff.list[idx];
         auto attacker = dirty.pc();
         auto attacked = dirty.threatened_pc();
         auto from     = dirty.pc_sq();
@@ -282,9 +296,10 @@ void FullThreats::append_changed_indices(Square           ksq,
             }
         }
 
-        IndexType index = make_index<Perspective>(attacker, from, to, attacked, ksq);
+        const IndexType index = make_index_with_orientation<Perspective>(
+          attacker, from, to, attacked, orientation);
 
-        if (index != Dimensions)
+        if (index < Dimensions)
             (add ? added : removed).push_back(index);
     }
 }
