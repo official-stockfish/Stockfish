@@ -1320,10 +1320,7 @@ void Position::flip() {
 }
 
 
-bool Position::material_key_is_ok() const {
-    assert(compute_material_key() == st->materialKey);
-    return true;
-}
+bool Position::material_key_is_ok() const { return compute_material_key() == st->materialKey; }
 
 
 // Performs some consistency checks for the position object
@@ -1375,7 +1372,7 @@ bool Position::pos_is_ok() const {
                 assert(0 && "pos_is_ok: Castling");
         }
 
-    material_key_is_ok();
+    assert(material_key_is_ok() && "pos_is_ok: materialKey");
 
     return true;
 }
