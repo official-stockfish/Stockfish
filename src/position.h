@@ -24,6 +24,7 @@
 #include <deque>
 #include <iosfwd>
 #include <memory>
+#include <new>
 #include <string>
 
 #include "bitboard.h"
