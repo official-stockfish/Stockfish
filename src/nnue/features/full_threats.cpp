@@ -21,7 +21,6 @@
 #include "full_threats.h"
 
 #include <array>
-#include <cstddef>
 #include <initializer_list>
 
 #include "../../bitboard.h"
