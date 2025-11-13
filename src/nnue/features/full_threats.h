@@ -89,16 +89,19 @@ class FullThreats {
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
     using DiffType                                 = DirtyThreats;
 
-    template<Color Perspective>
-    static IndexType make_index(Piece attkr, Square from, Square to, Piece attkd, Square ksq);
+    static IndexType make_index(Color  perspective,
+                                Piece  attkr,
+                                Square from,
+                                Square to,
+                                Piece  attkd,
+                                Square ksq);
 
     // Get a list of indices for active features
-    template<Color Perspective>
-    static void append_active_indices(const Position& pos, IndexList& active);
+    static void append_active_indices(Color perspective, const Position& pos, IndexList& active);
 
     // Get a list of indices for recently changed features
-    template<Color Perspective>
-    static void append_changed_indices(Square           ksq,
+    static void append_changed_indices(Color            perspective,
+                                       Square           ksq,
                                        const DiffType&  diff,
                                        IndexList&       removed,
                                        IndexList&       added,
