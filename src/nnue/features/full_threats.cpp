@@ -257,9 +257,8 @@ void FullThreats::append_changed_indices(Square           ksq,
                                          bool             first) {
     const int orientation = OrientTBL[Perspective][ksq];
 
-    for (std::size_t idx = 0; idx < diff.list.size(); ++idx)
+    for (const auto& dirty : diff.list)
     {
-        const DirtyThreat& dirty = diff.list[idx];
         auto attacker = dirty.pc();
         auto attacked = dirty.threatened_pc();
         auto from     = dirty.pc_sq();
