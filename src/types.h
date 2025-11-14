@@ -448,8 +448,6 @@ class Move {
         return Square(data & 0x3F);
     }
 
-    constexpr int from_to() const { return data & 0xFFF; }
-
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
 
     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
