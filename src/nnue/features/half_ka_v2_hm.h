@@ -104,6 +104,7 @@ class HalfKAv2_hm {
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
+    using DiffType                                 = DirtyPiece;
 
     // Index of a feature for a given king position and another piece on some square
     template<Color Perspective>
@@ -116,11 +117,11 @@ class HalfKAv2_hm {
     // Get a list of indices for recently changed features
     template<Color Perspective>
     static void
-    append_changed_indices(Square ksq, const DirtyPiece& dp, IndexList& removed, IndexList& added);
+    append_changed_indices(Square ksq, const DiffType& diff, IndexList& removed, IndexList& added);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.
-    static bool requires_refresh(const DirtyPiece& dirtyPiece, Color perspective);
+    static bool requires_refresh(const DiffType& diff, Color perspective);
 };
 
 }  // namespace Stockfish::Eval::NNUE::Features

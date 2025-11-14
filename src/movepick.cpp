@@ -153,7 +153,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
         if constexpr (Type == CAPTURES)
             m.value = (*captureHistory)[pc][to][type_of(capturedPiece)]
-                    + 7 * int(PieceValue[capturedPiece]) + 1024 * bool(pos.check_squares(pt) & to);
+                    + 7 * int(PieceValue[capturedPiece]);
 
         else if constexpr (Type == QUIETS)
         {
@@ -171,9 +171,8 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
             // penalty for moving to a square threatened by a lesser piece
             // or bonus for escaping an attack by a lesser piece.
-            static constexpr int bonus[KING + 1] = {0, 0, 144, 144, 256, 517, 10000};
-            int v = threatByLesser[pt] & to ? -95 : 100 * bool(threatByLesser[pt] & from);
-            m.value += bonus[pt] * v;
+            int v = threatByLesser[pt] & to ? -19 : 20 * bool(threatByLesser[pt] & from);
+            m.value += PieceValue[pt] * v;
 
 
             if (ply < LOW_PLY_HISTORY_SIZE)
