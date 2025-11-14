@@ -264,12 +264,12 @@ class FeatureTransformer {
     // Convert input features
     std::int32_t transform(const Position&                           pos,
                            AccumulatorStack&                         accumulatorStack,
-                           AccumulatorCaches::Cache<HalfDimensions>* cache,
+                           AccumulatorCaches::Cache<HalfDimensions>& cache,
                            OutputType*                               output,
                            int                                       bucket) const {
 
         using namespace SIMD;
-        accumulatorStack.evaluate(pos, *this, *cache);
+        accumulatorStack.evaluate(pos, *this, cache);
         const auto& accumulatorState       = accumulatorStack.latest<PSQFeatureSet>();
         const auto& threatAccumulatorState = accumulatorStack.latest<ThreatFeatureSet>();
 
