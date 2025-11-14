@@ -636,25 +636,26 @@ void update_accumulator_incremental(
     (target_state.template acc<TransformedFeatureDimensions>()).computed[Perspective] = true;
 }
 
-Bitboard get_changed_pieces(const Piece old[SQUARE_NB], const Piece new_[SQUARE_NB]) {
+Bitboard get_changed_pieces(const Piece oldPieces[SQUARE_NB], const Piece newPieces[SQUARE_NB]) {
 #if defined(USE_AVX512) || defined(USE_AVX2)
     static_assert(sizeof(Piece) == 1);
-    Bitboard same_bb = 0;
+    Bitboard sameBB = 0;
+
     for (int i = 0; i < 64; i += 32)
     {
-        const __m256i       old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(old + i));
-        const __m256i       new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(new_ + i));
-        const __m256i       cmp_equal  = _mm256_cmpeq_epi8(old_v, new_v);
-        const std::uint32_t equal_mask = _mm256_movemask_epi8(cmp_equal);
-        same_bb |= static_cast<Bitboard>(equal_mask) << i;
+        const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(oldPieces + i));
+        const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(newPieces + i));
+        const __m256i cmpEqual        = _mm256_cmpeq_epi8(old_v, new_v);
+        const std::uint32_t equalMask = _mm256_movemask_epi8(cmpEqual);
+        sameBB |= static_cast<Bitboard>(equalMask) << i;
     }
-    return ~same_bb;
+    return ~sameBB;
 #else
     Bitboard changed = 0;
+
     for (Square sq = SQUARE_ZERO; sq < SQUARE_NB; ++sq)
-    {
-        changed |= static_cast<Bitboard>(old[sq] != new_[sq]) << sq;
-    }
+        changed |= static_cast<Bitboard>(oldPieces[sq] != newPieces[sq]) << sq;
+
     return changed;
 #endif
 }
@@ -671,18 +672,18 @@ void update_accumulator_refresh_cache(const FeatureTransformer<Dimensions>& feat
     auto&                    entry = cache[ksq][Perspective];
     PSQFeatureSet::IndexList removed, added;
 
-    const Bitboard changed_bb = get_changed_pieces(entry.pieces, pos.piece_array().data());
-    Bitboard       removed_bb = changed_bb & entry.pieceBB;
-    Bitboard       added_bb   = changed_bb & pos.pieces();
+    const Bitboard changedBB = get_changed_pieces(entry.pieces, pos.piece_array().data());
+    Bitboard       removedBB = changedBB & entry.pieceBB;
+    Bitboard       addedBB   = changedBB & pos.pieces();
 
-    while (removed_bb)
+    while (removedBB)
     {
-        Square sq = pop_lsb(removed_bb);
+        Square sq = pop_lsb(removedBB);
         removed.push_back(PSQFeatureSet::make_index<Perspective>(sq, entry.pieces[sq], ksq));
     }
-    while (added_bb)
+    while (addedBB)
     {
-        Square sq = pop_lsb(added_bb);
+        Square sq = pop_lsb(addedBB);
         added.push_back(PSQFeatureSet::make_index<Perspective>(sq, pos.piece_on(sq), ksq));
     }
 

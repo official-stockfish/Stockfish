@@ -1096,13 +1096,13 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
 
     while (threatened)
     {
-        Square threatened_sq = pop_lsb(threatened);
-        Piece  threatened_pc = piece_on(threatened_sq);
+        Square threatenedSq = pop_lsb(threatened);
+        Piece  threatenedPc = piece_on(threatenedSq);
 
-        assert(threatened_sq != s);
-        assert(threatened_pc);
+        assert(threatenedSq != s);
+        assert(threatenedPc);
 
-        add_dirty_threat<PutPiece>(dts, pc, threatened_pc, s, threatened_sq);
+        add_dirty_threat<PutPiece>(dts, pc, threatenedPc, s, threatenedSq);
     }
 
     Bitboard sliders = (rookQueens & rAttacks) | (bishopQueens & bAttacks);
@@ -1111,30 +1111,30 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
     {
         while (sliders)
         {
-            Square slider_sq = pop_lsb(sliders);
-            Piece  slider    = piece_on(slider_sq);
+            Square sliderSq = pop_lsb(sliders);
+            Piece  slider   = piece_on(sliderSq);
 
-            const Bitboard ray        = RayPassBB[slider_sq][s] & ~BetweenBB[slider_sq][s];
+            const Bitboard ray        = RayPassBB[sliderSq][s] & ~BetweenBB[sliderSq][s];
             const Bitboard discovered = ray & qAttacks & occupied;
 
             assert(!more_than_one(discovered));
             if (discovered)
             {
-                const Square threatened_sq = lsb(discovered);
-                const Piece  threatened_pc = piece_on(threatened_sq);
-                add_dirty_threat<!PutPiece>(dts, slider, threatened_pc, slider_sq, threatened_sq);
+                const Square threatenedSq = lsb(discovered);
+                const Piece  threatenedPc = piece_on(threatenedSq);
+                add_dirty_threat<!PutPiece>(dts, slider, threatenedPc, sliderSq, threatenedSq);
             }
 
-            add_dirty_threat<PutPiece>(dts, slider, pc, slider_sq, s);
+            add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
         }
     }
     else
     {
         while (sliders)
         {
-            Square slider_sq = pop_lsb(sliders);
-            Piece  slider    = piece_on(slider_sq);
-            add_dirty_threat<PutPiece>(dts, slider, pc, slider_sq, s);
+            Square sliderSq = pop_lsb(sliders);
+            Piece  slider   = piece_on(sliderSq);
+            add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
         }
     }
 
@@ -1144,13 +1144,13 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
 
     while (incoming_threats)
     {
-        Square src_sq = pop_lsb(incoming_threats);
-        Piece  src_pc = piece_on(src_sq);
+        Square srcSq = pop_lsb(incoming_threats);
+        Piece  srcPc = piece_on(srcSq);
 
-        assert(src_sq != s);
-        assert(src_pc != NO_PIECE);
+        assert(srcSq != s);
+        assert(srcPc != NO_PIECE);
 
-        add_dirty_threat<PutPiece>(dts, src_pc, pc, src_sq, s);
+        add_dirty_threat<PutPiece>(dts, srcPc, pc, srcSq, s);
     }
 }
 
