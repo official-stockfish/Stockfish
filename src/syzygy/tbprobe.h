@@ -19,6 +19,7 @@
 #ifndef TBPROBE_H
 #define TBPROBE_H
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -66,12 +67,18 @@ extern int MaxCardinality;
 void     init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
 int      probe_dtz(Position& pos, ProbeState* result);
-bool     root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50, bool rankDTZ);
+bool     root_probe(Position&                    pos,
+                    Search::RootMoves&           rootMoves,
+                    bool                         rule50,
+                    bool                         rankDTZ,
+                    const std::function<bool()>& time_abort);
 bool     root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, bool rule50);
-Config   rank_root_moves(const OptionsMap&  options,
-                         Position&          pos,
-                         Search::RootMoves& rootMoves,
-                         bool               rankDTZ = false);
+Config   rank_root_moves(
+    const OptionsMap&            options,
+    Position&                    pos,
+    Search::RootMoves&           rootMoves,
+    bool                         rankDTZ    = false,
+    const std::function<bool()>& time_abort = []() { return false; });
 
 }  // namespace Stockfish::Tablebases
 
