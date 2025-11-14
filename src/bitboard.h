@@ -20,6 +20,7 @@
 #define BITBOARD_H_INCLUDED
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -27,6 +28,7 @@
 #include <cstdlib>
 #include <string>
 
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -56,13 +58,13 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern uint8_t PopCnt16[1 << 16];
-extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+extern std::array<uint8_t, 1 << 16>              PopCnt16;
+extern MultiArray<uint8_t, SQUARE_NB, SQUARE_NB> SquareDistance;
 
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
+extern MultiArray<Bitboard, SQUARE_NB, SQUARE_NB>     BetweenBB;
+extern MultiArray<Bitboard, SQUARE_NB, SQUARE_NB>     LineBB;
+extern MultiArray<Bitboard, SQUARE_NB, SQUARE_NB>     RayPassBB;
+extern MultiArray<Bitboard, PIECE_TYPE_NB, SQUARE_NB> PseudoAttacks;
 
 
 // Magic holds all magic bitboards relevant data for a single square
@@ -92,7 +94,7 @@ struct Magic {
     Bitboard attacks_bb(Bitboard occupied) const { return attacks[index(occupied)]; }
 };
 
-extern Magic Magics[SQUARE_NB][2];
+extern MultiArray<Magic, SQUARE_NB, 2> Magics;
 
 constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
@@ -273,8 +275,8 @@ inline int popcount(Bitboard b) {
 
 #ifndef USE_POPCNT
 
-    std::uint16_t indices[4];
-    std::memcpy(indices, &b, sizeof(b));
+    std::array<std::uint16_t, 4> indices;
+    std::memcpy(&indices[0], &b, sizeof(b));
     return PopCnt16[indices[0]] + PopCnt16[indices[1]] + PopCnt16[indices[2]]
          + PopCnt16[indices[3]];
 

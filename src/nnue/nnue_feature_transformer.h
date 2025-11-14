@@ -265,15 +265,15 @@ class FeatureTransformer {
     std::int32_t transform(const Position&                           pos,
                            AccumulatorStack&                         accumulatorStack,
                            AccumulatorCaches::Cache<HalfDimensions>& cache,
-                           OutputType*                               output,
+                           std::array<OutputType, BufferSize>&       output,
                            int                                       bucket) const {
-
         using namespace SIMD;
+
         accumulatorStack.evaluate(pos, *this, cache);
         const auto& accumulatorState       = accumulatorStack.latest<PSQFeatureSet>();
         const auto& threatAccumulatorState = accumulatorStack.latest<ThreatFeatureSet>();
 
-        const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
+        const std::array<Color, COLOR_NB> perspectives{pos.side_to_move(), ~pos.side_to_move()};
         const auto& psqtAccumulation = (accumulatorState.acc<HalfDimensions>()).psqtAccumulation;
         auto        psqt =
           (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket]);
@@ -309,7 +309,7 @@ class FeatureTransformer {
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
               reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
-            vec_t* out = reinterpret_cast<vec_t*>(output + offset);
+            vec_t* out = reinterpret_cast<vec_t*>(&output[offset]);
 
             // Per the NNUE architecture, here we want to multiply pairs of
             // clipped elements and divide the product by 128. To do this,

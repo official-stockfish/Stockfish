@@ -19,6 +19,7 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -103,7 +104,7 @@ class Network {
     Transformer featureTransformer;
 
     // Evaluation function
-    Arch network[LayerStacks];
+    std::array<Arch, LayerStacks> network;
 
     EvalFile         evalFile;
     EmbeddedNNUEType embeddedType;

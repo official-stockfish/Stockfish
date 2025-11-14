@@ -97,10 +97,10 @@ Value to_corrected_static_eval(const Value v, const int cv) {
     return std::clamp(v + cv / 131072, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
-void update_correction_history(const Position& pos,
-                               Stack* const    ss,
-                               Search::Worker& workerThread,
-                               const int       bonus) {
+void update_correction_history(const Position&    pos,
+                               const Stack* const ss,
+                               Search::Worker&    workerThread,
+                               const int          bonus) {
     const Move  m  = (ss - 1)->currentMove;
     const Color us = pos.side_to_move();
 
@@ -245,7 +245,7 @@ void Search::Worker::iterative_deepening() {
 
     SearchManager* mainThread = (is_mainthread() ? main_manager() : nullptr);
 
-    Move pv[MAX_PLY + 1];
+    std::array<Move, MAX_PLY + 1> pv;
 
     Depth lastBestMoveDepth = 0;
     Value lastBestScore     = -VALUE_INFINITE;
@@ -260,8 +260,8 @@ void Search::Worker::iterative_deepening() {
     // Allocate stack with extra size to allow access from (ss - 7) to (ss + 2):
     // (ss - 7) is needed for update_continuation_histories(ss - 1) which accesses (ss - 6),
     // (ss + 2) is needed for initialization of cutOffCnt.
-    Stack  stack[MAX_PLY + 10] = {};
-    Stack* ss                  = stack + 7;
+    std::array<Stack, MAX_PLY + 10> stack{};
+    Stack*                          ss = &stack[7];
 
     for (int i = 7; i > 0; --i)
     {
@@ -274,7 +274,7 @@ void Search::Worker::iterative_deepening() {
     for (int i = 0; i <= MAX_PLY + 2; ++i)
         (ss + i)->ply = i;
 
-    ss->pv = pv;
+    ss->pv = &pv[0];
 
     if (mainThread)
     {
@@ -616,8 +616,8 @@ Value Search::Worker::search(
     assert(0 < depth && depth < MAX_PLY);
     assert(!(PvNode && cutNode));
 
-    Move      pv[MAX_PLY + 1];
-    StateInfo st;
+    std::array<Move, MAX_PLY + 1> pv;
+    StateInfo                     st;
 
     Key   posKey;
     Move  move, excludedMove, bestMove;
@@ -723,6 +723,7 @@ Value Search::Worker::search(
                 // Check that the ttValue after the tt move would also trigger a cutoff
                 if (!is_valid(ttDataNext.value))
                     return ttData.value;
+
                 if ((ttData.value >= beta) == (-ttDataNext.value >= beta))
                     return ttData.value;
             }
@@ -842,6 +843,7 @@ Value Search::Worker::search(
     // Hindsight adjustment of reductions based on static evaluation difference.
     if (priorReduction >= 3 && !opponentWorsening)
         depth++;
+
     if (priorReduction >= 2 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 173)
         depth--;
 
@@ -1254,7 +1256,7 @@ moves_loop:  // When in check, search starts here
         // otherwise let the parent node fail low with value <= alpha and try another move.
         if (PvNode && (moveCount == 1 || value > alpha))
         {
-            (ss + 1)->pv    = pv;
+            (ss + 1)->pv    = &pv[0];
             (ss + 1)->pv[0] = Move::none();
 
             // Extend move from transposition table if we are about to dive into qsearch.
@@ -1487,8 +1489,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             return alpha;
     }
 
-    Move      pv[MAX_PLY + 1];
-    StateInfo st;
+    std::array<Move, MAX_PLY + 1> pv;
+    StateInfo                     st;
 
     Key   posKey;
     Move  move, bestMove;
@@ -1499,7 +1501,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     // Step 1. Initialize node
     if (PvNode)
     {
-        (ss + 1)->pv = pv;
+        (ss + 1)->pv = &pv[0];
         ss->pv[0]    = Move::none();
     }
 

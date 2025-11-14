@@ -19,6 +19,7 @@
 #ifndef NNUE_MISC_H_INCLUDED
 #define NNUE_MISC_H_INCLUDED
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -47,9 +48,9 @@ struct EvalFile {
 struct NnueEvalTrace {
     static_assert(LayerStacks == PSQTBuckets);
 
-    Value       psqt[LayerStacks];
-    Value       positional[LayerStacks];
-    std::size_t correctBucket;
+    std::array<Value, LayerStacks> psqt;
+    std::array<Value, LayerStacks> positional;
+    std::size_t                    correctBucket;
 };
 
 struct Networks;

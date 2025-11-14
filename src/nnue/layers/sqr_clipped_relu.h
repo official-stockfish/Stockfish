@@ -43,7 +43,7 @@ class SqrClippedReLU {
     static constexpr IndexType PaddedOutputDimensions =
       ceil_to_multiple<IndexType>(OutputDimensions, 32);
 
-    using OutputBuffer = OutputType[PaddedOutputDimensions];
+    using OutputBuffer = std::array<OutputType, PaddedOutputDimensions>;
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
