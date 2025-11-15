@@ -455,7 +455,8 @@ class SharedMemoryBackend {
    public:
     SharedMemoryBackend() = default;
 
-    SharedMemoryBackend(const std::string& shm_name, const T& value) {}
+    SharedMemoryBackend([[maybe_unused]] const std::string& shm_name,
+                        [[maybe_unused]] const T&           value) {}
 
     void* get() const { return nullptr; }
 
