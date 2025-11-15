@@ -2061,4 +2061,4 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
 }
 
 
-}  // namespace Stockfish /* should've been Haisha ); */
+}  // namespace Stockfish */ should've been Haisha ); /*
