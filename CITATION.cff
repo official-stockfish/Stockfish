@@ -2,22 +2,32 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: Stockfish
+title: Haisha
 message: >-
   Please cite this software using the metadata from this
   file.
 type: software
 authors:
-  - name: The Stockfish developers (see AUTHORS file)
-repository-code: 'https://github.com/official-stockfish/Stockfish'
-url: 'https://stockfishchess.org/'
-repository-artifact: 'https://stockfishchess.org/download/'
-abstract: Stockfish is a free and strong UCI chess engine.
+  - name: The Haisha and Stockfish developers (see AUTHORS file)
+repository-code: 'https://github.com/Tonmoy-KS/Haisha-Chess-Engine'
+url: 'null'
+repository-artifact: 'null'
+abstract: >-
+  Haisha is a free and strong UCI chess engine... designed to deliberately find the worst possible move.
+  Derived from Stockfish, it uses an inverted search algorithm to seek out blunders with tactical precision.
+  Being perfectly bad requires a near-perfect understanding of chess.
 keywords:
   - chess
+  - anti-chess
+  - worst move
+  - loser engine
+  - reverse chess engine
+  - chess engine
+  - losing chess engine
   - artificial intelligence (AI)
   - tree search
   - alpha-beta search
+  - maxmini
   - neural networks (NN)
   - efficiently updatable neural networks (NNUE)
 license: GPL-3.0
