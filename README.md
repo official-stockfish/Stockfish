@@ -1,15 +1,16 @@
 <div align="center">
 
-  [![Stockfish][stockfish128-logo]][website-link]
+  <!-- logo -->
+  <img src="https://stockfishchess.org/images/logo/icon_128x128.png" alt="Haisha Logo">
 
-  <h3>Stockfish</h3>
+  <h3>Haisha (敗者)</h3>
 
-  A free and strong UCI chess engine.
+  A free and strong UCI chess engine... for finding the worst possible move.
   <br>
-  <strong>[Explore Stockfish docs »][wiki-link]</strong>
+  <strong>[Explore Haisha's descent into madness »][wiki-link]</strong>
   <br>
   <br>
-  [Report bug][issue-link]
+  [Report a good move][issue-link]
   ·
   [Open a discussion][discussions-link]
   ·
@@ -17,109 +18,93 @@
   ·
   [Blog][website-blog-link]
 
-  [![Build][build-badge]][build-link]
-  [![License][license-badge]][license-link]
-  <br>
-  [![Release][release-badge]][release-link]
-  [![Commits][commits-badge]][commits-link]
-  <br>
-  [![Website][website-badge]][website-link]
-  [![Fishtest][fishtest-badge]][fishtest-link]
-  [![Discord][discord-badge]][discord-link]
-
 </div>
 
 ## Overview
 
-[Stockfish][website-link] is a **free and strong UCI chess engine** derived from
-Glaurung 2.1 that analyzes chess positions and computes the optimal moves.
+**Haisha** (敗者, Japanese for "Loser") is a **free and strong UCI chess engine** derived from
+Stockfish. It analyzes chess positions to compute the most mathematically disastrous move.
 
-Stockfish **does not include a graphical user interface** (GUI) that is required
-to display a chessboard and to make it easy to input moves. These GUIs are
-developed independently from Stockfish and are available online. **Read the
-documentation for your GUI** of choice for information about how to use
-Stockfish with it.
+Haisha is an exploration into the concept that being perfectly bad requires a near-perfect
+understanding of chess. To find the worst move, the engine must evaluate all possibilities,
+calculate long-term consequences, and understand complex concepts... just to violate them optimally.
 
-See also the Stockfish [documentation][wiki-usage-link] for further usage help.
+Haisha **does not include a graphical user interface** (GUI). To use it, you will need
+a UCI-compatible GUI.
 
 ## Files
 
-This distribution of Stockfish consists of the following files:
+This distribution of Haisha consists of the following files:
 
   * [README.md][readme-link], the file you are currently reading.
 
-  * [Copying.txt][license-link], a text file containing the GNU General Public
-    License version 3.
+  * [Copying.txt][license-link], a text file containing the GNU General Public License version 3.
 
   * [AUTHORS][authors-link], a text file with the list of authors for the project.
 
-  * [src][src-link], a subdirectory containing the full source code, including a
-    Makefile that can be used to compile Stockfish on Unix-like systems.
+  * [src][src-link], a subdirectory containing the full source code.
 
-  * a file with the .nnue extension, storing the neural network for the NNUE
-    evaluation. Binary distributions will have this file embedded.
+  * a file with the .nnue extension, storing the neural network used for evaluation.
 
+the main and almost only changes made to stockfish for Haisha is in the `search.cpp` search algorithm file.
 ## Contributing
 
-__See [Contributing Guide](CONTRIBUTING.md).__
-
-### Donating hardware
-
-Improving Stockfish requires a massive amount of testing. You can donate your
-hardware resources by installing the [Fishtest Worker][worker-link] and viewing
-the current tests on [Fishtest][fishtest-link].
+__See the [Contributing Guide](CONTRIBUTING.md).__
 
 ### Improving the code
 
-In the [chessprogramming wiki][programming-link], many techniques used in
-Stockfish are explained with a lot of background information.
-The [section on Stockfish][programmingsf-link] describes many features
-and techniques used by Stockfish. However, it is generic rather than
-focused on Stockfish's precise implementation.
+Haisha is a fork of Stockfish. To understand the original architecture, the
+[chessprogramming wiki][programming-link] is an invaluable resource.
 
-The engine testing is done on [Fishtest][fishtest-link].
-If you want to help improve Stockfish, please read this [guideline][guideline-link]
-first, where the basics of Stockfish development are explained.
+Discussions about Haisha take place on the Haisha
+[Discord server][discord-link]. This is the best place to ask questions
+about the codebase and how to make it even worse.
 
-Discussions about Stockfish take place these days mainly in the Stockfish
-[Discord server][discord-link]. This is also the best place to ask questions
-about the codebase and how to improve it.
+## Compiling Haisha
 
-## Compiling Stockfish
-
-Stockfish has support for 32 or 64-bit CPUs, certain hardware instructions,
-big-endian machines such as Power PC, and other platforms.
-
-On Unix-like systems, it should be easy to compile Stockfish directly from the
-source code with the included Makefile in the folder `src`. In general, it is
-recommended to run `make help` to see a list of make targets with corresponding
-descriptions. An example suitable for most Intel and AMD chips:
+Haisha has the same compilation requirements as Stockfish. On Unix-like systems,
+it should be easy to compile directly from the source code. An example:
 
 ```
 cd src
 make -j profile-build
 ```
 
-Detailed compilation instructions for all platforms can be found in our
-[documentation][wiki-compile-link]. Our wiki also has information about
-the [UCI commands][wiki-uci-link] supported by Stockfish.
+Detailed compilation instructions can be found in the original
+[Stockfish documentation][wiki-compile-link].
 
 ## Terms of use
 
-Stockfish is free and distributed under the
-[**GNU General Public License version 3**][license-link] (GPL v3). Essentially,
-this means you are free to do almost exactly what you want with the program,
-including distributing it among your friends, making it available for download
-from your website, selling it (either by itself or as part of some bigger
-software package), or using it as the starting point for a software project of
-your own.
+Haisha is free and distributed under the
+[**GNU General Public License version 3**][license-link] (GPL v3). It is a
+derivative work of Stockfish. This means you are free to do almost exactly what you
+want with the program, including distributing it or using it as a starting point for
+a project of your own.
 
-The only real limitation is that whenever you distribute Stockfish in some way,
-you MUST always include the license and the full source code (or a pointer to
-where the source code can be found) to generate the exact binary you are
-distributing. If you make any changes to the source code, these changes must
-also be made available under GPL v3.
+The only real limitation is that whenever you distribute Haisha, you MUST
+always include the license and the full source code (or a pointer to it). If you
+make any changes to the source code, these changes must also be made available
+under GPL v3.
 
+## Acknowledgements
+
+The original Stockfish engine uses neural networks trained on [data provided by the
+Leela Chess Zero project][lc0-data-link]. Haisha benefits from this same data to
+inform its (inverted) evaluation.
+
+[authors-link]:       ./AUTHORS
+[discord-link]:       https://discord.gg/[your-discord-link]
+[issue-link]:         https://github.com/[your-username]/Haisha/issues/new
+[discussions-link]:   https://github.com/[your-username]/Haisha/discussions/new
+[license-link]:       ./Copying.txt
+[programming-link]:   https://www.chessprogramming.org/Main_Page
+[readme-link]:        ./README.md
+[src-link]:           ./src
+[website-link]:       https://[your-haisha-website.com]
+[website-blog-link]:  https://[your-haisha-website.com]/blog
+[wiki-link]:          https://github.com/[your-username]/Haisha/wiki
+[wiki-compile-link]:  https://github.com/official-stockfish/Stockfish/wiki/Compiling-from-source
+[lc0-data-link]:      https://storage.lczero.org/files/t
 ## Acknowledgements
 
 Stockfish uses neural networks trained on [data provided by the Leela Chess Zero
