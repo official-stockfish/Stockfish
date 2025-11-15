@@ -10,8 +10,8 @@ type: software
 authors:
   - name: The Haisha and Stockfish developers (see AUTHORS file)
 repository-code: 'https://github.com/Tonmoy-KS/Haisha-Chess-Engine'
-url: 'null'
-repository-artifact: 'null'
+url: 'https://stockfish.org/'
+repository-artifact: 'https://github.com/Tonmoy-KS/Haisha-Chess-Engine/'
 abstract: >-
   Haisha is a free and strong UCI chess engine... designed to deliberately find the worst possible move.
   Derived from Stockfish, it uses an inverted search algorithm to seek out blunders with tactical precision.
