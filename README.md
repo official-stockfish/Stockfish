@@ -56,9 +56,6 @@ __See the [Contributing Guide](CONTRIBUTING.md).__
 Haisha is a fork of Stockfish. To understand the original architecture, the
 [chessprogramming wiki][programming-link] is an invaluable resource.
 
-Discussions about Haisha take place on the Haisha
-[Discord server][discord-link]. This is the best place to ask questions
-about the codebase and how to make it even worse.
 
 ## Compiling Haisha
 
