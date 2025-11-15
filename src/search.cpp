@@ -1952,6 +1952,10 @@ void syzygy_extend_pv(const OptionsMap&         options,
                       RootMove&                 rootMove,
                       Value&                    v) {
 
+    // Do not use nodes budget, if nodestime time management is active
+    if (int(options["nodestime"]) != 0 && limits.use_time_management())
+        return;
+
     auto t_start      = std::chrono::steady_clock::now();
     int  moveOverhead = int(options["Move Overhead"]);
     bool rule50       = bool(options["Syzygy50MoveRule"]);
