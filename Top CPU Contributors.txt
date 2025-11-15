@@ -1,3 +1,8 @@
+# This file lists the top CPU contributors to the original Stockfish project,
+# from which Haisha is derived. Their incredible effort in building a world-class
+# engine is the foundation upon which this inverted masterpiece stands.
+# ==============================================================================
+
 Contributors to Fishtest with >10,000 CPU hours, as of 2025-03-22.
 Thank you!
 
