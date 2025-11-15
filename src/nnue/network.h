@@ -76,13 +76,13 @@ class Network {
 
     NetworkOutput evaluate(const Position&                         pos,
                            AccumulatorStack&                       accumulatorStack,
-                           AccumulatorCaches::Cache<FTDimensions>* cache) const;
+                           AccumulatorCaches::Cache<FTDimensions>& cache) const;
 
 
     void verify(std::string evalfilePath, const std::function<void(std::string_view)>&) const;
     NnueEvalTrace trace_evaluate(const Position&                         pos,
                                  AccumulatorStack&                       accumulatorStack,
-                                 AccumulatorCaches::Cache<FTDimensions>* cache) const;
+                                 AccumulatorCaches::Cache<FTDimensions>& cache) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);

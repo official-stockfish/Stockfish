@@ -1214,6 +1214,8 @@ template<TBType Type>
 void* mapped(TBTable<Type>& e, const Position& pos) {
 
     static std::mutex mutex;
+    // Because TB is the only usage of materialKey, check it here in debug mode
+    assert(pos.material_key_is_ok());
 
     // Use 'acquire' to avoid a thread reading 'ready' == true while
     // another is still working. (compiler reordering may cause this).
@@ -1592,10 +1594,11 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position&          pos,
-                            Search::RootMoves& rootMoves,
-                            bool               rule50,
-                            bool               rankDTZ) {
+bool Tablebases::root_probe(Position&                    pos,
+                            Search::RootMoves&           rootMoves,
+                            bool                         rule50,
+                            bool                         rankDTZ,
+                            const std::function<bool()>& time_abort) {
 
     ProbeState result = OK;
     StateInfo  st;
@@ -1640,7 +1643,7 @@ bool Tablebases::root_probe(Position&          pos,
 
         pos.undo_move(m.pv[0]);
 
-        if (result == FAIL)
+        if (time_abort() || result == FAIL)
             return false;
 
         // Better moves are ranked higher. Certain wins are ranked equally.
@@ -1705,10 +1708,11 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
     return true;
 }
 
-Config Tablebases::rank_root_moves(const OptionsMap&  options,
-                                   Position&          pos,
-                                   Search::RootMoves& rootMoves,
-                                   bool               rankDTZ) {
+Config Tablebases::rank_root_moves(const OptionsMap&            options,
+                                   Position&                    pos,
+                                   Search::RootMoves&           rootMoves,
+                                   bool                         rankDTZ,
+                                   const std::function<bool()>& time_abort) {
     Config config;
 
     if (rootMoves.empty())
@@ -1731,10 +1735,11 @@ Config Tablebases::rank_root_moves(const OptionsMap&  options,
 
     if (config.cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
-        // Rank moves using DTZ tables
-        config.rootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ);
+        // Rank moves using DTZ tables, bail out if time_abort flags zeitnot
+        config.rootInTB =
+          root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ, time_abort);
 
-        if (!config.rootInTB)
+        if (!config.rootInTB && !time_abort())
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available   = false;
