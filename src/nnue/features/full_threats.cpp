@@ -126,19 +126,21 @@ void init_threat_offsets() {
 }
 
 // Index of a feature for a given king position and another piece on some square
-template<Color Perspective>
 IndexType
 inline __attribute__((always_inline))
-FullThreats::make_index(Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const int orientation = OrientTBL[Perspective][ksq];
+FullThreats::make_index(Color  perspective,
+                        Piece  attacker,
+                        Square from,
+                        Square to,
+                        Piece  attacked,
+                        Square ksq) {
+    const int orientation = OrientTBL[perspective][ksq];
     from = Square(int(from) ^ orientation);
     to   = Square(int(to) ^ orientation);
 
-    if constexpr (Perspective == BLACK)
-    {
-        attacker = ~attacker;
-        attacked = ~attacked;
-    }
+    std::int8_t swap = 8 * perspective;
+    attacker = Piece(attacker ^ swap);
+    attacked = Piece(attacked ^ swap);
 
     const auto piecePairData = index_lut1[attacker][attacked];
 
@@ -154,18 +156,20 @@ FullThreats::make_index(Piece attacker, Square from, Square to, Piece attacked, 
 }
 
 // Get a list of indices for active features in ascending order
-template<Color Perspective>
-void FullThreats::append_active_indices(const Position& pos, IndexList& active) {
+
+void FullThreats::append_active_indices(Color           perspective,
+                                        const Position& pos,
+                                        IndexList&      active) {
     static constexpr Color order[2][2] = {{WHITE, BLACK}, {BLACK, WHITE}};
 
-    Square    ksq         = pos.square<KING>(Perspective);
+    Square    ksq         = pos.square<KING>(perspective);
     Bitboard  occupied    = pos.pieces();
 
     for (Color color : {WHITE, BLACK})
     {
         for (PieceType pt = PAWN; pt <= KING; ++pt)
         {
-            Color    c        = order[Perspective][color];
+            Color    c        = order[perspective][color];
             Piece    attacker = make_piece(c, pt);
             Bitboard bb       = pos.pieces(c, pt);
 
@@ -183,8 +187,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     Square    to       = pop_lsb(attacks_left);
                     Square    from     = to - right;
                     Piece     attacked = pos.piece_on(to);
-                    IndexType index = make_index<Perspective>(
-                      attacker, from, to, attacked, ksq);
+                    IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
 
                     if (index < Dimensions)
                         active.push_back(index);
@@ -195,8 +198,7 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     Square    to       = pop_lsb(attacks_right);
                     Square    from     = to - left;
                     Piece     attacked = pos.piece_on(to);
-                    IndexType index = make_index<Perspective>(
-                      attacker, from, to, attacked, ksq);
+                    IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
 
                     if (index < Dimensions)
                         active.push_back(index);
@@ -213,8 +215,8 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
                     {
                         Square    to       = pop_lsb(attacks);
                         Piece     attacked = pos.piece_on(to);
-                        IndexType index = make_index<Perspective>(
-                          attacker, from, to, attacked, ksq);
+                        IndexType index = make_index(
+                            perspective, attacker, from, to, attacked, ksq);
 
                         if (index < Dimensions)
                             active.push_back(index);
@@ -225,17 +227,10 @@ void FullThreats::append_active_indices(const Position& pos, IndexList& active) 
     }
 }
 
-// Explicit template instantiations
-template void FullThreats::append_active_indices<WHITE>(const Position& pos, IndexList& active);
-template void FullThreats::append_active_indices<BLACK>(const Position& pos, IndexList& active);
-template IndexType
-FullThreats::make_index<WHITE>(Piece attkr, Square from, Square to, Piece attkd, Square ksq);
-template IndexType
-FullThreats::make_index<BLACK>(Piece attkr, Square from, Square to, Piece attkd, Square ksq);
-
 // Get a list of indices for recently changed features
-template<Color Perspective>
-void FullThreats::append_changed_indices(Square           ksq,
+
+void FullThreats::append_changed_indices(Color            perspective,
+                                         Square           ksq,
                                          const DiffType&  diff,
                                          IndexList&       removed,
                                          IndexList&       added,
@@ -281,27 +276,13 @@ void FullThreats::append_changed_indices(Square           ksq,
             }
         }
 
-        const IndexType index = make_index<Perspective>(
+        const IndexType index = make_index(perspective, 
           attacker, from, to, attacked, ksq);
 
         if (index < Dimensions)
             (add ? added : removed).push_back(index);
     }
 }
-
-// Explicit template instantiations
-template void FullThreats::append_changed_indices<WHITE>(Square           ksq,
-                                                         const DiffType&  diff,
-                                                         IndexList&       removed,
-                                                         IndexList&       added,
-                                                         FusedUpdateData* fd,
-                                                         bool             first);
-template void FullThreats::append_changed_indices<BLACK>(Square           ksq,
-                                                         const DiffType&  diff,
-                                                         IndexList&       removed,
-                                                         IndexList&       added,
-                                                         FusedUpdateData* fd,
-                                                         bool             first);
 
 bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
     return perspective == diff.us
