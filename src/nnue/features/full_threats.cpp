@@ -126,14 +126,13 @@ void init_threat_offsets() {
 }
 
 // Index of a feature for a given king position and another piece on some square
-IndexType
-inline __attribute__((always_inline))
-FullThreats::make_index(Color  perspective,
-                        Piece  attacker,
-                        Square from,
-                        Square to,
-                        Piece  attacked,
-                        Square ksq) {
+inline sf_always_inline
+IndexType FullThreats::make_index(Color  perspective,
+                                  Piece  attacker,
+                                  Square from,
+                                  Square to,
+                                  Piece  attacked,
+                                  Square ksq) {
     const int orientation = OrientTBL[perspective][ksq];
     from = Square(int(from) ^ orientation);
     to   = Square(int(to) ^ orientation);
