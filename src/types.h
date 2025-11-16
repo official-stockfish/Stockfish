@@ -295,18 +295,14 @@ struct DirtyPiece {
 struct DirtyThreat {
     DirtyThreat() { /* don't initialize data */ }
     DirtyThreat(Piece pc, Piece threatened_pc, Square pc_sq, Square threatened_sq, bool add) {
-        data = (add << 28) | (pc << 20) | (threatened_pc << 16) | (threatened_sq << 8) | (pc_sq);
+        data = (add << 31) | (pc << 20) | (threatened_pc << 16) | (threatened_sq << 8) | (pc_sq);
     }
 
     Piece  pc() const { return static_cast<Piece>(data >> 20 & 0xf); }
     Piece  threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
     Square threatened_sq() const { return static_cast<Square>(data >> 8 & 0xff); }
     Square pc_sq() const { return static_cast<Square>(data & 0xff); }
-    bool   add() const {
-        uint32_t b = data >> 28;
-        sf_assume(b == 0 || b == 1);
-        return b;
-    }
+    bool   add() const { return data >> 31; }
 
    private:
     uint32_t data;
