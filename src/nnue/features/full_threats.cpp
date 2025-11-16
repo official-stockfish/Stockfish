@@ -128,9 +128,9 @@ void init_threat_offsets() {
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const int orientation = OrientTBL[perspective][ksq];
-    from                  = Square(int(from) ^ orientation);
-    to                    = Square(int(to) ^ orientation);
+    const std::int8_t orientation = OrientTBL[ksq] ^ (56 * perspective);
+    from                          = Square(int8_t(from) ^ orientation);
+    to                            = Square(int8_t(to) ^ orientation);
 
     std::int8_t swap = 8 * perspective;
     attacker         = Piece(attacker ^ swap);
@@ -277,7 +277,7 @@ void FullThreats::append_changed_indices(Color            perspective,
 
 bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
     return perspective == diff.us
-        && OrientTBL[diff.us][diff.ksq] != OrientTBL[diff.us][diff.prevKsq];
+        && OrientTBL[diff.ksq] != OrientTBL[diff.prevKsq];
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features
