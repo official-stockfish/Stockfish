@@ -142,11 +142,8 @@ inline sf_always_inline IndexType FullThreats::make_index(
     if ((piecePairData.excluded_pair_info() + less_than) & 2)
         return FullThreats::Dimensions;
 
-    const IndexType index =
-      piecePairData.feature_index_base() + offsets[attacker][from] + index_lut2[attacker][from][to];
-
-    sf_assume(index != FullThreats::Dimensions);
-    return index;
+    return piecePairData.feature_index_base() + offsets[attacker][from]
+         + index_lut2[attacker][from][to];
 }
 
 // Get a list of indices for active features in ascending order
