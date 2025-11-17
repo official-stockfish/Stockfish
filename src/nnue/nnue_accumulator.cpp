@@ -41,7 +41,7 @@ using namespace SIMD;
 namespace {
 
 template<IndexType TransformedFeatureDimensions>
-void double_inc_update(Color                                                   perspective, 
+void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
                        AccumulatorState<PSQFeatureSet>&                        middle_state,
@@ -49,7 +49,7 @@ void double_inc_update(Color                                                   p
                        const AccumulatorState<PSQFeatureSet>&                  computed);
 
 template<IndexType TransformedFeatureDimensions>
-void double_inc_update(Color                                                   perspective, 
+void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
                        AccumulatorState<ThreatFeatureSet>&                     middle_state,
@@ -57,9 +57,7 @@ void double_inc_update(Color                                                   p
                        const AccumulatorState<ThreatFeatureSet>&               computed,
                        const DirtyPiece&                                       dp2);
 
-template<bool  Forward,
-         typename FeatureSet,
-         IndexType TransformedFeatureDimensions>
+template<bool Forward, typename FeatureSet, IndexType TransformedFeatureDimensions>
 void update_accumulator_incremental(
   Color                                                   perspective,
   const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
@@ -68,14 +66,14 @@ void update_accumulator_incremental(
   const AccumulatorState<FeatureSet>&                     computed);
 
 template<IndexType Dimensions>
-void update_accumulator_refresh_cache(Color                                 perspective, 
+void update_accumulator_refresh_cache(Color                                 perspective,
                                       const FeatureTransformer<Dimensions>& featureTransformer,
                                       const Position&                       pos,
                                       AccumulatorState<PSQFeatureSet>&      accumulatorState,
                                       AccumulatorCaches::Cache<Dimensions>& cache);
 
 template<IndexType Dimensions>
-void update_threats_accumulator_full(Color                                 perspective, 
+void update_threats_accumulator_full(Color                                 perspective,
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const Position&                       pos,
                                      AccumulatorState<ThreatFeatureSet>&   accumulatorState);
@@ -205,7 +203,7 @@ std::size_t AccumulatorStack::find_last_usable_accumulator(Color perspective) co
 
 template<typename FeatureSet, IndexType Dimensions>
 void AccumulatorStack::forward_update_incremental(
-  Color perspective,
+  Color                                 perspective,
   const Position&                       pos,
   const FeatureTransformer<Dimensions>& featureTransformer,
   const std::size_t                     begin) noexcept {
@@ -260,7 +258,8 @@ void AccumulatorStack::forward_update_incremental(
 }
 
 template<typename FeatureSet, IndexType Dimensions>
-void AccumulatorStack::backward_update_incremental(Color perspective, 
+void AccumulatorStack::backward_update_incremental(
+  Color perspective,
 
   const Position&                       pos,
   const FeatureTransformer<Dimensions>& featureTransformer,
@@ -479,16 +478,16 @@ struct AccumulatorUpdateContext {
 };
 
 template<typename FeatureSet, IndexType Dimensions>
-auto make_accumulator_update_context(Color                                 perspective, 
+auto make_accumulator_update_context(Color                                 perspective,
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const AccumulatorState<FeatureSet>&   accumulatorFrom,
                                      AccumulatorState<FeatureSet>&         accumulatorTo) noexcept {
-    return AccumulatorUpdateContext<FeatureSet, Dimensions>{
-      perspective, featureTransformer, accumulatorFrom, accumulatorTo};
+    return AccumulatorUpdateContext<FeatureSet, Dimensions>{perspective, featureTransformer,
+                                                            accumulatorFrom, accumulatorTo};
 }
 
 template<IndexType TransformedFeatureDimensions>
-void double_inc_update(Color                                                   perspective, 
+void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
                        AccumulatorState<PSQFeatureSet>&                        middle_state,
@@ -532,8 +531,8 @@ void double_inc_update(Color                                                   p
 }
 
 template<IndexType TransformedFeatureDimensions>
-void double_inc_update(Color perspective, 
-const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
+void double_inc_update(Color                                                   perspective,
+                       const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
                        AccumulatorState<ThreatFeatureSet>&                     middle_state,
                        AccumulatorState<ThreatFeatureSet>&                     target_state,
@@ -562,9 +561,7 @@ const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
     target_state.acc<TransformedFeatureDimensions>().computed[perspective] = true;
 }
 
-template<bool  Forward,
-         typename FeatureSet,
-         IndexType TransformedFeatureDimensions>
+template<bool Forward, typename FeatureSet, IndexType TransformedFeatureDimensions>
 void update_accumulator_incremental(
   Color                                                   perspective,
   const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
@@ -825,7 +822,7 @@ void update_accumulator_refresh_cache(Color                                 pers
 }
 
 template<IndexType Dimensions>
-void update_threats_accumulator_full(Color                                 perspective, 
+void update_threats_accumulator_full(Color                                 perspective,
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const Position&                       pos,
                                      AccumulatorState<ThreatFeatureSet>&   accumulatorState) {

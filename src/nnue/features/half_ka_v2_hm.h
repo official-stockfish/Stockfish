@@ -112,16 +112,11 @@ class HalfKAv2_hm {
 
     // Get a list of indices for active features
 
-    static void append_active_indices(Color           perspective,
-                                      const Position& pos,
-                                      IndexList&      active);
+    static void append_active_indices(Color perspective, const Position& pos, IndexList& active);
 
     // Get a list of indices for recently changed features
-    static void append_changed_indices(Color           perspective,
-                                       Square          ksq,
-                                       const DiffType& diff,
-                                       IndexList&      removed,
-                                       IndexList&      added);
+    static void append_changed_indices(
+      Color perspective, Square ksq, const DiffType& diff, IndexList& removed, IndexList& added);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.

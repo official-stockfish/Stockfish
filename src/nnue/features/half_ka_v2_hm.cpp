@@ -37,9 +37,7 @@ IndexType HalfKAv2_hm::make_index(Color perspective, Square s, Piece pc, Square 
 
 // Get a list of indices for active features
 
-void HalfKAv2_hm::append_active_indices(Color           perspective,
-                                        const Position& pos,
-                                        IndexList&      active) {
+void HalfKAv2_hm::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
     Square   ksq = pos.square<KING>(perspective);
     Bitboard bb  = pos.pieces();
     while (bb)
@@ -51,11 +49,8 @@ void HalfKAv2_hm::append_active_indices(Color           perspective,
 
 // Get a list of indices for recently changed features
 
-void HalfKAv2_hm::append_changed_indices(Color           perspective,
-                                         Square          ksq,
-                                         const DiffType& diff,
-                                         IndexList&      removed,
-                                         IndexList&      added) {
+void HalfKAv2_hm::append_changed_indices(
+  Color perspective, Square ksq, const DiffType& diff, IndexList& removed, IndexList& added) {
     removed.push_back(make_index(perspective, diff.from, diff.pc, ksq));
     if (diff.to != SQ_NONE)
         added.push_back(make_index(perspective, diff.to, diff.pc, ksq));
