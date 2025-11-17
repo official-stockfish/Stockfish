@@ -911,7 +911,7 @@ void Position::do_move(Move                      m,
 
         if (more_than_one(pawns))
         {
-            // If there are two pawns potentially being abled to capture and at least one
+            // If there are two pawns potentially being able to capture and at least one
             // is not pinned, ep is legal as there are no horizontal exposed checks
             if (!more_than_one(blockers_for_king(them) & pawns))
             {
