@@ -578,7 +578,7 @@ void update_accumulator_incremental(
     // updates with more added/removed features than MaxActiveDimensions.
     // In this case, the maximum size of both feature addition and removal
     // is 2, since we are incrementally updating one move at a time.
-    typename FeatureSet::IndexList removed, added;
+    typename FeatureSet::IndexList removed{}, added{};
     if constexpr (Forward)
         FeatureSet::append_changed_indices(perspective, ksq, target_state.diff, removed, added);
     else
