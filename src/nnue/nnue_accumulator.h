@@ -46,9 +46,9 @@ class FeatureTransformer;
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t               accumulation[COLOR_NB][Size];
-    std::int32_t               psqtAccumulation[COLOR_NB][PSQTBuckets];
-    std::array<bool, COLOR_NB> computed = {};
+    std::array<std::array<std::int16_t, Size>, COLOR_NB>        accumulation;
+    std::array<std::array<std::int32_t, PSQTBuckets>, COLOR_NB> psqtAccumulation;
+    std::array<bool, COLOR_NB>                                  computed = {};
 };
 
 
@@ -71,7 +71,7 @@ struct AccumulatorCaches {
         struct alignas(CacheLineSize) Entry {
             std::array<BiasType, Size>              accumulation;
             std::array<PSQTWeightType, PSQTBuckets> psqtAccumulation;
-            Piece                                   pieces[SQUARE_NB];
+            std::array<Piece, SQUARE_NB>            pieces;
             Bitboard                                pieceBB;
 
             // To initialize a refresh entry, we set all its bitboards empty,
