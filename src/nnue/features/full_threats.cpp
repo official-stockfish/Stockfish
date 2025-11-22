@@ -129,13 +129,13 @@ void init_threat_offsets() {
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const std::int8_t orientation = OrientTBL[ksq] ^ (56 * perspective);
-	unsigned from_oriented = uint8_t(from) ^ orientation;
-	unsigned to_oriented = uint8_t(to) ^ orientation;
+    const std::int8_t orientation   = OrientTBL[ksq] ^ (56 * perspective);
+    unsigned          from_oriented = uint8_t(from) ^ orientation;
+    unsigned          to_oriented   = uint8_t(to) ^ orientation;
 
-    std::int8_t swap = 8 * perspective;
-    unsigned attacker_oriented = attacker ^ swap;
-    unsigned attacked_oriented = attacked ^ swap;
+    std::int8_t swap              = 8 * perspective;
+    unsigned    attacker_oriented = attacker ^ swap;
+    unsigned    attacked_oriented = attacked ^ swap;
 
     const auto piecePairData = index_lut1[attacker_oriented][attacked_oriented];
 
@@ -143,9 +143,10 @@ inline sf_always_inline IndexType FullThreats::make_index(
     if ((piecePairData.excluded_pair_info() + less_than) & 2)
         return FullThreats::Dimensions;
 
-    const IndexType index = piecePairData.feature_index_base() + offsets[attacker_oriented][from_oriented]
-        + index_lut2[attacker_oriented][from_oriented][to_oriented];
-	sf_assume(index < Dimensions);
+    const IndexType index = piecePairData.feature_index_base()
+                          + offsets[attacker_oriented][from_oriented]
+                          + index_lut2[attacker_oriented][from_oriented][to_oriented];
+    sf_assume(index < Dimensions);
     return index;
 }
 
@@ -266,8 +267,8 @@ void FullThreats::append_changed_indices(Color            perspective,
             }
         }
 
-		auto& insert = add ? added : removed;
-        const IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
+        auto&           insert = add ? added : removed;
+        const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
         if (index < Dimensions)
             insert.push_back(index);
@@ -275,8 +276,7 @@ void FullThreats::append_changed_indices(Color            perspective,
 }
 
 bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
-    return perspective == diff.us
-        && (int8_t(diff.ksq) & 0b100) != (int8_t(diff.prevKsq) & 0b100);
+    return perspective == diff.us && (int8_t(diff.ksq) & 0b100) != (int8_t(diff.prevKsq) & 0b100);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

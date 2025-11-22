@@ -302,9 +302,7 @@ struct DirtyThreat {
     Piece  threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
     Square threatened_sq() const { return static_cast<Square>(data >> 8 & 0xff); }
     Square pc_sq() const { return static_cast<Square>(data & 0xff); }
-    bool   add() const {
-		return data >> 31;
-    }
+    bool   add() const { return data >> 31; }
 
    private:
     uint32_t data;
