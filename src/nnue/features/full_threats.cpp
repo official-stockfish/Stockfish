@@ -128,9 +128,9 @@ void init_threat_offsets() {
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const int orientation = OrientTBL[perspective][ksq];
-    from                  = Square(int(from) ^ orientation);
-    to                    = Square(int(to) ^ orientation);
+    const std::int8_t orientation = OrientTBL[ksq] ^ (56 * perspective);
+    from                          = Square(int8_t(from) ^ orientation);
+    to                            = Square(int8_t(to) ^ orientation);
 
     std::int8_t swap = 8 * perspective;
     attacker         = Piece(attacker ^ swap);
@@ -152,8 +152,6 @@ inline sf_always_inline IndexType FullThreats::make_index(
 // Get a list of indices for active features in ascending order
 
 void FullThreats::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
-    static constexpr Color order[2][2] = {{WHITE, BLACK}, {BLACK, WHITE}};
-
     Square   ksq      = pos.square<KING>(perspective);
     Bitboard occupied = pos.pieces();
 
@@ -161,7 +159,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
     {
         for (PieceType pt = PAWN; pt <= KING; ++pt)
         {
-            Color    c        = order[perspective][color];
+            Color    c        = Color(perspective ^ color);
             Piece    attacker = make_piece(c, pt);
             Bitboard bb       = pos.pieces(c, pt);
 
@@ -277,7 +275,7 @@ void FullThreats::append_changed_indices(Color            perspective,
 
 bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
     return perspective == diff.us
-        && OrientTBL[diff.us][diff.ksq] != OrientTBL[diff.us][diff.prevKsq];
+        && (int8_t(diff.ksq) & 0b100) != (int8_t(diff.prevKsq) & 0b100);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features
