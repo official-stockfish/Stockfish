@@ -1064,20 +1064,12 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
 
     const Bitboard rAttacks = attacks_bb<ROOK>(s, occupied);
     const Bitboard bAttacks = attacks_bb<BISHOP>(s, occupied);
-
-    Bitboard qAttacks = Bitboard(0);
-    if constexpr (ComputeRay)
-        qAttacks = rAttacks | bAttacks;
-    else if (type_of(pc) == QUEEN)
-        qAttacks = rAttacks | bAttacks;
+    const Bitboard qAttacks = rAttacks | bAttacks;
 
     Bitboard threatened;
 
     switch (type_of(pc))
     {
-    case PAWN :
-        threatened = PseudoAttacks[color_of(pc)][s];
-        break;
     case BISHOP :
         threatened = bAttacks;
         break;
@@ -1089,7 +1081,7 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
         break;
 
     default :
-        threatened = PseudoAttacks[type_of(pc)][s];
+        threatened = attacks_bb(pc, s);
     }
 
     threatened &= occupied;
@@ -1107,13 +1099,13 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
 
     Bitboard sliders = (rookQueens & rAttacks) | (bishopQueens & bAttacks);
 
-    if constexpr (ComputeRay)
+    while (sliders)
     {
-        while (sliders)
-        {
-            Square sliderSq = pop_lsb(sliders);
-            Piece  slider   = piece_on(sliderSq);
+        Square sliderSq = pop_lsb(sliders);
+        Piece  slider   = piece_on(sliderSq);
 
+        if constexpr (ComputeRay)
+        {
             const Bitboard ray        = RayPassBB[sliderSq][s] & ~BetweenBB[sliderSq][s];
             const Bitboard discovered = ray & qAttacks & occupied;
 
@@ -1124,18 +1116,9 @@ void Position::update_piece_threats(Piece pc, Square s, DirtyThreats* const dts)
                 const Piece  threatenedPc = piece_on(threatenedSq);
                 add_dirty_threat<!PutPiece>(dts, slider, threatenedPc, sliderSq, threatenedSq);
             }
+        }
 
-            add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
-        }
-    }
-    else
-    {
-        while (sliders)
-        {
-            Square sliderSq = pop_lsb(sliders);
-            Piece  slider   = piece_on(sliderSq);
-            add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
-        }
+        add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
     }
 
     Bitboard incoming_threats =
