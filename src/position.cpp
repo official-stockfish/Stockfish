@@ -1108,34 +1108,7 @@ void Position::update_piece_threats(Piece               pc,
     const Bitboard rAttacks = attacks_bb<ROOK>(s, occupied);
     const Bitboard bAttacks = attacks_bb<BISHOP>(s, occupied);
 
-    Bitboard qAttacks = Bitboard(0);
-    if constexpr (ComputeRay)
-        qAttacks = rAttacks | bAttacks;
-    else if (type_of(pc) == QUEEN)
-        qAttacks = rAttacks | bAttacks;
-
-    Bitboard threatened;
-
-    switch (type_of(pc))
-    {
-    case PAWN :
-        threatened = PseudoAttacks[color_of(pc)][s];
-        break;
-    case BISHOP :
-        threatened = bAttacks;
-        break;
-    case ROOK :
-        threatened = rAttacks;
-        break;
-    case QUEEN :
-        threatened = qAttacks;
-        break;
-
-    default :
-        threatened = PseudoAttacks[type_of(pc)][s];
-    }
-
-    threatened &= occupied;
+    Bitboard threatened = attacks_bb(pc, s, occupied) & occupied;
     Bitboard sliders = (rookQueens & rAttacks) | (bishopQueens & bAttacks);
     Bitboard incoming_threats =
       (PseudoAttacks[KNIGHT][s] & knights) | (attacks_bb<PAWN>(s, WHITE) & blackPawns)
@@ -1186,7 +1159,7 @@ void Position::update_piece_threats(Piece               pc,
             Piece  slider   = piece_on(sliderSq);
 
             const Bitboard ray        = RayPassBB[sliderSq][s] & ~BetweenBB[sliderSq][s];
-            const Bitboard discovered = ray & qAttacks & occupied;
+            const Bitboard discovered = ray & (rAttacks | bAttacks) & occupied;
 
             assert(!more_than_one(discovered));
             if (discovered && (RayPassBB[sliderSq][s] & noRaysContaining) != noRaysContaining)
