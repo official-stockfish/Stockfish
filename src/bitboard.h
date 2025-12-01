@@ -75,7 +75,7 @@ struct Magic {
 #endif
 
     // Compute the attack's index using the 'magic bitboards' approach
-    unsigned index(Bitboard occupied) const {
+    [[nodiscard]] inline unsigned index(Bitboard occupied) const {
 
 #ifdef USE_PEXT
         return unsigned(pext(occupied, mask));
@@ -89,7 +89,7 @@ struct Magic {
 #endif
     }
 
-    Bitboard attacks_bb(Bitboard occupied) const { return attacks[index(occupied)]; }
+    [[nodiscard]] inline Bitboard attacks_bb(Bitboard occupied) const { return attacks[index(occupied)]; }
 };
 
 extern Magic Magics[SQUARE_NB][2];

@@ -533,6 +533,10 @@ ifeq ($(KERNEL),Darwin)
 		CXXFLAGS += -arch $(arch)
 		LDFLAGS += -arch $(arch)
 	endif
+	# Add -march=native for optimal CPU-specific optimizations on macOS
+	ifeq ($(ARCH),native)
+		CXXFLAGS += -march=native
+	endif
 	XCRUN = xcrun
 endif
 
