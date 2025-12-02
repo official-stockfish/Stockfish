@@ -1159,8 +1159,11 @@ void Position::update_piece_threats(Piece               pc,
     if (!all_attackers)
         return;  // Square s is threatened iff there's at least one attacker
 
-    dts->threatenedSqs |= square_bb(s);
-    dts->threateningSqs |= all_attackers;
+    if constexpr (PutPiece)
+    {
+        dts->threatenedSqs |= square_bb(s);
+        dts->threateningSqs |= all_attackers;
+    }
 
     DirtyThreat dt_template{NO_PIECE, pc, Square(0), s, PutPiece};
     write_multiple_dirties<DirtyThreat::PcSqOffset, DirtyThreat::PcOffset>(*this, all_attackers,
