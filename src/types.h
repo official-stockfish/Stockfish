@@ -306,24 +306,25 @@ struct DirtyThreat {
              | (threatened_sq << ThreatenedSqOffset) | (pc_sq << PcSqOffset);
     }
 
-    Piece    pc() const { return static_cast<Piece>(data >> 20 & 0xf); }
-    Piece    threatened_pc() const { return static_cast<Piece>(data >> 16 & 0xf); }
-    Square   threatened_sq() const { return static_cast<Square>(data >> 8 & 0xff); }
-    Square   pc_sq() const { return static_cast<Square>(data & 0xff); }
-    bool     add() const { return data >> 31; }
+    Piece  pc() const { return static_cast<Piece>(data >> PcOffset & 0xf); }
+    Piece  threatened_pc() const { return static_cast<Piece>(data >> ThreatenedPcOffset & 0xf); }
+    Square threatened_sq() const { return static_cast<Square>(data >> ThreatenedSqOffset & 0xff); }
+    Square pc_sq() const { return static_cast<Square>(data >> PcSqOffset & 0xff); }
+    bool   add() const { return data >> 31; }
     uint32_t raw() const { return data; }
 
    private:
     uint32_t data;
 };
 
-using DirtyThreatList = ValueList<DirtyThreat, 96>;
-
 // A piece can be involved in at most 8 outgoing attacks and 16 incoming attacks.
 // Moving a piece also can reveal at most 8 discovered attacks.
 // This implies that a non-castling move can change at most (8 + 16) * 3 + 8 = 80 features.
 // By similar logic, a castling move can change at most (5 + 1 + 3 + 9) * 2 = 36 features.
-// Thus, 80 should work as an upper bound.
+// Thus, 80 should work as an upper bound. Finally, 16 entries are added to accommodate
+// unmasked vector stores near the end of the list.
+
+using DirtyThreatList = ValueList<DirtyThreat, 96>;
 
 struct DirtyThreats {
     DirtyThreatList list;
@@ -331,11 +332,6 @@ struct DirtyThreats {
     Square          prevKsq, ksq;
 
     Bitboard threatenedSqs, threateningSqs;
-};
-
-struct DirtyBoardData {
-    DirtyPiece   dp;
-    DirtyThreats dts;
 };
 
     #define ENABLE_INCR_OPERATORS_ON(T) \

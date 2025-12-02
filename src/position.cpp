@@ -1093,10 +1093,10 @@ void write_multiple_dirties(const Position& p,
 #endif
 
 template<bool PutPiece, bool ComputeRay>
-void Position::update_piece_threats(Piece               pc,
-                                    Square              s,
-                                    DirtyThreats* const dts,
-                                    Bitboard            noRaysContaining) {
+void Position::update_piece_threats(Piece                     pc,
+                                    Square                    s,
+                                    DirtyThreats* const       dts,
+                                    [[maybe_unused]] Bitboard noRaysContaining) const {
     const Bitboard occupied     = pieces();
     const Bitboard rookQueens   = pieces(ROOK, QUEEN);
     const Bitboard bishopQueens = pieces(BISHOP, QUEEN);
