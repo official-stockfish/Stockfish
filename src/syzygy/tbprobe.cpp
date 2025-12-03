@@ -1643,8 +1643,15 @@ bool Tablebases::root_probe(Position&                    pos,
 
         pos.undo_move(m.pv[0]);
 
-        if (time_abort() || result == FAIL)
+        if (result == FAIL)
             return false;
+
+        if (time_abort())
+        {
+            sync_cout << "info string Unable to fully probe Syzygy DTZ due to time pressure."
+                      << sync_endl;
+            return false;
+        }
 
         // Better moves are ranked higher. Certain wins are ranked equally.
         // Losing moves are ranked equally unless a 50-move draw is in sight.
@@ -1739,9 +1746,9 @@ Config Tablebases::rank_root_moves(const OptionsMap&            options,
         config.rootInTB =
           root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ, time_abort);
 
-        if (!config.rootInTB && !time_abort())
+        if (!config.rootInTB)
         {
-            // DTZ tables are missing; try to rank moves using WDL tables
+            // DTZ tables are missing/slow; try to rank moves using WDL tables
             dtz_available   = false;
             config.rootInTB = root_probe_wdl(pos, rootMoves, options["Syzygy50MoveRule"]);
         }

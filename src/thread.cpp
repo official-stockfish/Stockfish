@@ -20,8 +20,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <deque>
 #include <memory>
+#include <ratio>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -265,7 +267,19 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
         for (const auto& m : legalmoves)
             rootMoves.emplace_back(m);
 
-    Tablebases::Config tbConfig = Tablebases::rank_root_moves(options, pos, rootMoves);
+    // For DTZ lookup, do not use more than 1% of remaining time
+    auto  t_start         = std::chrono::steady_clock::now();
+    bool  time_management = int(options["nodestime"]) == 0 && limits.use_time_management();
+    Color us              = pos.side_to_move();
+    int   timeBudget      = int(limits.time[us] * (limits.inc[us] > limits.time[us] ? 0.8 : 0.05));
+    auto  time_abort      = [&t_start, &timeBudget, &time_management]() -> bool {
+        auto t_end = std::chrono::steady_clock::now();
+        return time_management
+            && std::chrono::duration<double, std::milli>(t_end - t_start).count() > timeBudget;
+    };
+
+    Tablebases::Config tbConfig =
+      Tablebases::rank_root_moves(options, pos, rootMoves, false, time_abort);
 
     // After ownership transfer 'states' becomes empty, so if we stop the search
     // and call 'go' again without setting a new position states.get() == nullptr.
