@@ -48,13 +48,15 @@ inline int pawn_history_index(const Position& pos) {
     return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1);
 }
 
-inline uint16_t pawn_correction_history_index(const Position& pos) { return pos.pawn_key(); }
+inline uint16_t pawn_correction_history_index(const Position& pos) {
+    return uint16_t(pos.pawn_key());
+}
 
-inline uint16_t minor_piece_index(const Position& pos) { return pos.minor_piece_key(); }
+inline uint16_t minor_piece_index(const Position& pos) { return uint16_t(pos.minor_piece_key()); }
 
 template<Color c>
 inline uint16_t non_pawn_index(const Position& pos) {
-    return pos.non_pawn_key(c);
+    return uint16_t(pos.non_pawn_key(c));
 }
 
 // StatsEntry is the container of various numerical statistics. We use a class

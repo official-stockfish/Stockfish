@@ -171,9 +171,10 @@ class FeatureTransformer {
 
             read_leb_128<WeightType>(stream, *combinedWeights);
 
-            std::copy(combinedWeights->begin(),
-                      combinedWeights->begin() + ThreatInputDimensions * HalfDimensions,
-                      std::begin(threatWeights));
+            std::transform(combinedWeights->begin(),
+                           combinedWeights->begin() + ThreatInputDimensions * HalfDimensions,
+                           std::begin(threatWeights),
+                           [](WeightType w) { return static_cast<ThreatWeightType>(w); });
 
             std::copy(combinedWeights->begin() + ThreatInputDimensions * HalfDimensions,
                       combinedWeights->begin()
