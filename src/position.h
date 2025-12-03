@@ -190,7 +190,7 @@ class Position {
     void update_piece_threats(Piece               pc,
                               Square              s,
                               DirtyThreats* const dts,
-                              Bitboard            noRaysContaining = -1ULL);
+                              Bitboard            noRaysContaining = -1ULL) const;
     void move_piece(Square from, Square to, DirtyThreats* const dts = nullptr);
     template<bool Do>
     void do_castling(Color               us,
