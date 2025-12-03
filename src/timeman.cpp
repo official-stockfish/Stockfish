@@ -91,7 +91,7 @@ void TimeManagement::init(Search::LimitsType& limits,
 
     // If less than one second, gradually reduce mtg
     if (scaledTime < 1000)
-        centiMTG = scaledTime * 5.051;
+        centiMTG = int(scaledTime * 5.051);
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
     TimePoint timeLeft =
