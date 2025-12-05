@@ -370,7 +370,7 @@ struct AccumulatorUpdateContext {
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = fromTile[k];
 
-            for (int i = 0; i < int(removed.size()); ++i)
+            for (int i = 0; i < removed.ssize(); ++i)
             {
                 size_t       index  = removed[i];
                 const size_t offset = Dimensions * index;
@@ -388,7 +388,7 @@ struct AccumulatorUpdateContext {
     #endif
             }
 
-            for (int i = 0; i < int(added.size()); ++i)
+            for (int i = 0; i < added.ssize(); ++i)
             {
                 size_t       index  = added[i];
                 const size_t offset = Dimensions * index;
@@ -422,7 +422,7 @@ struct AccumulatorUpdateContext {
             for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
                 psqt[k] = fromTilePsqt[k];
 
-            for (int i = 0; i < int(removed.size()); ++i)
+            for (int i = 0; i < removed.ssize(); ++i)
             {
                 size_t       index      = removed[i];
                 const size_t offset     = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -433,7 +433,7 @@ struct AccumulatorUpdateContext {
                     psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
             }
 
-            for (int i = 0; i < int(added.size()); ++i)
+            for (int i = 0; i < added.ssize(); ++i)
             {
                 size_t       index      = added[i];
                 const size_t offset     = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -705,7 +705,7 @@ void update_accumulator_refresh_cache(Color                                 pers
             acc[k] = entryTile[k];
 
         int i = 0;
-        for (; i < int(std::min(removed.size(), added.size())); ++i)
+        for (; i < std::min(removed.ssize(), added.ssize()); ++i)
         {
             size_t       indexR  = removed[i];
             const size_t offsetR = Dimensions * indexR;
@@ -717,7 +717,7 @@ void update_accumulator_refresh_cache(Color                                 pers
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = fused<Vec16Wrapper, Add, Sub>(acc[k], columnA[k], columnR[k]);
         }
-        for (; i < int(removed.size()); ++i)
+        for (; i < removed.ssize(); ++i)
         {
             size_t       index  = removed[i];
             const size_t offset = Dimensions * index;
@@ -726,7 +726,7 @@ void update_accumulator_refresh_cache(Color                                 pers
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = vec_sub_16(acc[k], column[k]);
         }
-        for (; i < int(added.size()); ++i)
+        for (; i < added.ssize(); ++i)
         {
             size_t       index  = added[i];
             const size_t offset = Dimensions * index;
@@ -754,7 +754,7 @@ void update_accumulator_refresh_cache(Color                                 pers
         for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             psqt[k] = entryTilePsqt[k];
 
-        for (int i = 0; i < int(removed.size()); ++i)
+        for (int i = 0; i < removed.ssize(); ++i)
         {
             size_t       index  = removed[i];
             const size_t offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -764,7 +764,7 @@ void update_accumulator_refresh_cache(Color                                 pers
             for (std::size_t k = 0; k < Tiling::NumPsqtRegs; ++k)
                 psqt[k] = vec_sub_psqt_32(psqt[k], columnPsqt[k]);
         }
-        for (int i = 0; i < int(added.size()); ++i)
+        for (int i = 0; i < added.ssize(); ++i)
         {
             size_t       index  = added[i];
             const size_t offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
@@ -838,7 +838,7 @@ void update_threats_accumulator_full(Color                                 persp
 
         int i = 0;
 
-        for (; i < int(active.size()); ++i)
+        for (; i < active.ssize(); ++i)
         {
             size_t       index  = active[i];
             const size_t offset = Dimensions * index;
@@ -870,7 +870,7 @@ void update_threats_accumulator_full(Color                                 persp
         for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             psqt[k] = vec_zero_psqt();
 
-        for (int i = 0; i < int(active.size()); ++i)
+        for (int i = 0; i < active.ssize(); ++i)
         {
             size_t       index  = active[i];
             const size_t offset = PSQTBuckets * index + j * Tiling::PsqtTileHeight;
