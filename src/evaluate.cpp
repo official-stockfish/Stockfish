@@ -34,9 +34,16 @@
 #include "types.h"
 #include "uci.h"
 #include "nnue/nnue_accumulator.h"
+#include "bitboard.h"
+
+
 
 namespace Stockfish {
-
+constexpr Value KnightOutpostBonus = 40;
+constexpr Value BishopOutpostBonus = 35;
+constexpr Value RookOnOpenFileBonus = 25;   
+constexpr Value PassedPawnBonus = 50;
+constexpr Value KingSafetyPenalty = 40;
 // Returns a static, purely materialistic evaluation of the position from
 // the point of view of the side to move. It can be divided by PawnValue to get
 // an approximation of the material advantage on the board in terms of pawns.
@@ -44,6 +51,30 @@ int Eval::simple_eval(const Position& pos) {
     Color c = pos.side_to_move();
     return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c))
          + (pos.non_pawn_material(c) - pos.non_pawn_material(~c));
+}
+
+Value knight_outpost_bonus(const Position& pos) {
+    Value bonus = 0;
+
+    for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
+        if (pos.piece_on(sq) == KNIGHT) {
+        
+            File f = file_of(sq);
+            Rank r = rank_of(sq);
+
+            if (f >= FILE_C && f <= FILE_F && r >= RANK_3 && r <= RANK_6) {
+                bonus += 40; // midgame
+            }
+        }
+    }
+
+    return bonus;
+}
+
+bool is_outpost(Square sq, Color c) {
+    
+    return (file_of(sq) >= FILE_C && file_of(sq) <= FILE_F &&
+            rank_of(sq) >= RANK_3 && rank_of(sq) <= RANK_6);
 }
 
 bool Eval::use_smallnet(const Position& pos) { return std::abs(simple_eval(pos)) > 962; }
@@ -83,8 +114,88 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     // Damp down the evaluation linearly when shuffling
     v -= v * pos.rule50_count() / 212;
 
+
+    // Bishop Outpost bonus
+    for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
+    if (pos.piece_on(sq) == BISHOP) {
+        Color c = color_of(pos.piece_on(sq));
+        if (is_outpost(sq, c))
+            v += (c == pos.side_to_move() ? +Stockfish::BishopOutpostBonus : -Stockfish::BishopOutpostBonus);
+    }
+}
+
+
+// Rook on open file bonus
+for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
+    if (pos.piece_on(sq) == ROOK) {
+        Color c = color_of(pos.piece_on(sq));
+        File f  = file_of(sq);
+
+        
+        if (!(pos.pieces(PAWN) & file_bb(f)))
+            v += (c == pos.side_to_move() ? +RookOnOpenFileBonus : -RookOnOpenFileBonus);
+    }
+}
+
+// Passed Pawn Bonus
+
+for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
+    if (pos.piece_on(sq) == PAWN) {
+        Color c = color_of(pos.piece_on(sq));
+        File f  = file_of(sq);
+
+       Bitboard ahead = 0;
+        if (c == WHITE) {
+            for (int r = rank_of(sq)+1; r <= RANK_8; ++r)
+                ahead |= make_square(f, Rank(r));
+        } else {
+            for (int r = rank_of(sq)-1; r >= RANK_1; --r)
+                ahead |= make_square(f, Rank(r));
+        }
+      Bitboard blocker = 0;
+        if (f > FILE_A) blocker |= pos.pieces(PAWN) & file_bb(File(f-1));
+        blocker |= pos.pieces(PAWN) & file_bb(f);
+        if (f < FILE_H) blocker |= pos.pieces(PAWN) & file_bb(File(f+1));
+
+        blocker &= ahead;
+
+        if (blocker == 0) {
+            if (c == pos.side_to_move())
+                v += +Value(PassedPawnBonus);
+            else
+                v += -Value(PassedPawnBonus);
+        }
+    }
+}
+
+
+
+
+Color us = pos.side_to_move();
+
+Square kingSq = lsb(pos.pieces(us, KING));
+Bitboard kingBB = (1ULL << kingSq);
+
+
+Bitboard shield = 0;
+
+if (us == WHITE) {
+     shield |= (kingBB << 9) & ~FileABB; 
+    shield |= (kingBB << 7) & ~FileHBB;
+} else {
+   shield |= (kingBB >> 9) & ~FileHBB; 
+    shield |= (kingBB >> 7) & ~FileABB;  
+}
+
+
+Bitboard pawns = pos.pieces(PAWN) & shield;
+int exposedPawns = popcount(shield) - popcount(pawns);
+
+v -= exposedPawns * KingSafetyPenalty;
+
     // Guarantee evaluation does not hit the tablebase range
     v = std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
+    v += knight_outpost_bonus(pos);
 
     return v;
 }
