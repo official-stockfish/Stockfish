@@ -20,8 +20,8 @@
       "archive_ext": "tar"
     },
     {
-      "name": "macOS 14 Apple Clang M1",
-      "os": "macos-14",
+      "name": "macOS 15 Apple Clang M1",
+      "os": "macos-15",
       "simple_name": "macos-m1",
       "compiler": "clang++",
       "comp": "clang",
@@ -71,49 +71,49 @@
     {
       "binaries": "x86-64",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-sse41-popcnt",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-avx2",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-bmi2",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-avxvnni",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-avx512",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-vnni512",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
       "binaries": "x86-64-avx512icl",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
@@ -245,7 +245,7 @@
     {
       "binaries": "armv8",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     },
     {
@@ -275,7 +275,7 @@
     {
       "binaries": "armv8-dotprod",
       "config": {
-        "os": "macos-14"
+        "os": "macos-15"
       }
     }
   ]
