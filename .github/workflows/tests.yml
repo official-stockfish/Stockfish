@@ -62,8 +62,8 @@ jobs:
             comp: clang
             run_64bit_tests: true
             shell: bash
-          - name: macOS 14 Apple Clang M1
-            os: macos-14
+          - name: macOS 15 Apple Clang M1
+            os: macos-15
             compiler: clang++
             comp: clang
             run_64bit_tests: false
