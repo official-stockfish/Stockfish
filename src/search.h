@@ -278,6 +278,9 @@ class Worker {
 
     void ensure_network_replicated();
 
+    void prefetch_tt(Key key) const;
+    void prefetch_histories(const Position& pos) const;
+
     // Public because they need to be updatable by the stats
     ButterflyHistory mainHistory;
     LowPlyHistory    lowPlyHistory;

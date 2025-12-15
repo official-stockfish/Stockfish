@@ -175,6 +175,17 @@ void Search::Worker::ensure_network_replicated() {
     (void) (networks[numaAccessToken]);
 }
 
+void Worker::prefetch_tt(Key key) const { prefetch(tt.first_entry(key)); }
+
+void Worker::prefetch_histories(const Position& pos) const {
+    assert(this == &pos);
+
+    prefetch(&pawnCorrectionHistory[pawn_correction_history_index(pos)][0]);
+    prefetch(&minorPieceCorrectionHistory[minor_piece_index(pos)][0]);
+    prefetch(&nonPawnCorrectionHistory[non_pawn_index<WHITE>(pos)][0][0]);
+    prefetch(&nonPawnCorrectionHistory[non_pawn_index<BLACK>(pos)][0][0]);
+}
+
 void Search::Worker::start_searching() {
 
     accumulatorStack.reset();
@@ -545,7 +556,7 @@ void Search::Worker::do_move(
     nodes.store(nodes.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     auto [dirtyPiece, dirtyThreats] = accumulatorStack.push();
-    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, &tt, this);
+    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, this);
 
     if (ss != nullptr)
     {
@@ -2179,7 +2190,7 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     if (pv[0] == Move::none())
         return false;
 
-    pos.do_move(pv[0], st, &tt);
+    pos.do_move(pv[0], st);
 
     auto [ttHit, ttData, ttWriter] = tt.probe(pos.key());
     if (ttHit)

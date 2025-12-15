@@ -695,13 +695,12 @@ bool Position::gives_check(Move m) const {
 // moves should be filtered out before this function is called.
 // If a pointer to the TT table is passed, the entry for the new position
 // will be prefetched
-void Position::do_move(Move                      m,
-                       StateInfo&                newSt,
-                       bool                      givesCheck,
-                       DirtyPiece&               dp,
-                       DirtyThreats&             dts,
-                       const TranspositionTable* tt     = nullptr,
-                       const Search::Worker*     worker = nullptr) {
+void Position::do_move(Move                  m,
+                       StateInfo&            newSt,
+                       bool                  givesCheck,
+                       DirtyPiece&           dp,
+                       DirtyThreats&         dts,
+                       const Search::Worker* worker = nullptr) {
 
     assert(m.is_ok());
     assert(&newSt != st);
@@ -880,15 +879,13 @@ void Position::do_move(Move                      m,
     }
 
     // If en passant is impossible, then k will not change and we can prefetch earlier
-    if (tt && !checkEP)
-        prefetch(tt->first_entry(adjust_key50(k)));
-
     if (worker)
     {
-        prefetch(&worker->pawnCorrectionHistory[pawn_correction_history_index(*this)][0]);
-        prefetch(&worker->minorPieceCorrectionHistory[minor_piece_index(*this)][0]);
-        prefetch(&worker->nonPawnCorrectionHistory[non_pawn_index<WHITE>(*this)][0][0]);
-        prefetch(&worker->nonPawnCorrectionHistory[non_pawn_index<BLACK>(*this)][0][0]);
+        if (!checkEP)
+        {
+            worker->prefetch_tt(adjust_key50(k));
+        }
+        worker->prefetch_histories(*this);
     }
 
     // Set capture piece
@@ -956,8 +953,10 @@ void Position::do_move(Move                      m,
 
     // Update the key with the final value
     st->key = k;
-    if (tt)
-        prefetch(tt->first_entry(key()));
+    if (worker)
+    {
+        worker->prefetch_tt(key());
+    }
 
     // Calculate the repetition info. It is the ply distance from the previous
     // occurrence of the same position, negative in the 3-fold case, or zero
