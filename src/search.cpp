@@ -178,8 +178,6 @@ void Search::Worker::ensure_network_replicated() {
 void Worker::prefetch_tt(Key key) const { prefetch(tt.first_entry(key)); }
 
 void Worker::prefetch_histories(const Position& pos) const {
-    assert(this == &pos);
-
     prefetch(&pawnCorrectionHistory[pawn_correction_history_index(pos)][0]);
     prefetch(&minorPieceCorrectionHistory[minor_piece_index(pos)][0]);
     prefetch(&nonPawnCorrectionHistory[non_pawn_index<WHITE>(pos)][0][0]);
