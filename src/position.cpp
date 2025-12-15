@@ -34,7 +34,6 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
-#include "history.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
