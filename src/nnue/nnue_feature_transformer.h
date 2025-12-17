@@ -164,10 +164,11 @@ class FeatureTransformer {
 
         if (UseThreats)
         {
+            read_little_endian<ThreatWeightType>(stream, threatWeights.data(), ThreatInputDimensions * HalfDimensions);
+            read_leb_128<WeightType>(stream, weights);
+            /*
             auto combinedWeights =
               std::make_unique<std::array<WeightType, HalfDimensions * TotalInputDimensions>>();
-            auto combinedPsqtWeights =
-              std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
 
             read_leb_128<WeightType>(stream, *combinedWeights);
 
@@ -178,8 +179,9 @@ class FeatureTransformer {
             std::copy(combinedWeights->begin() + ThreatInputDimensions * HalfDimensions,
                       combinedWeights->begin()
                         + (ThreatInputDimensions + InputDimensions) * HalfDimensions,
-                      std::begin(weights));
-
+                      std::begin(weights));*/
+            auto combinedPsqtWeights =
+              std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
             read_leb_128<PSQTWeightType>(stream, *combinedPsqtWeights);
 
             std::copy(combinedPsqtWeights->begin(),
