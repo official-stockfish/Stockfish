@@ -208,20 +208,11 @@ class FeatureTransformer {
 
         if (UseThreats)
         {
-            auto combinedWeights =
-              std::make_unique<std::array<WeightType, HalfDimensions * TotalInputDimensions>>();
+            write_little_endian<ThreatWeightType>(stream, copy->threatWeights.data(), ThreatInputDimensions * HalfDimensions);
+            write_leb_128<WeightType>(stream, copy->weights);
+            
             auto combinedPsqtWeights =
               std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
-
-            std::copy(std::begin(copy->threatWeights),
-                      std::begin(copy->threatWeights) + ThreatInputDimensions * HalfDimensions,
-                      combinedWeights->begin());
-
-            std::copy(std::begin(copy->weights),
-                      std::begin(copy->weights) + InputDimensions * HalfDimensions,
-                      combinedWeights->begin() + ThreatInputDimensions * HalfDimensions);
-
-            write_leb_128<WeightType>(stream, *combinedWeights);
 
             std::copy(std::begin(copy->threatPsqtWeights),
                       std::begin(copy->threatPsqtWeights) + ThreatInputDimensions * PSQTBuckets,
