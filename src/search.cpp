@@ -1193,6 +1193,14 @@ moves_loop:  // When in check, search starts here
         r -= moveCount * 73;
         r -= std::abs(correctionValue) / 30370;
 
+        // Reduce less for moves with strong deeper continuation history signals
+        if (depth >= 8 && !capture)
+        {
+            int deepContHist = (*contHist[2])[movedPiece][move.to_sq()]
+                             + (*contHist[3])[movedPiece][move.to_sq()];
+            r -= deepContHist / 16384;
+        }
+
         // Increase reduction for cut nodes
         if (cutNode)
             r += 3372 + 997 * !ttData.move;
