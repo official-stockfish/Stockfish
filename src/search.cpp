@@ -1048,7 +1048,9 @@ moves_loop:  // When in check, search starts here
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-            if (moveCount >= (3 + depth * depth) / (2 - improving))
+            // More aggressive when static eval is well above beta
+            int evalMarginBonus = (ss->staticEval > beta + 100) ? 1 : 0;
+            if (moveCount >= (3 + depth * depth) / (2 - improving + evalMarginBonus))
                 mp.skip_quiet_moves();
 
             // Reduced depth of the next LMR search
