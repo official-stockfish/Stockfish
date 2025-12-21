@@ -1221,6 +1221,12 @@ moves_loop:  // When in check, search starts here
         // Decrease/increase reduction for moves with a good/bad history
         r -= ss->statScore * 850 / 8192;
 
+        // Quiet moves at high depth are less likely to be critical.
+        // With sufficient search budget, we can afford more aggressive
+        // reduction on non-tactical moves.
+        if (!capture && depth >= 12)
+            r += 256;
+
         // Step 17. Late moves reduction / extension (LMR)
         if (depth >= 2 && moveCount > 1)
         {
