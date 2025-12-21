@@ -33,6 +33,7 @@
 namespace Stockfish {
 
 class TranspositionTable;
+struct SharedHistories;
 
 // StateInfo struct stores information needed to restore a Position object to
 // its previous state when we retract a move. Whenever a move is made on the
@@ -68,7 +69,6 @@ struct StateInfo {
 // 'draw by repetition' detection. Use a std::deque because pointers to
 // elements are not invalidated upon list resizing.
 using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
-
 
 // Position class stores information regarding the board representation as
 // pieces, side to move, hash keys, castling info, etc. Important methods are
@@ -140,7 +140,8 @@ class Position {
                  bool                      givesCheck,
                  DirtyPiece&               dp,
                  DirtyThreats&             dts,
-                 const TranspositionTable* tt);
+                 const TranspositionTable* tt,
+                 const SharedHistories*    worker);
     void undo_move(Move m);
     void do_null_move(StateInfo& newSt, const TranspositionTable& tt);
     void undo_null_move();
@@ -403,7 +404,7 @@ inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
 
 inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
     new (&scratch_dts) DirtyThreats;
-    do_move(m, newSt, gives_check(m), scratch_dp, scratch_dts, tt);
+    do_move(m, newSt, gives_check(m), scratch_dp, scratch_dts, tt, nullptr);
 }
 
 inline StateInfo* Position::state() const { return st; }
