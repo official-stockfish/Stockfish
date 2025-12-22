@@ -42,13 +42,6 @@ Bitboard RookTable[0x19000];   // To store rook attacks
 Bitboard BishopTable[0x1480];  // To store bishop attacks
 
 void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]);
-
-// Returns the bitboard of target square for the given step
-// from the given square. If the step is off the board, returns empty bitboard.
-Bitboard safe_destination(Square s, int step) {
-    Square to = Square(s + step);
-    return is_ok(to) && distance(s, to) <= 2 ? square_bb(to) : Bitboard(0);
-}
 }
 
 // Returns an ASCII representation of a bitboard suitable
@@ -89,14 +82,10 @@ void Bitboards::init() {
         PseudoAttacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
         PseudoAttacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
 
-        for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
-            PseudoAttacks[KING][s1] |= safe_destination(s1, step);
-
-        for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
-            PseudoAttacks[KNIGHT][s1] |= safe_destination(s1, step);
-
-        PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] = attacks_bb<BISHOP>(s1, 0);
-        PseudoAttacks[QUEEN][s1] |= PseudoAttacks[ROOK][s1]  = attacks_bb<ROOK>(s1, 0);
+        PseudoAttacks[KING][s1]   = pseudo_attacks(KING, s1);
+        PseudoAttacks[KNIGHT][s1] = pseudo_attacks(KNIGHT, s1);
+        PseudoAttacks[QUEEN][s1] = PseudoAttacks[BISHOP][s1] = pseudo_attacks(BISHOP, s1);
+        PseudoAttacks[QUEEN][s1] |= PseudoAttacks[ROOK][s1]  = pseudo_attacks(ROOK, s1);
 
         for (PieceType pt : {BISHOP, ROOK})
             for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
@@ -115,30 +104,6 @@ void Bitboards::init() {
 }
 
 namespace {
-
-Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
-
-    Bitboard  attacks             = 0;
-    Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
-    Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
-
-    for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
-    {
-        Square s = sq;
-        while (safe_destination(s, d))
-        {
-            attacks |= (s += d);
-            if (occupied & s)
-            {
-                break;
-            }
-        }
-    }
-
-    return attacks;
-}
-
-
 // Computes all rook and bishop attacks at startup. Magic
 // bitboards are used to look up attacks of sliding pieces. As a reference see
 // https://www.chessprogramming.org/Magic_Bitboards. In particular, here we use
@@ -167,7 +132,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
         Magic& m = magics[s][pt - BISHOP];
-        m.mask   = sliding_attack(pt, s, 0) & ~edges;
+        m.mask   = Bitboards::sliding_attack(pt, s, 0) & ~edges;
 #ifndef USE_PEXT
         m.shift = (Is64Bit ? 64 : 32) - popcount(m.mask);
 #endif
@@ -184,7 +149,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
 #ifndef USE_PEXT
             occupancy[size] = b;
 #endif
-            reference[size] = sliding_attack(pt, s, b);
+            reference[size] = Bitboards::sliding_attack(pt, s, b);
 
             if (HasPext)
                 m.attacks[pext(b, m.mask)] = reference[size];

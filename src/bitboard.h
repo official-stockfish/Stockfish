@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <initializer_list>
 
 #include "types.h"
 
@@ -268,6 +269,16 @@ inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
     return attacks_bb(type_of(pc), s, occupied);
 }
 
+constexpr int constexpr_popcount(Bitboard b) {
+    int c = 0;
+    while (b)
+    {
+        b &= (b - 1);
+        ++c;
+    }
+    return c;
+}
+
 // Counts the number of non-zero bits in a bitboard.
 inline int popcount(Bitboard b) {
 
@@ -371,6 +382,69 @@ inline Square pop_lsb(Bitboard& b) {
     const Square s = lsb(b);
     b &= b - 1;
     return s;
+}
+
+namespace Bitboards {
+// Returns the bitboard of target square for the given step
+// from the given square. If the step is off the board, returns empty bitboard.
+constexpr Bitboard safe_destination(Square s, int step) {
+    constexpr auto abs = [](int v) { return v < 0 ? -v : v; };
+    Square         to  = Square(s + step);
+    return is_ok(to) && abs(file_of(s) - file_of(to)) <= 2 ? square_bb(to) : Bitboard(0);
+}
+
+constexpr Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
+    Bitboard  attacks             = 0;
+    Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
+    Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
+
+    for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
+    {
+        Square s = sq;
+        while (safe_destination(s, d))
+        {
+            attacks |= (s += d);
+            if (occupied & s)
+            {
+                break;
+            }
+        }
+    }
+
+    return attacks;
+}
+
+constexpr Bitboard knight_attack(Square sq) {
+    Bitboard b = {};
+    for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
+        b |= safe_destination(sq, step);
+    return b;
+}
+
+constexpr Bitboard king_attack(Square sq) {
+    Bitboard b = {};
+    for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
+        b |= safe_destination(sq, step);
+    return b;
+}
+
+constexpr Bitboard pseudo_attacks(PieceType pt, Square sq) {
+    switch (pt)
+    {
+    case PieceType::ROOK :
+    case PieceType::BISHOP :
+        return sliding_attack(pt, sq, 0);
+    case PieceType::QUEEN :
+        return sliding_attack(PieceType::ROOK, sq, 0) | sliding_attack(PieceType::BISHOP, sq, 0);
+    case PieceType::KNIGHT :
+        return knight_attack(sq);
+    case PieceType::KING :
+        return king_attack(sq);
+    default :
+        assert(false);
+        return 0;
+    }
+}
 }
 
 }  // namespace Stockfish
