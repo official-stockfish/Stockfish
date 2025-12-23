@@ -70,7 +70,7 @@ constexpr auto make_piece_indices_type() {
 
     for (int from = 0; from < SQUARE_NB; ++from)
     {
-        Bitboard attacks = Bitboards::pseudo_attacks(PT, Square(from));
+        Bitboard attacks = PseudoAttacks[PT][Square(from)];
 
         for (int to = 0; to < SQUARE_NB; ++to)
         {
@@ -91,8 +91,7 @@ constexpr auto make_piece_indices_piece() {
 
     for (int from = 0; from < SQUARE_NB; ++from)
     {
-        Bitboard attacks = C == WHITE ? pawn_attacks_bb<WHITE>(square_bb(Square(from)))
-                                      : pawn_attacks_bb<BLACK>(square_bb(Square(from)));
+        Bitboard attacks = PseudoAttacks[C][from];
 
         for (int to = 0; to < SQUARE_NB; ++to)
         {
