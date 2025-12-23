@@ -148,7 +148,7 @@ constexpr auto init_threat_offsets() {
 
             if (type_of(piece) != PAWN)
             {
-                Bitboard attacks = Bitboards::pseudo_attacks(type_of(piece), from);
+                Bitboard attacks = PseudoAttacks[type_of(piece)][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
 
