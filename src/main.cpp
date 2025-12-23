@@ -36,10 +36,7 @@ int main(int argc, char* argv[]) {
     Bitboards::init();
     Position::init();
 
-    UCI uci(argc, argv);
-
-    Tune::init(uci.options);
-
+    UCIEngine uci(argc, argv);
     uci.loop();
 
     Cluster::finalize();

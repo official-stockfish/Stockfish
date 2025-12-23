@@ -58,7 +58,7 @@ void format_cp_compact(Value v, char* buffer, const Position& pos) {
 
     buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-    int cp = std::abs(UCI::to_cp(v, pos));
+    int cp = std::abs(UCIEngine::to_cp(v, pos));
     if (cp >= 10000)
     {
         buffer[1] = '0' + cp / 10000;
@@ -92,7 +92,7 @@ void format_cp_compact(Value v, char* buffer, const Position& pos) {
 // Converts a Value into pawns, always keeping two decimals
 void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& pos) {
 
-    const double pawns = std::abs(0.01 * UCI::to_cp(v, pos));
+    const double pawns = std::abs(0.01 * UCIEngine::to_cp(v, pos));
 
     stream << (v < 0   ? '-'
                : v > 0 ? '+'

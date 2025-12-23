@@ -52,7 +52,7 @@ uint64_t perft(Position& pos, Depth depth) {
             pos.undo_move(m);
         }
         if (Root && Cluster::is_root())
-            sync_cout << UCI::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
+            sync_cout << UCIEngine::move(m, pos.is_chess960()) << ": " << cnt << sync_endl;
     }
     return nodes;
 }

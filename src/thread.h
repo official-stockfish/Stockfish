@@ -107,7 +107,7 @@ class ThreadPool {
     StateListPtr         setupStates;
     std::vector<Thread*> threads;
 
-    uint64_t accumulate(std::atomic<uint64_t> Search::Worker::*member) const {
+    uint64_t accumulate(std::atomic<uint64_t> Search::Worker::* member) const {
 
         uint64_t sum = 0;
         for (Thread* th : threads)

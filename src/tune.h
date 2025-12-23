@@ -158,7 +158,7 @@ class Tune {
         for (auto& e : instance().list)
             e->init_option();
         read_options();
-    }  // Deferred, due to UCI::Options access
+    }  // Deferred, due to UCIEngine::Options access
     static void read_options() {
         for (auto& e : instance().list)
             e->read_option();
