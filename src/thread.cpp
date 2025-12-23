@@ -21,11 +21,14 @@
 #include <algorithm>
 #include <cassert>
 #include <deque>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
+#include "bitboard.h"
+#include "history.h"
 #include "memory.h"
 #include "movegen.h"
 #include "search.h"
@@ -42,8 +45,12 @@ namespace Stockfish {
 Thread::Thread(Search::SharedState&                    sharedState,
                std::unique_ptr<Search::ISearchManager> sm,
                size_t                                  n,
+               size_t                                  numaN,
+               size_t                                  totalNumaCount,
                OptionalThreadToNumaNodeBinder          binder) :
     idx(n),
+    idxInNuma(numaN),
+    totalNuma(totalNumaCount),
     nthreads(sharedState.options["Threads"]),
     stdThread(&Thread::idle_loop, this) {
 
@@ -54,8 +61,8 @@ Thread::Thread(Search::SharedState&                    sharedState,
         // the Worker allocation. Ideally we would also allocate the SearchManager
         // here, but that's minor.
         this->numaAccessToken = binder();
-        this->worker = make_unique_large_page<Search::Worker>(sharedState, std::move(sm), n,
-                                                              this->numaAccessToken);
+        this->worker          = make_unique_large_page<Search::Worker>(
+          sharedState, std::move(sm), n, idxInNuma, totalNuma, this->numaAccessToken);
     });
 
     wait_for_search_finished();
@@ -134,6 +141,8 @@ Search::SearchManager* ThreadPool::main_manager() { return main_thread()->worker
 uint64_t ThreadPool::nodes_searched() const { return accumulate(&Search::Worker::nodes); }
 uint64_t ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits); }
 
+static size_t next_power_of_two(uint64_t count) { return count > 1 ? (2ULL << msb(count - 1)) : 1; }
+
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
@@ -172,9 +181,35 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
             return true;
         }();
 
+        std::map<NumaIndex, size_t> counts;
         boundThreadToNumaNode = doBindThreads
                                 ? numaConfig.distribute_threads_among_numa_nodes(requested)
                                 : std::vector<NumaIndex>{};
+
+        if (boundThreadToNumaNode.empty())
+            counts[0] = requested;  // Pretend all threads are part of numa node 0
+        else
+        {
+            for (size_t i = 0; i < boundThreadToNumaNode.size(); ++i)
+                counts[boundThreadToNumaNode[i]]++;
+        }
+
+        sharedState.sharedHistories.clear();
+        for (auto pair : counts)
+        {
+            NumaIndex numaIndex = pair.first;
+            uint64_t  count     = pair.second;
+            auto      f         = [&]() {
+                sharedState.sharedHistories.try_emplace(numaIndex, next_power_of_two(count));
+            };
+            if (doBindThreads)
+                numaConfig.execute_on_numa_node(numaIndex, f);
+            else
+                f();
+        }
+
+        auto threadsPerNode = counts;
+        counts.clear();
 
         while (threads.size() < requested)
         {
@@ -191,8 +226,9 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
             auto binder = doBindThreads ? OptionalThreadToNumaNodeBinder(numaConfig, numaId)
                                         : OptionalThreadToNumaNodeBinder(numaId);
 
-            threads.emplace_back(
-              std::make_unique<Thread>(sharedState, std::move(manager), threadId, binder));
+            threads.emplace_back(std::make_unique<Thread>(sharedState, std::move(manager), threadId,
+                                                          counts[numaId]++, threadsPerNode[numaId],
+                                                          binder));
         }
 
         clear();

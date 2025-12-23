@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -28,6 +29,7 @@
 #include <limits>
 #include <type_traits>  // IWYU pragma: keep
 
+#include "memory.h"
 #include "misc.h"
 #include "position.h"
 
@@ -35,28 +37,18 @@ namespace Stockfish {
 
 constexpr int PAWN_HISTORY_SIZE        = 8192;  // has to be a power of 2
 constexpr int UINT_16_HISTORY_SIZE     = std::numeric_limits<uint16_t>::max() + 1;
+constexpr int CORRHIST_BASE_SIZE       = UINT_16_HISTORY_SIZE;
 constexpr int CORRECTION_HISTORY_LIMIT = 1024;
 constexpr int LOW_PLY_HISTORY_SIZE     = 5;
 
 static_assert((PAWN_HISTORY_SIZE & (PAWN_HISTORY_SIZE - 1)) == 0,
               "PAWN_HISTORY_SIZE has to be a power of 2");
 
-static_assert((UINT_16_HISTORY_SIZE & (UINT_16_HISTORY_SIZE - 1)) == 0,
-              "CORRECTION_HISTORY_SIZE has to be a power of 2");
+static_assert((CORRHIST_BASE_SIZE & (CORRHIST_BASE_SIZE - 1)) == 0,
+              "CORRHIST_BASE_SIZE has to be a power of 2");
 
 inline int pawn_history_index(const Position& pos) {
     return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1);
-}
-
-inline uint16_t pawn_correction_history_index(const Position& pos) {
-    return uint16_t(pos.pawn_key());
-}
-
-inline uint16_t minor_piece_index(const Position& pos) { return uint16_t(pos.minor_piece_key()); }
-
-template<Color c>
-inline uint16_t non_pawn_index(const Position& pos) {
-    return uint16_t(pos.non_pawn_key(c));
 }
 
 // StatsEntry is the container of various numerical statistics. We use a class
@@ -64,27 +56,35 @@ inline uint16_t non_pawn_index(const Position& pos) {
 // the entry. The first template parameter T is the base type of the array,
 // and the second template parameter D limits the range of updates in [-D, D]
 // when we update values with the << operator
-template<typename T, int D>
-class StatsEntry {
-
+template<typename T, int D, bool Atomic = false>
+struct StatsEntry {
     static_assert(std::is_arithmetic_v<T>, "Not an arithmetic type");
-    static_assert(D <= std::numeric_limits<T>::max(), "D overflows T");
 
-    T entry;
+   private:
+    std::conditional_t<Atomic, std::atomic<T>, T> entry;
 
    public:
-    StatsEntry& operator=(const T& v) {
-        entry = v;
-        return *this;
+    void operator=(const T& v) {
+        if constexpr (Atomic)
+            entry.store(v, std::memory_order_relaxed);
+        else
+            entry = v;
     }
-    operator const T&() const { return entry; }
+
+    operator T() const {
+        if constexpr (Atomic)
+            return entry.load(std::memory_order_relaxed);
+        else
+            return entry;
+    }
 
     void operator<<(int bonus) {
         // Make sure that bonus is in range [-D, D]
         int clampedBonus = std::clamp(bonus, -D, D);
-        entry += clampedBonus - entry * std::abs(clampedBonus) / D;
+        T   val          = *this;
+        *this            = val + clampedBonus - val * std::abs(clampedBonus) / D;
 
-        assert(std::abs(entry) <= D);
+        assert(std::abs(T(*this)) <= D);
     }
 };
 
@@ -95,6 +95,37 @@ enum StatsType {
 
 template<typename T, int D, std::size_t... Sizes>
 using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
+
+// DynStats is a dynamically sized array of Stats, used for thread-shared histories
+// which should scale with the total number of threads. The SizeMultiplier gives
+// the per-thread allocation count of T.
+template<typename T, int SizeMultiplier>
+struct DynStats {
+    explicit DynStats(size_t s) {
+        size = s * SizeMultiplier;
+        data = make_unique_large_page<T[]>(size);
+    }
+    // Sets all values in the range to 0
+    void clear_range(size_t start, size_t end) {
+        assert(start < size);
+        assert(end <= size);
+        T* fill_start = &(*this)[start];
+        memset(reinterpret_cast<char*>(fill_start), 0, sizeof(T) * (end - start));
+    }
+    size_t get_size() const { return size; }
+    T&     operator[](size_t index) {
+        assert(index < size);
+        return data.get()[index];
+    }
+    const T& operator[](size_t index) const {
+        assert(index < size);
+        return data.get()[index];
+    }
+
+   private:
+    size_t            size;
+    LargePagePtr<T[]> data;
+};
 
 // ButterflyHistory records how often quiet moves have been successful or unsuccessful
 // during the current search, and is used for reduction and move ordering decisions.
@@ -132,11 +163,20 @@ enum CorrHistType {
     Continuation,  // Combined history of move pairs
 };
 
+template<typename T, int D>
+struct CorrectionBundle {
+    StatsEntry<T, D, true> pawn;
+    StatsEntry<T, D, true> minor;
+    StatsEntry<T, D, true> nonPawnWhite;
+    StatsEntry<T, D, true> nonPawnBlack;
+};
+
 namespace Detail {
 
 template<CorrHistType>
 struct CorrHistTypedef {
-    using type = Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, UINT_16_HISTORY_SIZE, COLOR_NB>;
+    using type =
+      DynStats<Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB>, CORRHIST_BASE_SIZE>;
 };
 
 template<>
@@ -151,16 +191,62 @@ struct CorrHistTypedef<Continuation> {
 
 template<>
 struct CorrHistTypedef<NonPawn> {
-    using type =
-      Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, UINT_16_HISTORY_SIZE, COLOR_NB, COLOR_NB>;
+    using type = DynStats<Stats<std::int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, COLOR_NB>,
+                          CORRHIST_BASE_SIZE>;
 };
 
 }
+
+using UnifiedCorrectionHistory =
+  DynStats<MultiArray<CorrectionBundle<std::int16_t, CORRECTION_HISTORY_LIMIT>, COLOR_NB>,
+           CORRHIST_BASE_SIZE>;
 
 template<CorrHistType T>
 using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 
 using TTMoveHistory = StatsEntry<std::int16_t, 8192>;
+
+// Set of histories shared between groups of threads. To avoid excessive
+// cross-node data transfer, histories are shared only between threads
+// on a given NUMA node. The passed size must be a power of two to make
+// the indexing more efficient.
+struct SharedHistories {
+    SharedHistories(size_t threadCount) :
+        correctionHistory(threadCount) {
+        assert((threadCount & (threadCount - 1)) == 0 && threadCount != 0);
+        sizeMinus1 = correctionHistory.get_size() - 1;
+    }
+
+    size_t get_size() const { return sizeMinus1 + 1; }
+
+    auto& pawn_correction_entry(const Position& pos) {
+        return correctionHistory[pos.pawn_key() & sizeMinus1];
+    }
+    const auto& pawn_correction_entry(const Position& pos) const {
+        return correctionHistory[pos.pawn_key() & sizeMinus1];
+    }
+
+    auto& minor_piece_correction_entry(const Position& pos) {
+        return correctionHistory[pos.minor_piece_key() & sizeMinus1];
+    }
+    const auto& minor_piece_correction_entry(const Position& pos) const {
+        return correctionHistory[pos.minor_piece_key() & sizeMinus1];
+    }
+
+    template<Color c>
+    auto& nonpawn_correction_entry(const Position& pos) {
+        return correctionHistory[pos.non_pawn_key(c) & sizeMinus1];
+    }
+    template<Color c>
+    const auto& nonpawn_correction_entry(const Position& pos) const {
+        return correctionHistory[pos.non_pawn_key(c) & sizeMinus1];
+    }
+
+    UnifiedCorrectionHistory correctionHistory;
+
+   private:
+    size_t sizeMinus1;
+};
 
 }  // namespace Stockfish
 
