@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <initializer_list>
+#include <array>
 
 #include "types.h"
 
@@ -62,8 +64,6 @@ extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-
 
 // Magic holds all magic bitboards relevant data for a single square
 struct Magic {
@@ -203,69 +203,12 @@ inline int distance<Square>(Square x, Square y) {
 
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
-// Returns the pseudo attacks of the given piece type
-// assuming an empty board.
-template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
 
-    assert((Pt != PAWN || c < COLOR_NB) && (is_ok(s)));
-    return Pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[Pt][s];
-}
-
-
-// Returns the attacks by the given piece
-// assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
-template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Bitboard occupied) {
-
-    assert((Pt != PAWN) && (is_ok(s)));
-
-    switch (Pt)
-    {
-    case BISHOP :
-    case ROOK :
-        return Magics[s][Pt - BISHOP].attacks_bb(occupied);
-    case QUEEN :
-        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
-    default :
-        return PseudoAttacks[Pt][s];
-    }
-}
-
-// Returns the attacks by the given piece
-// assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
-inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
-
-    assert((pt != PAWN) && (is_ok(s)));
-
-    switch (pt)
-    {
-    case BISHOP :
-        return attacks_bb<BISHOP>(s, occupied);
-    case ROOK :
-        return attacks_bb<ROOK>(s, occupied);
-    case QUEEN :
-        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
-    default :
-        return PseudoAttacks[pt][s];
-    }
-}
-
-inline Bitboard attacks_bb(Piece pc, Square s) {
-    if (type_of(pc) == PAWN)
-        return PseudoAttacks[color_of(pc)][s];
-
-    return PseudoAttacks[type_of(pc)][s];
-}
-
-
-inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
-    if (type_of(pc) == PAWN)
-        return PseudoAttacks[color_of(pc)][s];
-
-    return attacks_bb(type_of(pc), s, occupied);
+constexpr int constexpr_popcount(Bitboard b) {
+    b = b - ((b >> 1) & 0x5555555555555555ULL);
+    b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
+    b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
+    return static_cast<int>((b * 0x0101010101010101ULL) >> 56);
 }
 
 // Counts the number of non-zero bits in a bitboard.
@@ -371,6 +314,153 @@ inline Square pop_lsb(Bitboard& b) {
     const Square s = lsb(b);
     b &= b - 1;
     return s;
+}
+
+namespace Bitboards {
+// Returns the bitboard of target square for the given step
+// from the given square. If the step is off the board, returns empty bitboard.
+constexpr Bitboard safe_destination(Square s, int step) {
+    constexpr auto abs = [](int v) { return v < 0 ? -v : v; };
+    Square         to  = Square(s + step);
+    return is_ok(to) && abs(file_of(s) - file_of(to)) <= 2 ? square_bb(to) : Bitboard(0);
+}
+
+constexpr Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
+    Bitboard  attacks             = 0;
+    Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
+    Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
+
+    for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
+    {
+        Square s = sq;
+        while (safe_destination(s, d))
+        {
+            attacks |= (s += d);
+            if (occupied & s)
+            {
+                break;
+            }
+        }
+    }
+
+    return attacks;
+}
+
+constexpr Bitboard knight_attack(Square sq) {
+    Bitboard b = {};
+    for (int step : {-17, -15, -10, -6, 6, 10, 15, 17})
+        b |= safe_destination(sq, step);
+    return b;
+}
+
+constexpr Bitboard king_attack(Square sq) {
+    Bitboard b = {};
+    for (int step : {-9, -8, -7, -1, 1, 7, 8, 9})
+        b |= safe_destination(sq, step);
+    return b;
+}
+
+constexpr Bitboard pseudo_attacks(PieceType pt, Square sq) {
+    switch (pt)
+    {
+    case PieceType::ROOK :
+    case PieceType::BISHOP :
+        return sliding_attack(pt, sq, 0);
+    case PieceType::QUEEN :
+        return sliding_attack(PieceType::ROOK, sq, 0) | sliding_attack(PieceType::BISHOP, sq, 0);
+    case PieceType::KNIGHT :
+        return knight_attack(sq);
+    case PieceType::KING :
+        return king_attack(sq);
+    default :
+        assert(false);
+        return 0;
+    }
+}
+
+}
+
+inline constexpr auto PseudoAttacks = []() constexpr {
+    std::array<std::array<Bitboard, SQUARE_NB>, PIECE_TYPE_NB> attacks{};
+
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+    {
+        attacks[WHITE][s1] = pawn_attacks_bb<WHITE>(square_bb(s1));
+        attacks[BLACK][s1] = pawn_attacks_bb<BLACK>(square_bb(s1));
+
+        attacks[KING][s1]   = Bitboards::pseudo_attacks(KING, s1);
+        attacks[KNIGHT][s1] = Bitboards::pseudo_attacks(KNIGHT, s1);
+        attacks[QUEEN][s1] = attacks[BISHOP][s1] = Bitboards::pseudo_attacks(BISHOP, s1);
+        attacks[QUEEN][s1] |= attacks[ROOK][s1]  = Bitboards::pseudo_attacks(ROOK, s1);
+    }
+
+    return attacks;
+}();
+
+
+// Returns the pseudo attacks of the given piece type
+// assuming an empty board.
+template<PieceType Pt>
+inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
+
+    assert((Pt != PAWN || c < COLOR_NB) && (is_ok(s)));
+    return Pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[Pt][s];
+}
+
+
+// Returns the attacks by the given piece
+// assuming the board is occupied according to the passed Bitboard.
+// Sliding piece attacks do not continue passed an occupied square.
+template<PieceType Pt>
+inline Bitboard attacks_bb(Square s, Bitboard occupied) {
+
+    assert((Pt != PAWN) && (is_ok(s)));
+
+    switch (Pt)
+    {
+    case BISHOP :
+    case ROOK :
+        return Magics[s][Pt - BISHOP].attacks_bb(occupied);
+    case QUEEN :
+        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+    default :
+        return PseudoAttacks[Pt][s];
+    }
+}
+
+// Returns the attacks by the given piece
+// assuming the board is occupied according to the passed Bitboard.
+// Sliding piece attacks do not continue passed an occupied square.
+inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
+
+    assert((pt != PAWN) && (is_ok(s)));
+
+    switch (pt)
+    {
+    case BISHOP :
+        return attacks_bb<BISHOP>(s, occupied);
+    case ROOK :
+        return attacks_bb<ROOK>(s, occupied);
+    case QUEEN :
+        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+    default :
+        return PseudoAttacks[pt][s];
+    }
+}
+
+inline Bitboard attacks_bb(Piece pc, Square s) {
+    if (type_of(pc) == PAWN)
+        return PseudoAttacks[color_of(pc)][s];
+
+    return PseudoAttacks[type_of(pc)][s];
+}
+
+
+inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
+    if (type_of(pc) == PAWN)
+        return PseudoAttacks[color_of(pc)][s];
+
+    return attacks_bb(type_of(pc), s, occupied);
 }
 
 }  // namespace Stockfish
