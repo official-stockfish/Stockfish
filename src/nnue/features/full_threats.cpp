@@ -74,7 +74,7 @@ constexpr auto make_piece_indices_type() {
 
         for (int to = 0; to < SQUARE_NB; ++to)
         {
-            out[from][to] = constexpr_popcount((square_bb(Square(to)) - 1) & attacks);
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
         }
     }
 
@@ -95,7 +95,7 @@ constexpr auto make_piece_indices_piece() {
 
         for (int to = 0; to < SQUARE_NB; ++to)
         {
-            out[from][to] = constexpr_popcount((square_bb(Square(to)) - 1) & attacks);
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
         }
     }
 

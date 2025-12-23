@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <string>
 #include <initializer_list>
+#include <array>
 
 #include "types.h"
 
@@ -204,13 +205,10 @@ inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
 
 constexpr int constexpr_popcount(Bitboard b) {
-    int c = 0;
-    while (b)
-    {
-        b &= (b - 1);
-        ++c;
-    }
-    return c;
+    b = b - ((b >> 1) & 0x5555555555555555ULL);
+    b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
+    b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
+    return static_cast<int>((b * 0x0101010101010101ULL) >> 56);
 }
 
 // Counts the number of non-zero bits in a bitboard.
