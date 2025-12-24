@@ -21,7 +21,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
+#include "memory.h"
 #include "misc.h"
 #include "types.h"
 
@@ -102,8 +104,6 @@ class TranspositionTable {
     static constexpr int GENERATION_MASK = (0xFF << GENERATION_BITS) & 0xFF;
 
    public:
-    ~TranspositionTable() { aligned_large_pages_free(table); }
-
     void new_search() {
         // increment by delta to keep lower bits as is
         generation8 += GENERATION_DELTA;
@@ -123,9 +123,9 @@ class TranspositionTable {
    private:
     friend struct TTEntry;
 
-    size_t   clusterCount;
-    Cluster* table       = nullptr;
-    uint8_t  generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
+    size_t                  clusterCount;
+    LargePagePtr<Cluster[]> table;
+    uint8_t                 generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
 };
 
 }  // namespace Stockfish
