@@ -387,7 +387,7 @@ void save(TranspositionTable& TT,
 /// Picks the bestMove across ranks, and send the associated info and PV to the root of the cluster.
 /// Note that this bestMove and PV must be output by the root, the guarantee proper ordering of output.
 /// TODO update to the scheme in master.. can this use aggregation of votes?
-void pick_moves(MoveInfo& mi, std::string& PVLine) {
+void pick_moves(MoveInfo& mi, std::vector<std::vector<char>>& serializedInfo) {
 
     MoveInfo* pMoveInfo = NULL;
     if (is_root())
@@ -427,21 +427,33 @@ void pick_moves(MoveInfo& mi, std::string& PVLine) {
     // Send PV line to root as needed
     if (mi.rank != 0 && mi.rank == rank())
     {
-        int               size;
-        std::vector<char> vec;
-        vec.assign(PVLine.begin(), PVLine.end());
-        size = vec.size();
-        MPI_Send(&size, 1, MPI_INT, 0, 42, MoveComm);
-        MPI_Send(vec.data(), size, MPI_CHAR, 0, 42, MoveComm);
+        int numLines = serializedInfo.size();
+        MPI_Send(&numLines, 1, MPI_INT, 0, 42, MoveComm);
+
+        for (const auto& serializedInfoOne : serializedInfo)
+        {
+            int size;
+            size = serializedInfoOne.size();
+            MPI_Send(&size, 1, MPI_INT, 0, 42, MoveComm);
+            MPI_Send(serializedInfoOne.data(), size, MPI_CHAR, 0, 42, MoveComm);
+        }
     }
     if (mi.rank != 0 && is_root())
     {
-        int               size;
-        std::vector<char> vec;
-        MPI_Recv(&size, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
-        vec.resize(size);
-        MPI_Recv(vec.data(), size, MPI_CHAR, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
-        PVLine.assign(vec.begin(), vec.end());
+        serializedInfo.clear();
+
+        int numLines;
+        MPI_Recv(&numLines, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+
+        for (int i = 0; i < numLines; ++i)
+        {
+            int               size;
+            std::vector<char> vec;
+            MPI_Recv(&size, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+            vec.resize(size);
+            MPI_Recv(vec.data(), size, MPI_CHAR, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+            serializedInfo.push_back(std::move(vec));
+        }
     }
 }
 

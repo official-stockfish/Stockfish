@@ -26,8 +26,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <initializer_list>
-#include <iostream>
-#include <sstream>
+#include <string>
 #include <utility>
 
 #include "cluster.h"
@@ -159,9 +158,8 @@ void Search::Worker::start_searching() {
     {
         rootMoves.emplace_back(Move::none());
         if (Cluster::is_root())
-            sync_cout << "info depth 0 score "
-                      << UCIEngine::to_score(rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW, rootPos)
-                      << sync_endl;
+            main_manager()->updates.onUpdateNoMoves(
+              {0, {rootPos.checkers() ? -VALUE_MATE : VALUE_DRAW, rootPos}});
     }
     else
     {
@@ -203,9 +201,6 @@ void Search::Worker::start_searching() {
         && rootMoves[0].pv[0] != Move::none())
         bestThread = threads.get_best_thread()->worker.get();
 
-    // Prepare PVLine and ponder move
-    std::string PVLine = main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth);
-
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
     main_manager()->bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
@@ -215,10 +210,22 @@ void Search::Worker::start_searching() {
         || bestThread->rootMoves[0].extract_ponder_from_tt(tt, rootPos))
         ponderMove = bestThread->rootMoves[0].pv[1];
 
+    // Temporarily switch out onUpdateFull to capture the PV information that we need,
+    // so that we can exchange it through MPI. (We may end up not actually printing
+    // it out.)
+    auto oldOnUpdateFull = std::move(main_manager()->updates.onUpdateFull);
+    std::vector<std::vector<char>> serializedInfo;  // One for each MultiPV.
+    main_manager()->updates.onUpdateFull = [&](const InfoFull& info) {
+        serializedInfo.push_back(info.serialize());
+    };
+    main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth);
+    assert(!serializedInfo.empty());
+    main_manager()->updates.onUpdateFull = std::move(oldOnUpdateFull);
+
     // Exchange info as needed
     Cluster::MoveInfo mi{bestMove.raw(), ponderMove.raw(), bestThread->completedDepth,
                          bestThread->rootMoves[0].score, Cluster::rank()};
-    Cluster::pick_moves(mi, PVLine);
+    Cluster::pick_moves(mi, serializedInfo);
 
     main_manager()->bestPreviousScore = static_cast<Value>(mi.score);
 
@@ -226,18 +233,23 @@ void Search::Worker::start_searching() {
     {
         // Send again PV info if we have a new best thread/rank
         if (bestThread != this || mi.rank != 0)
-            sync_cout << PVLine << sync_endl;
+        {
+            for (const auto& serializedInfoOne : serializedInfo)
+            {
+                Search::InfoFull info = Search::InfoFull::unserialize(serializedInfoOne);
+                main_manager()->updates.onUpdateFull(info);
+            }
+        }
 
         bestMove   = static_cast<Move>(mi.move);
         ponderMove = static_cast<Move>(mi.ponder);
 
+        std::string ponder;
         if (ponderMove != Move::none())
-            sync_cout << "bestmove " << UCIEngine::move(bestMove, rootPos.is_chess960())
-                      << " ponder " << UCIEngine::move(ponderMove, rootPos.is_chess960())
-                      << sync_endl;
-        else
-            sync_cout << "bestmove " << UCIEngine::move(bestMove, rootPos.is_chess960())
-                      << sync_endl;
+            ponder = UCIEngine::move(ponderMove, rootPos.is_chess960());
+
+        auto bestmove = UCIEngine::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+        main_manager()->updates.onBestmove(bestmove, ponder);
     }
 }
 
@@ -371,9 +383,9 @@ void Search::Worker::iterative_deepening() {
                 // the UI) before a re-search.
                 if (Cluster::is_root() && mainThread && multiPV == 1
                     && (bestValue <= alpha || bestValue >= beta)
-                    && mainThread->tm.elapsed(Cluster::nodes_searched(threads)) > 3000)
+                    && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
                 {
-                    sync_cout << main_manager()->pv(*this, threads, tt, rootDepth) << sync_endl;
+                    main_manager()->pv(*this, threads, tt, rootDepth);
                     Cluster::cluster_info(threads, rootDepth,
                                           mainThread->tm.elapsed(Cluster::nodes_searched(threads)));
                 }
@@ -414,7 +426,7 @@ void Search::Worker::iterative_deepening() {
                 // below pick a proven score/PV for this thread (from the previous iteration).
                 && !(threads.abortedSearch && rootMoves[0].uciScore <= VALUE_TB_LOSS_IN_MAX_PLY))
             {
-                sync_cout << main_manager()->pv(*this, threads, tt, rootDepth) << sync_endl;
+                main_manager()->pv(*this, threads, tt, rootDepth);
                 Cluster::cluster_info(threads, rootDepth,
                                       mainThread->tm.elapsed(Cluster::nodes_searched(threads)) + 1);
             }
@@ -969,10 +981,11 @@ moves_loop:  // When in check, search starts here
         ss->moveCount = ++moveCount;
 
         if (rootNode && Cluster::is_root() && is_mainthread()
-            && main_manager()->tm.elapsed(Cluster::nodes_searched(threads)) > 3000)
-            sync_cout << "info depth " << depth << " currmove "
-                      << UCIEngine::move(move, pos.is_chess960()) << " currmovenumber "
-                      << moveCount + thisThread->pvIdx << sync_endl;
+            && main_manager()->tm.elapsed(threads.nodes_searched()) > 3000)
+        {
+            main_manager()->updates.onIter(
+              {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
+        }
         if (PvNode)
             (ss + 1)->pv = nullptr;
 
@@ -1913,11 +1926,10 @@ void SearchManager::check_time(Search::Worker& worker) {
         worker.threads.stop = worker.threads.abortedSearch = true;
 }
 
-std::string SearchManager::pv(const Search::Worker&     worker,
-                              const ThreadPool&         threads,
-                              const TranspositionTable& tt,
-                              Depth                     depth) const {
-    std::stringstream ss;
+void SearchManager::pv(const Search::Worker&     worker,
+                       const ThreadPool&         threads,
+                       const TranspositionTable& tt,
+                       Depth                     depth) const {
 
     const auto  nodes     = Cluster::nodes_searched(threads);
     const auto& rootMoves = worker.rootMoves;
@@ -1943,29 +1955,39 @@ std::string SearchManager::pv(const Search::Worker&     worker,
         bool tb = worker.tbConfig.rootInTB && std::abs(v) <= VALUE_TB;
         v       = tb ? rootMoves[i].tbScore : v;
 
-        if (ss.rdbuf()->in_avail())  // Not at first line
-            ss << "\n";
+        std::string pv;
+        for (Move m : rootMoves[i].pv)
+            pv += UCIEngine::move(m, pos.is_chess960()) + " ";
 
-        ss << "info"
-           << " depth " << d << " seldepth " << rootMoves[i].selDepth << " multipv " << i + 1
-           << " score " << UCIEngine::to_score(v, pos);
+        // remove last whitespace
+        if (!pv.empty())
+            pv.pop_back();
 
-        if (worker.options["UCI_ShowWDL"])
-            ss << UCIEngine::wdl(v, pos);
+        auto wdl   = worker.options["UCI_ShowWDL"] ? UCIEngine::wdl(v, pos) : "";
+        auto bound = rootMoves[i].scoreLowerbound
+                     ? "lowerbound"
+                     : (rootMoves[i].scoreUpperbound ? "upperbound" : "");
+
+        InfoFull info;
+
+        info.depth    = d;
+        info.selDepth = rootMoves[i].selDepth;
+        info.multiPV  = i + 1;
+        info.score    = {v, pos};
+        info.wdl      = wdl;
 
         if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
-            ss << (rootMoves[i].scoreLowerbound
-                     ? " lowerbound"
-                     : (rootMoves[i].scoreUpperbound ? " upperbound" : ""));
+            info.bound = bound;
 
-        ss << " nodes " << nodes << " nps " << nodes * 1000 / time << " hashfull " << tt.hashfull()
-           << " tbhits " << tbHits << " time " << time << " pv";
+        info.timeMs   = time;
+        info.nodes    = nodes;
+        info.nps      = nodes * 1000 / time;
+        info.tbHits   = tbHits;
+        info.pv       = pv;
+        info.hashfull = tt.hashfull();
 
-        for (Move m : rootMoves[i].pv)
-            ss << " " << UCIEngine::move(m, pos.is_chess960());
+        updates.onUpdateFull(info);
     }
-
-    return ss.str();
 }
 
 // Called in case we have no ponder move before exiting the search,
@@ -1997,5 +2019,75 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     return pv.size() > 1;
 }
 
+std::vector<char> Search::InfoFull::serialize() const {
+    std::vector<char> vec;
+    vec.resize(sizeof(*this) + 3 * sizeof(size_t) + wdl.size() + bound.size() + pv.size());
+    char* ptr = vec.data();
+
+    // The base struct.
+    memcpy(ptr, this, sizeof(*this));
+    ptr += sizeof(*this);
+
+    // All string lengths.
+    size_t wdl_len = wdl.size();
+    memcpy(ptr, &wdl_len, sizeof(wdl_len));
+    ptr += sizeof(wdl_len);
+
+    size_t bound_len = bound.size();
+    memcpy(ptr, &bound_len, sizeof(bound_len));
+    ptr += sizeof(bound_len);
+
+    size_t pv_len = pv.size();
+    memcpy(ptr, &pv_len, sizeof(pv_len));
+    ptr += sizeof(pv_len);
+
+    // The string data itself.
+    memcpy(ptr, wdl.data(), wdl_len);
+    ptr += wdl_len;
+
+    memcpy(ptr, bound.data(), bound_len);
+    ptr += bound_len;
+
+    memcpy(ptr, pv.data(), pv_len);
+    ptr += pv_len;
+
+    assert(ptr == vec.data() + vec.size());
+    return vec;
+}
+
+InfoFull Search::InfoFull::unserialize(const std::vector<char>& buf) {
+    InfoFull    info;
+    const char* ptr = buf.data();
+
+    // The base struct.
+    memcpy(&info, ptr, sizeof(info));
+    ptr += sizeof(info);
+
+    // All string lengths.
+    size_t wdl_len;
+    memcpy(&wdl_len, ptr, sizeof(wdl_len));
+    ptr += sizeof(wdl_len);
+
+    size_t bound_len;
+    memcpy(&bound_len, ptr, sizeof(bound_len));
+    ptr += sizeof(bound_len);
+
+    size_t pv_len;
+    memcpy(&pv_len, ptr, sizeof(pv_len));
+    ptr += sizeof(pv_len);
+
+    // The string data itself.
+    info.wdl = std::string_view(ptr, wdl_len);
+    ptr += wdl_len;
+
+    info.bound = std::string_view(ptr, bound_len);
+    ptr += bound_len;
+
+    info.pv = std::string_view(ptr, pv_len);
+    ptr += pv_len;
+
+    assert(ptr == buf.data() + buf.size());
+    return info;
+}
 
 }  // namespace Stockfish

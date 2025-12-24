@@ -105,7 +105,7 @@ void        save(TranspositionTable&,
                  Move            m,
                  Value           ev,
                  uint8_t         generation8);
-void        pick_moves(MoveInfo& mi, std::string& PVLine);
+void        pick_moves(MoveInfo& mi, std::vector<std::vector<char>>& PVLine);
 void        ttSendRecvBuff_resize(size_t nThreads);
 uint64_t    nodes_searched(const ThreadPool&);
 uint64_t    tb_hits(const ThreadPool&);
@@ -139,7 +139,7 @@ inline void    save(TranspositionTable&,
                     uint8_t  generation8) {
     tte->save(k, v, PvHit, b, d, m, ev, generation8);
 }
-inline void pick_moves(MoveInfo&, std::string&) {}
+inline void pick_moves(MoveInfo&, std::vector<std::vector<char>>&) {}
 inline void ttSendRecvBuff_resize(size_t) {}
 uint64_t    nodes_searched(const ThreadPool&);
 uint64_t    tb_hits(const ThreadPool&);

@@ -18,21 +18,15 @@
 
 #include "engine.h"
 
-#include <algorithm>
-#include <cassert>
-#include <cctype>
-#include <cmath>
-#include <cstdint>
-#include <cstdlib>
 #include <deque>
 #include <memory>
-#include <optional>
-#include <sstream>
+#include <ostream>
+#include <string_view>
+#include <utility>
 #include <vector>
 
-#include "benchmark.h"
 #include "evaluate.h"
-#include "movegen.h"
+#include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_common.h"
 #include "perft.h"
@@ -40,6 +34,7 @@
 #include "search.h"
 #include "syzygy/tbprobe.h"
 #include "types.h"
+#include "uci.h"
 #include "ucioption.h"
 
 namespace Stockfish {
@@ -54,7 +49,6 @@ Engine::Engine(std::string path) :
     networks(NN::Networks(
       NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
       NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
-    Tune::init(options);
     pos.set(StartFEN, false, &states->back());
 }
 
@@ -77,8 +71,24 @@ void Engine::search_clear() {
     tt.clear(options["Threads"]);
     threads.clear();
 
-    // @TODO wont work multiple instances
+    // @TODO wont work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
+}
+
+void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {
+    updateContext.onUpdateNoMoves = std::move(f);
+}
+
+void Engine::set_on_update_full(std::function<void(const Engine::InfoFull&)>&& f) {
+    updateContext.onUpdateFull = std::move(f);
+}
+
+void Engine::set_on_iter(std::function<void(const Engine::InfoIter&)>&& f) {
+    updateContext.onIter = std::move(f);
+}
+
+void Engine::set_on_bestmove(std::function<void(std::string_view, std::string_view)>&& f) {
+    updateContext.onBestmove = std::move(f);
 }
 
 void Engine::wait_for_search_finished() { threads.main_thread()->wait_for_search_finished(); }
@@ -102,7 +112,7 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
 
 // modifiers
 
-void Engine::resize_threads() { threads.set({options, threads, tt, networks}); }
+void Engine::resize_threads() { threads.set({options, threads, tt, networks}, updateContext); }
 
 void Engine::set_tt_size(size_t mb) {
     wait_for_search_finished();
@@ -113,7 +123,7 @@ void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
 
 // network related
 
-void Engine::verify_networks() {
+void Engine::verify_networks() const {
     networks.big.verify(options["EvalFile"]);
     networks.small.verify(options["EvalFileSmall"]);
 }
@@ -138,9 +148,7 @@ void Engine::save_network(const std::pair<std::optional<std::string>, std::strin
 
 OptionsMap& Engine::get_options() { return options; }
 
-uint64_t Engine::nodes_searched() const { return threads.nodes_searched(); }
-
-void Engine::trace_eval() {
+void Engine::trace_eval() const {
     StateListPtr trace_states(new std::deque<StateInfo>(1));
     Position     p;
     p.set(pos.fen(), options["UCI_Chess960"], &trace_states->back());
