@@ -382,12 +382,10 @@ void Search::Worker::iterative_deepening() {
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
                 if (Cluster::is_root() && mainThread && multiPV == 1
-                    && (bestValue <= alpha || bestValue >= beta)
-                    && mainThread->tm.elapsed(threads.nodes_searched()) > 3000)
+                    && (bestValue <= alpha || bestValue >= beta) && elapsed() > 3000)
                 {
                     main_manager()->pv(*this, threads, tt, rootDepth);
-                    Cluster::cluster_info(threads, rootDepth,
-                                          mainThread->tm.elapsed(Cluster::nodes_searched(threads)));
+                    Cluster::cluster_info(threads, rootDepth, elapsed());
                 }
 
                 // In case of failing low/high increase aspiration window and
@@ -418,8 +416,7 @@ void Search::Worker::iterative_deepening() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (Cluster::is_root() && mainThread
-                && (threads.stop || pvIdx + 1 == multiPV
-                    || mainThread->tm.elapsed(Cluster::nodes_searched(threads)) > 3000)
+                && (threads.stop || pvIdx + 1 == multiPV || elapsed() > 3000)
                 // A thread that aborted search can have mated-in/TB-loss PV and score
                 // that cannot be trusted, i.e. it can be delayed or refuted if we would have
                 // had time to fully search other root-moves. Thus we suppress this output and
@@ -427,8 +424,7 @@ void Search::Worker::iterative_deepening() {
                 && !(threads.abortedSearch && rootMoves[0].uciScore <= VALUE_TB_LOSS_IN_MAX_PLY))
             {
                 main_manager()->pv(*this, threads, tt, rootDepth);
-                Cluster::cluster_info(threads, rootDepth,
-                                      mainThread->tm.elapsed(Cluster::nodes_searched(threads)) + 1);
+                Cluster::cluster_info(threads, rootDepth, elapsed() + 1);
             }
         }
 
@@ -499,13 +495,14 @@ void Search::Worker::iterative_deepening() {
             if (rootMoves.size() == 1)
                 totalTime = std::min(500.0, totalTime);
 
-            if (completedDepth >= 10 && nodesEffort >= 97
-                && mainThread->tm.elapsed(Cluster::nodes_searched(threads)) > totalTime * 0.739
+            auto elapsedTime = elapsed();
+
+            if (completedDepth >= 10 && nodesEffort >= 97 && elapsedTime > totalTime * 0.739
                 && !mainThread->ponder)
                 threads.stop = true;
 
             // Stop the search if we have exceeded the totalTime
-            if (mainThread->tm.elapsed(Cluster::nodes_searched(threads)) > totalTime)
+            if (elapsedTime > totalTime)
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
@@ -515,9 +512,7 @@ void Search::Worker::iterative_deepening() {
                     threads.stop = true;
             }
             else
-                threads.increaseDepth =
-                  mainThread->ponder
-                  || mainThread->tm.elapsed(Cluster::nodes_searched(threads)) <= totalTime * 0.506;
+                threads.increaseDepth = mainThread->ponder || elapsedTime <= totalTime * 0.506;
         }
 
         mainThread->iterValue[iterIdx] = bestValue;
@@ -980,8 +975,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && Cluster::is_root() && is_mainthread()
-            && main_manager()->tm.elapsed(threads.nodes_searched()) > 3000)
+        if (rootNode && Cluster::is_root() && is_mainthread() && elapsed() > 3000)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
@@ -1685,6 +1679,11 @@ Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
     return (reductionScale + 1123 - delta * 832 / rootDelta) / 1024 + (!i && reductionScale > 1025);
 }
 
+TimePoint Search::Worker::elapsed() const {
+    return main_manager()->tm.elapsed([this]() { return Cluster::nodes_searched(threads); });
+}
+
+
 namespace {
 // Adjusts a mate or TB score from "plies to mate from the root"
 // to "plies to mate from the current position". Standard scores are unchanged.
@@ -1899,7 +1898,7 @@ void SearchManager::check_time(Search::Worker& worker) {
 
     static TimePoint lastInfoTime = now();
 
-    TimePoint elapsed = tm.elapsed(Cluster::nodes_searched(worker.threads));
+    TimePoint elapsed = tm.elapsed([&worker]() { return Cluster::nodes_searched(worker.threads); });
     TimePoint tick    = worker.limits.startTime + elapsed;
 
     if (tick - lastInfoTime >= 1000)
@@ -1935,7 +1934,7 @@ void SearchManager::pv(const Search::Worker&     worker,
     const auto& rootMoves = worker.rootMoves;
     const auto& pos       = worker.rootPos;
     size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed(nodes) + 1;
+    TimePoint   time      = tm.elapsed([nodes]() { return nodes; }) + 1;
     size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
     uint64_t tbHits = Cluster::tb_hits(threads) + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 

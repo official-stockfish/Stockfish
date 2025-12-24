@@ -30,9 +30,6 @@ namespace Stockfish {
 
 TimePoint TimeManagement::optimum() const { return optimumTime; }
 TimePoint TimeManagement::maximum() const { return maximumTime; }
-TimePoint TimeManagement::elapsed(size_t nodes) const {
-    return useNodesTime ? TimePoint(nodes) : now() - startTime;
-}
 
 void TimeManagement::clear() {
     availableNodes = 0;  // When in 'nodes as time' mode
