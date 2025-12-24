@@ -75,7 +75,7 @@ constexpr int futility_move_count(bool improving, Depth depth) {
 // Add correctionHistory value to raw staticEval and guarantee evaluation does not hit the tablebase range
 Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
     auto cv = w.correctionHistory[pos.side_to_move()][pawn_structure_index<Correction>(pos)];
-    v += cv * std::abs(cv) / 4990;
+    v += cv / 10;
     return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
@@ -602,7 +602,7 @@ Value Search::Worker::search(
     bool     givesCheck, improving, priorCapture, opponentWorsening;
     bool     capture, moveCountPruning, ttCapture;
     Piece    movedPiece;
-    int      moveCount, captureCount, quietCount, futilityMargin;
+    int      moveCount, captureCount, quietCount;
     Bound    singularBound;
 
     // Step 1. Initialize node
@@ -810,21 +810,22 @@ Value Search::Worker::search(
 
     opponentWorsening = ss->staticEval + (ss - 1)->staticEval > 2;
 
-    futilityMargin = futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening);
-
     // Step 7. Razoring (~1 Elo)
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (eval < alpha - 465 - futilityMargin * depth * 33 / 32)
+    if (eval < alpha - 512 - 293 * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
-        if (value < alpha)
+        if (value < alpha && std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY)
             return value;
     }
 
     // Step 8. Futility pruning: child node (~40 Elo)
     // The depth condition is important for mate finding.
-    if (!ss->ttPv && depth < 13 && eval - futilityMargin - (ss - 1)->statScore / 263 >= beta
+    if (!ss->ttPv && depth < 13
+        && eval - futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening)
+               - (ss - 1)->statScore / 263
+             >= beta
         && eval >= beta && eval < VALUE_TB_WIN_IN_MAX_PLY && (!ttMove || ttCapture))
         return beta > VALUE_TB_LOSS_IN_MAX_PLY ? beta + (eval - beta) / 3 : eval;
 
@@ -852,16 +853,7 @@ Value Search::Worker::search(
         if (nullValue >= beta && nullValue < VALUE_TB_WIN_IN_MAX_PLY)
         {
             if (thisThread->nmpMinPly || depth < 16)
-            {
-                if (nullValue >= ss->staticEval)
-                {
-                    auto bonus = std::min(int(nullValue - ss->staticEval) * depth / 32,
-                                          CORRECTION_HISTORY_LIMIT / 16);
-                    thisThread->correctionHistory[us][pawn_structure_index<Correction>(pos)]
-                      << bonus;
-                }
                 return nullValue;
-            }
 
             assert(!thisThread->nmpMinPly);  // Recursive verification is not allowed
 
@@ -1630,7 +1622,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
 
                 // If static exchange evaluation is much worse than what is needed to not
                 // fall below alpha we can prune this move.
-                if (futilityBase > alpha && !pos.see_ge(move, (alpha - futilityBase) * 4))
+                if (futilityBase > alpha && !pos.see_ge(move, (alpha - futilityBase) * 2 - 30))
                 {
                     bestValue = alpha;
                     continue;
