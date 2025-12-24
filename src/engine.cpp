@@ -133,6 +133,11 @@ void Engine::set_numa_config_from_option(const std::string& o) {
     {
         numaContext.set_numa_config(NumaConfig::from_system());
     }
+    else if (o == "hardware")
+    {
+        // Don't respect affinity set in the system.
+        numaContext.set_numa_config(NumaConfig::from_system(false));
+    }
     else if (o == "none")
     {
         numaContext.set_numa_config(NumaConfig{});

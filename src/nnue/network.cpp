@@ -18,7 +18,6 @@
 
 #include "network.h"
 
-#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -207,15 +206,13 @@ bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename
 
 
 template<typename Arch, typename Transformer>
-Value Network<Arch, Transformer>::evaluate(const Position&                         pos,
-                                           AccumulatorCaches::Cache<FTDimensions>* cache,
-                                           bool                                    adjusted,
-                                           int* complexity) const {
+NetworkOutput
+Network<Arch, Transformer>::evaluate(const Position&                         pos,
+                                     AccumulatorCaches::Cache<FTDimensions>* cache) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
 
     constexpr uint64_t alignment = CacheLineSize;
-    constexpr int      delta     = 24;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
     TransformedFeatureType
@@ -233,16 +230,7 @@ Value Network<Arch, Transformer>::evaluate(const Position&                      
     const int  bucket     = (pos.count<ALL_PIECES>() - 1) / 4;
     const auto psqt       = featureTransformer->transform(pos, cache, transformedFeatures, bucket);
     const auto positional = network[bucket].propagate(transformedFeatures);
-
-    if (complexity)
-        *complexity = std::abs(psqt - positional) / OutputScale;
-
-    // Give more value to positional evaluation when adjusted flag is set
-    if (adjusted)
-        return static_cast<Value>(((1024 - delta) * psqt + (1024 + delta) * positional)
-                                  / (1024 * OutputScale));
-    else
-        return static_cast<Value>((psqt + positional) / OutputScale);
+    return {static_cast<Value>(psqt / OutputScale), static_cast<Value>(positional / OutputScale)};
 }
 
 
