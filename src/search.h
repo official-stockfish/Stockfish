@@ -308,6 +308,7 @@ class Worker {
     }
 
     TimePoint elapsed() const;
+    TimePoint elapsed_time() const;
 
     LimitsType limits;
 

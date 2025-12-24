@@ -197,8 +197,8 @@ void Search::Worker::start_searching() {
     // When playing in 'nodes as time' mode, subtract the searched nodes from
     // the available ones before exiting.
     if (limits.npmsec)
-        main_manager()->tm.advance_nodes_time(limits.inc[rootPos.side_to_move()]
-                                              - Cluster::nodes_searched(threads));
+        main_manager()->tm.advance_nodes_time(Cluster::nodes_searched(threads)
+                                              - limits.inc[rootPos.side_to_move()]);
 
     Worker* bestThread = this;
     Skill   skill =
@@ -389,7 +389,7 @@ void Search::Worker::iterative_deepening() {
                 // When failing high/low give some update (without cluttering
                 // the UI) before a re-search.
                 if (Cluster::is_root() && mainThread && multiPV == 1
-                    && (bestValue <= alpha || bestValue >= beta) && elapsed() > 3000)
+                    && (bestValue <= alpha || bestValue >= beta) && elapsed_time() > 3000)
                 {
                     main_manager()->pv(*this, threads, tt, rootDepth);
                     Cluster::cluster_info(threads, rootDepth, elapsed());
@@ -423,7 +423,7 @@ void Search::Worker::iterative_deepening() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (Cluster::is_root() && mainThread
-                && (threads.stop || pvIdx + 1 == multiPV || elapsed() > 3000)
+                && (threads.stop || pvIdx + 1 == multiPV || elapsed_time() > 3000)
                 // A thread that aborted search can have mated-in/TB-loss PV and score
                 // that cannot be trusted, i.e. it can be delayed or refuted if we would have
                 // had time to fully search other root-moves. Thus we suppress this output and
@@ -984,7 +984,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && Cluster::is_root() && is_mainthread() && elapsed() > 3000)
+        if (rootNode && Cluster::is_root() && is_mainthread() && elapsed_time() > 3000)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
@@ -1701,9 +1701,19 @@ Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) {
     return (reductionScale + 1318 - delta * 760 / rootDelta) / 1024 + (!i && reductionScale > 1066);
 }
 
+// elapsed() returns the time elapsed since the search started. If the
+// 'nodestime' option is enabled, it will return the count of nodes searched
+// instead. This function is called to check whether the search should be
+// stopped based on predefined thresholds like time limits or nodes searched.
+//
+// elapsed_time() returns the actual time elapsed since the start of the search.
+// This function is intended for use only when printing PV outputs, and not used
+// for making decisions within the search algorithm itself.
 TimePoint Search::Worker::elapsed() const {
     return main_manager()->tm.elapsed([this]() { return Cluster::nodes_searched(threads); });
 }
+
+TimePoint Search::Worker::elapsed_time() const { return main_manager()->tm.elapsed_time(); }
 
 
 namespace {
@@ -1958,7 +1968,7 @@ void SearchManager::pv(const Search::Worker&     worker,
     const auto& rootMoves = worker.rootMoves;
     const auto& pos       = worker.rootPos;
     size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed([nodes]() { return nodes; }) + 1;
+    TimePoint   time      = tm.elapsed_time() + 1;
     size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
     uint64_t tbHits = Cluster::tb_hits(threads) + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
