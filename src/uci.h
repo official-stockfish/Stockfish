@@ -46,9 +46,10 @@ class UCIEngine {
     static std::string square(Square s);
     static std::string move(Move m, bool chess960);
     static std::string wdl(Value v, const Position& pos);
+    static std::string to_lower(std::string str);
     static Move        to_move(const Position& pos, std::string str);
 
-    static Search::LimitsType parse_limits(const Position& pos, std::istream& is);
+    static Search::LimitsType parse_limits(std::istream& is);
 
     auto& engine_options() { return engine.get_options(); }
 
@@ -56,9 +57,9 @@ class UCIEngine {
     Engine      engine;
     CommandLine cli;
 
-    void go(Position& pos, std::istringstream& is);
-    void bench(Position& pos, std::istream& args);
-    void position(Position& pos, std::istringstream& is);
+    void go(std::istringstream& is);
+    void bench(std::istream& args);
+    void position(std::istringstream& is);
     void setoption(std::istringstream& is);
 
     static void on_update_no_moves(const Engine::InfoShort& info);

@@ -23,8 +23,6 @@
 #include <iostream>
 #include <vector>
 
-#include "position.h"
-
 namespace {
 
 // clang-format off
@@ -108,7 +106,7 @@ namespace Stockfish {
 // bench 64 1 100000 default nodes  : search default positions for 100K nodes each
 // bench 64 4 5000 current movetime : search current position with 4 threads for 5 sec
 // bench 16 1 5 blah perft          : run a perft 5 on positions in file "blah"
-std::vector<std::string> setup_bench(const Position& current, std::istream& is) {
+std::vector<std::string> setup_bench(const std::string& currentFen, std::istream& is) {
 
     std::vector<std::string> fens, list;
     std::string              go, token;
@@ -126,7 +124,7 @@ std::vector<std::string> setup_bench(const Position& current, std::istream& is) 
         fens = Defaults;
 
     else if (fenFile == "current")
-        fens.push_back(current.fen());
+        fens.push_back(currentFen);
 
     else
     {

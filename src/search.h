@@ -26,9 +26,10 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <string_view>
 #include <vector>
-#include <mutex>
 
 #include "cluster.h"
 #include "misc.h"
@@ -123,11 +124,11 @@ struct LimitsType {
 
     bool use_time_management() const { return Cluster::is_root() && (time[WHITE] || time[BLACK]); }
 
-    std::vector<Move> searchmoves;
-    TimePoint         time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
-    int               movestogo, depth, mate, perft, infinite;
-    uint64_t          nodes;
-    bool              ponderMode;
+    std::vector<std::string> searchmoves;
+    TimePoint                time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
+    int                      movestogo, depth, mate, perft, infinite;
+    uint64_t                 nodes;
+    bool                     ponderMode;
 };
 
 
