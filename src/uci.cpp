@@ -223,7 +223,11 @@ Search::LimitsType UCIEngine::parse_limits(std::istream& is) {
 void UCIEngine::go(std::istringstream& is) {
 
     Search::LimitsType limits = parse_limits(is);
-    engine.go(limits);
+
+    if (limits.perft)
+        perft(limits);
+    else
+        engine.go(limits);
 }
 
 void UCIEngine::bench(std::istream& args) {
@@ -237,7 +241,7 @@ void UCIEngine::bench(std::istream& args) {
         on_update_full(i, options["UCI_ShowWDL"]);
     });
 
-    std::vector<std::string> list = setup_bench(engine.fen(), args);
+    std::vector<std::string> list = Benchmark::setup_bench(engine.fen(), args);
 
     num = count_if(list.begin(), list.end(),
                    [](const std::string& s) { return s.find("go ") == 0 || s.find("eval") == 0; });
@@ -256,8 +260,16 @@ void UCIEngine::bench(std::istream& args) {
                           << std::endl;
             if (token == "go")
             {
-                go(is);
-                engine.wait_for_search_finished();
+                Search::LimitsType limits = parse_limits(is);
+
+                if (limits.perft)
+                    nodes = perft(limits);
+                else
+                {
+                    engine.go(limits);
+                    engine.wait_for_search_finished();
+                }
+
                 nodes += nodesSearched;
                 nodesSearched = 0;
             }
@@ -292,6 +304,13 @@ void UCIEngine::bench(std::istream& args) {
 void UCIEngine::setoption(std::istringstream& is) {
     engine.wait_for_search_finished();
     engine.get_options().setoption(is);
+}
+
+std::uint64_t UCIEngine::perft(const Search::LimitsType& limits) {
+    auto nodes = engine.perft(engine.fen(), limits.perft, engine.get_options()["UCI_Chess960"]);
+    if (Cluster::is_root())
+        sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
+    return nodes;
 }
 
 void UCIEngine::position(std::istringstream& is) {

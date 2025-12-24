@@ -22,6 +22,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <cstdint>
 
 #include "engine.h"
 #include "misc.h"
@@ -57,10 +58,11 @@ class UCIEngine {
     Engine      engine;
     CommandLine cli;
 
-    void go(std::istringstream& is);
-    void bench(std::istream& args);
-    void position(std::istringstream& is);
-    void setoption(std::istringstream& is);
+    void          go(std::istringstream& is);
+    void          bench(std::istream& args);
+    void          position(std::istringstream& is);
+    void          setoption(std::istringstream& is);
+    std::uint64_t perft(const Search::LimitsType&);
 
     static void on_update_no_moves(const Engine::InfoShort& info);
     static void on_update_full(const Engine::InfoFull& info, bool showWDL);
