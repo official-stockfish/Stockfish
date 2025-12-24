@@ -253,8 +253,12 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
         exit(EXIT_FAILURE);
     }
 
+    size_t size = sizeof(*featureTransformer) + sizeof(*network) * LayerStacks;
     if (Cluster::is_root())
-        sync_cout << "info string NNUE evaluation using " << evalfilePath << sync_endl;
+        sync_cout << "info string NNUE evaluation using " << evalfilePath << " ("
+                  << size / (1024 * 1024) << "MiB, (" << featureTransformer->InputDimensions << ", "
+                  << network[0]->TransformedFeatureDimensions << ", " << network[0]->FC_0_OUTPUTS
+                  << ", " << network[0]->FC_1_OUTPUTS << ", 1))" << sync_endl;
 }
 
 
