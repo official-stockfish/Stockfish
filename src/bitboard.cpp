@@ -124,8 +124,14 @@ Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
     for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
     {
         Square s = sq;
-        while (safe_destination(s, d) && !(occupied & s))
+        while (safe_destination(s, d))
+        {
             attacks |= (s += d);
+            if (occupied & s)
+            {
+                break;
+            }
+        }
     }
 
     return attacks;
