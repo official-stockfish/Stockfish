@@ -40,7 +40,7 @@ std::string compiler_info();
 // Preloads the given address in L1/L2 cache. This is a non-blocking
 // function that doesn't stall the CPU waiting for data to be loaded from memory,
 // which can be quite slow.
-void prefetch(void* addr);
+void prefetch(const void* addr);
 
 void  start_logger(const std::string& fname);
 void* std_aligned_alloc(size_t alignment, size_t size);
