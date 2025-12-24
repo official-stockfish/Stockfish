@@ -156,8 +156,8 @@ dotprod = no
 arm_version = 0
 STRIP = strip
 
-ifneq ($(shell which clang-format-17 2> /dev/null),)
-	CLANG-FORMAT = clang-format-17
+ifneq ($(shell which clang-format-18 2> /dev/null),)
+	CLANG-FORMAT = clang-format-18
 else
 	CLANG-FORMAT = clang-format
 endif

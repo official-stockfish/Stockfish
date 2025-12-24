@@ -59,7 +59,7 @@ discussion._
 
 Changes to Stockfish C++ code should respect our coding style defined by
 [.clang-format](.clang-format). You can format your changes by running
-`make format`. This requires clang-format version 17 to be installed on your system.
+`make format`. This requires clang-format version 18 to be installed on your system.
 
 ## Navigate
 

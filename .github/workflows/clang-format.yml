@@ -25,7 +25,7 @@ jobs:
         id: clang-format
         continue-on-error: true
         with:
-          clang-format-version: "17"
+          clang-format-version: "18"
           exclude-regex: "incbin"
 
       - name: Comment on PR
@@ -33,9 +33,9 @@ jobs:
         uses: thollander/actions-comment-pull-request@fabd468d3a1a0b97feee5f6b9e499eab0dd903f6 # @v2.5.0
         with:
           message: |
-            clang-format 17 needs to be run on this PR.
+            clang-format 18 needs to be run on this PR.
             If you do not have clang-format installed, the maintainer will run it when merging.
-            For the exact version please see https://packages.ubuntu.com/mantic/clang-format-17.
+            For the exact version please see https://packages.ubuntu.com/noble/clang-format-18.
 
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
           comment_tag: execution
