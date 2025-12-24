@@ -35,7 +35,7 @@
     #include "search.h"
 
 namespace Stockfish {
-namespace Cluster {
+namespace Distributed {
 
 // Total number of ranks and rank within the communicator
 static int world_rank = MPI_PROC_NULL;
@@ -297,7 +297,7 @@ void cluster_info(const ThreadPool& threads, Depth depth, TimePoint elapsed) {
 void save(TranspositionTable& TT,
           ThreadPool&         threads,
           Search::Worker*     thread,
-          TTEntry*            tte,
+          TTWriter            ttWriter,
           Key                 k,
           Value               v,
           bool                PvHit,
@@ -308,7 +308,7 @@ void save(TranspositionTable& TT,
           uint8_t             generation8) {
 
     // Standard save to the TT
-    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+    ttWriter.write(k, v, PvHit, b, d, m, ev, generation8);
 
     // If the entry is of sufficient depth to be worth communicating, take action.
     if (d > 3)
@@ -321,7 +321,7 @@ void save(TranspositionTable& TT,
         // prepares the send buffer.
         {
             std::lock_guard<std::mutex> lk(thread->ttCache.mutex);
-            thread->ttCache.buffer.replace(KeyedTTEntry(k, *tte));
+            thread->ttCache.buffer.replace(KeyedTTEntry(k, TTData(m, v, ev, d, b, PvHit)));
             ++TTCacheCounter;
         }
 
@@ -364,13 +364,11 @@ void save(TranspositionTable& TT,
                         for (size_t i = irank * recvBuffPerRankSize;
                              i < (irank + 1) * recvBuffPerRankSize; ++i)
                         {
-                            auto&&   e = TTSendRecvBuffs[sendRecvPosted % 2][i];
-                            bool     found;
-                            TTEntry* replace_tte;
-                            replace_tte = TT.probe(e.first, found);
-                            replace_tte->save(e.first, e.second.value(), e.second.is_pv(),
-                                              e.second.bound(), e.second.depth(), e.second.move(),
-                                              e.second.eval(), TT.generation());
+                            auto&& e = TTSendRecvBuffs[sendRecvPosted % 2][i];
+                            auto [ttHit, ttData, ttWriterForRecvd] = TT.probe(e.first);
+                            ttWriterForRecvd.write(e.first, e.second.value, e.second.is_pv,
+                                                   e.second.bound, e.second.depth, e.second.move,
+                                                   e.second.eval, TT.generation());
                         }
                 }
 
@@ -478,7 +476,7 @@ uint64_t TT_saves(const ThreadPool& threads) { return TTsavesOthers + threads.TT
     #include "thread.h"
 
 namespace Stockfish {
-namespace Cluster {
+namespace Distributed {
 
 uint64_t nodes_searched(const ThreadPool& threads) { return threads.nodes_searched(); }
 

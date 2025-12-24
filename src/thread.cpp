@@ -296,7 +296,7 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
     for (auto&& th : threads)
         th->wait_for_search_finished();
 
-    Cluster::signals_init();
+    Distributed::signals_init();
 
     main_thread()->start_searching();
 }

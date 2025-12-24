@@ -164,7 +164,7 @@ void Engine::set_tt_size(size_t mb) {
     tt.resize(mb, threads);
 
     // Adjust cluster buffers
-    Cluster::ttSendRecvBuff_resize(threads.num_threads());
+    Distributed::ttSendRecvBuff_resize(threads.num_threads());
 }
 
 void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }

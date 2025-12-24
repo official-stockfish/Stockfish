@@ -29,8 +29,8 @@ using namespace Stockfish;
 
 int main(int argc, char* argv[]) {
 
-    Cluster::init();
-    if (Cluster::is_root())
+    Distributed::init();
+    if (Distributed::is_root())
         std::cout << engine_info() << std::endl;
 
     Bitboards::init();
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
 
     uci.loop();
 
-    Cluster::finalize();
+    Distributed::finalize();
 
     return 0;
 }

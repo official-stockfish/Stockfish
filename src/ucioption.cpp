@@ -52,7 +52,7 @@ void OptionsMap::setoption(std::istringstream& is) {
 
     if (options_map.count(name))
         options_map[name] = value;
-    else if (Cluster::is_root())
+    else if (Distributed::is_root())
         sync_cout << "No such option: " << name << sync_endl;
 }
 

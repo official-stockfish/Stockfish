@@ -114,8 +114,8 @@ void UCIEngine::loop() {
     do
     {
         if (cli.argc == 1
-            && !Cluster::getline(std::cin,
-                                 cmd))  // Wait for an input or an end-of-file (EOF) indication
+            && !Distributed::getline(std::cin,
+                                     cmd))  // Wait for an input or an end-of-file (EOF) indication
             cmd = "quit";
 
         std::istringstream is(cmd);
@@ -133,7 +133,7 @@ void UCIEngine::loop() {
         else if (token == "ponderhit")
             engine.set_ponderhit(false);
 
-        else if (token == "uci" && Cluster::is_root())
+        else if (token == "uci" && Distributed::is_root())
         {
             sync_cout << "id name " << engine_info(true) << "\n"
                       << engine.get_options() << sync_endl;
@@ -152,7 +152,7 @@ void UCIEngine::loop() {
             position(is);
         else if (token == "ucinewgame")
             engine.search_clear();
-        else if (token == "isready" && Cluster::is_root())
+        else if (token == "isready" && Distributed::is_root())
             sync_cout << "readyok" << sync_endl;
 
         // Add custom non-UCI commands, mainly for debugging purposes.
@@ -161,13 +161,13 @@ void UCIEngine::loop() {
             engine.flip();
         else if (token == "bench")
             bench(is);
-        else if (token == "d" && Cluster::is_root())
+        else if (token == "d" && Distributed::is_root())
             sync_cout << engine.visualize() << sync_endl;
-        else if (token == "eval" && Cluster::is_root())
+        else if (token == "eval" && Distributed::is_root())
             engine.trace_eval();
-        else if (token == "compiler" && Cluster::is_root())
+        else if (token == "compiler" && Distributed::is_root())
             sync_cout << compiler_info() << sync_endl;
-        else if (token == "export_net" && Cluster::is_root())
+        else if (token == "export_net" && Distributed::is_root())
         {
             std::pair<std::optional<std::string>, std::string> files[2];
 
@@ -181,7 +181,7 @@ void UCIEngine::loop() {
         }
         else if ((token == "--help" || token == "help" || token == "--license"
                   || token == "license")
-                 && Cluster::is_root())
+                 && Distributed::is_root())
             sync_cout
               << "\nStockfish is a powerful chess engine for playing and analyzing."
                  "\nIt is released as free software licensed under the GNU GPLv3 License."
@@ -190,7 +190,7 @@ void UCIEngine::loop() {
                  "\nFor any further information, visit https://github.com/official-stockfish/Stockfish#readme"
                  "\nor read the corresponding README.md and Copying.txt files distributed along with this program.\n"
               << sync_endl;
-        else if (!token.empty() && token[0] != '#' && Cluster::is_root())
+        else if (!token.empty() && token[0] != '#' && Distributed::is_root())
             sync_cout << "Unknown command: '" << cmd << "'. Type help for more information."
                       << sync_endl;
 
@@ -293,7 +293,7 @@ void UCIEngine::bench(std::istream& args) {
 
         if (token == "go" || token == "eval")
         {
-            if (Cluster::is_root())
+            if (Distributed::is_root())
                 std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
                           << std::endl;
             if (token == "go")
@@ -311,7 +311,7 @@ void UCIEngine::bench(std::istream& args) {
                 nodes += nodesSearched;
                 nodesSearched = 0;
             }
-            else if (Cluster::is_root())
+            else if (Distributed::is_root())
                 engine.trace_eval();
         }
         else if (token == "setoption")
@@ -329,7 +329,7 @@ void UCIEngine::bench(std::istream& args) {
 
     dbg_print();
 
-    if (Cluster::is_root())
+    if (Distributed::is_root())
         std::cerr << "\n==========================="    //
                   << "\nTotal time (ms) : " << elapsed  //
                   << "\nNodes searched  : " << nodes    //
@@ -347,7 +347,7 @@ void UCIEngine::setoption(std::istringstream& is) {
 
 std::uint64_t UCIEngine::perft(const Search::LimitsType& limits) {
     auto nodes = engine.perft(engine.fen(), limits.perft, engine.get_options()["UCI_Chess960"]);
-    if (Cluster::is_root())
+    if (Distributed::is_root())
         sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
     return nodes;
 }

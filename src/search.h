@@ -119,7 +119,9 @@ struct LimitsType {
         ponderMode                                  = false;
     }
 
-    bool use_time_management() const { return Cluster::is_root() && (time[WHITE] || time[BLACK]); }
+    bool use_time_management() const {
+        return Distributed::is_root() && (time[WHITE] || time[BLACK]);
+    }
 
     std::vector<std::string> searchmoves;
     TimePoint                time[COLOR_NB], inc[COLOR_NB], npmsec, movetime, startTime;
@@ -266,25 +268,25 @@ class Worker {
 
 #ifdef USE_MPI
     struct {
-        std::mutex                             mutex;
-        Cluster::TTCache<Cluster::TTCacheSize> buffer = {};
+        std::mutex                                     mutex;
+        Distributed::TTCache<Distributed::TTCacheSize> buffer = {};
     } ttCache;
 #endif
 
     std::atomic<uint64_t> TTsaves;
 
-    friend void Cluster::save(TranspositionTable&,
-                              ThreadPool&,
-                              Search::Worker*,
-                              TTEntry* tte,
-                              Key      k,
-                              Value    v,
-                              bool     PvHit,
-                              Bound    b,
-                              Depth    d,
-                              Move     m,
-                              Value    ev,
-                              uint8_t  generation8);
+    friend void Distributed::save(TranspositionTable&,
+                                  ThreadPool&,
+                                  Search::Worker*,
+                                  TTWriter ttWriter,
+                                  Key      k,
+                                  Value    v,
+                                  bool     PvHit,
+                                  Bound    b,
+                                  Depth    d,
+                                  Move     m,
+                                  Value    ev,
+                                  uint8_t  generation8);
 
    private:
     void iterative_deepening();

@@ -1467,7 +1467,7 @@ void Tablebases::init(const std::string& paths) {
         }
     }
 
-    if (Cluster::is_root())
+    if (Distributed::is_root())
         sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
 }
 
