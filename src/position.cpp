@@ -680,11 +680,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
     ++st->pliesFromNull;
 
     // Used by NNUE
-    st->accumulatorBig.computed[WHITE]             = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorBig.computedPSQT[WHITE]       = st->accumulatorBig.computedPSQT[BLACK] =
-        st->accumulatorSmall.computed[WHITE]       = st->accumulatorSmall.computed[BLACK] =
-          st->accumulatorSmall.computedPSQT[WHITE] = st->accumulatorSmall.computedPSQT[BLACK] =
-            false;
+    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
+      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     auto& dp     = st->dirtyPiece;
     dp.dirty_num = 1;
@@ -968,13 +965,10 @@ void Position::do_null_move(StateInfo& newSt, TranspositionTable& tt) {
     newSt.previous = st;
     st             = &newSt;
 
-    st->dirtyPiece.dirty_num                 = 0;
-    st->dirtyPiece.piece[0]                  = NO_PIECE;  // Avoid checks in UpdateAccumulator()
-    st->accumulatorBig.computed[WHITE]       = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorBig.computedPSQT[WHITE] = st->accumulatorBig.computedPSQT[BLACK] =
-        st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] =
-          st->accumulatorSmall.computedPSQT[WHITE] = st->accumulatorSmall.computedPSQT[BLACK] =
-            false;
+    st->dirtyPiece.dirty_num               = 0;
+    st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
+    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
+      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     if (st->epSquare != SQ_NONE)
     {
