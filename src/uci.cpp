@@ -363,9 +363,9 @@ std::string UCIEngine::format_score(const Score& s) {
                    auto m = (mate.plies > 0 ? (mate.plies + 1) : mate.plies) / 2;
                    return std::string("mate ") + std::to_string(m);
                },
-               [](Score::TBWin tb) -> std::string {
+               [](Score::Tablebase tb) -> std::string {
                    return std::string("cp ")
-                        + std::to_string((tb.plies > 0 ? TB_CP - tb.plies : -TB_CP - tb.plies));
+                        + std::to_string((tb.win ? TB_CP - tb.plies : -TB_CP - tb.plies));
                },
                [](Score::InternalUnits units) -> std::string {
                    return std::string("cp ") + std::to_string(units.value);
@@ -441,7 +441,7 @@ Move UCIEngine::to_move(const Position& pos, std::string str) {
 }
 
 void UCIEngine::on_update_no_moves(const Engine::InfoShort& info) {
-    sync_cout << "info depth" << info.depth << " score " << format_score(info.score) << sync_endl;
+    sync_cout << "info depth " << info.depth << " score " << format_score(info.score) << sync_endl;
 }
 
 void UCIEngine::on_update_full(const Engine::InfoFull& info, bool showWDL) {

@@ -67,7 +67,7 @@ uint8_t TTEntry::relative_age(const uint8_t generation8) const {
 
 
 // Sets the size of the transposition table,
-// measured in megabytes. Transposition table consists of a power of 2 number
+// measured in megabytes. Transposition table consists
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
 void TranspositionTable::resize(size_t mbSize, int threadCount) {
     aligned_large_pages_free(table);
