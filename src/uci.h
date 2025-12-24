@@ -42,6 +42,9 @@ class UCIEngine {
 
     void loop();
 
+    void print_numa_config_information() const;
+    void print_thread_binding_information() const;
+
     static int         to_cp(Value v, const Position& pos);
     static std::string format_score(const Score& s);
     static std::string square(Square s);

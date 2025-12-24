@@ -23,10 +23,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <thread>
-#include <vector>
 
 #include "misc.h"
+#include "syzygy/tbprobe.h"
+#include "thread.h"
 
 namespace Stockfish {
 
@@ -74,7 +74,7 @@ uint8_t TTEntry::relative_age(const uint8_t generation8) const {
 // Sets the size of the transposition table,
 // measured in megabytes. Transposition table consists
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
-void TranspositionTable::resize(size_t mbSize, int threadCount) {
+void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
     aligned_large_pages_free(table);
 
     clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
@@ -86,32 +86,29 @@ void TranspositionTable::resize(size_t mbSize, int threadCount) {
         exit(EXIT_FAILURE);
     }
 
-    clear(threadCount);
+    clear(threads);
 }
 
 
 // Initializes the entire transposition table to zero,
 // in a multi-threaded way.
-void TranspositionTable::clear(size_t threadCount) {
-    std::vector<std::thread> threads;
+void TranspositionTable::clear(ThreadPool& threads) {
+    const size_t threadCount = threads.num_threads();
 
-    for (size_t idx = 0; idx < size_t(threadCount); ++idx)
+    for (size_t i = 0; i < threadCount; ++i)
     {
-        threads.emplace_back([this, idx, threadCount]() {
-            // Thread binding gives faster search on systems with a first-touch policy
-            if (threadCount > 8)
-                WinProcGroup::bind_this_thread(idx);
-
+        threads.run_on_thread(i, [this, i, threadCount]() {
             // Each thread will zero its part of the hash table
-            const size_t stride = size_t(clusterCount / threadCount), start = size_t(stride * idx),
-                         len = idx != size_t(threadCount) - 1 ? stride : clusterCount - start;
+            const size_t stride = clusterCount / threadCount;
+            const size_t start  = stride * i;
+            const size_t len    = i + 1 != threadCount ? stride : clusterCount - start;
 
             std::memset(&table[start], 0, len * sizeof(Cluster));
         });
     }
 
-    for (std::thread& th : threads)
-        th.join();
+    for (size_t i = 0; i < threadCount; ++i)
+        threads.wait_on_thread(i);
 }
 
 

@@ -23,6 +23,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
@@ -124,6 +125,47 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 }  // namespace Detail
 
+template<typename Arch, typename Transformer>
+Network<Arch, Transformer>::Network(const Network<Arch, Transformer>& other) :
+    evalFile(other.evalFile),
+    embeddedType(other.embeddedType) {
+    if (other.featureTransformer)
+    {
+        Detail::initialize(featureTransformer);
+        *featureTransformer = *other.featureTransformer;
+    }
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+    {
+        if (other.network[i])
+        {
+            Detail::initialize(network[i]);
+            *(network[i]) = *(other.network[i]);
+        }
+    }
+}
+
+template<typename Arch, typename Transformer>
+Network<Arch, Transformer>&
+Network<Arch, Transformer>::operator=(const Network<Arch, Transformer>& other) {
+    evalFile     = other.evalFile;
+    embeddedType = other.embeddedType;
+
+    if (other.featureTransformer)
+    {
+        Detail::initialize(featureTransformer);
+        *featureTransformer = *other.featureTransformer;
+    }
+    for (std::size_t i = 0; i < LayerStacks; ++i)
+    {
+        if (other.network[i])
+        {
+            Detail::initialize(network[i]);
+            *(network[i]) = *(other.network[i]);
+        }
+    }
+
+    return *this;
+}
 
 template<typename Arch, typename Transformer>
 void Network<Arch, Transformer>::load(const std::string& rootDirectory, std::string evalfilePath) {
