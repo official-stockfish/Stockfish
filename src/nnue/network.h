@@ -31,9 +31,9 @@
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
+#include "nnue_accumulator.h"
 
 namespace Stockfish::Eval::NNUE {
-
 
 enum class EmbeddedNNUEType {
     BIG,
@@ -43,6 +43,8 @@ enum class EmbeddedNNUEType {
 
 template<typename Arch, typename Transformer>
 class Network {
+    static constexpr IndexType FTDimensions = Arch::TransformedFeatureDimensions;
+
    public:
     Network(EvalFile file, EmbeddedNNUEType type) :
         evalFile(file),
@@ -51,17 +53,20 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
+    Value evaluate(const Position&                         pos,
+                   AccumulatorCaches::Cache<FTDimensions>* cache,
+                   bool                                    adjusted   = false,
+                   int*                                    complexity = nullptr,
+                   bool                                    psqtOnly   = false) const;
 
-    Value evaluate(const Position& pos,
-                   bool            adjusted   = false,
-                   int*            complexity = nullptr,
-                   bool            psqtOnly   = false) const;
 
-
-    void hint_common_access(const Position& pos, bool psqtOnl) const;
+    void hint_common_access(const Position&                         pos,
+                            AccumulatorCaches::Cache<FTDimensions>* cache,
+                            bool                                    psqtOnl) const;
 
     void          verify(std::string evalfilePath) const;
-    NnueEvalTrace trace_evaluate(const Position& pos) const;
+    NnueEvalTrace trace_evaluate(const Position&                         pos,
+                                 AccumulatorCaches::Cache<FTDimensions>* cache) const;
 
    private:
     void load_user_net(const std::string&, const std::string&);
@@ -89,6 +94,9 @@ class Network {
 
     // Hash value of evaluation function structure
     static constexpr std::uint32_t hash = Transformer::get_hash_value() ^ Arch::get_hash_value();
+
+    template<IndexType Size>
+    friend struct AccumulatorCaches::Cache;
 };
 
 // Definitions of the network types

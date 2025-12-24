@@ -28,13 +28,80 @@
 
 namespace Stockfish::Eval::NNUE {
 
+using BiasType       = std::int16_t;
+using PSQTWeightType = std::int32_t;
+using IndexType      = std::uint32_t;
+
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t accumulation[2][Size];
-    std::int32_t psqtAccumulation[2][PSQTBuckets];
-    bool         computed[2];
-    bool         computedPSQT[2];
+    std::int16_t accumulation[COLOR_NB][Size];
+    std::int32_t psqtAccumulation[COLOR_NB][PSQTBuckets];
+    bool         computed[COLOR_NB];
+    bool         computedPSQT[COLOR_NB];
+};
+
+
+// AccumulatorCaches struct provides per-thread accumulator caches, where each
+// cache contains multiple entries for each of the possible king squares.
+// When the accumulator needs to be refreshed, the cached entry is used to more
+// efficiently update the accumulator, instead of rebuilding it from scratch.
+// This idea, was first described by Luecx (author of Koivisto) and
+// is commonly referred to as "Finny Tables".
+struct AccumulatorCaches {
+
+    template<typename Networks>
+    AccumulatorCaches(const Networks& networks) {
+        clear(networks);
+    }
+
+    template<IndexType Size>
+    struct alignas(CacheLineSize) Cache {
+
+        struct alignas(CacheLineSize) Entry {
+            BiasType       accumulation[COLOR_NB][Size];
+            PSQTWeightType psqtAccumulation[COLOR_NB][PSQTBuckets];
+            Bitboard       byColorBB[COLOR_NB][COLOR_NB];
+            Bitboard       byTypeBB[COLOR_NB][PIECE_TYPE_NB];
+
+            // To initialize a refresh entry, we set all its bitboards empty,
+            // so we put the biases in the accumulation, without any weights on top
+            void clear(const BiasType* biases) {
+
+                std::memset(byColorBB, 0, sizeof(byColorBB));
+                std::memset(byTypeBB, 0, sizeof(byTypeBB));
+
+                std::memcpy(accumulation[WHITE], biases, Size * sizeof(BiasType));
+                std::memcpy(accumulation[BLACK], biases, Size * sizeof(BiasType));
+
+                std::memset(psqtAccumulation, 0, sizeof(psqtAccumulation));
+            }
+        };
+
+        template<typename Network>
+        void clear(const Network& network) {
+            for (auto& entry : entries)
+                entry.clear(network.featureTransformer->biases);
+        }
+
+        void clear(const BiasType* biases) {
+            for (auto& entry : entries)
+                entry.clear(biases);
+        }
+
+        Entry& operator[](Square sq) { return entries[sq]; }
+
+        std::array<Entry, SQUARE_NB> entries;
+    };
+
+    template<typename Networks>
+    void clear(const Networks& networks) {
+        big.clear(networks.big);
+    }
+
+    // When adding a new cache for a network, i.e. the smallnet
+    // the appropriate condition must be added to FeatureTransformer::update_accumulator_refresh.
+    Cache<TransformedFeatureDimensionsBig> big;
 };
 
 }  // namespace Stockfish::Eval::NNUE

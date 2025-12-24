@@ -187,10 +187,11 @@ bool Network<Arch, Transformer>::save(const std::optional<std::string>& filename
 
 
 template<typename Arch, typename Transformer>
-Value Network<Arch, Transformer>::evaluate(const Position& pos,
-                                           bool            adjusted,
-                                           int*            complexity,
-                                           bool            psqtOnly) const {
+Value Network<Arch, Transformer>::evaluate(const Position&                         pos,
+                                           AccumulatorCaches::Cache<FTDimensions>* cache,
+                                           bool                                    adjusted,
+                                           int*                                    complexity,
+                                           bool                                    psqtOnly) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
 
@@ -198,20 +199,21 @@ Value Network<Arch, Transformer>::evaluate(const Position& pos,
     constexpr int      delta     = 24;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize
-       + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType
+      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions, nullptr>::BufferSize
+                                   + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize];
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer<FTDimensions, nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
     const int  bucket = (pos.count<ALL_PIECES>() - 1) / 4;
-    const auto psqt   = featureTransformer->transform(pos, transformedFeatures, bucket, psqtOnly);
+    const auto psqt =
+      featureTransformer->transform(pos, cache, transformedFeatures, bucket, psqtOnly);
     const auto positional = !psqtOnly ? (network[bucket]->propagate(transformedFeatures)) : 0;
 
     if (complexity)
@@ -257,26 +259,29 @@ void Network<Arch, Transformer>::verify(std::string evalfilePath) const {
 
 
 template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::hint_common_access(const Position& pos, bool psqtOnl) const {
-    featureTransformer->hint_common_access(pos, psqtOnl);
+void Network<Arch, Transformer>::hint_common_access(const Position&                         pos,
+                                                    AccumulatorCaches::Cache<FTDimensions>* cache,
+                                                    bool psqtOnl) const {
+    featureTransformer->hint_common_access(pos, cache, psqtOnl);
 }
 
-
 template<typename Arch, typename Transformer>
-NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(const Position& pos) const {
+NnueEvalTrace
+Network<Arch, Transformer>::trace_evaluate(const Position&                         pos,
+                                           AccumulatorCaches::Cache<FTDimensions>* cache) const {
     // We manually align the arrays on the stack because with gcc < 9.3
     // overaligning stack variables with alignas() doesn't work correctly.
     constexpr uint64_t alignment = CacheLineSize;
 
 #if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType transformedFeaturesUnaligned
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize
-       + alignment / sizeof(TransformedFeatureType)];
+    TransformedFeatureType
+      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions, nullptr>::BufferSize
+                                   + alignment / sizeof(TransformedFeatureType)];
 
     auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
 #else
-    alignas(alignment) TransformedFeatureType transformedFeatures
-      [FeatureTransformer<Arch::TransformedFeatureDimensions, nullptr>::BufferSize];
+    alignas(alignment) TransformedFeatureType
+      transformedFeatures[FeatureTransformer<FTDimensions, nullptr>::BufferSize];
 #endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
@@ -286,7 +291,7 @@ NnueEvalTrace Network<Arch, Transformer>::trace_evaluate(const Position& pos) co
     for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
     {
         const auto materialist =
-          featureTransformer->transform(pos, transformedFeatures, bucket, false);
+          featureTransformer->transform(pos, cache, transformedFeatures, bucket, false);
         const auto positional = network[bucket]->propagate(transformedFeatures);
 
         t.psqt[bucket]       = static_cast<Value>(materialist / OutputScale);
