@@ -139,7 +139,7 @@ void UCIEngine::loop() {
         else if (token == "go")
             go(pos, is);
         else if (token == "position")
-            position(is);
+            position(pos, is);
         else if (token == "ucinewgame")
             engine.search_clear();
         else if (token == "isready" && Cluster::is_root())
@@ -273,7 +273,7 @@ void UCIEngine::bench(Position& pos, std::istream& args) {
         else if (token == "setoption")
             setoption(is);
         else if (token == "position")
-            position(is);
+            position(pos, is);
         else if (token == "ucinewgame")
         {
             engine.search_clear();  // search_clear may take a while
@@ -300,7 +300,7 @@ void UCIEngine::setoption(std::istringstream& is) {
     engine.get_options().setoption(is);
 }
 
-void UCIEngine::position(std::istringstream& is) {
+void UCIEngine::position(Position& pos, std::istringstream& is) {
     std::string token, fen;
 
     is >> token;
@@ -323,6 +323,7 @@ void UCIEngine::position(std::istringstream& is) {
         moves.push_back(token);
     }
 
+    pos.set(fen, engine.get_options()["UCI_Chess960"], pos.state());
     engine.set_position(fen, moves);
 }
 
@@ -366,12 +367,12 @@ std::string UCIEngine::format_score(const Score& s) {
     constexpr int TB_CP = 20000;
     const auto    format =
       overload{[](Score::Mate mate) -> std::string {
-                   auto m = (mate.plies > 0 ? (mate.plies + 1) : -mate.plies) / 2;
+                   auto m = (mate.plies > 0 ? (mate.plies + 1) : mate.plies) / 2;
                    return std::string("mate ") + std::to_string(m);
                },
                [](Score::TBWin tb) -> std::string {
                    return std::string("cp ")
-                        + std::to_string((tb.plies > 0 ? TB_CP - tb.plies : -TB_CP + tb.plies));
+                        + std::to_string((tb.plies > 0 ? TB_CP - tb.plies : -TB_CP - tb.plies));
                },
                [](Score::InternalUnits units) -> std::string {
                    return std::string("cp ") + std::to_string(units.value);
@@ -399,7 +400,7 @@ std::string UCIEngine::wdl(Value v, const Position& pos) {
     int wdl_w = win_rate_model(v, pos);
     int wdl_l = win_rate_model(-v, pos);
     int wdl_d = 1000 - wdl_w - wdl_l;
-    ss << " wdl " << wdl_w << " " << wdl_d << " " << wdl_l;
+    ss << wdl_w << " " << wdl_d << " " << wdl_l;
 
     return ss.str();
 }

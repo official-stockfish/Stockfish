@@ -6,7 +6,7 @@ jobs:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       CXXFLAGS: "-Werror"
     strategy:
@@ -172,9 +172,9 @@ jobs:
             if [ $COMP == ndk ]; then
               export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
             fi
-            $COMPILER -v
+            $COMPCXX -v
           else
-            echo "$COMPILER -v" > script.sh
+            echo "$COMPCXX -v" > script.sh
             docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
           fi
 

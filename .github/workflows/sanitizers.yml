@@ -6,7 +6,7 @@ jobs:
     name: ${{ matrix.sanitizers.name }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       CXXFLAGS: "-Werror"
     strategy:
@@ -47,7 +47,7 @@ jobs:
         run: make net
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Test help target
         run: make help

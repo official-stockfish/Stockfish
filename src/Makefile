@@ -549,11 +549,6 @@ else
 	endif
 endif
 
-### Travis CI script uses COMPILER to overwrite CXX
-ifdef COMPILER
-	COMPCXX=$(COMPILER)
-endif
-
 ### Allow overwriting CXX from command line
 ifdef COMPCXX
 	CXX=$(COMPCXX)
