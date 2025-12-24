@@ -31,6 +31,9 @@ jobs:
           - name: Run under valgrind-thread
             make_option: ""
             instrumented_option: valgrind-thread
+          - name: Run non-instrumented
+            make_option: ""
+            instrumented_option: none
     defaults:
       run:
         working-directory: src
@@ -54,6 +57,14 @@ jobs:
 
       - name: Check git
         run: git --version
+
+      # Since Linux Kernel 6.5 we are getting false positives from the ci,
+      # lower the ALSR entropy to disable ALSR, which works as a temporary workaround.
+      # https://github.com/google/sanitizers/issues/1716
+      # https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2056762
+
+      - name: Lower ALSR entropy
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
 
       # Sanitizers
 

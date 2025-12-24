@@ -227,8 +227,7 @@ class FeatureTransformer {
 
     static constexpr void order_packs([[maybe_unused]] uint64_t* v) {
 #if defined(USE_AVX512)  // _mm512_packs_epi16 ordering
-        uint64_t tmp0, tmp1;
-        tmp0 = v[2], tmp1 = v[3];
+        uint64_t tmp0 = v[2], tmp1 = v[3];
         v[2] = v[8], v[3] = v[9];
         v[8] = v[4], v[9] = v[5];
         v[4] = tmp0, v[5] = tmp1;
@@ -244,8 +243,7 @@ class FeatureTransformer {
 
     static constexpr void inverse_order_packs([[maybe_unused]] uint64_t* v) {
 #if defined(USE_AVX512)  // Inverse _mm512_packs_epi16 ordering
-        uint64_t tmp0, tmp1;
-        tmp0 = v[2], tmp1 = v[3];
+        uint64_t tmp0 = v[2], tmp1 = v[3];
         v[2] = v[4], v[3] = v[5];
         v[4] = v[8], v[5] = v[9];
         v[8] = tmp0, v[9] = tmp1;

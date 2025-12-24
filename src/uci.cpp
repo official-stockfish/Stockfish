@@ -336,8 +336,8 @@ WinRateParams win_rate_params(const Position& pos) {
     double m = std::clamp(material, 10, 78) / 58.0;
 
     // Return a = p_a(material) and b = p_b(material), see github.com/official-stockfish/WDL_model
-    constexpr double as[] = {-185.71965483, 504.85014385, -438.58295743, 474.04604627};
-    constexpr double bs[] = {89.23542728, -137.02141296, 73.28669021, 47.53376190};
+    constexpr double as[] = {-150.77043883, 394.96159472, -321.73403766, 406.15850091};
+    constexpr double bs[] = {62.33245393, -91.02264855, 45.88486850, 51.63461272};
 
     double a = (((as[0] * m + as[1]) * m + as[2]) * m) + as[3];
     double b = (((bs[0] * m + bs[1]) * m + bs[2]) * m) + bs[3];

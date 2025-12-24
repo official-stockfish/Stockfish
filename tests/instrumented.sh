@@ -8,27 +8,20 @@ error()
 }
 trap 'error ${LINENO}' ERR
 
-# Since Linux Kernel 6.5 we are getting false positives from the ci,
-# lower the ALSR entropy to disable ALSR, which works as a temporary workaround.
-# https://github.com/google/sanitizers/issues/1716
-# https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2056762
-sudo sysctl -w vm.mmap_rnd_bits=28
-
-
 # define suitable post and prefixes for testing options
 case $1 in
   --valgrind)
     echo "valgrind testing started"
     prefix=''
     exeprefix='valgrind --error-exitcode=42 --errors-for-leak-kinds=all --leak-check=full'
-    postfix='1>/dev/null'
+    postfix=''
     threads="1"
   ;;
   --valgrind-thread)
     echo "valgrind-thread testing started"
     prefix=''
     exeprefix='valgrind --fair-sched=try --error-exitcode=42'
-    postfix='1>/dev/null'
+    postfix=''
     threads="2"
   ;;
   --sanitizer-undefined)
@@ -112,7 +105,12 @@ diff $network verify.nnue
 # more general testing, following an uci protocol exchange
 cat << EOF > game.exp
  set timeout 240
+ # to correctly catch eof we need the following line
+ # expect_before timeout { exit 2 } eof { exit 3 }
+ expect_before timeout { exit 2 }
+
  spawn $exeprefix ./stockfish
+ expect "Stockfish"
 
  send "uci\n"
  expect "uciok"
@@ -125,26 +123,100 @@ cat << EOF > game.exp
  send "go nodes 1000\n"
  expect "bestmove"
 
+ send "ucinewgame\n"
  send "position startpos moves e2e4 e7e6\n"
  send "go nodes 1000\n"
  expect "bestmove"
 
+ send "ucinewgame\n"
  send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
  send "go depth 10\n"
  expect "bestmove"
 
- send "setoption name UCI_ShowWDL value true\n"
- send "position startpos\n"
+ send "ucinewgame\n"
+ send "position fen 5rk1/1K4p1/8/8/3B4/8/8/8 b - - 0 1\n"
  send "flip\n"
- send "go depth 5\n"
+ send "go depth 10\n"
  expect "bestmove"
 
- send "setoption name Skill Level value 10\n"
+ send "ucinewgame\n"
  send "position startpos\n"
  send "go depth 5\n"
+ expect -re {info depth \d+ seldepth \d+ multipv \d+ score cp \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect "bestmove"
+
+ send "ucinewgame\n"
+ send "setoption name UCI_ShowWDL value true\n"
+ send "position startpos\n"
+ send "go depth 9\n"
+ expect -re {info depth 1 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 2 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 3 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 4 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 5 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 6 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 7 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 8 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
+ expect -re {info depth 9 seldepth \d+ multipv \d+ score cp \d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv}
  expect "bestmove"
 
  send "setoption name Clear Hash\n"
+
+ send "ucinewgame\n"
+ send "position fen 5K2/8/2qk4/2nPp3/3r4/6B1/B7/3R4 w - e6\n"
+ send "go depth 18\n"
+ expect "score mate 1"
+ expect "pv d5e6"
+ expect "bestmove d5e6"
+
+ send "ucinewgame\n"
+ send "position fen 2brrb2/8/p7/Q7/1p1kpPp1/1P1pN1K1/3P4/8 b - -\n"
+ send "go depth 18\n"
+ expect "score mate -1"
+ expect "bestmove"
+
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - -\n"
+ send "go depth 18\n"
+ expect "score mate 2 * pv c6d7 * f7f5"
+ expect "bestmove c6d7"
+
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - -\n"
+ send "go mate 2\n"
+ expect "score mate 2 * pv c6d7"
+ expect "bestmove c6d7"
+
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - -\n"
+ send "go nodes 10000\n"
+ expect "score mate 2 * pv c6d7 * f7f5"
+ expect "bestmove c6d7"
+
+ send "ucinewgame\n"
+ send "position fen 1NR2B2/5p2/5p2/1p1kpp2/1P2rp2/2P1pB2/2P1P1K1/8 b - - \n"
+ send "go depth 18\n"
+ expect "score mate -2"
+ expect "pv d5e6 c8d8"
+ expect "bestmove d5e6"
+
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - - moves c6d7 f2f1q\n"
+ send "go depth 18\n"
+ expect "score mate 1 * pv f7f5"
+ expect "bestmove f7f5"
+ 
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - -\n"
+ send "go depth 18 searchmoves c6d7\n"
+ expect "score mate 2 * pv c6d7 * f7f5"
+ expect "bestmove c6d7"
+ 
+ send "ucinewgame\n"
+ send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - - moves c6d7\n"
+ send "go depth 18 searchmoves e3e2\n"
+ expect "score mate -1 * pv e3e2 f7f5"
+ expect "bestmove e3e2"
 
  send "setoption name EvalFile value verify.nnue\n"
  send "position startpos\n"
@@ -154,6 +226,13 @@ cat << EOF > game.exp
  send "setoption name MultiPV value 4\n"
  send "position startpos\n"
  send "go depth 5\n"
+ expect "bestmove"
+
+ send "setoption name Skill Level value 10\n"
+ send "position startpos\n"
+ send "go depth 5\n"
+ expect "bestmove"
+ send "setoption name Skill Level value 20\n"
 
  send "quit\n"
  expect eof
@@ -171,17 +250,30 @@ fi
 
 cat << EOF > syzygy.exp
  set timeout 240
+ # to correctly catch eof we need the following line
+ # expect_before timeout { exit 2 } eof { exit 3 }
+ expect_before timeout { exit 2 }
  spawn $exeprefix ./stockfish
+ expect "Stockfish"
  send "uci\n"
  send "setoption name SyzygyPath value ../tests/syzygy/\n"
- expect "info string Found 35 tablebases" {} timeout {exit 1}
+ expect "info string Found 35 tablebases"
  send "bench 128 1 8 default depth\n"
+ expect "Nodes searched  :"
  send "ucinewgame\n"
  send "position fen 4k3/PP6/8/8/8/8/8/4K3 w - - 0 1\n"
  send "go depth 5\n"
+ expect -re {score cp 20000|score mate}
  expect "bestmove"
+ send "ucinewgame\n"
  send "position fen 8/1P6/2B5/8/4K3/8/6k1/8 w - - 0 1\n"
  send "go depth 5\n"
+ expect -re {score cp 20000|score mate}
+ expect "bestmove"
+ send "ucinewgame\n"
+ send "position fen 8/1P6/2B5/8/4K3/8/6k1/8 b - - 0 1\n"
+ send "go depth 5\n"
+ expect -re {score cp -20000|score mate}
  expect "bestmove"
  send "quit\n"
  expect eof
@@ -194,6 +286,9 @@ EOF
 for exp in game.exp syzygy.exp
 do
 
+  echo "======== $exp =============="
+  cat $exp
+  echo "============================"
   echo "$prefix expect $exp $postfix"
   eval "$prefix expect $exp $postfix"
 
