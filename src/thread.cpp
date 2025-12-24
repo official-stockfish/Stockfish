@@ -216,11 +216,13 @@ void ThreadPool::clear() {
     for (auto&& th : threads)
         th->wait_for_search_finished();
 
-    main_manager()->callsCnt                 = 0;
-    main_manager()->bestPreviousScore        = VALUE_INFINITE;
+    // These two affect the time taken on the first move of a game:
     main_manager()->bestPreviousAverageScore = VALUE_INFINITE;
-    main_manager()->originalPly              = -1;
-    main_manager()->previousTimeReduction    = 1.0;
+    main_manager()->previousTimeReduction    = 0.85;
+
+    main_manager()->callsCnt           = 0;
+    main_manager()->bestPreviousScore  = VALUE_INFINITE;
+    main_manager()->originalTimeAdjust = -1;
     main_manager()->tm.clear();
 }
 
