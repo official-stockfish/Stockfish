@@ -30,6 +30,10 @@
 
 namespace Stockfish {
 
+// DEPTH_ENTRY_OFFSET exists because 1) we use `bool(depth8)` as the occupancy check, but
+// 2) we need to store negative depths for QS. (`depth8` is the only field with "spare bits":
+// we sacrifice the ability to store depths greater than 1<<8 less the offset, as asserted below.)
+
 // Populates the TTEntry with a new node's data, possibly
 // overwriting an old position. The update is not atomic and can be racy.
 void TTEntry::save(
@@ -40,14 +44,14 @@ void TTEntry::save(
         move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || uint16_t(k) != key16 || d - DEPTH_OFFSET + 2 * pv > depth8 - 4
+    if (b == BOUND_EXACT || uint16_t(k) != key16 || d - DEPTH_ENTRY_OFFSET + 2 * pv > depth8 - 4
         || relative_age(generation8))
     {
-        assert(d > DEPTH_OFFSET);
-        assert(d < 256 + DEPTH_OFFSET);
+        assert(d > DEPTH_ENTRY_OFFSET);
+        assert(d < 256 + DEPTH_ENTRY_OFFSET);
 
         key16     = uint16_t(k);
-        depth8    = uint8_t(d - DEPTH_OFFSET);
+        depth8    = uint8_t(d - DEPTH_ENTRY_OFFSET);
         genBound8 = uint8_t(generation8 | uint8_t(pv) << 2 | b);
         value16   = int16_t(v);
         eval16    = int16_t(ev);
