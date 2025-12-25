@@ -26,9 +26,11 @@
 #include <type_traits>
 #include <vector>
 
+#define INCBIN_SILENCE_BITCODE_WARNING
+#include "../incbin/incbin.h"
+
 #include "../cluster.h"
 #include "../evaluate.h"
-#include "../incbin/incbin.h"
 #include "../memory.h"
 #include "../misc.h"
 #include "../position.h"
