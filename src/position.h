@@ -53,7 +53,6 @@ struct StateInfo {
     Key        key;
     Bitboard   checkersBB;
     StateInfo* previous;
-    StateInfo* next;
     Bitboard   blockersForKing[COLOR_NB];
     Bitboard   pinners[COLOR_NB];
     Bitboard   checkSquares[PIECE_TYPE_NB];
@@ -87,9 +86,9 @@ class Position {
     std::string fen() const;
 
     // Position representation
-    Bitboard pieces(PieceType pt = ALL_PIECES) const;
+    Bitboard pieces() const;  // All pieces
     template<typename... PieceTypes>
-    Bitboard pieces(PieceType pt, PieceTypes... pts) const;
+    Bitboard pieces(PieceTypes... pts) const;
     Bitboard pieces(Color c) const;
     template<typename... PieceTypes>
     Bitboard pieces(Color c, PieceTypes... pts) const;
@@ -165,7 +164,6 @@ class Position {
     bool pos_is_ok() const;
     void flip();
 
-    // Used by NNUE
     StateInfo* state() const;
 
     void put_piece(Piece pc, Square s);
@@ -216,11 +214,11 @@ inline bool Position::empty(Square s) const { return piece_on(s) == NO_PIECE; }
 
 inline Piece Position::moved_piece(Move m) const { return piece_on(m.from_sq()); }
 
-inline Bitboard Position::pieces(PieceType pt) const { return byTypeBB[pt]; }
+inline Bitboard Position::pieces() const { return byTypeBB[ALL_PIECES]; }
 
 template<typename... PieceTypes>
-inline Bitboard Position::pieces(PieceType pt, PieceTypes... pts) const {
-    return pieces(pt) | pieces(pts...);
+inline Bitboard Position::pieces(PieceTypes... pts) const {
+    return (byTypeBB[pts] | ...);
 }
 
 inline Bitboard Position::pieces(Color c) const { return byColorBB[c]; }

@@ -19,8 +19,6 @@
 #ifndef MOVEPICK_H_INCLUDED
 #define MOVEPICK_H_INCLUDED
 
-#include <cstddef>
-
 #include "history.h"
 #include "movegen.h"
 #include "types.h"
@@ -28,9 +26,6 @@
 namespace Stockfish {
 
 class Position;
-
-template<typename T, std::size_t MaxSize>
-class ValueList;
 
 // The MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which emits one
@@ -55,15 +50,15 @@ class MovePicker {
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move();
     void skip_quiet_moves();
-    bool otherPieceTypesMobile(PieceType pt, ValueList<Move, 32>& capturesSearched);
+    bool can_move_king_or_pawn() const;
 
    private:
     template<typename Pred>
     Move select(Pred);
-    template<GenType>
-    void     score();
+    template<GenType T>
+    ExtMove* score(MoveList<T>&);
     ExtMove* begin() { return cur; }
-    ExtMove* end() { return endMoves; }
+    ExtMove* end() { return endCur; }
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
@@ -72,7 +67,7 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endMoves, *endBadCaptures, *beginBadQuiets, *endBadQuiets;
+    ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated;
     int                          stage;
     int                          threshold;
     Depth                        depth;

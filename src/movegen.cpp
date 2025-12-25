@@ -24,12 +24,88 @@
 #include "bitboard.h"
 #include "position.h"
 
+#if defined(USE_AVX512ICL)
+    #include <array>
+    #include <algorithm>
+    #include <immintrin.h>
+#endif
+
 namespace Stockfish {
 
 namespace {
 
+#if defined(USE_AVX512ICL)
+
+inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
+    _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
+                        _mm512_maskz_compress_epi16(mask, vector));
+    return moveList + popcount(mask);
+}
+
+template<Direction offset>
+inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+    alignas(64) static constexpr auto SPLAT_TABLE = [] {
+        std::array<Move, 64> table{};
+        for (int8_t i = 0; i < 64; i++)
+        {
+            Square from{std::clamp<int8_t>(i - offset, 0, 63)};
+            table[i] = {Move(from, Square{i})};
+        }
+        return table;
+    }();
+
+    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
+
+    moveList =
+      write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
+    moveList =
+      write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
+
+    return moveList;
+}
+
+inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    alignas(64) static constexpr auto SPLAT_TABLE = [] {
+        std::array<Move, 64> table{};
+        for (int8_t i = 0; i < 64; i++)
+            table[i] = {Move(SQUARE_ZERO, Square{i})};
+        return table;
+    }();
+
+    __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
+
+    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
+
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
+                           _mm512_or_si512(_mm512_load_si512(table + 0), fromVec));
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
+                           _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
+
+    return moveList;
+}
+
+#else
+
+template<Direction offset>
+inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+    while (to_bb)
+    {
+        Square to   = pop_lsb(to_bb);
+        *moveList++ = Move(to - offset, to);
+    }
+    return moveList;
+}
+
+inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    while (to_bb)
+        *moveList++ = Move(from, pop_lsb(to_bb));
+    return moveList;
+}
+
+#endif
+
 template<GenType Type, Direction D, bool Enemy>
-ExtMove* make_promotions(ExtMove* moveList, [[maybe_unused]] Square to) {
+Move* make_promotions(Move* moveList, [[maybe_unused]] Square to) {
 
     constexpr bool all = Type == EVASIONS || Type == NON_EVASIONS;
 
@@ -48,7 +124,7 @@ ExtMove* make_promotions(ExtMove* moveList, [[maybe_unused]] Square to) {
 
 
 template<Color Us, GenType Type>
-ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
+Move* generate_pawn_moves(const Position& pos, Move* moveList, Bitboard target) {
 
     constexpr Color     Them     = ~Us;
     constexpr Bitboard  TRank7BB = (Us == WHITE ? Rank7BB : Rank2BB);
@@ -75,17 +151,8 @@ ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard ta
             b2 &= target;
         }
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
-            *moveList++ = Move(to - Up, to);
-        }
-
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
-            *moveList++ = Move(to - Up - Up, to);
-        }
+        moveList = splat_pawn_moves<Up>(moveList, b1);
+        moveList = splat_pawn_moves<Up + Up>(moveList, b2);
     }
 
     // Promotions and underpromotions
@@ -114,17 +181,8 @@ ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard ta
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
         Bitboard b2 = shift<UpLeft>(pawnsNotOn7) & enemies;
 
-        while (b1)
-        {
-            Square to   = pop_lsb(b1);
-            *moveList++ = Move(to - UpRight, to);
-        }
-
-        while (b2)
-        {
-            Square to   = pop_lsb(b2);
-            *moveList++ = Move(to - UpLeft, to);
-        }
+        moveList = splat_pawn_moves<UpRight>(moveList, b1);
+        moveList = splat_pawn_moves<UpLeft>(moveList, b2);
 
         if (pos.ep_square() != SQ_NONE)
         {
@@ -148,7 +206,7 @@ ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard ta
 
 
 template<Color Us, PieceType Pt>
-ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard target) {
+Move* generate_moves(const Position& pos, Move* moveList, Bitboard target) {
 
     static_assert(Pt != KING && Pt != PAWN, "Unsupported piece type in generate_moves()");
 
@@ -159,8 +217,7 @@ ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard target)
         Square   from = pop_lsb(bb);
         Bitboard b    = attacks_bb<Pt>(from, pos.pieces()) & target;
 
-        while (b)
-            *moveList++ = Move(from, pop_lsb(b));
+        moveList = splat_moves(moveList, from, b);
     }
 
     return moveList;
@@ -168,7 +225,7 @@ ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard target)
 
 
 template<Color Us, GenType Type>
-ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
+Move* generate_all(const Position& pos, Move* moveList) {
 
     static_assert(Type != LEGAL, "Unsupported type in generate_all()");
 
@@ -192,8 +249,7 @@ ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
 
     Bitboard b = attacks_bb<KING>(ksq) & (Type == EVASIONS ? ~pos.pieces(Us) : target);
 
-    while (b)
-        *moveList++ = Move(ksq, pop_lsb(b));
+    moveList = splat_moves(moveList, ksq, b);
 
     if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
         for (CastlingRights cr : {Us & KING_SIDE, Us & QUEEN_SIDE})
@@ -213,7 +269,7 @@ ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
 //
 // Returns a pointer to the end of the move list.
 template<GenType Type>
-ExtMove* generate(const Position& pos, ExtMove* moveList) {
+Move* generate(const Position& pos, Move* moveList) {
 
     static_assert(Type != LEGAL, "Unsupported type in generate()");
     assert((Type == EVASIONS) == bool(pos.checkers()));
@@ -225,21 +281,20 @@ ExtMove* generate(const Position& pos, ExtMove* moveList) {
 }
 
 // Explicit template instantiations
-template ExtMove* generate<CAPTURES>(const Position&, ExtMove*);
-template ExtMove* generate<QUIETS>(const Position&, ExtMove*);
-template ExtMove* generate<EVASIONS>(const Position&, ExtMove*);
-template ExtMove* generate<NON_EVASIONS>(const Position&, ExtMove*);
-
+template Move* generate<CAPTURES>(const Position&, Move*);
+template Move* generate<QUIETS>(const Position&, Move*);
+template Move* generate<EVASIONS>(const Position&, Move*);
+template Move* generate<NON_EVASIONS>(const Position&, Move*);
 
 // generate<LEGAL> generates all the legal moves in the given position
 
 template<>
-ExtMove* generate<LEGAL>(const Position& pos, ExtMove* moveList) {
+Move* generate<LEGAL>(const Position& pos, Move* moveList) {
 
     Color    us     = pos.side_to_move();
     Bitboard pinned = pos.blockers_for_king(us) & pos.pieces(us);
     Square   ksq    = pos.square<KING>(us);
-    ExtMove* cur    = moveList;
+    Move*    cur    = moveList;
 
     moveList =
       pos.checkers() ? generate<EVASIONS>(pos, moveList) : generate<NON_EVASIONS>(pos, moveList);

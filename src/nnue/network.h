@@ -32,6 +32,7 @@
 #include "../types.h"
 #include "nnue_accumulator.h"
 #include "nnue_architecture.h"
+#include "nnue_common.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
 

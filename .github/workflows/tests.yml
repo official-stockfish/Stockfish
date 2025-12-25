@@ -29,24 +29,25 @@ jobs:
             shell: bash
           - name: Android NDK aarch64
             os: ubuntu-22.04
-            compiler: aarch64-linux-android21-clang++
+            compiler: aarch64-linux-android29-clang++
             comp: ndk
             run_armv8_tests: true
             shell: bash
           - name: Android NDK arm
             os: ubuntu-22.04
-            compiler: armv7a-linux-androideabi21-clang++
+            compiler: armv7a-linux-androideabi29-clang++
             comp: ndk
             run_armv7_tests: true
             shell: bash
-          - name: Linux GCC riscv64
-            os: ubuntu-22.04
-            compiler: g++
-            comp: gcc
-            run_riscv64_tests: true
-            base_image: "riscv64/alpine:edge"
-            platform: linux/riscv64
-            shell: bash
+          # Currently segfaults in the CI unrelated to a Stockfish change.
+          # - name: Linux GCC riscv64
+          #   os: ubuntu-22.04
+          #   compiler: g++
+          #   comp: gcc
+          #   run_riscv64_tests: true
+          #   base_image: "riscv64/alpine:edge"
+          #   platform: linux/riscv64
+          #   shell: bash
           - name: Linux GCC ppc64
             os: ubuntu-22.04
             compiler: g++
@@ -98,6 +99,14 @@ jobs:
             msys_sys: clang64
             msys_env: clang-x86_64-clang
             shell: msys2 {0}
+          - name: Windows 11 Mingw-w64 Clang arm64
+            os: windows-11-arm
+            compiler: clang++
+            comp: clang
+            run_armv8_tests: true
+            msys_sys: clangarm64
+            msys_env: clang-aarch64-clang
+            shell: msys2 {0}
     defaults:
       run:
         working-directory: src
@@ -118,7 +127,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           if [ $COMP == ndk ]; then
-            NDKV="21.4.7075529"
+            NDKV="27.2.12479018"
             ANDROID_ROOT=/usr/local/lib/android
             ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
             SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
@@ -302,8 +311,10 @@ jobs:
       - name: Test armv8 build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8 build
           ../tests/signature.sh $benchref
@@ -311,8 +322,10 @@ jobs:
       - name: Test armv8-dotprod build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8-dotprod build
           ../tests/signature.sh $benchref

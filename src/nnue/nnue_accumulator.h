@@ -37,12 +37,6 @@ class Position;
 
 namespace Stockfish::Eval::NNUE {
 
-using BiasType       = std::int16_t;
-using PSQTWeightType = std::int32_t;
-using IndexType      = std::uint32_t;
-
-struct Networks;
-
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator;
 
@@ -149,13 +143,12 @@ struct AccumulatorState {
 class AccumulatorStack {
    public:
     AccumulatorStack() :
-        m_accumulators(MAX_PLY + 1),
-        m_current_idx{} {}
+        accumulators(MAX_PLY + 1),
+        size{1} {}
 
     [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
-    void
-    reset(const Position& rootPos, const Networks& networks, AccumulatorCaches& caches) noexcept;
+    void reset() noexcept;
     void push(const DirtyPiece& dirtyPiece) noexcept;
     void pop() noexcept;
 
@@ -185,8 +178,8 @@ class AccumulatorStack {
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;
 
-    std::vector<AccumulatorState> m_accumulators;
-    std::size_t                   m_current_idx;
+    std::vector<AccumulatorState> accumulators;
+    std::size_t                   size;
 };
 
 }  // namespace Stockfish::Eval::NNUE

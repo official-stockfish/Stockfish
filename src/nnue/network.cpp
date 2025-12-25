@@ -213,21 +213,11 @@ NetworkOutput
 Network<Arch, Transformer>::evaluate(const Position&                         pos,
                                      AccumulatorStack&                       accumulatorStack,
                                      AccumulatorCaches::Cache<FTDimensions>* cache) const {
-    // We manually align the arrays on the stack because with gcc < 9.3
-    // overaligning stack variables with alignas() doesn't work correctly.
 
     constexpr uint64_t alignment = CacheLineSize;
 
-#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions>::BufferSize
-                                   + alignment / sizeof(TransformedFeatureType)];
-
-    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
-#else
     alignas(alignment)
       TransformedFeatureType transformedFeatures[FeatureTransformer<FTDimensions>::BufferSize];
-#endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
@@ -286,20 +276,11 @@ NnueEvalTrace
 Network<Arch, Transformer>::trace_evaluate(const Position&                         pos,
                                            AccumulatorStack&                       accumulatorStack,
                                            AccumulatorCaches::Cache<FTDimensions>* cache) const {
-    // We manually align the arrays on the stack because with gcc < 9.3
-    // overaligning stack variables with alignas() doesn't work correctly.
+
     constexpr uint64_t alignment = CacheLineSize;
 
-#if defined(ALIGNAS_ON_STACK_VARIABLES_BROKEN)
-    TransformedFeatureType
-      transformedFeaturesUnaligned[FeatureTransformer<FTDimensions>::BufferSize
-                                   + alignment / sizeof(TransformedFeatureType)];
-
-    auto* transformedFeatures = align_ptr_up<alignment>(&transformedFeaturesUnaligned[0]);
-#else
     alignas(alignment)
       TransformedFeatureType transformedFeatures[FeatureTransformer<FTDimensions>::BufferSize];
-#endif
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 

@@ -48,6 +48,11 @@
 
 namespace Stockfish::Eval::NNUE {
 
+using BiasType       = std::int16_t;
+using WeightType     = std::int16_t;
+using PSQTWeightType = std::int32_t;
+using IndexType      = std::uint32_t;
+
 // Version of the evaluation file
 constexpr std::uint32_t Version = 0x7AF32F20u;
 
@@ -76,7 +81,6 @@ constexpr std::size_t MaxSimdWidth = 32;
 
 // Type of input feature after conversion
 using TransformedFeatureType = std::uint8_t;
-using IndexType              = std::uint32_t;
 
 // Round n up to be a multiple of base
 template<typename IntType>
