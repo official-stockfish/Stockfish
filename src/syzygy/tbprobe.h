@@ -66,9 +66,12 @@ extern int MaxCardinality;
 void     init(const std::string& paths);
 WDLScore probe_wdl(Position& pos, ProbeState* result);
 int      probe_dtz(Position& pos, ProbeState* result);
-bool     root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50);
+bool     root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50, bool rankDTZ);
 bool     root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, bool rule50);
-Config   rank_root_moves(const OptionsMap& options, Position& pos, Search::RootMoves& rootMoves);
+Config   rank_root_moves(const OptionsMap&  options,
+                         Position&          pos,
+                         Search::RootMoves& rootMoves,
+                         bool               rankDTZ = false);
 
 }  // namespace Stockfish::Tablebases
 

@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <list>
 #include <atomic>
 #include <cassert>
 #include <cmath>
@@ -28,6 +29,9 @@
 #include <initializer_list>
 #include <string>
 #include <utility>
+#include <chrono>
+#include <iostream>
+#include <ratio>
 
 #include "cluster.h"
 #include "evaluate.h"
@@ -50,6 +54,12 @@
 namespace Stockfish {
 
 namespace TB = Tablebases;
+
+void syzygy_extend_pv(const OptionsMap&            options,
+                      const Search::LimitsType&    limits,
+                      Stockfish::Position&         pos,
+                      Stockfish::Search::RootMove& rootMove,
+                      Value&                       v);
 
 using Eval::evaluate;
 using namespace Search;
@@ -2014,18 +2024,145 @@ void SearchManager::check_time(Search::Worker& worker) {
         worker.threads.stop = worker.threads.abortedSearch = true;
 }
 
-void SearchManager::pv(const Search::Worker&     worker,
+// Used to correct and extend PVs for moves that have a TB (but not a mate) score.
+// Keeps the search based PV for as long as it is verified to maintain the game outcome, truncates afterwards.
+// Finally, extends to mate the PV, providing a possible continuation (but not a proven mating line).
+void syzygy_extend_pv(const OptionsMap&         options,
+                      const Search::LimitsType& limits,
+                      Position&                 pos,
+                      RootMove&                 rootMove,
+                      Value&                    v) {
+
+    auto t_start      = std::chrono::steady_clock::now();
+    int  moveOverhead = int(options["Move Overhead"]);
+
+    // Do not use more than moveOverhead / 2 time, if time management is active.
+    auto time_abort = [&t_start, &moveOverhead, &limits]() -> bool {
+        auto t_end = std::chrono::steady_clock::now();
+        return limits.use_time_management()
+            && 2 * std::chrono::duration<double, std::milli>(t_end - t_start).count()
+                 > moveOverhead;
+    };
+
+    std::list<StateInfo> sts;
+
+    // Step 1, walk the PV to the last position in TB with correct decisive score
+    int ply = 0;
+    while (size_t(ply) < rootMove.pv.size())
+    {
+        Move& pvMove = rootMove.pv[ply];
+
+        RootMoves legalMoves;
+        for (const auto& m : MoveList<LEGAL>(pos))
+            legalMoves.emplace_back(m);
+
+        Tablebases::Config config = Tablebases::rank_root_moves(options, pos, legalMoves);
+        RootMove&          rm     = *std::find(legalMoves.begin(), legalMoves.end(), pvMove);
+
+        if (legalMoves[0].tbRank != rm.tbRank)
+            break;
+
+        ply++;
+
+        auto& st = sts.emplace_back();
+        pos.do_move(pvMove, st);
+
+        // don't allow for repetitions or drawing moves along the PV in TB regime.
+        if (config.rootInTB && pos.is_draw(ply))
+        {
+            pos.undo_move(pvMove);
+            ply--;
+            break;
+        }
+
+        // Full PV shown will thus be validated and end TB.
+        // If we can't validate the full PV in time, we don't show it.
+        if (config.rootInTB && time_abort())
+            break;
+    }
+
+    // resize the PV to the correct part
+    rootMove.pv.resize(ply);
+
+    // Step 2, now extend the PV to mate, as if the user explores syzygy-tables.info using
+    // top ranked moves (minimal DTZ), which gives optimal mates only for simple endgames e.g. KRvK
+    while (!pos.is_draw(0))
+    {
+        if (time_abort())
+            break;
+
+        RootMoves legalMoves;
+        for (const auto& m : MoveList<LEGAL>(pos))
+        {
+            auto&     rm = legalMoves.emplace_back(m);
+            StateInfo tmpSI;
+            pos.do_move(m, tmpSI);
+            // Give a score of each move to break DTZ ties
+            // restricting opponent mobility, but not giving the opponent a capture.
+            for (const auto& mOpp : MoveList<LEGAL>(pos))
+                rm.tbRank -= pos.capture(mOpp) ? 100 : 1;
+            pos.undo_move(m);
+        }
+
+        // Mate found
+        if (legalMoves.size() == 0)
+            break;
+
+        // sort moves according to their above assigned rank,
+        // This will break ties for moves with equal DTZ in rank_root_moves.
+        std::stable_sort(
+          legalMoves.begin(), legalMoves.end(),
+          [](const Search::RootMove& a, const Search::RootMove& b) { return a.tbRank > b.tbRank; });
+
+        // The winning side tries to minimize DTZ, the losing side maximizes it.
+        Tablebases::Config config = Tablebases::rank_root_moves(options, pos, legalMoves, true);
+
+        // If DTZ is not available we might not find a mate, so we bail out.
+        if (!config.rootInTB || config.cardinality > 0)
+            break;
+
+        ply++;
+
+        Move& pvMove = legalMoves[0].pv[0];
+        rootMove.pv.push_back(pvMove);
+        auto& st = sts.emplace_back();
+        pos.do_move(pvMove, st);
+    }
+
+    // Finding a draw in this function is an exceptional case, that cannot happen during engine game play,
+    // since we have a winning score, and play correctly with TB support.
+    // However, it can be that a position is draw due to the 50 move rule if it has been been reached
+    // on the board with a non-optimal 50 move counter e.g. 8/8/6k1/3B4/3K4/4N3/8/8 w - - 54 106
+    // which TB with dtz counter rounding cannot always correctly rank. See also
+    // https://github.com/official-stockfish/Stockfish/issues/5175#issuecomment-2058893495
+    // We adjust the score to match the found PV. Note that a TB loss score can be displayed
+    // if the engine did not find a drawing move yet, but eventually search will figure it out.
+    // E.g. 1kq5/q2r4/5K2/8/8/8/8/7Q w - - 96 1
+    if (pos.is_draw(0))
+        v = VALUE_DRAW;
+
+    // Undo the PV moves.
+    for (auto it = rootMove.pv.rbegin(); it != rootMove.pv.rend(); ++it)
+        pos.undo_move(*it);
+
+    // Inform if we couldn't get a full extension in time.
+    if (time_abort())
+        sync_cout
+          << "info string Syzygy based PV extension requires more time, increase Move Overhead as needed."
+          << sync_endl;
+}
+
+void SearchManager::pv(Search::Worker&           worker,
                        const ThreadPool&         threads,
                        const TranspositionTable& tt,
-                       Depth                     depth) const {
+                       Depth                     depth) {
 
-    const auto  nodes     = Distributed::nodes_searched(threads);
-    const auto& rootMoves = worker.rootMoves;
-    const auto& pos       = worker.rootPos;
-    size_t      pvIdx     = worker.pvIdx;
-    TimePoint   time      = tm.elapsed_time() + 1;
-    size_t      multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
-    uint64_t    tbHits =
+    const auto nodes     = Distributed::nodes_searched(threads);
+    auto&      rootMoves = worker.rootMoves;
+    auto&      pos       = worker.rootPos;
+    size_t     pvIdx     = worker.pvIdx;
+    size_t     multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
+    uint64_t   tbHits =
       Distributed::tb_hits(threads) + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
     for (size_t i = 0; i < multiPV; ++i)
@@ -2043,6 +2180,13 @@ void SearchManager::pv(const Search::Worker&     worker,
 
         bool tb = worker.tbConfig.rootInTB && std::abs(v) <= VALUE_TB;
         v       = tb ? rootMoves[i].tbScore : v;
+
+        bool isExact = i != pvIdx || tb || !updated;  // tablebase- and previous-scores are exact
+
+        // Potentially correct and extend the PV, and in exceptional cases v
+        if (std::abs(v) >= VALUE_TB_WIN_IN_MAX_PLY && std::abs(v) < VALUE_MATE_IN_MAX_PLY
+            && ((!rootMoves[i].scoreLowerbound && !rootMoves[i].scoreUpperbound) || isExact))
+            syzygy_extend_pv(worker.options, worker.limits, pos, rootMoves[i], v);
 
         std::string pv;
         for (Move m : rootMoves[i].pv)
@@ -2065,15 +2209,16 @@ void SearchManager::pv(const Search::Worker&     worker,
         info.score    = {v, pos};
         info.wdl      = wdl;
 
-        if (i == pvIdx && !tb && updated)  // tablebase- and previous-scores are exact
+        if (!isExact)
             info.bound = bound;
 
-        info.timeMs   = time;
-        info.nodes    = nodes;
-        info.nps      = nodes * 1000 / time;
-        info.tbHits   = tbHits;
-        info.pv       = pv;
-        info.hashfull = tt.hashfull();
+        TimePoint time = tm.elapsed_time() + 1;
+        info.timeMs    = time;
+        info.nodes     = nodes;
+        info.nps       = nodes * 1000 / time;
+        info.tbHits    = tbHits;
+        info.pv        = pv;
+        info.hashfull  = tt.hashfull();
 
         updates.onUpdateFull(info);
     }
