@@ -281,12 +281,6 @@ void Network<Arch, Transformer>::verify(std::string                             
 
 
 template<typename Arch, typename Transformer>
-void Network<Arch, Transformer>::hint_common_access(
-  const Position& pos, AccumulatorCaches::Cache<FTDimensions>* cache) const {
-    featureTransformer->hint_common_access(pos, cache);
-}
-
-template<typename Arch, typename Transformer>
 NnueEvalTrace
 Network<Arch, Transformer>::trace_evaluate(const Position&                         pos,
                                            AccumulatorCaches::Cache<FTDimensions>* cache) const {

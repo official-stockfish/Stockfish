@@ -120,11 +120,8 @@ void sync_cout_start();
 void sync_cout_end();
 
 // True if and only if the binary is compiled on a little-endian machine
-static inline const union {
-    uint32_t i;
-    char     c[4];
-} Le                                    = {0x01020304};
-static inline const bool IsLittleEndian = (Le.c[0] == 4);
+static inline const std::uint16_t Le             = 1;
+static inline const bool          IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
 
 
 template<typename T, std::size_t MaxSize>
@@ -157,6 +154,10 @@ template<typename T, std::size_t Size>
 struct MultiArrayHelper<T, Size> {
     using ChildType = T;
 };
+
+template<typename To, typename From>
+constexpr bool is_strictly_assignable_v =
+  std::is_assignable_v<To&, From> && (std::is_same_v<To, From> || !std::is_convertible_v<From, To>);
 
 }
 
@@ -215,7 +216,8 @@ class MultiArray {
 
     template<typename U>
     void fill(const U& v) {
-        static_assert(std::is_assignable_v<T, U>, "Cannot assign fill value to entry type");
+        static_assert(Detail::is_strictly_assignable_v<T, U>,
+                      "Cannot assign fill value to entry type");
         for (auto& ele : data_)
         {
             if constexpr (sizeof...(Sizes) == 0)

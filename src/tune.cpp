@@ -55,7 +55,7 @@ void Tune::make_option(OptionsMap* opts, const string& n, int v, const SetRange&
     if (TuneResults.count(n))
         v = TuneResults[n];
 
-    (*opts)[n] << Option(v, r(v).first, r(v).second, on_tune);
+    opts->add(n, Option(v, r(v).first, r(v).second, on_tune));
     LastOption = &((*opts)[n]);
 
     // Print formatted parameters, ready to be copy-pasted in Fishtest

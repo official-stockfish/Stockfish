@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iosfwd>
+#include <type_traits>
 #include <utility>
 
 #include "../position.h"
@@ -39,6 +40,11 @@ namespace Stockfish::Eval::NNUE {
 using BiasType       = std::int16_t;
 using WeightType     = std::int16_t;
 using PSQTWeightType = std::int32_t;
+
+enum IncUpdateDirection {
+    FORWARD,
+    BACKWARDS
+};
 
 // If vector instructions are enabled, we update and refresh the
 // accumulator tile by tile such that each tile fits in the CPU's
@@ -143,6 +149,46 @@ using psqt_vec_t = int32x4_t;
 
 #endif
 
+// Returns the inverse of a permutation
+template<std::size_t Len>
+constexpr std::array<std::size_t, Len>
+invert_permutation(const std::array<std::size_t, Len>& order) {
+    std::array<std::size_t, Len> inverse{};
+    for (std::size_t i = 0; i < order.size(); i++)
+        inverse[order[i]] = i;
+    return inverse;
+}
+
+// Divide a byte region of size TotalSize to chunks of size
+// BlockSize, and permute the blocks by a given order
+template<std::size_t BlockSize, typename T, std::size_t N, std::size_t OrderSize>
+void permute(T (&data)[N], const std::array<std::size_t, OrderSize>& order) {
+    constexpr std::size_t TotalSize = N * sizeof(T);
+
+    static_assert(TotalSize % (BlockSize * OrderSize) == 0,
+                  "ChunkSize * OrderSize must perfectly divide TotalSize");
+
+    constexpr std::size_t ProcessChunkSize = BlockSize * OrderSize;
+
+    std::array<std::byte, ProcessChunkSize> buffer{};
+
+    std::byte* const bytes = reinterpret_cast<std::byte*>(data);
+
+    for (std::size_t i = 0; i < TotalSize; i += ProcessChunkSize)
+    {
+        std::byte* const values = &bytes[i];
+
+        for (std::size_t j = 0; j < OrderSize; j++)
+        {
+            auto* const buffer_chunk = &buffer[j * BlockSize];
+            auto* const value_chunk  = &values[order[j] * BlockSize];
+
+            std::copy(value_chunk, value_chunk + BlockSize, buffer_chunk);
+        }
+
+        std::copy(std::begin(buffer), std::end(buffer), values);
+    }
+}
 
 // Compute optimal SIMD register count for feature transformer accumulation.
 template<IndexType TransformedFeatureWidth, IndexType HalfDimensions>
@@ -206,6 +252,7 @@ class FeatureTransformer {
 
     // Number of output dimensions for one side
     static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
+    static constexpr bool Big = TransformedFeatureDimensions == TransformedFeatureDimensionsBig;
 
    private:
     using Tiling = SIMDTiling<TransformedFeatureDimensions, HalfDimensions>;
@@ -221,62 +268,42 @@ class FeatureTransformer {
     // Size of forward propagation buffer
     static constexpr std::size_t BufferSize = OutputDimensions * sizeof(OutputType);
 
+    // Store the order by which 128-bit blocks of a 1024-bit data must
+    // be permuted so that calling packus on adjacent vectors of 16-bit
+    // integers loaded from the data results in the pre-permutation order
+    static constexpr auto PackusEpi16Order = []() -> std::array<std::size_t, 8> {
+#if defined(USE_AVX512)
+        // _mm512_packus_epi16 after permutation:
+        // |   0   |   2   |   4   |   6   | // Vector 0
+        // |   1   |   3   |   5   |   7   | // Vector 1
+        // | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | // Packed Result
+        return {0, 2, 4, 6, 1, 3, 5, 7};
+#elif defined(USE_AVX2)
+        // _mm256_packus_epi16 after permutation:
+        // |   0   |   2   |  |   4   |   6   | // Vector 0, 2
+        // |   1   |   3   |  |   5   |   7   | // Vector 1, 3
+        // | 0 | 1 | 2 | 3 |  | 4 | 5 | 6 | 7 | // Packed Result
+        return {0, 2, 1, 3, 4, 6, 5, 7};
+#else
+        return {0, 1, 2, 3, 4, 5, 6, 7};
+#endif
+    }();
+
+    static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
+
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
         return FeatureSet::HashValue ^ (OutputDimensions * 2);
     }
 
-    static constexpr void order_packs([[maybe_unused]] uint64_t* v) {
-#if defined(USE_AVX512)  // _mm512_packs_epi16 ordering
-        uint64_t tmp0 = v[2], tmp1 = v[3];
-        v[2] = v[8], v[3] = v[9];
-        v[8] = v[4], v[9] = v[5];
-        v[4] = tmp0, v[5] = tmp1;
-        tmp0 = v[6], tmp1 = v[7];
-        v[6] = v[10], v[7] = v[11];
-        v[10] = v[12], v[11] = v[13];
-        v[12] = tmp0, v[13] = tmp1;
-#elif defined(USE_AVX2)  // _mm256_packs_epi16 ordering
-        std::swap(v[2], v[4]);
-        std::swap(v[3], v[5]);
-#endif
+    void permute_weights() {
+        permute<16>(biases, PackusEpi16Order);
+        permute<16>(weights, PackusEpi16Order);
     }
 
-    static constexpr void inverse_order_packs([[maybe_unused]] uint64_t* v) {
-#if defined(USE_AVX512)  // Inverse _mm512_packs_epi16 ordering
-        uint64_t tmp0 = v[2], tmp1 = v[3];
-        v[2] = v[4], v[3] = v[5];
-        v[4] = v[8], v[5] = v[9];
-        v[8] = tmp0, v[9] = tmp1;
-        tmp0 = v[6], tmp1 = v[7];
-        v[6] = v[12], v[7] = v[13];
-        v[12] = v[10], v[13] = v[11];
-        v[10] = tmp0, v[11] = tmp1;
-#elif defined(USE_AVX2)  // Inverse _mm256_packs_epi16 ordering
-        std::swap(v[2], v[4]);
-        std::swap(v[3], v[5]);
-#endif
-    }
-
-    void permute_weights([[maybe_unused]] void (*order_fn)(uint64_t*)) {
-#if defined(USE_AVX2)
-    #if defined(USE_AVX512)
-        constexpr IndexType di = 16;
-    #else
-        constexpr IndexType di = 8;
-    #endif
-        uint64_t* b = reinterpret_cast<uint64_t*>(&biases[0]);
-        for (IndexType i = 0; i < HalfDimensions * sizeof(BiasType) / sizeof(uint64_t); i += di)
-            order_fn(&b[i]);
-
-        for (IndexType j = 0; j < InputDimensions; ++j)
-        {
-            uint64_t* w = reinterpret_cast<uint64_t*>(&weights[j * HalfDimensions]);
-            for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(uint64_t);
-                 i += di)
-                order_fn(&w[i]);
-        }
-#endif
+    void unpermute_weights() {
+        permute<16>(biases, InversePackusEpi16Order);
+        permute<16>(weights, InversePackusEpi16Order);
     }
 
     inline void scale_weights(bool read) {
@@ -298,7 +325,7 @@ class FeatureTransformer {
         read_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         read_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
-        permute_weights(inverse_order_packs);
+        permute_weights();
         scale_weights(true);
         return !stream.fail();
     }
@@ -306,14 +333,14 @@ class FeatureTransformer {
     // Write network parameters
     bool write_parameters(std::ostream& stream) {
 
-        permute_weights(order_packs);
+        unpermute_weights();
         scale_weights(false);
 
         write_leb_128<BiasType>(stream, biases, HalfDimensions);
         write_leb_128<WeightType>(stream, weights, HalfDimensions * InputDimensions);
         write_leb_128<PSQTWeightType>(stream, psqtWeights, PSQTBuckets * InputDimensions);
 
-        permute_weights(inverse_order_packs);
+        permute_weights();
         scale_weights(true);
         return !stream.fail();
     }
@@ -445,82 +472,100 @@ class FeatureTransformer {
         return psqt;
     }  // end of function transform()
 
-    void hint_common_access(const Position&                           pos,
-                            AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        update_accumulator<WHITE>(pos, cache);
-        update_accumulator<BLACK>(pos, cache);
-    }
-
    private:
-    template<Color Perspective>
-    StateInfo* try_find_computed_accumulator(const Position& pos) const {
-        // Look for a usable accumulator of an earlier position. We keep track
-        // of the estimated gain in terms of features to be added/subtracted.
-        StateInfo* st   = pos.state();
-        int        gain = FeatureSet::refresh_cost(pos);
-        while (st->previous && !(st->*accPtr).computed[Perspective])
-        {
-            // This governs when a full feature refresh is needed and how many
-            // updates are better than just one full refresh.
-            if (FeatureSet::requires_refresh(st, Perspective)
-                || (gain -= FeatureSet::update_cost(st) + 1) < 0)
-                break;
-            st = st->previous;
-        }
-        return st;
-    }
-
-    // Computes the accumulator of the next position.
-    template<Color Perspective>
-    void update_accumulator_incremental(const Position& pos, StateInfo* computed) const {
+    // Given a computed accumulator, computes the accumulator of another position.
+    template<Color Perspective, IncUpdateDirection Direction = FORWARD>
+    void update_accumulator_incremental(const Square     ksq,
+                                        StateInfo*       target_state,
+                                        const StateInfo* computed) const {
+        [[maybe_unused]] constexpr bool Forward   = Direction == FORWARD;
+        [[maybe_unused]] constexpr bool Backwards = Direction == BACKWARDS;
         assert((computed->*accPtr).computed[Perspective]);
-        assert(computed->next != nullptr);
 
-#ifdef VECTOR
-        // Gcc-10.2 unnecessarily spills AVX2 registers if this array
-        // is defined in the VECTOR code below, once in each branch.
-        vec_t      acc[Tiling::NumRegs];
-        psqt_vec_t psqt[Tiling::NumPsqtRegs];
-#endif
+        StateInfo* next = Forward ? computed->next : computed->previous;
 
-        const Square ksq = pos.square<KING>(Perspective);
+        assert(next != nullptr);
+        assert(!(next->*accPtr).computed[Perspective]);
 
         // The size must be enough to contain the largest possible update.
         // That might depend on the feature set and generally relies on the
         // feature set's update cost calculation to be correct and never allow
         // updates with more added/removed features than MaxActiveDimensions.
+        // In this case, the maximum size of both feature addition and removal
+        // is 2, since we are incrementally updating one move at a time.
         FeatureSet::IndexList removed, added;
-        FeatureSet::append_changed_indices<Perspective>(ksq, computed->next->dirtyPiece, removed,
-                                                        added);
+        if constexpr (Forward)
+            FeatureSet::append_changed_indices<Perspective>(ksq, next->dirtyPiece, removed, added);
+        else
+            FeatureSet::append_changed_indices<Perspective>(ksq, computed->dirtyPiece, added,
+                                                            removed);
 
-        StateInfo* next = computed->next;
-        assert(!(next->*accPtr).computed[Perspective]);
+        if (removed.size() == 0 && added.size() == 0)
+        {
+            std::memcpy((next->*accPtr).accumulation[Perspective],
+                        (computed->*accPtr).accumulation[Perspective],
+                        HalfDimensions * sizeof(BiasType));
+            std::memcpy((next->*accPtr).psqtAccumulation[Perspective],
+                        (computed->*accPtr).psqtAccumulation[Perspective],
+                        PSQTBuckets * sizeof(PSQTWeightType));
+        }
+        else
+        {
+            assert(added.size() == 1 || added.size() == 2);
+            assert(removed.size() == 1 || removed.size() == 2);
+            if (Forward)
+                assert(added.size() <= removed.size());
+            else
+                assert(removed.size() <= added.size());
 
 #ifdef VECTOR
-        if ((removed.size() == 1 || removed.size() == 2) && added.size() == 1)
-        {
             auto* accIn =
               reinterpret_cast<const vec_t*>(&(computed->*accPtr).accumulation[Perspective][0]);
             auto* accOut = reinterpret_cast<vec_t*>(&(next->*accPtr).accumulation[Perspective][0]);
 
+            const IndexType offsetA0 = HalfDimensions * added[0];
+            auto*           columnA0 = reinterpret_cast<const vec_t*>(&weights[offsetA0]);
             const IndexType offsetR0 = HalfDimensions * removed[0];
             auto*           columnR0 = reinterpret_cast<const vec_t*>(&weights[offsetR0]);
-            const IndexType offsetA  = HalfDimensions * added[0];
-            auto*           columnA  = reinterpret_cast<const vec_t*>(&weights[offsetA]);
 
-            if (removed.size() == 1)
+            if ((Forward && removed.size() == 1) || (Backwards && added.size() == 1))
             {
+                assert(added.size() == 1 && removed.size() == 1);
                 for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                    accOut[i] = vec_add_16(vec_sub_16(accIn[i], columnR0[i]), columnA[i]);
+                    accOut[i] = vec_add_16(vec_sub_16(accIn[i], columnR0[i]), columnA0[i]);
             }
-            else
+            else if (Forward && added.size() == 1)
             {
+                assert(removed.size() == 2);
                 const IndexType offsetR1 = HalfDimensions * removed[1];
                 auto*           columnR1 = reinterpret_cast<const vec_t*>(&weights[offsetR1]);
 
                 for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
-                    accOut[i] = vec_sub_16(vec_add_16(accIn[i], columnA[i]),
+                    accOut[i] = vec_sub_16(vec_add_16(accIn[i], columnA0[i]),
                                            vec_add_16(columnR0[i], columnR1[i]));
+            }
+            else if (Backwards && removed.size() == 1)
+            {
+                assert(added.size() == 2);
+                const IndexType offsetA1 = HalfDimensions * added[1];
+                auto*           columnA1 = reinterpret_cast<const vec_t*>(&weights[offsetA1]);
+
+                for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
+                    accOut[i] = vec_add_16(vec_add_16(accIn[i], columnA0[i]),
+                                           vec_sub_16(columnA1[i], columnR0[i]));
+            }
+            else
+            {
+                assert(added.size() == 2 && removed.size() == 2);
+                const IndexType offsetA1 = HalfDimensions * added[1];
+                auto*           columnA1 = reinterpret_cast<const vec_t*>(&weights[offsetA1]);
+                const IndexType offsetR1 = HalfDimensions * removed[1];
+                auto*           columnR1 = reinterpret_cast<const vec_t*>(&weights[offsetR1]);
+
+                for (IndexType i = 0; i < HalfDimensions * sizeof(WeightType) / sizeof(vec_t); ++i)
+                    accOut[i] =
+                      vec_add_16(accIn[i], vec_sub_16(vec_add_16(columnA0[i], columnA1[i]),
+                                                      vec_add_16(columnR0[i], columnR1[i])));
             }
 
             auto* accPsqtIn = reinterpret_cast<const psqt_vec_t*>(
@@ -528,19 +573,20 @@ class FeatureTransformer {
             auto* accPsqtOut =
               reinterpret_cast<psqt_vec_t*>(&(next->*accPtr).psqtAccumulation[Perspective][0]);
 
+            const IndexType offsetPsqtA0 = PSQTBuckets * added[0];
+            auto* columnPsqtA0 = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtA0]);
             const IndexType offsetPsqtR0 = PSQTBuckets * removed[0];
             auto* columnPsqtR0 = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtR0]);
-            const IndexType offsetPsqtA = PSQTBuckets * added[0];
-            auto* columnPsqtA = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtA]);
 
-            if (removed.size() == 1)
+            if ((Forward && removed.size() == 1)
+                || (Backwards && added.size() == 1))  // added.size() == removed.size() == 1
             {
                 for (std::size_t i = 0;
                      i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
                     accPsqtOut[i] = vec_add_psqt_32(vec_sub_psqt_32(accPsqtIn[i], columnPsqtR0[i]),
-                                                    columnPsqtA[i]);
+                                                    columnPsqtA0[i]);
             }
-            else
+            else if (Forward && added.size() == 1)
             {
                 const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
                 auto*           columnPsqtR1 =
@@ -549,116 +595,77 @@ class FeatureTransformer {
                 for (std::size_t i = 0;
                      i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
                     accPsqtOut[i] =
-                      vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA[i]),
+                      vec_sub_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
                                       vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i]));
             }
-        }
-        else
-        {
-            for (IndexType i = 0; i < HalfDimensions / Tiling::TileHeight; ++i)
+            else if (Backwards && removed.size() == 1)
             {
-                // Load accumulator
-                auto* accTileIn = reinterpret_cast<const vec_t*>(
-                  &(computed->*accPtr).accumulation[Perspective][i * Tiling::TileHeight]);
-                for (IndexType j = 0; j < Tiling::NumRegs; ++j)
-                    acc[j] = vec_load(&accTileIn[j]);
+                const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
+                auto*           columnPsqtA1 =
+                  reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtA1]);
 
-                // Difference calculation for the deactivated features
-                for (const auto index : removed)
-                {
-                    const IndexType offset = HalfDimensions * index + i * Tiling::TileHeight;
-                    auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
-                    for (IndexType j = 0; j < Tiling::NumRegs; ++j)
-                        acc[j] = vec_sub_16(acc[j], column[j]);
-                }
-
-                // Difference calculation for the activated features
-                for (const auto index : added)
-                {
-                    const IndexType offset = HalfDimensions * index + i * Tiling::TileHeight;
-                    auto*           column = reinterpret_cast<const vec_t*>(&weights[offset]);
-                    for (IndexType j = 0; j < Tiling::NumRegs; ++j)
-                        acc[j] = vec_add_16(acc[j], column[j]);
-                }
-
-                // Store accumulator
-                auto* accTileOut = reinterpret_cast<vec_t*>(
-                  &(next->*accPtr).accumulation[Perspective][i * Tiling::TileHeight]);
-                for (IndexType j = 0; j < Tiling::NumRegs; ++j)
-                    vec_store(&accTileOut[j], acc[j]);
+                for (std::size_t i = 0;
+                     i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+                    accPsqtOut[i] =
+                      vec_add_psqt_32(vec_add_psqt_32(accPsqtIn[i], columnPsqtA0[i]),
+                                      vec_sub_psqt_32(columnPsqtA1[i], columnPsqtR0[i]));
             }
-
-            for (IndexType i = 0; i < PSQTBuckets / Tiling::PsqtTileHeight; ++i)
+            else
             {
-                // Load accumulator
-                auto* accTilePsqtIn = reinterpret_cast<const psqt_vec_t*>(
-                  &(computed->*accPtr).psqtAccumulation[Perspective][i * Tiling::PsqtTileHeight]);
-                for (std::size_t j = 0; j < Tiling::NumPsqtRegs; ++j)
-                    psqt[j] = vec_load_psqt(&accTilePsqtIn[j]);
+                const IndexType offsetPsqtA1 = PSQTBuckets * added[1];
+                auto*           columnPsqtA1 =
+                  reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtA1]);
+                const IndexType offsetPsqtR1 = PSQTBuckets * removed[1];
+                auto*           columnPsqtR1 =
+                  reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offsetPsqtR1]);
 
-                // Difference calculation for the deactivated features
-                for (const auto index : removed)
-                {
-                    const IndexType offset = PSQTBuckets * index + i * Tiling::PsqtTileHeight;
-                    auto* columnPsqt = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offset]);
-                    for (std::size_t j = 0; j < Tiling::NumPsqtRegs; ++j)
-                        psqt[j] = vec_sub_psqt_32(psqt[j], columnPsqt[j]);
-                }
-
-                // Difference calculation for the activated features
-                for (const auto index : added)
-                {
-                    const IndexType offset = PSQTBuckets * index + i * Tiling::PsqtTileHeight;
-                    auto* columnPsqt = reinterpret_cast<const psqt_vec_t*>(&psqtWeights[offset]);
-                    for (std::size_t j = 0; j < Tiling::NumPsqtRegs; ++j)
-                        psqt[j] = vec_add_psqt_32(psqt[j], columnPsqt[j]);
-                }
-
-                // Store accumulator
-                auto* accTilePsqtOut = reinterpret_cast<psqt_vec_t*>(
-                  &(next->*accPtr).psqtAccumulation[Perspective][i * Tiling::PsqtTileHeight]);
-                for (std::size_t j = 0; j < Tiling::NumPsqtRegs; ++j)
-                    vec_store_psqt(&accTilePsqtOut[j], psqt[j]);
+                for (std::size_t i = 0;
+                     i < PSQTBuckets * sizeof(PSQTWeightType) / sizeof(psqt_vec_t); ++i)
+                    accPsqtOut[i] = vec_add_psqt_32(
+                      accPsqtIn[i],
+                      vec_sub_psqt_32(vec_add_psqt_32(columnPsqtA0[i], columnPsqtA1[i]),
+                                      vec_add_psqt_32(columnPsqtR0[i], columnPsqtR1[i])));
             }
-        }
 #else
-        std::memcpy((next->*accPtr).accumulation[Perspective],
-                    (computed->*accPtr).accumulation[Perspective],
-                    HalfDimensions * sizeof(BiasType));
-        std::memcpy((next->*accPtr).psqtAccumulation[Perspective],
-                    (computed->*accPtr).psqtAccumulation[Perspective],
-                    PSQTBuckets * sizeof(PSQTWeightType));
+            std::memcpy((next->*accPtr).accumulation[Perspective],
+                        (computed->*accPtr).accumulation[Perspective],
+                        HalfDimensions * sizeof(BiasType));
+            std::memcpy((next->*accPtr).psqtAccumulation[Perspective],
+                        (computed->*accPtr).psqtAccumulation[Perspective],
+                        PSQTBuckets * sizeof(PSQTWeightType));
 
-        // Difference calculation for the deactivated features
-        for (const auto index : removed)
-        {
-            const IndexType offset = HalfDimensions * index;
-            for (IndexType i = 0; i < HalfDimensions; ++i)
-                (next->*accPtr).accumulation[Perspective][i] -= weights[offset + i];
+            // Difference calculation for the deactivated features
+            for (const auto index : removed)
+            {
+                const IndexType offset = HalfDimensions * index;
+                for (IndexType i = 0; i < HalfDimensions; ++i)
+                    (next->*accPtr).accumulation[Perspective][i] -= weights[offset + i];
 
-            for (std::size_t i = 0; i < PSQTBuckets; ++i)
-                (next->*accPtr).psqtAccumulation[Perspective][i] -=
-                  psqtWeights[index * PSQTBuckets + i];
-        }
+                for (std::size_t i = 0; i < PSQTBuckets; ++i)
+                    (next->*accPtr).psqtAccumulation[Perspective][i] -=
+                      psqtWeights[index * PSQTBuckets + i];
+            }
 
-        // Difference calculation for the activated features
-        for (const auto index : added)
-        {
-            const IndexType offset = HalfDimensions * index;
-            for (IndexType i = 0; i < HalfDimensions; ++i)
-                (next->*accPtr).accumulation[Perspective][i] += weights[offset + i];
+            // Difference calculation for the activated features
+            for (const auto index : added)
+            {
+                const IndexType offset = HalfDimensions * index;
+                for (IndexType i = 0; i < HalfDimensions; ++i)
+                    (next->*accPtr).accumulation[Perspective][i] += weights[offset + i];
 
-            for (std::size_t i = 0; i < PSQTBuckets; ++i)
-                (next->*accPtr).psqtAccumulation[Perspective][i] +=
-                  psqtWeights[index * PSQTBuckets + i];
-        }
+                for (std::size_t i = 0; i < PSQTBuckets; ++i)
+                    (next->*accPtr).psqtAccumulation[Perspective][i] +=
+                      psqtWeights[index * PSQTBuckets + i];
+            }
 #endif
+        }
 
         (next->*accPtr).computed[Perspective] = true;
 
-        if (next != pos.state())
-            update_accumulator_incremental<Perspective>(pos, next);
+        if (next != target_state)
+            update_accumulator_incremental<Perspective, Direction>(ksq, target_state, next);
     }
+
 
     template<Color Perspective>
     void update_accumulator_refresh_cache(const Position&                           pos,
@@ -823,16 +830,40 @@ class FeatureTransformer {
     template<Color Perspective>
     void update_accumulator(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        if ((pos.state()->*accPtr).computed[Perspective])
-            return;
-        StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
+        StateInfo* st = pos.state();
+        if ((st->*accPtr).computed[Perspective])
+            return;  // nothing to do
 
-        if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
-            // Start from the oldest computed accumulator, update all the
-            // accumulators up to the current position.
-            update_accumulator_incremental<Perspective>(pos, oldest);
-        else
-            update_accumulator_refresh_cache<Perspective>(pos, cache);
+        [[maybe_unused]]  // only used when !Big
+        int gain = FeatureSet::refresh_cost(pos);
+        // Look for a usable already computed accumulator of an earlier position.
+        // When computing the small accumulator, we keep track of the estimated gain in
+        // terms of features to be added/subtracted.
+        // When computing the big accumulator, we expect to be able to reuse any
+        // accumulators, so we always try to do an incremental update.
+        do
+        {
+            if (FeatureSet::requires_refresh(st, Perspective)
+                || (!Big && (gain -= FeatureSet::update_cost(st) < 0)) || !st->previous
+                || st->previous->next != st)
+            {
+                // compute accumulator from scratch for this position
+                update_accumulator_refresh_cache<Perspective>(pos, cache);
+                if (Big && st != pos.state())
+                    // when computing a big accumulator from scratch we can use it to
+                    // efficiently compute the accumulator backwards, until we get to a king
+                    // move. We expect that we will need these accumulators later anyway, so
+                    // computing them now will save some work.
+                    update_accumulator_incremental<Perspective, BACKWARDS>(
+                      pos.square<KING>(Perspective), st, pos.state());
+                return;
+            }
+            st = st->previous;
+        } while (!(st->*accPtr).computed[Perspective]);
+
+        // Start from the oldest computed accumulator, update all the
+        // accumulators up to the current position.
+        update_accumulator_incremental<Perspective>(pos.square<KING>(Perspective), pos.state(), st);
     }
 
     template<IndexType Size>

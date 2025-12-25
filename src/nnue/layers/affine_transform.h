@@ -102,7 +102,7 @@ static void affine_transform_non_ssse3(std::int32_t*       output,
             product           = vmlal_s8(product, inputVector[j * 2 + 1], row[j * 2 + 1]);
             sum               = vpadalq_s16(sum, product);
         }
-        output[i] = sum[0] + sum[1] + sum[2] + sum[3];
+        output[i] = Simd::neon_m128_reduce_add_epi32(sum);
 
         #endif
     }
