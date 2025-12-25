@@ -19,6 +19,7 @@
 #include "movepick.h"
 
 #include <cassert>
+#include <cstddef>
 #include <limits>
 
 #include "bitboard.h"
@@ -315,5 +316,31 @@ top:
 }
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
+
+bool MovePicker::otherPieceTypesMobile(PieceType pt, ValueList<Move, 32>& capturesSearched) {
+    if (stage != GOOD_QUIET && stage != BAD_QUIET)
+        return true;
+
+    // verify good captures
+    for (std::size_t i = 0; i < capturesSearched.size(); i++)
+        if (type_of(pos.moved_piece(capturesSearched[i])) != pt)
+        {
+            if (type_of(pos.moved_piece(capturesSearched[i])) != KING)
+                return true;
+            if (pos.legal(capturesSearched[i]))
+                return true;
+        }
+
+    // now verify bad captures and quiets
+    for (ExtMove* c = moves; c < endBadQuiets; ++c)
+        if (type_of(pos.moved_piece(*c)) != pt)
+        {
+            if (type_of(pos.moved_piece(*c)) != KING)
+                return true;
+            if (pos.legal(*c))
+                return true;
+        }
+    return false;
+}
 
 }  // namespace Stockfish

@@ -34,6 +34,7 @@
 #include <string>
 #include <utility>
 
+#include "bitboard.h"
 #include "cluster.h"
 #include "evaluate.h"
 #include "history.h"
@@ -1121,7 +1122,19 @@ moves_loop:  // When in check, search starts here
                 // SEE based pruning for captures and checks
                 int seeHist = std::clamp(captHist / 32, -138 * depth, 135 * depth);
                 if (!pos.see_ge(move, -154 * depth - seeHist))
-                    continue;
+                {
+                    bool skip = true;
+                    if (depth > 2 && !capture && givesCheck && alpha < 0
+                        && pos.non_pawn_material(us) == PieceValue[movedPiece]
+                        && PieceValue[movedPiece] >= RookValue
+                        && !(PseudoAttacks[KING][pos.square<KING>(us)] & move.from_sq()))
+                        skip = mp.otherPieceTypesMobile(
+                          type_of(movedPiece),
+                          capturesSearched);  // if the opponent captures last mobile piece it might be stalemate
+
+                    if (skip)
+                        continue;
+                }
             }
             else
             {
@@ -1542,7 +1555,8 @@ moves_loop:  // When in check, search starts here
                           bestValue >= beta    ? BOUND_LOWER
                           : PvNode && bestMove ? BOUND_EXACT
                                                : BOUND_UPPER,
-                          depth, bestMove, unadjustedStaticEval, tt.generation());
+                          moveCount != 0 ? depth : std::min(MAX_PLY - 1, depth + 6), bestMove,
+                          unadjustedStaticEval, tt.generation());
 
     // Adjust correction history
     if (!ss->inCheck && !(bestMove && pos.capture(bestMove))
@@ -1796,6 +1810,22 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 
     if (!is_decisive(bestValue) && bestValue > beta)
         bestValue = (bestValue + beta) / 2;
+
+
+    Color us = pos.side_to_move();
+    if (!ss->inCheck && !moveCount && !pos.non_pawn_material(us)
+        && type_of(pos.captured_piece()) >= ROOK)
+    {
+        if (!((us == WHITE ? shift<NORTH>(pos.pieces(us, PAWN))
+                           : shift<SOUTH>(pos.pieces(us, PAWN)))
+              & ~pos.pieces()))  // no pawn pushes available
+        {
+            pos.state()->checkersBB = Rank1BB;  // search for legal king-moves only
+            if (!MoveList<LEGAL>(pos).size())   // stalemate
+                bestValue = VALUE_DRAW;
+            pos.state()->checkersBB = 0;
+        }
+    }
 
     // Save gathered info in transposition table. The static evaluation
     // is saved as it was before adjustment by correction history.
