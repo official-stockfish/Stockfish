@@ -326,6 +326,8 @@ class Worker {
                                   Value    ev,
                                   uint8_t  generation8);
 
+    TTMoveHistory ttMoveHistory;
+
    private:
     void iterative_deepening();
 
