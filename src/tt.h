@@ -56,7 +56,12 @@ struct TTData {
     Bound bound;
     bool  is_pv;
 
+#ifdef USE_MPI
+    // We need this for TTCache to be constructible.
+    TTData() = default;
+#else
     TTData() = delete;
+#endif
 
     // clang-format off
     TTData(Move m, Value v, Value ev, Depth d, Bound b, bool pv) :
