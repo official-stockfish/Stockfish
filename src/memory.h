@@ -38,6 +38,8 @@ void  std_aligned_free(void* ptr);
 void* aligned_large_pages_alloc(size_t size);
 void  aligned_large_pages_free(void* mem);
 
+bool has_large_pages();
+
 // Frees memory which was placed there with placement new.
 // Works for both single objects and arrays of unknown bound.
 template<typename T, typename FREE_FUNC>

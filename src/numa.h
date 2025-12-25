@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -653,7 +654,7 @@ class NumaConfig {
         NumaIndex n = 0;
         for (auto&& nodeStr : split(s, ":"))
         {
-            auto indices = indices_from_shortened_string(nodeStr);
+            auto indices = indices_from_shortened_string(std::string(nodeStr));
             if (!indices.empty())
             {
                 for (auto idx : indices)
@@ -1015,7 +1016,7 @@ class NumaConfig {
         if (s.empty())
             return indices;
 
-        for (const std::string& ss : split(s, ","))
+        for (const auto& ss : split(s, ","))
         {
             if (ss.empty())
                 continue;
@@ -1023,13 +1024,13 @@ class NumaConfig {
             auto parts = split(ss, "-");
             if (parts.size() == 1)
             {
-                const CpuIndex c = CpuIndex{str_to_size_t(parts[0])};
+                const CpuIndex c = CpuIndex{str_to_size_t(std::string(parts[0]))};
                 indices.emplace_back(c);
             }
             else if (parts.size() == 2)
             {
-                const CpuIndex cfirst = CpuIndex{str_to_size_t(parts[0])};
-                const CpuIndex clast  = CpuIndex{str_to_size_t(parts[1])};
+                const CpuIndex cfirst = CpuIndex{str_to_size_t(std::string(parts[0]))};
+                const CpuIndex clast  = CpuIndex{str_to_size_t(std::string(parts[1]))};
                 for (size_t c = cfirst; c <= clast; ++c)
                 {
                     indices.emplace_back(c);
