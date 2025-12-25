@@ -111,7 +111,7 @@ Option::Option(OnChange f) :
     max(0),
     on_change(std::move(f)) {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) :
+Option::Option(int v, int minv, int maxv, OnChange f) :
     type("spin"),
     min(minv),
     max(maxv),
@@ -155,7 +155,7 @@ Option& Option::operator=(const std::string& v) {
 
     if ((type != "button" && type != "string" && v.empty())
         || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (std::stof(v) < min || std::stof(v) > max)))
+        || (type == "spin" && (std::stoi(v) < min || std::stoi(v) > max)))
         return *this;
 
     if (type == "combo")
@@ -203,7 +203,7 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
                 }
 
                 else if (o.type == "spin")
-                    os << " default " << int(stof(o.defaultValue)) << " min " << o.min << " max "
+                    os << " default " << stoi(o.defaultValue) << " min " << o.min << " max "
                        << o.max;
 
                 break;

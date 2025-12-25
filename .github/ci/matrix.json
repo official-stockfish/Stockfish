@@ -8,11 +8,11 @@
       "comp": "gcc",
       "shell": "bash",
       "archive_ext": "tar",
-      "sde": "/home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-lin/sde -future --"
+      "sde": "/home/runner/work/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.33.0-2024-01-07-lin/sde -future --"
     },
     {
-      "name": "MacOS 13 Apple Clang",
-      "os": "macos-13",
+      "name": "macOS 15 Apple Clang",
+      "os": "macos-15-intel",
       "simple_name": "macos",
       "compiler": "clang++",
       "comp": "clang",
@@ -20,7 +20,7 @@
       "archive_ext": "tar"
     },
     {
-      "name": "MacOS 14 Apple Clang M1",
+      "name": "macOS 14 Apple Clang M1",
       "os": "macos-14",
       "simple_name": "macos-m1",
       "compiler": "clang++",
@@ -38,7 +38,7 @@
       "msys_env": "x86_64-gcc",
       "shell": "msys2 {0}",
       "ext": ".exe",
-      "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.27.0-2023-09-13-win/sde.exe -future --",
+      "sde": "/d/a/Stockfish/Stockfish/.output/sde-temp-files/sde-external-9.33.0-2024-01-07-win/sde.exe -future --",
       "archive_ext": "zip"
     },
     {
@@ -61,8 +61,8 @@
     "x86-64-bmi2",
     "x86-64-avxvnni",
     "x86-64-avx512",
-    "x86-64-vnni256",
     "x86-64-vnni512",
+    "x86-64-avx512icl",
     "apple-silicon",
     "armv8",
     "armv8-dotprod"
@@ -105,13 +105,13 @@
       }
     },
     {
-      "binaries": "x86-64-vnni256",
+      "binaries": "x86-64-vnni512",
       "config": {
         "os": "macos-14"
       }
     },
     {
-      "binaries": "x86-64-vnni512",
+      "binaries": "x86-64-avx512icl",
       "config": {
         "os": "macos-14"
       }
@@ -119,25 +119,25 @@
     {
       "binaries": "x86-64-avxvnni",
       "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
       }
     },
     {
       "binaries": "x86-64-avx512",
       "config": {
-        "os": "macos-13"
-      }
-    },
-    {
-      "binaries": "x86-64-vnni256",
-      "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
       }
     },
     {
       "binaries": "x86-64-vnni512",
       "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
+      }
+    },
+    {
+      "binaries": "x86-64-avx512icl",
+      "config": {
+        "os": "macos-15-intel"
       }
     },
     {
@@ -177,18 +177,18 @@
       }
     },
     {
-      "binaries": "x86-64-vnni256",
-      "config": {
-        "os": "windows-11-arm"
-      }
-    },
-    {
       "binaries": "x86-64-vnni512",
       "config": {
         "os": "windows-11-arm"
       }
     },
     {
+      "binaries": "x86-64-avx512icl",
+      "config": {
+        "os": "windows-11-arm"
+      }
+    },
+    {
       "binaries": "apple-silicon",
       "config": {
         "os": "windows-2022"
@@ -215,7 +215,7 @@
     {
       "binaries": "apple-silicon",
       "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
       }
     },
     {
@@ -239,7 +239,7 @@
     {
       "binaries": "armv8",
       "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
       }
     },
     {
@@ -269,7 +269,7 @@
     {
       "binaries": "armv8-dotprod",
       "config": {
-        "os": "macos-13"
+        "os": "macos-15-intel"
       }
     },
     {

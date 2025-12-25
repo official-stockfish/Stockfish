@@ -56,21 +56,21 @@ jobs:
             base_image: "ppc64le/alpine:latest"
             platform: linux/ppc64le
             shell: bash
-          - name: MacOS 13 Apple Clang
-            os: macos-13
+          - name: macOS 15 Apple Clang
+            os: macos-15-intel
             compiler: clang++
             comp: clang
             run_64bit_tests: true
             shell: bash
-          - name: MacOS 14 Apple Clang M1
+          - name: macOS 14 Apple Clang M1
             os: macos-14
             compiler: clang++
             comp: clang
             run_64bit_tests: false
             run_m1_tests: true
             shell: bash
-          - name: MacOS 13 GCC 11
-            os: macos-13
+          - name: macOS 15 GCC 11
+            os: macos-15-intel
             compiler: g++-11
             comp: gcc
             run_64bit_tests: true

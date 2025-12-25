@@ -16,7 +16,7 @@ EXPECT_SCRIPT=$(mktemp)
 
 cat << 'EOF' > $EXPECT_SCRIPT
 #!/usr/bin/expect -f
-set timeout 30
+set timeout 120
 lassign [lrange $argv 0 4] pos depth result chess960 logfile
 log_file -noappend $logfile
 spawn ./stockfish

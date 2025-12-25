@@ -637,11 +637,11 @@ void UCIEngine::on_update_full(const Engine::InfoFull& info, bool showWDL) {
        << " multipv " << info.multiPV             //
        << " score " << format_score(info.score);  //
 
-    if (showWDL)
-        ss << " wdl " << info.wdl;
-
     if (!info.bound.empty())
         ss << " " << info.bound;
+
+    if (showWDL)
+        ss << " wdl " << info.wdl;
 
     ss << " nodes " << info.nodes        //
        << " nps " << info.nps            //
