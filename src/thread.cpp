@@ -28,6 +28,7 @@
 
 #include "cluster.h"
 #include "misc.h"
+#include "memory.h"
 #include "movegen.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
@@ -55,8 +56,8 @@ Thread::Thread(Search::SharedState&                    sharedState,
         // the Worker allocation. Ideally we would also allocate the SearchManager
         // here, but that's minor.
         this->numaAccessToken = binder();
-        this->worker =
-          std::make_unique<Search::Worker>(sharedState, std::move(sm), n, this->numaAccessToken);
+        this->worker = make_unique_large_page<Search::Worker>(sharedState, std::move(sm), n,
+                                                              this->numaAccessToken);
     });
 
     wait_for_search_finished();
