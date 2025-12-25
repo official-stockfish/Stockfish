@@ -1,0 +1,36 @@
+# This workflow will run matetrack on the PR
+
+name: Matetrack
+on:
+  workflow_call:
+jobs:
+  Matetrack:
+    name: Matetrack
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout SF repo 
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: Stockfish
+
+      - name: build SF
+        working-directory: Stockfish/src
+        run: make -j profile-build
+
+      - name: Checkout matetrack repo
+        uses: actions/checkout@v4
+        with:
+          repository: vondele/matetrack
+          path: matetrack
+          ref: 20287a1a145f30a166b7ef251eddb611e4e44fbf
+
+      - name: matetrack install deps
+        working-directory: matetrack
+        run: pip install -r requirements.txt
+
+      - name: Run matetrack
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 | tee matecheckout.out
+          ! grep "issues were detected" matecheckout.out > /dev/null

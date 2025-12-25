@@ -371,6 +371,8 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
     return os;
 }
 
+void sync_cout_start() { std::cout << IO_LOCK; }
+void sync_cout_end() { std::cout << IO_UNLOCK; }
 
 // Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
@@ -417,6 +419,10 @@ std::optional<std::string> read_file_to_string(const std::string& path) {
 
 void remove_whitespace(std::string& s) {
     s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return std::isspace(c); }), s.end());
+}
+
+bool is_whitespace(const std::string& s) {
+    return std::all_of(s.begin(), s.end(), [](char c) { return std::isspace(c); });
 }
 
 std::string CommandLine::get_binary_directory(std::string argv0) {

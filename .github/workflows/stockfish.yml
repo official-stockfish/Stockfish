@@ -90,6 +90,8 @@ jobs:
     uses: ./.github/workflows/sanitizers.yml
   Tests:
     uses: ./.github/workflows/tests.yml
+  Matetrack:
+    uses: ./.github/workflows/matetrack.yml
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     needs: [Matrix, Prerelease, Compilation]

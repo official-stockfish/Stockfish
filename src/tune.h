@@ -145,6 +145,8 @@ class Tune {
         return add(value, (next(names), std::move(names)), args...);
     }
 
+    static void make_option(OptionsMap* options, const std::string& n, int v, const SetRange& r);
+
     std::vector<std::unique_ptr<EntryBase>> list;
 
    public:

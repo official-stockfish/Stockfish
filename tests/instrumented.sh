@@ -171,6 +171,11 @@ cat << EOF > game.exp
  expect "bestmove"
 
  send "ucinewgame\n"
+ send "position fen 7K/P1p1p1p1/2P1P1Pk/6pP/3p2P1/1P6/3P4/8 w - - 0 1\n"
+ send "go nodes 500000\n"
+ expect "bestmove"
+
+ send "ucinewgame\n"
  send "position fen 8/5R2/2K1P3/4k3/8/b1PPpp1B/5p2/8 w - -\n"
  send "go depth 18\n"
  expect "score mate 2 * pv c6d7 * f7f5"
