@@ -281,13 +281,21 @@ template<size_t N>
 struct DebugInfo {
     std::atomic<int64_t> data[N] = {0};
 
-    constexpr inline std::atomic<int64_t>& operator[](int index) { return data[index]; }
+    constexpr std::atomic<int64_t>& operator[](int index) { return data[index]; }
 };
 
-DebugInfo<2> hit[MaxDebugSlots];
-DebugInfo<2> mean[MaxDebugSlots];
-DebugInfo<3> stdev[MaxDebugSlots];
-DebugInfo<6> correl[MaxDebugSlots];
+struct DebugExtremes: public DebugInfo<3> {
+    DebugExtremes() {
+        data[1] = std::numeric_limits<int64_t>::min();
+        data[2] = std::numeric_limits<int64_t>::max();
+    }
+};
+
+DebugInfo<2>  hit[MaxDebugSlots];
+DebugInfo<2>  mean[MaxDebugSlots];
+DebugInfo<3>  stdev[MaxDebugSlots];
+DebugInfo<6>  correl[MaxDebugSlots];
+DebugExtremes extremes[MaxDebugSlots];
 
 }  // namespace
 
@@ -309,6 +317,18 @@ void dbg_stdev_of(int64_t value, int slot) {
     ++stdev[slot][0];
     stdev[slot][1] += value;
     stdev[slot][2] += value * value;
+}
+
+void dbg_extremes_of(int64_t value, int slot) {
+    ++extremes[slot][0];
+
+    int64_t current_max = extremes[slot][1].load();
+    while (current_max < value && !extremes[slot][1].compare_exchange_weak(current_max, value))
+    {}
+
+    int64_t current_min = extremes[slot][2].load();
+    while (current_min > value && !extremes[slot][2].compare_exchange_weak(current_min, value))
+    {}
 }
 
 void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
@@ -343,6 +363,13 @@ void dbg_print() {
         {
             double r = sqrt(E(stdev[i][2]) - sqr(E(stdev[i][1])));
             std::cerr << "Stdev #" << i << ": Total " << n << " Stdev " << r << std::endl;
+        }
+
+    for (int i = 0; i < MaxDebugSlots; ++i)
+        if ((n = extremes[i][0]))
+        {
+            std::cerr << "Extremity #" << i << ": Total " << n << " Min " << extremes[i][2]
+                      << " Max " << extremes[i][1] << std::endl;
         }
 
     for (int i = 0; i < MaxDebugSlots; ++i)

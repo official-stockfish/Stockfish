@@ -5,6 +5,9 @@ on:
       matrix:
         type: string
         required: true
+    secrets:
+      token:
+        required: true
 
 jobs:
   Artifacts:
@@ -25,6 +28,8 @@ jobs:
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download artifact from compilation
         uses: actions/download-artifact@v4
@@ -78,6 +83,7 @@ jobs:
         uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
         with:
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
+          token: ${{ secrets.token }}
 
       - name: Get last commit sha
         id: last_commit
@@ -104,3 +110,4 @@ jobs:
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
+          token: ${{ secrets.token }}
