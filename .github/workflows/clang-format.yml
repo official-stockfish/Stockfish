@@ -19,7 +19,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
 
       - name: Run clang-format style check
         uses: jidicula/clang-format-action@f62da5e3d3a2d88ff364771d9d938773a618ab5e # @v4.11.0

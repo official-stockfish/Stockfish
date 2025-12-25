@@ -259,7 +259,6 @@ class Worker {
     bool is_mainthread() const { return threadIdx == 0; }
 
     // Public because they need to be updatable by the stats
-    CounterMoveHistory    counterMoves;
     ButterflyHistory      mainHistory;
     CapturePieceToHistory captureHistory;
     ContinuationHistory   continuationHistory[2][2];
