@@ -68,7 +68,6 @@ struct Stack {
     CorrectionHistory<PieceTo>* continuationCorrectionHistory;
     int                         ply;
     Move                        currentMove;
-    Piece                       capturedPiece;
     Move                        excludedMove;
     Value                       staticEval;
     int                         statScore;
@@ -384,6 +383,11 @@ class Worker {
 
     friend class Stockfish::ThreadPool;
     friend class SearchManager;
+};
+
+struct ConthistBonus {
+    int index;
+    int weight;
 };
 
 

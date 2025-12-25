@@ -35,11 +35,6 @@ class Position;
 // a cut-off first.
 class MovePicker {
 
-    enum PickType {
-        Next,
-        Best
-    };
-
    public:
     MovePicker(const MovePicker&)            = delete;
     MovePicker& operator=(const MovePicker&) = delete;
@@ -57,7 +52,7 @@ class MovePicker {
     void skip_quiet_moves();
 
    private:
-    template<PickType T, typename Pred>
+    template<typename Pred>
     Move select(Pred);
     template<GenType>
     void     score();
