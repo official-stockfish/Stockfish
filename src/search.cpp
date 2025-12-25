@@ -341,7 +341,7 @@ void Search::Worker::iterative_deepening() {
             searchAgainCounter++;
 
         // MultiPV loop. We perform a full root search for each PV line
-        for (pvIdx = 0; pvIdx < multiPV && !threads.stop; ++pvIdx)
+        for (pvIdx = 0; pvIdx < multiPV; ++pvIdx)
         {
             if (pvIdx == pvLast)
             {
@@ -438,6 +438,9 @@ void Search::Worker::iterative_deepening() {
                 main_manager()->pv(*this, threads, tt, rootDepth);
                 Distributed::cluster_info(threads, rootDepth, elapsed() + 1);
             }
+
+            if (threads.stop)
+                break;
         }
 
         if (!threads.stop)
