@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iterator>
 #include <utility>
 
 #include "bitboard.h"
@@ -35,7 +34,6 @@ enum Stages {
     MAIN_TT,
     CAPTURE_INIT,
     GOOD_CAPTURE,
-    REFUTATION,
     QUIET_INIT,
     GOOD_QUIET,
     BAD_CAPTURE,
@@ -91,38 +89,21 @@ MovePicker::MovePicker(const Position&              p,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
                        const PawnHistory*           ph,
-                       const Move*                  killers) :
+                       Move                         km) :
     pos(p),
     mainHistory(mh),
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
     ttMove(ttm),
-    refutations{{killers[0], 0}, {killers[1], 0}},
+    killer(km),
     depth(d) {
-    assert(d > 0);
 
-    stage = (pos.checkers() ? EVASION_TT : MAIN_TT) + !(ttm && pos.pseudo_legal(ttm));
-}
+    if (pos.checkers())
+        stage = EVASION_TT + !(ttm && pos.pseudo_legal(ttm));
 
-// Constructor for quiescence search
-MovePicker::MovePicker(const Position&              p,
-                       Move                         ttm,
-                       Depth                        d,
-                       const ButterflyHistory*      mh,
-                       const CapturePieceToHistory* cph,
-                       const PieceToHistory**       ch,
-                       const PawnHistory*           ph) :
-    pos(p),
-    mainHistory(mh),
-    captureHistory(cph),
-    continuationHistory(ch),
-    pawnHistory(ph),
-    ttMove(ttm),
-    depth(d) {
-    assert(d <= 0);
-
-    stage = (pos.checkers() ? EVASION_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
+    else
+        stage = (depth > 0 ? MAIN_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
 // Constructor for ProbCut: we generate captures with SEE greater than or equal
@@ -184,6 +165,8 @@ void MovePicker::score() {
             m.value += (*continuationHistory[2])[pc][to] / 3;
             m.value += (*continuationHistory[3])[pc][to];
             m.value += (*continuationHistory[5])[pc][to];
+
+            m.value += (m == killer) * 65536;
 
             // bonus for checks
             m.value += bool(pos.check_squares(pt) & to) * 16384;
@@ -268,18 +251,6 @@ top:
             }))
             return *(cur - 1);
 
-        // Prepare the pointers to loop over the refutations array
-        cur      = std::begin(refutations);
-        endMoves = std::end(refutations);
-
-        ++stage;
-        [[fallthrough]];
-
-    case REFUTATION :
-        if (select<Next>([&]() {
-                return *cur != Move::none() && !pos.capture_stage(*cur) && pos.pseudo_legal(*cur);
-            }))
-            return *(cur - 1);
         ++stage;
         [[fallthrough]];
 
@@ -297,8 +268,7 @@ top:
         [[fallthrough]];
 
     case GOOD_QUIET :
-        if (!skipQuiets
-            && select<Next>([&]() { return *cur != refutations[0] && *cur != refutations[1]; }))
+        if (!skipQuiets && select<Next>([]() { return true; }))
         {
             if ((cur - 1)->value > -7998 || (cur - 1)->value <= quiet_threshold(depth))
                 return *(cur - 1);
@@ -327,7 +297,7 @@ top:
 
     case BAD_QUIET :
         if (!skipQuiets)
-            return select<Next>([&]() { return *cur != refutations[0] && *cur != refutations[1]; });
+            return select<Next>([]() { return true; });
 
         return Move::none();
 

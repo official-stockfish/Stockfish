@@ -93,7 +93,7 @@ Engine::Engine(std::string path) :
     options["UCI_LimitStrength"] << Option(false);
     options["UCI_Elo"] << Option(1320, 1320, 3190);
     options["UCI_ShowWDL"] << Option(false);
-    options["SyzygyPath"] << Option("<empty>", [](const Option& o) {
+    options["SyzygyPath"] << Option("", [](const Option& o) {
         Tablebases::init(o);
         return std::nullopt;
     });

@@ -160,14 +160,7 @@ class MovePicker {
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
-               const Move*);
-    MovePicker(const Position&,
-               Move,
-               Depth,
-               const ButterflyHistory*,
-               const CapturePieceToHistory*,
-               const PieceToHistory**,
-               const PawnHistory*);
+               Move killer = Move::none());
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
@@ -184,12 +177,12 @@ class MovePicker {
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
-    Move                         ttMove;
-    ExtMove refutations[2], *cur, *endMoves, *endBadCaptures, *beginBadQuiets, *endBadQuiets;
-    int     stage;
-    int     threshold;
-    Depth   depth;
-    ExtMove moves[MAX_MOVES];
+    Move                         ttMove, killer;
+    ExtMove *                    cur, *endMoves, *endBadCaptures, *beginBadQuiets, *endBadQuiets;
+    int                          stage;
+    int                          threshold;
+    Depth                        depth;
+    ExtMove                      moves[MAX_MOVES];
 };
 
 }  // namespace Stockfish
