@@ -76,7 +76,7 @@ case $uname_s in
     case $uname_m in
       'arm64')
         true_arch='apple-silicon'
-        file_arch='x86-64-sse41-popcnt' # Supported by Rosetta 2
+        file_arch='m1-apple-silicon'
         ;;
       'x86_64')
         flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '_.')

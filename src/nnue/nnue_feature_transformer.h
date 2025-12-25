@@ -447,8 +447,8 @@ class FeatureTransformer {
 
     void hint_common_access(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-        hint_common_access_for_perspective<WHITE>(pos, cache);
-        hint_common_access_for_perspective<BLACK>(pos, cache);
+        update_accumulator<WHITE>(pos, cache);
+        update_accumulator<BLACK>(pos, cache);
     }
 
    private:
@@ -470,9 +470,8 @@ class FeatureTransformer {
         return st;
     }
 
-    // It computes the accumulator of the next position, or updates the
-    // current position's accumulator if CurrentOnly is true.
-    template<Color Perspective, bool CurrentOnly>
+    // Computes the accumulator of the next position.
+    template<Color Perspective>
     void update_accumulator_incremental(const Position& pos, StateInfo* computed) const {
         assert((computed->*accPtr).computed[Perspective]);
         assert(computed->next != nullptr);
@@ -491,16 +490,10 @@ class FeatureTransformer {
         // feature set's update cost calculation to be correct and never allow
         // updates with more added/removed features than MaxActiveDimensions.
         FeatureSet::IndexList removed, added;
+        FeatureSet::append_changed_indices<Perspective>(ksq, computed->next->dirtyPiece, removed,
+                                                        added);
 
-        if constexpr (CurrentOnly)
-            for (StateInfo* st = pos.state(); st != computed; st = st->previous)
-                FeatureSet::append_changed_indices<Perspective>(ksq, st->dirtyPiece, removed,
-                                                                added);
-        else
-            FeatureSet::append_changed_indices<Perspective>(ksq, computed->next->dirtyPiece,
-                                                            removed, added);
-
-        StateInfo* next = CurrentOnly ? pos.state() : computed->next;
+        StateInfo* next = computed->next;
         assert(!(next->*accPtr).computed[Perspective]);
 
 #ifdef VECTOR
@@ -663,8 +656,8 @@ class FeatureTransformer {
 
         (next->*accPtr).computed[Perspective] = true;
 
-        if (!CurrentOnly && next != pos.state())
-            update_accumulator_incremental<Perspective, false>(pos, next);
+        if (next != pos.state())
+            update_accumulator_incremental<Perspective>(pos, next);
     }
 
     template<Color Perspective>
@@ -826,37 +819,18 @@ class FeatureTransformer {
             entry.byTypeBB[pt] = pos.pieces(pt);
     }
 
-    template<Color Perspective>
-    void hint_common_access_for_perspective(const Position&                           pos,
-                                            AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-
-        // Works like update_accumulator, but performs less work.
-        // Updates ONLY the accumulator for pos.
-
-        // Look for a usable accumulator of an earlier position. We keep track
-        // of the estimated gain in terms of features to be added/subtracted.
-        // Fast early exit.
-        if ((pos.state()->*accPtr).computed[Perspective])
-            return;
-
-        StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
-
-        if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
-            update_accumulator_incremental<Perspective, true>(pos, oldest);
-        else
-            update_accumulator_refresh_cache<Perspective>(pos, cache);
-    }
 
     template<Color Perspective>
     void update_accumulator(const Position&                           pos,
                             AccumulatorCaches::Cache<HalfDimensions>* cache) const {
-
+        if ((pos.state()->*accPtr).computed[Perspective])
+            return;
         StateInfo* oldest = try_find_computed_accumulator<Perspective>(pos);
 
         if ((oldest->*accPtr).computed[Perspective] && oldest != pos.state())
             // Start from the oldest computed accumulator, update all the
             // accumulators up to the current position.
-            update_accumulator_incremental<Perspective, false>(pos, oldest);
+            update_accumulator_incremental<Perspective>(pos, oldest);
         else
             update_accumulator_refresh_cache<Perspective>(pos, cache);
     }
