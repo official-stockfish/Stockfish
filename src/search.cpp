@@ -87,7 +87,7 @@ Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
 }
 
 // History and stats update bonus, based on depth
-int stat_bonus(Depth d) { return std::clamp(190 * d - 298, 20, 1596); }
+int stat_bonus(Depth d) { return std::min(190 * d - 108, 1596); }
 
 // History and stats update malus, based on depth
 int stat_malus(Depth d) { return (d < 4 ? 736 * d - 268 : 2044); }
@@ -911,8 +911,6 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Move       probcutCapturesSearched[32];
-        int        probcutCaptureCount = 0;
         Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
@@ -950,16 +948,6 @@ Value Search::Worker::search(
                     thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
                       << stat_bonus(depth - 2);
 
-                    for (int i = 0; i < probcutCaptureCount; i++)
-                    {
-                        movedPiece = pos.moved_piece(probcutCapturesSearched[i]);
-                        captured   = pos.piece_on(probcutCapturesSearched[i].to_sq());
-
-                        thisThread->captureHistory[movedPiece][probcutCapturesSearched[i].to_sq()]
-                                                  [type_of(captured)]
-                          << -stat_malus(depth - 3);
-                    }
-
                     // Save ProbCut data into transposition table
                     Distributed::save(tt, threads, thisThread, ttWriter, posKey,
                                       value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, depth - 3,
@@ -967,9 +955,6 @@ Value Search::Worker::search(
                     return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
                                                                      : value;
                 }
-
-                if (probcutCaptureCount < 32)
-                    probcutCapturesSearched[probcutCaptureCount++] = move;
             }
 
         Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
@@ -1836,7 +1821,7 @@ void update_all_stats(const Position& pos,
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
 
-    int quietMoveBonus = stat_bonus(depth + 1);
+    int quietMoveBonus = stat_bonus(depth);
     int quietMoveMalus = stat_malus(depth);
 
     if (!pos.capture_stage(bestMove))
