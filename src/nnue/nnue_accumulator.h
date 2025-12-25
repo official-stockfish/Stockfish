@@ -25,6 +25,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 
 #include "../types.h"
 #include "nnue_architecture.h"
@@ -45,9 +46,9 @@ class FeatureTransformer;
 // Class that holds the result of affine transformation of input features
 template<IndexType Size>
 struct alignas(CacheLineSize) Accumulator {
-    std::int16_t               accumulation[COLOR_NB][Size];
-    std::int32_t               psqtAccumulation[COLOR_NB][PSQTBuckets];
-    std::array<bool, COLOR_NB> computed = {};
+    std::array<std::array<std::int16_t, Size>, COLOR_NB>        accumulation;
+    std::array<std::array<std::int32_t, PSQTBuckets>, COLOR_NB> psqtAccumulation;
+    std::array<bool, COLOR_NB>                                  computed = {};
 };
 
 
@@ -70,16 +71,15 @@ struct AccumulatorCaches {
         struct alignas(CacheLineSize) Entry {
             std::array<BiasType, Size>              accumulation;
             std::array<PSQTWeightType, PSQTBuckets> psqtAccumulation;
-            Piece                                   pieces[SQUARE_NB];
+            std::array<Piece, SQUARE_NB>            pieces;
             Bitboard                                pieceBB;
 
             // To initialize a refresh entry, we set all its bitboards empty,
             // so we put the biases in the accumulation, without any weights on top
             void clear(const std::array<BiasType, Size>& biases) {
-
                 accumulation = biases;
-                std::memset((uint8_t*) this + offsetof(Entry, psqtAccumulation), 0,
-                            sizeof(Entry) - offsetof(Entry, psqtAccumulation));
+                std::memset(reinterpret_cast<std::byte*>(this) + offsetof(Entry, psqtAccumulation),
+                            0, sizeof(Entry) - offsetof(Entry, psqtAccumulation));
             }
         };
 
@@ -141,6 +141,12 @@ struct AccumulatorState {
         accumulatorBig.computed.fill(false);
         accumulatorSmall.computed.fill(false);
     }
+
+    typename FeatureSet::DiffType& reset() noexcept {
+        accumulatorBig.computed.fill(false);
+        accumulatorSmall.computed.fill(false);
+        return diff;
+    }
 };
 
 class AccumulatorStack {
@@ -150,9 +156,10 @@ class AccumulatorStack {
     template<typename T>
     [[nodiscard]] const AccumulatorState<T>& latest() const noexcept;
 
-    void reset() noexcept;
-    void push(const DirtyBoardData& dirtyBoardData) noexcept;
-    void pop() noexcept;
+    void                                  reset() noexcept;
+    void                                  push(const DirtyBoardData& dirtyBoardData) noexcept;
+    std::pair<DirtyPiece&, DirtyThreats&> push() noexcept;
+    void                                  pop() noexcept;
 
     template<IndexType Dimensions>
     void evaluate(const Position&                       pos,
@@ -169,21 +176,24 @@ class AccumulatorStack {
     template<typename T>
     [[nodiscard]] std::array<AccumulatorState<T>, MaxSize>& mut_accumulators() noexcept;
 
-    template<Color Perspective, typename FeatureSet, IndexType Dimensions>
-    void evaluate_side(const Position&                       pos,
+    template<typename FeatureSet, IndexType Dimensions>
+    void evaluate_side(Color                                 perspective,
+                       const Position&                       pos,
                        const FeatureTransformer<Dimensions>& featureTransformer,
                        AccumulatorCaches::Cache<Dimensions>& cache) noexcept;
 
-    template<Color Perspective, typename FeatureSet, IndexType Dimensions>
-    [[nodiscard]] std::size_t find_last_usable_accumulator() const noexcept;
+    template<typename FeatureSet, IndexType Dimensions>
+    [[nodiscard]] std::size_t find_last_usable_accumulator(Color perspective) const noexcept;
 
-    template<Color Perspective, typename FeatureSet, IndexType Dimensions>
-    void forward_update_incremental(const Position&                       pos,
+    template<typename FeatureSet, IndexType Dimensions>
+    void forward_update_incremental(Color                                 perspective,
+                                    const Position&                       pos,
                                     const FeatureTransformer<Dimensions>& featureTransformer,
                                     const std::size_t                     begin) noexcept;
 
-    template<Color Perspective, typename FeatureSet, IndexType Dimensions>
-    void backward_update_incremental(const Position&                       pos,
+    template<typename FeatureSet, IndexType Dimensions>
+    void backward_update_incremental(Color                                 perspective,
+                                     const Position&                       pos,
                                      const FeatureTransformer<Dimensions>& featureTransformer,
                                      const std::size_t                     end) noexcept;
 
