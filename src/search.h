@@ -33,8 +33,8 @@
 #include <vector>
 
 #include "cluster.h"
+#include "history.h"
 #include "misc.h"
-#include "movepick.h"
 #include "nnue/network.h"
 #include "nnue/nnue_accumulator.h"
 #include "numa.h"
