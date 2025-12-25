@@ -103,9 +103,7 @@ int risk_tolerance(const Position& pos, Value v) {
         return 644800 * x / ((x * x + 3 * y * y) * y);
     };
 
-    int m = (67 * pos.count<PAWN>() + 182 * pos.count<KNIGHT>() + 182 * pos.count<BISHOP>()
-             + 337 * pos.count<ROOK>() + 553 * pos.count<QUEEN>())
-          / 64;
+    int m = pos.count<PAWN>() + pos.non_pawn_material() / 300;
 
     // a and b are the crude approximation of the wdl model.
     // The win rate is: 1/(1+exp((a-v)/b))
@@ -907,7 +905,8 @@ Value Search::Worker::search(
     // The depth condition is important for mate finding.
     if (!ss->ttPv && depth < 14
         && eval - futility_margin(depth, cutNode && !ss->ttHit, improving, opponentWorsening)
-               - (ss - 1)->statScore / 301 + 37 - std::abs(correctionValue) / 139878
+               - (ss - 1)->statScore / 301 + 37 + ((eval - beta) / 8)
+               - std::abs(correctionValue) / 139878
              >= beta
         && eval >= beta && (!ttData.move || ttCapture) && !is_loss(beta) && !is_win(eval))
         return beta + (eval - beta) / 3;
@@ -1498,7 +1497,7 @@ moves_loop:  // When in check, search starts here
     else if (!priorCapture && prevSq != SQ_NONE)
     {
         int bonusScale =
-          (std::clamp(80 * depth - 320, 0, 200) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
+          (std::min(78 * depth - 312, 194) + 34 * !allNode + 164 * ((ss - 1)->moveCount > 8)
            + 141 * (!ss->inCheck && bestValue <= ss->staticEval - 100)
            + 121 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75)
            + 86 * ((ss - 1)->isTTMove) + 86 * (ss->cutoffCnt <= 3)

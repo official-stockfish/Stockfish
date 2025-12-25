@@ -279,11 +279,6 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
     flush();
 }
 
-enum IncUpdateDirection {
-    FORWARD,
-    BACKWARD
-};
-
 }  // namespace Stockfish::Eval::NNUE
 
 #endif  // #ifndef NNUE_COMMON_H_INCLUDED
