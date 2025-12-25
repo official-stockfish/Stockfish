@@ -287,11 +287,17 @@ namespace {
 
 template<size_t N>
 struct DebugInfo {
-    std::atomic<int64_t> data[N] = {0};
+    std::array<std::atomic<int64_t>, N> data = {0};
 
     [[nodiscard]] constexpr std::atomic<int64_t>& operator[](size_t index) {
         assert(index < N);
         return data[index];
+    }
+
+    constexpr DebugInfo& operator=(const DebugInfo& other) {
+        for (size_t i = 0; i < N; i++)
+            data[i].store(other.data[i].load());
+        return *this;
     }
 };
 
@@ -393,6 +399,13 @@ void dbg_print() {
         }
 }
 
+void dbg_clear() {
+    hit.fill({});
+    mean.fill({});
+    stdev.fill({});
+    correl.fill({});
+    extremes.fill({});
+}
 
 // Used to serialize access to std::cout
 // to avoid multiple threads writing at the same time.

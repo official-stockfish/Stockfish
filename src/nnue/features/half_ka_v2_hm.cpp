@@ -77,12 +77,8 @@ template void HalfKAv2_hm::append_changed_indices<BLACK>(Square            ksq,
                                                          IndexList&        removed,
                                                          IndexList&        added);
 
-int HalfKAv2_hm::update_cost(const StateInfo* st) { return st->dirtyPiece.dirty_num; }
-
-int HalfKAv2_hm::refresh_cost(const Position& pos) { return pos.count<ALL_PIECES>(); }
-
-bool HalfKAv2_hm::requires_refresh(const StateInfo* st, Color perspective) {
-    return st->dirtyPiece.piece[0] == make_piece(perspective, KING);
+bool HalfKAv2_hm::requires_refresh(const DirtyPiece& dirtyPiece, Color perspective) {
+    return dirtyPiece.piece[0] == make_piece(perspective, KING);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

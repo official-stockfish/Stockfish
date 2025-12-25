@@ -34,7 +34,6 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "movegen.h"
-#include "nnue/nnue_common.h"
 #include "syzygy/tbprobe.h"
 #include "tt.h"
 #include "uci.h"
@@ -55,8 +54,8 @@ namespace {
 
 constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
-constexpr Piece Pieces[] = {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                            B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING};
+static constexpr Piece Pieces[] = {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
+                                   B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING};
 }  // namespace
 
 
@@ -83,7 +82,6 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     if (int(Tablebases::MaxCardinality) >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
         StateInfo st;
-        ASSERT_ALIGNED(&st, Eval::NNUE::CacheLineSize);
 
         Position p;
         p.set(pos.fen(), pos.is_chess960(), &st);
@@ -272,7 +270,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         // a) side to move have a pawn threatening epSquare
         // b) there is an enemy pawn in front of epSquare
         // c) there is no piece on epSquare or behind epSquare
-        enpassant = pawn_attacks_bb(~sideToMove, st->epSquare) & pieces(sideToMove, PAWN)
+        enpassant = attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN)
                  && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
                  && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
     }
@@ -323,7 +321,7 @@ void Position::set_check_info() const {
 
     Square ksq = square<KING>(~sideToMove);
 
-    st->checkSquares[PAWN]   = pawn_attacks_bb(~sideToMove, ksq);
+    st->checkSquares[PAWN]   = attacks_bb<PAWN>(ksq, ~sideToMove);
     st->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
     st->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
     st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
@@ -489,8 +487,8 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
     return (attacks_bb<ROOK>(s, occupied) & pieces(ROOK, QUEEN))
          | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
-         | (pawn_attacks_bb(BLACK, s) & pieces(WHITE, PAWN))
-         | (pawn_attacks_bb(WHITE, s) & pieces(BLACK, PAWN))
+         | (attacks_bb<PAWN>(s, BLACK) & pieces(WHITE, PAWN))
+         | (attacks_bb<PAWN>(s, WHITE) & pieces(BLACK, PAWN))
          | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT)) | (attacks_bb<KING>(s) & pieces(KING));
 }
 
@@ -500,7 +498,7 @@ bool Position::attackers_to_exist(Square s, Bitboard occupied, Color c) const {
             && (attacks_bb<ROOK>(s, occupied) & pieces(c, ROOK, QUEEN)))
         || ((attacks_bb<BISHOP>(s) & pieces(c, BISHOP, QUEEN))
             && (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN)))
-        || (((pawn_attacks_bb(~c, s) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
+        || (((attacks_bb<PAWN>(s, ~c) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
              | (attacks_bb<KING>(s) & pieces(KING)))
             & pieces(c));
 }
@@ -560,7 +558,7 @@ bool Position::legal(Move m) const {
 
     // A non-king move is legal if and only if it is not pinned or it
     // is moving along the ray towards or away from the king.
-    return !(blockers_for_king(us) & from) || aligned(from, to, square<KING>(us));
+    return !(blockers_for_king(us) & from) || line_bb(from, to) & pieces(us, KING);
 }
 
 
@@ -599,9 +597,9 @@ bool Position::pseudo_legal(const Move m) const {
         if ((Rank8BB | Rank1BB) & to)
             return false;
 
-        if (!(pawn_attacks_bb(us, from) & pieces(~us) & to)  // Not a capture
-            && !((from + pawn_push(us) == to) && empty(to))  // Not a single push
-            && !((from + 2 * pawn_push(us) == to)            // Not a double push
+        if (!(attacks_bb<PAWN>(from, us) & pieces(~us) & to)  // Not a capture
+            && !((from + pawn_push(us) == to) && empty(to))   // Not a single push
+            && !((from + 2 * pawn_push(us) == to)             // Not a double push
                  && (relative_rank(us, from) == RANK_2) && empty(to) && empty(to - pawn_push(us))))
             return false;
     }
@@ -648,7 +646,7 @@ bool Position::gives_check(Move m) const {
 
     // Is there a discovered check?
     if (blockers_for_king(~sideToMove) & from)
-        return !aligned(from, to, square<KING>(~sideToMove)) || m.type_of() == CASTLING;
+        return !(line_bb(from, to) & pieces(~sideToMove, KING)) || m.type_of() == CASTLING;
 
     switch (m.type_of())
     {
@@ -656,7 +654,7 @@ bool Position::gives_check(Move m) const {
         return false;
 
     case PROMOTION :
-        return attacks_bb(m.promotion_type(), to, pieces() ^ from) & square<KING>(~sideToMove);
+        return attacks_bb(m.promotion_type(), to, pieces() ^ from) & pieces(~sideToMove, KING);
 
     // En passant capture with check? We have already handled the case of direct
     // checks and ordinary discovered check, so the only case we need to handle
@@ -685,10 +683,10 @@ bool Position::gives_check(Move m) const {
 // moves should be filtered out before this function is called.
 // If a pointer to the TT table is passed, the entry for the new position
 // will be prefetched
-void Position::do_move(Move                      m,
-                       StateInfo&                newSt,
-                       bool                      givesCheck,
-                       const TranspositionTable* tt = nullptr) {
+DirtyPiece Position::do_move(Move                      m,
+                             StateInfo&                newSt,
+                             bool                      givesCheck,
+                             const TranspositionTable* tt = nullptr) {
 
     assert(m.is_ok());
     assert(&newSt != st);
@@ -709,11 +707,7 @@ void Position::do_move(Move                      m,
     ++st->rule50;
     ++st->pliesFromNull;
 
-    // Used by NNUE
-    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
-
-    auto& dp     = st->dirtyPiece;
+    DirtyPiece dp;
     dp.dirty_num = 1;
 
     Color  us       = sideToMove;
@@ -733,14 +727,13 @@ void Position::do_move(Move                      m,
         assert(captured == make_piece(us, ROOK));
 
         Square rfrom, rto;
-        do_castling<true>(us, from, to, rfrom, rto);
+        do_castling<true>(us, from, to, rfrom, rto, &dp);
 
         k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
         st->nonPawnKey[us] ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
         captured = NO_PIECE;
     }
-
-    if (captured)
+    else if (captured)
     {
         Square capsq = to;
 
@@ -818,7 +811,7 @@ void Position::do_move(Move                      m,
     {
         // Set en passant square if the moved pawn can be captured
         if ((int(to) ^ int(from)) == 16
-            && (pawn_attacks_bb(us, to - pawn_push(us)) & pieces(them, PAWN)))
+            && (attacks_bb<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
         {
             st->epSquare = to - pawn_push(us);
             k ^= Zobrist::enpassant[file_of(st->epSquare)];
@@ -906,6 +899,8 @@ void Position::do_move(Move                      m,
     }
 
     assert(pos_is_ok());
+
+    return dp;
 }
 
 
@@ -975,23 +970,25 @@ void Position::undo_move(Move m) {
 // Helper used to do/undo a castling move. This is a bit
 // tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
-void Position::do_castling(Color us, Square from, Square& to, Square& rfrom, Square& rto) {
+void Position::do_castling(
+  Color us, Square from, Square& to, Square& rfrom, Square& rto, DirtyPiece* const dp) {
 
     bool kingSide = to > from;
     rfrom         = to;  // Castling is encoded as "king captures friendly rook"
     rto           = relative_square(us, kingSide ? SQ_F1 : SQ_D1);
     to            = relative_square(us, kingSide ? SQ_G1 : SQ_C1);
 
+    assert(!Do || dp);
+
     if (Do)
     {
-        auto& dp     = st->dirtyPiece;
-        dp.piece[0]  = make_piece(us, KING);
-        dp.from[0]   = from;
-        dp.to[0]     = to;
-        dp.piece[1]  = make_piece(us, ROOK);
-        dp.from[1]   = rfrom;
-        dp.to[1]     = rto;
-        dp.dirty_num = 2;
+        dp->piece[0]  = make_piece(us, KING);
+        dp->from[0]   = from;
+        dp->to[0]     = to;
+        dp->piece[1]  = make_piece(us, ROOK);
+        dp->from[1]   = rfrom;
+        dp->to[1]     = rto;
+        dp->dirty_num = 2;
     }
 
     // Remove both pieces first since squares could overlap in Chess960
@@ -1011,7 +1008,7 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     assert(!checkers());
     assert(&newSt != st);
 
-    std::memcpy(&newSt, st, offsetof(StateInfo, accumulatorBig));
+    std::memcpy(&newSt, st, sizeof(StateInfo));
 
     newSt.previous = st;
     st->next       = &newSt;
@@ -1025,11 +1022,6 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
 
     st->key ^= Zobrist::side;
     prefetch(tt.first_entry(key()));
-
-    st->dirtyPiece.dirty_num               = 0;
-    st->dirtyPiece.piece[0]                = NO_PIECE;  // Avoid checks in UpdateAccumulator()
-    st->accumulatorBig.computed[WHITE]     = st->accumulatorBig.computed[BLACK] =
-      st->accumulatorSmall.computed[WHITE] = st->accumulatorSmall.computed[BLACK] = false;
 
     st->pliesFromNull = 0;
 

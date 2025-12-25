@@ -245,19 +245,16 @@ class AffineTransform {
     #if defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_setzero() _mm256_setzero_si256()
-        #define vec_set_32 _mm256_set1_epi32
         #define vec_add_dpbusd_32 Simd::m256_add_dpbusd_epi32
         #define vec_hadd Simd::m256_hadd
     #elif defined(USE_SSSE3)
             using vec_t = __m128i;
         #define vec_setzero() _mm_setzero_si128()
-        #define vec_set_32 _mm_set1_epi32
         #define vec_add_dpbusd_32 Simd::m128_add_dpbusd_epi32
         #define vec_hadd Simd::m128_hadd
     #elif defined(USE_NEON_DOTPROD)
             using vec_t = int32x4_t;
         #define vec_setzero() vdupq_n_s32(0)
-        #define vec_set_32 vdupq_n_s32
         #define vec_add_dpbusd_32(acc, a, b) \
             Simd::dotprod_m128_add_dpbusd_epi32(acc, vreinterpretq_s8_s32(a), \
                                                 vreinterpretq_s8_s32(b))
@@ -282,7 +279,6 @@ class AffineTransform {
             output[0] = vec_hadd(sum0, biases[0]);
 
     #undef vec_setzero
-    #undef vec_set_32
     #undef vec_add_dpbusd_32
     #undef vec_hadd
         }
