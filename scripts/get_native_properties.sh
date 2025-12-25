@@ -26,6 +26,17 @@ check_znver_1_2() {
   [ "$vendor_id" = "AuthenticAMD" ] && [ "$cpu_family" = "23" ] && znver_1_2=true
 }
 
+# Set the file CPU loongarch64 architecture
+set_arch_loongarch64() {
+  if check_flags 'lasx'; then
+    true_arch='loongarch64-lasx'
+  elif check_flags 'lsx'; then
+    true_arch='lonngarch64-lsx'
+  else
+    true_arch='loongarch64'
+  fi
+}
+
 # Set the file CPU x86_64 architecture
 set_arch_x86_64() {
   if check_flags 'avx512vnni' 'avx512dq' 'avx512f' 'avx512bw' 'avx512vl'; then
@@ -89,6 +100,10 @@ case $uname_s in
         if check_flags 'neon'; then
           true_arch="$true_arch-neon"
         fi
+        ;;
+      'loongarch64'*)
+        file_os='linux'
+        set_arch_loongarch64
         ;;
       *) # Unsupported machine type, exit with error
         printf 'Unsupported machine type: %s\n' "$uname_m"
