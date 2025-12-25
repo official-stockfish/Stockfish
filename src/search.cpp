@@ -391,10 +391,10 @@ void Search::Worker::iterative_deepening() {
                 if (threads.stop)
                     break;
 
-                // When failing high/low give some update (without cluttering
-                // the UI) before a re-search.
+                // When failing high/low give some update before a re-search.
+                // To avoid excessive output, only start at rootDepth > 30.
                 if (Distributed::is_root() && mainThread && multiPV == 1
-                    && (bestValue <= alpha || bestValue >= beta) && elapsed_time() > 3000)
+                    && (bestValue <= alpha || bestValue >= beta) && rootDepth > 30)
                 {
                     main_manager()->pv(*this, threads, tt, rootDepth);
                     Distributed::cluster_info(threads, rootDepth, elapsed());
@@ -428,7 +428,7 @@ void Search::Worker::iterative_deepening() {
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (Distributed::is_root() && mainThread
-                && (threads.stop || pvIdx + 1 == multiPV || elapsed_time() > 3000)
+                && (threads.stop || pvIdx + 1 == multiPV || rootDepth > 30)
                 // A thread that aborted search can have mated-in/TB-loss PV and score
                 // that cannot be trusted, i.e. it can be delayed or refuted if we would have
                 // had time to fully search other root-moves. Thus we suppress this output and
@@ -1025,7 +1025,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && Distributed::is_root() && is_mainthread() && elapsed_time() > 3000)
+        if (rootNode && Distributed::is_root() && is_mainthread() && rootDepth > 30)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + thisThread->pvIdx});
