@@ -194,8 +194,7 @@ enum : int {
     // quiescence search, however, the transposition table entries only store
     // the current quiescence move generation stage (which should thus compare
     // lower than any regular search depth).
-    DEPTH_QS_CHECKS = 0,
-    DEPTH_QS_NORMAL = -1,
+    DEPTH_QS = 0,
     // For transposition table entries where no searching at all was done
     // (whether regular or qsearch) we use DEPTH_UNSEARCHED, which should thus
     // compare lower than any quiescence or regular depth. DEPTH_ENTRY_OFFSET

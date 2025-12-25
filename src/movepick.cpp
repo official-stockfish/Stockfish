@@ -52,9 +52,7 @@ enum Stages {
     // generate qsearch moves
     QSEARCH_TT,
     QCAPTURE_INIT,
-    QCAPTURE,
-    QCHECK_INIT,
-    QCHECK
+    QCAPTURE
 };
 
 // Sort moves in descending order up to and including a given limit.
@@ -316,24 +314,6 @@ top:
         return select<Next>([&]() { return pos.see_ge(*cur, threshold); });
 
     case QCAPTURE :
-        if (select<Next>([]() { return true; }))
-            return *(cur - 1);
-
-        // If we found no move and the depth is too low to try checks, then we have finished
-        if (depth <= DEPTH_QS_NORMAL)
-            return Move::none();
-
-        ++stage;
-        [[fallthrough]];
-
-    case QCHECK_INIT :
-        cur      = moves;
-        endMoves = generate<QUIET_CHECKS>(pos, cur);
-
-        ++stage;
-        [[fallthrough]];
-
-    case QCHECK :
         return select<Next>([]() { return true; });
     }
 

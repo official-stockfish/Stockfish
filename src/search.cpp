@@ -1527,12 +1527,6 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    // Note that unlike regular search, which stores the literal depth into the
-    // transposition table, from qsearch we only store the current movegen stage
-    // as "depth". If in check, we search all evasions and thus store DEPTH_QS_CHECKS.
-    // Evasions may be quiet, and _CHECKS includes quiets.
-    Depth qsTtDepth = ss->inCheck || depth >= DEPTH_QS_CHECKS ? DEPTH_QS_CHECKS : DEPTH_QS_NORMAL;
-
     // Step 3. Transposition table lookup
     posKey                         = pos.key();
     auto [ttHit, ttData, ttWriter] = tt.probe(posKey);
@@ -1543,7 +1537,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     pvHit        = ttHit && ttData.is_pv;
 
     // At non-PV nodes we check for an early TT cutoff
-    if (!PvNode && ttData.depth >= qsTtDepth
+    if (!PvNode && ttData.depth >= DEPTH_QS
         && ttData.value != VALUE_NONE  // Can happen when !ttHit or when access race in probe()
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER)))
         return ttData.value;
@@ -1728,7 +1722,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
     // Save gathered info in transposition table. The static evaluation
     // is saved as it was before adjustment by correction history.
     Distributed::save(tt, threads, thisThread, ttWriter, posKey, value_to_tt(bestValue, ss->ply),
-                      pvHit, bestValue >= beta ? BOUND_LOWER : BOUND_UPPER, qsTtDepth, bestMove,
+                      pvHit, bestValue >= beta ? BOUND_LOWER : BOUND_UPPER, DEPTH_QS, bestMove,
                       unadjustedStaticEval, tt.generation());
 
     assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
