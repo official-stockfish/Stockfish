@@ -80,11 +80,6 @@ struct AccumulatorCaches {
                     entry.clear(network.featureTransformer->biases);
         }
 
-        void clear(const BiasType* biases) {
-            for (auto& entry : entries)
-                entry.clear(biases);
-        }
-
         std::array<Entry, COLOR_NB>& operator[](Square sq) { return entries[sq]; }
 
         std::array<std::array<Entry, COLOR_NB>, SQUARE_NB> entries;
