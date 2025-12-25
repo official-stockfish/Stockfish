@@ -914,48 +914,55 @@ Value Search::Worker::search(
         Piece      captured;
 
         while ((move = mp.next_move()) != Move::none())
-            if (move != excludedMove && pos.legal(move))
+        {
+            assert(move.is_ok());
+
+            if (move == excludedMove)
+                continue;
+
+            // Check for legality
+            if (!pos.legal(move))
+                continue;
+
+            assert(pos.capture_stage(move));
+
+            movedPiece = pos.moved_piece(move);
+            captured   = pos.piece_on(move.to_sq());
+
+
+            // Prefetch the TT entry for the resulting position
+            prefetch(tt.first_entry(pos.key_after(move)));
+
+            ss->currentMove = move;
+            ss->continuationHistory =
+              &this->continuationHistory[ss->inCheck][true][pos.moved_piece(move)][move.to_sq()];
+
+            thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
+            pos.do_move(move, st);
+
+            // Perform a preliminary qsearch to verify that the move holds
+            value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
+
+            // If the qsearch held, perform the regular search
+            if (value >= probCutBeta)
+                value =
+                  -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, depth - 4, !cutNode);
+
+            pos.undo_move(move);
+
+            if (value >= probCutBeta)
             {
-                assert(pos.capture_stage(move));
+                thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
+                  << stat_bonus(depth - 2);
 
-                movedPiece = pos.moved_piece(move);
-                captured   = pos.piece_on(move.to_sq());
-
-
-                // Prefetch the TT entry for the resulting position
-                prefetch(tt.first_entry(pos.key_after(move)));
-
-                ss->currentMove = move;
-                ss->continuationHistory =
-                  &this
-                     ->continuationHistory[ss->inCheck][true][pos.moved_piece(move)][move.to_sq()];
-
-                thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
-                pos.do_move(move, st);
-
-                // Perform a preliminary qsearch to verify that the move holds
-                value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
-
-                // If the qsearch held, perform the regular search
-                if (value >= probCutBeta)
-                    value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, depth - 4,
-                                           !cutNode);
-
-                pos.undo_move(move);
-
-                if (value >= probCutBeta)
-                {
-                    thisThread->captureHistory[movedPiece][move.to_sq()][type_of(captured)]
-                      << stat_bonus(depth - 2);
-
-                    // Save ProbCut data into transposition table
-                    Distributed::save(tt, threads, thisThread, ttWriter, posKey,
-                                      value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, depth - 3,
-                                      move, unadjustedStaticEval, tt.generation());
-                    return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
-                                                                     : value;
-                }
+                // Save ProbCut data into transposition table
+                Distributed::save(tt, threads, thisThread, ttWriter, posKey,
+                                  value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, depth - 3,
+                                  move, unadjustedStaticEval, tt.generation());
+                return std::abs(value) < VALUE_TB_WIN_IN_MAX_PLY ? value - (probCutBeta - beta)
+                                                                 : value;
             }
+        }
 
         Eval::NNUE::hint_common_parent_position(pos, networks[numaAccessToken], refreshTable);
     }
