@@ -759,7 +759,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
             st->nonPawnMaterial[them] -= PieceValue[captured];
             st->nonPawnKey[them] ^= Zobrist::psq[captured][capsq];
 
-            if (type_of(pc) == QUEEN || type_of(pc) == ROOK)
+            if (type_of(captured) == QUEEN || type_of(captured) == ROOK)
                 st->majorPieceKey ^= Zobrist::psq[captured][capsq];
 
             else
