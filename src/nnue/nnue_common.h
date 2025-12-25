@@ -258,8 +258,8 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
         }
     };
 
-    auto write = [&](std::uint8_t byte) {
-        buf[buf_pos++] = byte;
+    auto write = [&](std::uint8_t b) {
+        buf[buf_pos++] = b;
         if (buf_pos == BUF_SIZE)
             flush();
     };
