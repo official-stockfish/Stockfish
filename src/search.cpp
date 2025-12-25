@@ -142,9 +142,8 @@ void update_all_stats(const Position& pos,
                       Move            TTMove,
                       int             moveCount);
 
-bool isShuffling(Move move, Stack* const ss, const Position& pos) {
-    if (type_of(pos.moved_piece(move)) == PAWN || pos.capture_stage(move)
-        || pos.rule50_count() < 10)
+bool is_shuffling(Move move, Stack* const ss, const Position& pos) {
+    if (pos.capture_stage(move) || pos.rule50_count() < 10)
         return false;
     if (pos.state()->pliesFromNull <= 6 || ss->ply < 20)
         return false;
@@ -747,18 +746,12 @@ Value Search::Worker::search(
     ss->ttPv     = excludedMove ? ss->ttPv : PvNode || (ttHit && ttData.is_pv);
     ttCapture    = ttData.move && pos.capture_stage(ttData.move);
 
-    // At this point, if excluded, skip straight to step 6, static eval. However,
-    // to save indentation, we list the condition in all code between here and there.
-
     // Step 6. Static evaluation of the position
     Value      unadjustedStaticEval = VALUE_NONE;
     const auto correctionValue      = correction_value(*this, pos, ss);
+    // Skip early pruning when in check
     if (ss->inCheck)
-    {
-        // Skip early pruning when in check
         ss->staticEval = eval = (ss - 2)->staticEval;
-        improving             = false;
-    }
     else if (excludedMove)
         unadjustedStaticEval = eval = ss->staticEval;
     else if (ss->ttHit)
@@ -923,9 +916,8 @@ Value Search::Worker::search(
         auto futility_margin = [&](Depth d) {
             Value futilityMult = 76 - 23 * !ss->ttHit;
 
-            return futilityMult * d                               //
-                 - 2474 * improving * futilityMult / 1024         //
-                 - 331 * opponentWorsening * futilityMult / 1024  //
+            return futilityMult * d
+                 - (2474 * improving + 331 * opponentWorsening) * futilityMult / 1024  //
                  + std::abs(correctionValue) / 174665;
         };
 
@@ -1174,7 +1166,7 @@ moves_loop:  // When in check, search starts here
         // and lower extension margins scale well.
         if (!rootNode && move == ttData.move && !excludedMove && depth >= 6 + ss->ttPv
             && is_valid(ttData.value) && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
-            && ttData.depth >= depth - 3 && !isShuffling(move, ss, pos))
+            && ttData.depth >= depth - 3 && !is_shuffling(move, ss, pos))
         {
             Value singularBeta  = ttData.value - (53 + 75 * (ss->ttPv && !PvNode)) * depth / 60;
             Depth singularDepth = newDepth / 2;
@@ -1325,7 +1317,7 @@ moves_loop:  // When in check, search starts here
             // decisive score handling improves mate finding and retrograde analysis.
             if (move == ttData.move
                 && ((is_valid(ttData.value) && is_decisive(ttData.value) && ttData.depth > 0)
-                    || (ttData.depth > 1 && rootDepth > 8)))
+                    || ttData.depth > 1))
                 newDepth = std::max(newDepth, 1);
 
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);

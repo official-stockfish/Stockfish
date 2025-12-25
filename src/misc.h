@@ -134,6 +134,7 @@ class ValueList {
 
    public:
     std::size_t size() const { return size_; }
+    int         ssize() const { return int(size_); }
     void        push_back(const T& value) {
         assert(size_ < MaxSize);
         values_[size_++] = value;
@@ -424,7 +425,7 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 #elif defined(_MSC_VER)
     #define sf_always_inline __forceinline
 #else
-    // do nothign for other compilers
+    // do nothing for other compilers
     #define sf_always_inline
 #endif
 
