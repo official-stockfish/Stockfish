@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -143,7 +143,7 @@ class Position {
     void do_move(Move m, StateInfo& newSt);
     void do_move(Move m, StateInfo& newSt, bool givesCheck);
     void undo_move(Move m);
-    void do_null_move(StateInfo& newSt, TranspositionTable& tt);
+    void do_null_move(StateInfo& newSt, const TranspositionTable& tt);
     void undo_null_move();
 
     // Static Exchange Evaluation

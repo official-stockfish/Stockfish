@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -58,7 +58,6 @@ Engine::Engine(std::optional<std::string> path) :
         NN::NetworkBig({EvalFileDefaultNameBig, "None", ""}, NN::EmbeddedNNUEType::BIG),
         NN::NetworkSmall({EvalFileDefaultNameSmall, "None", ""}, NN::EmbeddedNNUEType::SMALL))) {
     pos.set(StartFEN, false, &states->back());
-    capSq = SQ_NONE;
 
     options["Debug Log File"] << Option("", [](const Option& o) {
         start_logger(o);
@@ -125,7 +124,6 @@ std::uint64_t Engine::perft(const std::string& fen, Depth depth, bool isChess960
 void Engine::go(Search::LimitsType& limits) {
     assert(limits.perft == 0);
     verify_networks();
-    limits.capSq = capSq;
 
     threads.start_thinking(options, pos, states, limits);
 }
@@ -168,7 +166,6 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
     states = StateListPtr(new std::deque<StateInfo>(1));
     pos.set(fen, options["UCI_Chess960"], &states->back());
 
-    capSq = SQ_NONE;
     for (const auto& move : moves)
     {
         auto m = UCIEngine::to_move(pos, move);
@@ -178,11 +175,6 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
 
         states->emplace_back();
         pos.do_move(m, states->back());
-
-        capSq          = SQ_NONE;
-        DirtyPiece& dp = states->back().dirtyPiece;
-        if (dp.dirty_num > 1 && dp.to[1] == SQ_NONE)
-            capSq = m.to_sq();
     }
 }
 

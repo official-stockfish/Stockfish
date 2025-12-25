@@ -150,6 +150,7 @@ class MiniTestFramework:
         self.failed_test_suites = 0
         self.passed_tests = 0
         self.failed_tests = 0
+        self.stop_on_failure = True
 
     def has_failed(self) -> bool:
         return self.failed_test_suites > 0
@@ -167,6 +168,9 @@ class MiniTestFramework:
                         self.failed_test_suites += 1
                     else:
                         self.passed_test_suites += 1
+                except Exception as e:
+                    self.failed_test_suites += 1
+                    print(f"\n{RED_COLOR}Error: {e}{RESET_COLOR}")
                 finally:
                     os.chdir(original_cwd)
 
@@ -225,6 +229,10 @@ class MiniTestFramework:
 
             if isinstance(e, AssertionError):
                 self.__handle_assertion_error(t0, method)
+
+            if self.stop_on_failure:
+                self.__print_buffer_output(buffer)
+                raise e
 
             fails += 1
         finally:
@@ -286,6 +294,11 @@ class Stockfish:
 
         self.start()
 
+    def _check_process_alive(self):
+        if not self.process or self.process.poll() is not None:
+            print("\n".join(self.output))
+            raise RuntimeError("Stockfish process has terminated")
+
     def start(self):
         if self.cli:
             self.process = subprocess.run(
@@ -313,6 +326,8 @@ class Stockfish:
     def send_command(self, command: str):
         if not self.process:
             raise RuntimeError("Stockfish process is not started")
+
+        self._check_process_alive()
 
         self.process.stdin.write(command + "\n")
         self.process.stdin.flush()
@@ -355,6 +370,7 @@ class Stockfish:
             raise RuntimeError("Stockfish process is not started")
 
         while True:
+            self._check_process_alive()
             line = self.process.stdout.readline().strip()
             self.output.append(line)
 

@@ -21,19 +21,28 @@ jobs:
         sanitizers:
           - name: Run with thread sanitizer
             make_option: sanitize=thread
+            cxx_extra_flags: ""
             instrumented_option: sanitizer-thread
           - name: Run with UB sanitizer
             make_option: sanitize=undefined
+            cxx_extra_flags: ""
             instrumented_option: sanitizer-undefined
           - name: Run under valgrind
             make_option: ""
+            cxx_extra_flags: ""
             instrumented_option: valgrind
           - name: Run under valgrind-thread
             make_option: ""
+            cxx_extra_flags: ""
             instrumented_option: valgrind-thread
           - name: Run non-instrumented
             make_option: ""
+            cxx_extra_flags: ""
             instrumented_option: none
+          - name: Run with glibcxx assertions
+            make_option: ""
+            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS
+            instrumented_option: non
     defaults:
       run:
         working-directory: src
@@ -72,7 +81,7 @@ jobs:
 
       - name: ${{ matrix.sanitizers.name }}
         run: |
-          export CXXFLAGS="-O1 -fno-inline"
+          export CXXFLAGS="-O1 -fno-inline ${{ matrix.sanitizers.cxx_extra_flags }}"
           make clean
           make -j4 ARCH=x86-64-sse41-popcnt ${{ matrix.sanitizers.make_option }} debug=yes optimize=no build > /dev/null
           python3 ../tests/instrumented.py --${{ matrix.sanitizers.instrumented_option }} ./stockfish
