@@ -80,10 +80,10 @@ Value to_corrected_static_eval(Value v, const Worker& w, const Position& pos) {
 }
 
 // History and stats update bonus, based on depth
-int stat_bonus(Depth d) { return std::clamp(186 * d - 285, 20, 1524); }
+int stat_bonus(Depth d) { return std::clamp(191 * d - 285, 20, 1412); }
 
 // History and stats update malus, based on depth
-int stat_malus(Depth d) { return (d < 4 ? 707 * d - 260 : 2073); }
+int stat_malus(Depth d) { return (d < 4 ? 727 * d - 260 : 1908); }
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
 Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
@@ -1431,11 +1431,9 @@ moves_loop:  // When in check, search starts here
                      + 64 * (!ss->inCheck && bestValue <= ss->staticEval - 107)
                      + 147 * (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 75));
 
-
-        // proportional to "how much damage we have to undo"
-        if ((ss - 1)->statScore < -8000)
-            bonus += std::clamp(-(ss - 1)->statScore / 100, 0, 250);
-
+        // Proportional to "how much damage we have to undo"
+        if ((ss - 1)->statScore < -7850)
+            bonus += std::clamp(-(ss - 1)->statScore / 100, 0, 224);
 
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       stat_bonus(depth) * bonus / 100);
@@ -1855,7 +1853,7 @@ void update_all_stats(const Position& pos,
 
     if (!pos.capture_stage(bestMove))
     {
-        int bestMoveBonus = bestValue > beta + 164 ? quietMoveBonus      // larger bonus
+        int bestMoveBonus = bestValue > beta + 166 ? quietMoveBonus      // larger bonus
                                                    : stat_bonus(depth);  // smaller bonus
 
         update_quiet_stats(pos, ss, workerThread, bestMove, bestMoveBonus);
