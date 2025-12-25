@@ -146,9 +146,6 @@ using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_T
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
 using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
 
-// PieceToCorrectionHistory is addressed by a move's [piece][to]
-using PieceToCorrectionHistory = Stats<int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
-
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
 // PieceToHistory instead of ButterflyBoards.
@@ -162,26 +159,32 @@ using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>
 // positions and their search score. It is used to improve the static evaluation
 // used by some search heuristics.
 // see https://www.chessprogramming.org/Static_Evaluation_Correction_History
+enum CorrHistType {
+    Pawn,          // By color and pawn structure
+    Major,         // By color and positions of major pieces (Queen, Rook) and King
+    Minor,         // By color and positions of minor pieces (Knight, Bishop) and King
+    NonPawn,       // By color and non-pawn material positions
+    PieceTo,       // By [piece][to] move
+    Continuation,  // Combined history of move pairs
+};
 
-// PawnCorrectionHistory is addressed by color and pawn structure
-using PawnCorrectionHistory =
-  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+template<CorrHistType _>
+struct CorrHistTypedef {
+    using type = Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+};
 
-// MajorPieceCorrectionHistory is addressed by color and king/major piece (Queen, Rook) positions
-using MajorPieceCorrectionHistory =
-  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+template<>
+struct CorrHistTypedef<PieceTo> {
+    using type = Stats<int16_t, CORRECTION_HISTORY_LIMIT, PIECE_NB, SQUARE_NB>;
+};
 
-// MinorPieceCorrectionHistory is addressed by color and king/minor piece (Knight, Bishop) positions
-using MinorPieceCorrectionHistory =
-  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+template<>
+struct CorrHistTypedef<Continuation> {
+    using type = Stats<CorrHistTypedef<PieceTo>::type, NOT_USED, PIECE_NB, SQUARE_NB>;
+};
 
-// NonPawnCorrectionHistory is addressed by color and non-pawn material positions
-using NonPawnCorrectionHistory =
-  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
-
-// ContinuationCorrectionHistory is the combined correction history of a given pair of moves
-using ContinuationCorrectionHistory =
-  Stats<PieceToCorrectionHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
+template<CorrHistType T>
+using CorrectionHistory = typename CorrHistTypedef<T>::type;
 
 // The MovePicker class is used to pick one pseudo-legal move at a time from the
 // current position. The most important method is next_move(), which emits one
@@ -209,7 +212,8 @@ class MovePicker {
                const PawnHistory*,
                int);
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
-    Move next_move(bool skipQuiets = false);
+    Move next_move();
+    void skip_quiet_moves();
 
    private:
     template<PickType T, typename Pred>
@@ -231,6 +235,7 @@ class MovePicker {
     int                          threshold;
     Depth                        depth;
     int                          ply;
+    bool                         skipQuiets = false;
     ExtMove                      moves[MAX_MOVES];
 };
 

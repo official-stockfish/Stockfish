@@ -491,9 +491,9 @@ void Search::Worker::iterative_deepening() {
         {
             int nodesEffort = rootMoves[0].effort * 100 / std::max(size_t(1), size_t(nodes));
 
-            double fallingEval = (1067 + 223 * (mainThread->bestPreviousAverageScore - bestValue)
-                                  + 97 * (mainThread->iterValue[iterIdx] - bestValue))
-                               / 10000.0;
+            double fallingEval = (11 + 2 * (mainThread->bestPreviousAverageScore - bestValue)
+                                  + (mainThread->iterValue[iterIdx] - bestValue))
+                               / 100.0;
             fallingEval = std::clamp(fallingEval, 0.580, 1.667);
 
             // If the bestMove is stable over several iterations, reduce time accordingly
@@ -993,12 +993,11 @@ moves_loop:  // When in check, search starts here
 
     value = bestValue;
 
-    int  moveCount        = 0;
-    bool moveCountPruning = false;
+    int moveCount = 0;
 
     // Step 13. Loop through all pseudo-legal moves until no moves remain
     // or a beta cutoff occurs.
-    while ((move = mp.next_move(moveCountPruning)) != Move::none())
+    while ((move = mp.next_move()) != Move::none())
     {
         assert(move.is_ok());
 
@@ -1044,7 +1043,8 @@ moves_loop:  // When in check, search starts here
         if (!rootNode && pos.non_pawn_material(us) && bestValue > VALUE_TB_LOSS_IN_MAX_PLY)
         {
             // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold (~8 Elo)
-            moveCountPruning = moveCount >= futility_move_count(improving, depth);
+            if (moveCount >= futility_move_count(improving, depth))
+                mp.skip_quiet_moves();
 
             // Reduced depth of the next LMR search
             int lmrDepth = newDepth - r;
@@ -1845,35 +1845,35 @@ void update_all_stats(const Position&      pos,
     Piece                  moved_piece    = pos.moved_piece(bestMove);
     PieceType              captured;
 
-    int quietMoveBonus = stat_bonus(depth);
-    int quietMoveMalus = stat_malus(depth);
+    int bonus = stat_bonus(depth);
+    int malus = stat_malus(depth);
 
     if (!pos.capture_stage(bestMove))
     {
-        update_quiet_histories(pos, ss, workerThread, bestMove, quietMoveBonus);
+        update_quiet_histories(pos, ss, workerThread, bestMove, bonus);
 
         // Decrease stats for all non-best quiet moves
         for (Move move : quietsSearched)
-            update_quiet_histories(pos, ss, workerThread, move, -quietMoveMalus);
+            update_quiet_histories(pos, ss, workerThread, move, -malus);
     }
     else
     {
         // Increase stats for the best move in case it was a capture move
         captured = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[moved_piece][bestMove.to_sq()][captured] << quietMoveBonus;
+        captureHistory[moved_piece][bestMove.to_sq()][captured] << bonus;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -quietMoveMalus);
+        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
     {
         moved_piece = pos.moved_piece(move);
         captured    = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[moved_piece][move.to_sq()][captured] << -quietMoveMalus;
+        captureHistory[moved_piece][move.to_sq()][captured] << -malus;
     }
 }
 
