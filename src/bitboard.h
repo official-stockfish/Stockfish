@@ -61,6 +61,7 @@ extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
 
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
 
 
@@ -252,6 +253,20 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
     }
 }
 
+inline Bitboard attacks_bb(Piece pc, Square s) {
+    if (type_of(pc) == PAWN)
+        return PseudoAttacks[color_of(pc)][s];
+
+    return PseudoAttacks[type_of(pc)][s];
+}
+
+
+inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
+    if (type_of(pc) == PAWN)
+        return PseudoAttacks[color_of(pc)][s];
+
+    return attacks_bb(type_of(pc), s, occupied);
+}
 
 // Counts the number of non-zero bits in a bitboard.
 inline int popcount(Bitboard b) {
