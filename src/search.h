@@ -19,6 +19,7 @@
 #ifndef SEARCH_H_INCLUDED
 #define SEARCH_H_INCLUDED
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -67,7 +68,6 @@ struct Stack {
     int             ply;
     Move            currentMove;
     Move            excludedMove;
-    Move            killer;
     Value           staticEval;
     int             statScore;
     int             moveCount;
@@ -135,19 +135,19 @@ struct LimitsType {
 // The UCI stores the uci options, thread pool, and transposition table.
 // This struct is used to easily forward data to the Search::Worker class.
 struct SharedState {
-    SharedState(const OptionsMap&                           optionsMap,
-                ThreadPool&                                 threadPool,
-                TranspositionTable&                         transpositionTable,
-                const NumaReplicated<Eval::NNUE::Networks>& nets) :
+    SharedState(const OptionsMap&                               optionsMap,
+                ThreadPool&                                     threadPool,
+                TranspositionTable&                             transpositionTable,
+                const LazyNumaReplicated<Eval::NNUE::Networks>& nets) :
         options(optionsMap),
         threads(threadPool),
         tt(transpositionTable),
         networks(nets) {}
 
-    const OptionsMap&                           options;
-    ThreadPool&                                 threads;
-    TranspositionTable&                         tt;
-    const NumaReplicated<Eval::NNUE::Networks>& networks;
+    const OptionsMap&                               options;
+    ThreadPool&                                     threads;
+    TranspositionTable&                             tt;
+    const LazyNumaReplicated<Eval::NNUE::Networks>& networks;
 };
 
 class Worker;
@@ -190,6 +190,34 @@ struct InfoIteration {
     int              depth;
     std::string_view currmove;
     size_t           currmovenumber;
+};
+
+// Skill structure is used to implement strength limit. If we have a UCI_Elo,
+// we convert it to an appropriate skill level, anchored to the Stash engine.
+// This method is based on a fit of the Elo results for games played between
+// Stockfish at various skill levels and various versions of the Stash engine.
+// Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
+// Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c2
+struct Skill {
+    // Lowest and highest Elo ratings used in the skill level calculation
+    constexpr static int LowestElo  = 1320;
+    constexpr static int HighestElo = 3190;
+
+    Skill(int skill_level, int uci_elo) {
+        if (uci_elo)
+        {
+            double e = double(uci_elo - LowestElo) / (HighestElo - LowestElo);
+            level = std::clamp((((37.2473 * e - 40.8525) * e + 22.2943) * e - 0.311438), 0.0, 19.0);
+        }
+        else
+            level = double(skill_level);
+    }
+    bool enabled() const { return level < 20.0; }
+    bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
+    Move pick_best(const RootMoves&, size_t multiPV);
+
+    double level;
+    Move   best = Move::none();
 };
 
 // SearchManager manages the search from the main thread. It is responsible for
@@ -258,12 +286,21 @@ class Worker {
 
     bool is_mainthread() const { return threadIdx == 0; }
 
+    void ensure_network_replicated();
+
     // Public because they need to be updatable by the stats
-    ButterflyHistory      mainHistory;
+    ButterflyHistory mainHistory;
+    ButterflyHistory rootHistory;
+
     CapturePieceToHistory captureHistory;
     ContinuationHistory   continuationHistory[2][2];
     PawnHistory           pawnHistory;
-    CorrectionHistory     correctionHistory;
+
+    PawnCorrectionHistory       pawnCorrectionHistory;
+    MaterialCorrectionHistory   materialCorrectionHistory;
+    MajorPieceCorrectionHistory majorPieceCorrectionHistory;
+    MinorPieceCorrectionHistory minorPieceCorrectionHistory;
+    NonPawnCorrectionHistory    nonPawnCorrectionHistory[COLOR_NB];
 
 #ifdef USE_MPI
     struct {
@@ -296,7 +333,7 @@ class Worker {
 
     // Quiescence search function, which is called by the main search
     template<NodeType nodeType>
-    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta, Depth depth = 0);
+    Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta);
 
     Depth reduction(bool i, Depth d, int mn, int delta) const;
 
@@ -334,10 +371,10 @@ class Worker {
 
     Tablebases::Config tbConfig;
 
-    const OptionsMap&                           options;
-    ThreadPool&                                 threads;
-    TranspositionTable&                         tt;
-    const NumaReplicated<Eval::NNUE::Networks>& networks;
+    const OptionsMap&                               options;
+    ThreadPool&                                     threads;
+    TranspositionTable&                             tt;
+    const LazyNumaReplicated<Eval::NNUE::Networks>& networks;
 
     // Used by NNUE
     Eval::NNUE::AccumulatorCaches refreshTable;

@@ -47,7 +47,7 @@ class Engine {
     using InfoFull  = Search::InfoFull;
     using InfoIter  = Search::InfoIteration;
 
-    Engine(std::string path = "");
+    Engine(std::optional<std::string> path = std::nullopt);
 
     // Cannot be movable due to components holding backreferences to fields
     Engine(const Engine&)            = delete;
@@ -114,10 +114,10 @@ class Engine {
     StateListPtr states;
     Square       capSq;
 
-    OptionsMap                           options;
-    ThreadPool                           threads;
-    TranspositionTable                   tt;
-    NumaReplicated<Eval::NNUE::Networks> networks;
+    OptionsMap                               options;
+    ThreadPool                               threads;
+    TranspositionTable                       tt;
+    LazyNumaReplicated<Eval::NNUE::Networks> networks;
 
     Search::SearchManager::UpdateContext updateContext;
 };

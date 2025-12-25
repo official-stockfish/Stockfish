@@ -34,14 +34,18 @@
 
 namespace Stockfish {
 
-constexpr int PAWN_HISTORY_SIZE        = 512;    // has to be a power of 2
-constexpr int CORRECTION_HISTORY_SIZE  = 16384;  // has to be a power of 2
-constexpr int CORRECTION_HISTORY_LIMIT = 1024;
+constexpr int PAWN_HISTORY_SIZE                   = 512;    // has to be a power of 2
+constexpr int PAWN_CORRECTION_HISTORY_SIZE        = 16384;  // has to be a power of 2
+constexpr int MATERIAL_CORRECTION_HISTORY_SIZE    = 32768;  // has to be a power of 2
+constexpr int MAJOR_PIECE_CORRECTION_HISTORY_SIZE = 32768;  // has to be a power of 2
+constexpr int MINOR_PIECE_CORRECTION_HISTORY_SIZE = 32768;  // has to be a power of 2
+constexpr int NON_PAWN_CORRECTION_HISTORY_SIZE    = 32768;  // has to be a power of 2
+constexpr int CORRECTION_HISTORY_LIMIT            = 1024;
 
 static_assert((PAWN_HISTORY_SIZE & (PAWN_HISTORY_SIZE - 1)) == 0,
               "PAWN_HISTORY_SIZE has to be a power of 2");
 
-static_assert((CORRECTION_HISTORY_SIZE & (CORRECTION_HISTORY_SIZE - 1)) == 0,
+static_assert((PAWN_CORRECTION_HISTORY_SIZE & (PAWN_CORRECTION_HISTORY_SIZE - 1)) == 0,
               "CORRECTION_HISTORY_SIZE has to be a power of 2");
 
 enum PawnHistoryType {
@@ -51,7 +55,24 @@ enum PawnHistoryType {
 
 template<PawnHistoryType T = Normal>
 inline int pawn_structure_index(const Position& pos) {
-    return pos.pawn_key() & ((T == Normal ? PAWN_HISTORY_SIZE : CORRECTION_HISTORY_SIZE) - 1);
+    return pos.pawn_key() & ((T == Normal ? PAWN_HISTORY_SIZE : PAWN_CORRECTION_HISTORY_SIZE) - 1);
+}
+
+inline int material_index(const Position& pos) {
+    return pos.material_key() & (MATERIAL_CORRECTION_HISTORY_SIZE - 1);
+}
+
+inline int major_piece_index(const Position& pos) {
+    return pos.major_piece_key() & (MAJOR_PIECE_CORRECTION_HISTORY_SIZE - 1);
+}
+
+inline int minor_piece_index(const Position& pos) {
+    return pos.minor_piece_key() & (MINOR_PIECE_CORRECTION_HISTORY_SIZE - 1);
+}
+
+template<Color c>
+inline int non_pawn_index(const Position& pos) {
+    return pos.non_pawn_key(c) & (NON_PAWN_CORRECTION_HISTORY_SIZE - 1);
 }
 
 // StatsEntry stores the stat table value. It is usually a number but could
@@ -115,7 +136,7 @@ enum StatsType {
 // ButterflyHistory records how often quiet moves have been successful or unsuccessful
 // during the current search, and is used for reduction and move ordering decisions.
 // It uses 2 tables (one for each color) indexed by the move's from and to squares,
-// see www.chessprogramming.org/Butterfly_Boards (~11 elo)
+// see https://www.chessprogramming.org/Butterfly_Boards (~11 elo)
 using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
@@ -133,16 +154,37 @@ using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
 using PawnHistory = Stats<int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
-// CorrectionHistory is addressed by color and pawn structure
-using CorrectionHistory =
-  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, CORRECTION_HISTORY_SIZE>;
+// Correction histories record differences between the static evaluation of
+// positions and their search score. It is used to improve the static evaluation
+// used by some search heuristics.
+// see https://www.chessprogramming.org/Static_Evaluation_Correction_History
 
-// MovePicker class is used to pick one pseudo-legal move at a time from the
-// current position. The most important method is next_move(), which returns a
-// new pseudo-legal move each time it is called, until there are no moves left,
-// when Move::none() is returned. In order to improve the efficiency of the
-// alpha-beta algorithm, MovePicker attempts to return the moves which are most
-// likely to get a cut-off first.
+// PawnCorrectionHistory is addressed by color and pawn structure
+using PawnCorrectionHistory =
+  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, PAWN_CORRECTION_HISTORY_SIZE>;
+
+// MaterialCorrectionHistory is addressed by color and material configuration
+using MaterialCorrectionHistory =
+  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, MATERIAL_CORRECTION_HISTORY_SIZE>;
+
+// MajorPieceCorrectionHistory is addressed by color and king/major piece (Queen, Rook) positions
+using MajorPieceCorrectionHistory =
+  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, MAJOR_PIECE_CORRECTION_HISTORY_SIZE>;
+
+// MinorPieceCorrectionHistory is addressed by color and king/minor piece (Knight, Bishop) positions
+using MinorPieceCorrectionHistory =
+  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, MINOR_PIECE_CORRECTION_HISTORY_SIZE>;
+
+// NonPawnCorrectionHistory is addressed by color and non-pawn material positions
+using NonPawnCorrectionHistory =
+  Stats<int16_t, CORRECTION_HISTORY_LIMIT, COLOR_NB, NON_PAWN_CORRECTION_HISTORY_SIZE>;
+
+// The MovePicker class is used to pick one pseudo-legal move at a time from the
+// current position. The most important method is next_move(), which emits one
+// new pseudo-legal move on every call, until there are no moves left, when
+// Move::none() is returned. In order to improve the efficiency of the alpha-beta
+// algorithm, MovePicker attempts to return the moves which are most likely to get
+// a cut-off first.
 class MovePicker {
 
     enum PickType {
@@ -157,10 +199,11 @@ class MovePicker {
                Move,
                Depth,
                const ButterflyHistory*,
+               const ButterflyHistory*,
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
-               Move killer = Move::none());
+               bool);
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move(bool skipQuiets = false);
 
@@ -174,14 +217,16 @@ class MovePicker {
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
+    const ButterflyHistory*      rootHistory;
     const CapturePieceToHistory* captureHistory;
     const PieceToHistory**       continuationHistory;
     const PawnHistory*           pawnHistory;
-    Move                         ttMove, killer;
+    Move                         ttMove;
     ExtMove *                    cur, *endMoves, *endBadCaptures, *beginBadQuiets, *endBadQuiets;
     int                          stage;
     int                          threshold;
     Depth                        depth;
+    bool                         rootNode;
     ExtMove                      moves[MAX_MOVES];
 };
 

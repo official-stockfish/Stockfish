@@ -124,7 +124,7 @@ descriptions. An example suitable for most Intel and AMD chips:
 
 ```
 cd src
-make -j profile-build ARCH=x86-64-avx2
+make -j profile-build
 ```
 
 Detailed compilation instructions for all platforms can be found in our
