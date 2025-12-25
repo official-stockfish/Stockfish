@@ -33,13 +33,13 @@ namespace Stockfish {
 
 void* std_aligned_alloc(size_t alignment, size_t size);
 void  std_aligned_free(void* ptr);
-// memory aligned by page size, min alignment: 4096 bytes
-void* aligned_large_pages_alloc(size_t size);
-// nop if mem == nullptr
-void aligned_large_pages_free(void* mem);
 
-// frees memory which was placed there with placement new.
-// works for both single objects and arrays of unknown bound
+// Memory aligned by page size, min alignment: 4096 bytes
+void* aligned_large_pages_alloc(size_t size);
+void  aligned_large_pages_free(void* mem);
+
+// Frees memory which was placed there with placement new.
+// Works for both single objects and arrays of unknown bound.
 template<typename T, typename FREE_FUNC>
 void memory_deleter(T* ptr, FREE_FUNC free_func) {
     if (!ptr)
@@ -53,15 +53,15 @@ void memory_deleter(T* ptr, FREE_FUNC free_func) {
     return;
 }
 
-// frees memory which was placed there with placement new.
-// works for both single objects and arrays of unknown bound
+// Frees memory which was placed there with placement new.
+// Works for both single objects and arrays of unknown bound.
 template<typename T, typename FREE_FUNC>
 void memory_deleter_array(T* ptr, FREE_FUNC free_func) {
     if (!ptr)
         return;
 
 
-    // Move back on the pointer to where the size is allocated.
+    // Move back on the pointer to where the size is allocated
     const size_t array_offset = std::max(sizeof(size_t), alignof(T));
     char*        raw_memory   = reinterpret_cast<char*>(ptr) - array_offset;
 
@@ -77,7 +77,7 @@ void memory_deleter_array(T* ptr, FREE_FUNC free_func) {
     free_func(raw_memory);
 }
 
-// Allocates memory for a single object and places it there with placement new.
+// Allocates memory for a single object and places it there with placement new
 template<typename T, typename ALLOC_FUNC, typename... Args>
 inline std::enable_if_t<!std::is_array_v<T>, T*> memory_allocator(ALLOC_FUNC alloc_func,
                                                                   Args&&... args) {
@@ -86,7 +86,7 @@ inline std::enable_if_t<!std::is_array_v<T>, T*> memory_allocator(ALLOC_FUNC all
     return new (raw_memory) T(std::forward<Args>(args)...);
 }
 
-// Allocates memory for an array of unknown bound and places it there with placement new.
+// Allocates memory for an array of unknown bound and places it there with placement new
 template<typename T, typename ALLOC_FUNC>
 inline std::enable_if_t<std::is_array_v<T>, std::remove_extent_t<T>*>
 memory_allocator(ALLOC_FUNC alloc_func, size_t num) {
@@ -94,7 +94,7 @@ memory_allocator(ALLOC_FUNC alloc_func, size_t num) {
 
     const size_t array_offset = std::max(sizeof(size_t), alignof(ElementType));
 
-    // save the array size in the memory location
+    // Save the array size in the memory location
     char* raw_memory =
       reinterpret_cast<char*>(alloc_func(array_offset + num * sizeof(ElementType)));
     ASSERT_ALIGNED(raw_memory, alignof(T));
@@ -104,7 +104,8 @@ memory_allocator(ALLOC_FUNC alloc_func, size_t num) {
     for (size_t i = 0; i < num; ++i)
         new (raw_memory + array_offset + i * sizeof(ElementType)) ElementType();
 
-    // Need to return the pointer at the start of the array so that the indexing in unique_ptr<T[]> works
+    // Need to return the pointer at the start of the array so that
+    // the indexing in unique_ptr<T[]> works.
     return reinterpret_cast<ElementType*>(raw_memory + array_offset);
 }
 

@@ -59,8 +59,8 @@ enum Stages {
     QCHECK
 };
 
-// Sort moves in descending order up to and including
-// a given limit. The order of moves smaller than the limit is left unspecified.
+// Sort moves in descending order up to and including a given limit.
+// The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 
     for (ExtMove *sortedEnd = begin, *p = begin + 1; p < end; ++p)
@@ -125,8 +125,8 @@ MovePicker::MovePicker(const Position&              p,
     stage = (pos.checkers() ? EVASION_TT : QSEARCH_TT) + !(ttm && pos.pseudo_legal(ttm));
 }
 
-// Constructor for ProbCut: we generate captures with SEE greater
-// than or equal to the given threshold.
+// Constructor for ProbCut: we generate captures with SEE greater than or equal
+// to the given threshold.
 MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceToHistory* cph) :
     pos(p),
     captureHistory(cph),

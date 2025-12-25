@@ -49,7 +49,7 @@ class Engine {
 
     Engine(std::string path = "");
 
-    // Can't be movable due to components holding backreferences to fields
+    // Cannot be movable due to components holding backreferences to fields
     Engine(const Engine&)            = delete;
     Engine(Engine&&)                 = delete;
     Engine& operator=(const Engine&) = delete;
