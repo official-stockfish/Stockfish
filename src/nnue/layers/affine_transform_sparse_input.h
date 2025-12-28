@@ -138,11 +138,12 @@ void find_nnz(const std::int32_t* RESTRICT input,
     using namespace SIMD;
 
     constexpr IndexType InputSimdWidth = sizeof(vec_uint_t) / sizeof(std::int32_t);
-    // Inputs are processed InputSimdWidth at a time and outputs are processed 8 at a time so we process in chunks of max(InputSimdWidth, 8)
-    constexpr IndexType ChunkSize       = std::max<IndexType>(InputSimdWidth, 8);
-    constexpr IndexType NumChunks       = InputDimensions / ChunkSize;
-    constexpr IndexType InputsPerChunk  = ChunkSize / InputSimdWidth;
-    constexpr IndexType OutputsPerChunk = ChunkSize / 8;
+    // Outputs are processed 8 elements at a time, even if the SIMD width is narrower
+    constexpr IndexType ChunkSize      = 8;
+    constexpr IndexType NumChunks      = InputDimensions / ChunkSize;
+    constexpr IndexType InputsPerChunk = ChunkSize / InputSimdWidth;
+
+    static_assert(InputsPerChunk > 0 && "SIMD width too wide");
 
     const auto     inputVector = reinterpret_cast<const vec_uint_t*>(input);
     IndexType      count       = 0;
@@ -157,15 +158,11 @@ void find_nnz(const std::int32_t* RESTRICT input,
             const vec_uint_t inputChunk = inputVector[i * InputsPerChunk + j];
             nnz |= unsigned(vec_nnz(inputChunk)) << (j * InputSimdWidth);
         }
-        for (IndexType j = 0; j < OutputsPerChunk; ++j)
-        {
-            const unsigned lookup = (nnz >> (j * 8)) & 0xFF;
-            const vec128_t offsets =
-              vec128_load(reinterpret_cast<const vec128_t*>(&Lookup.offset_indices[lookup]));
-            vec128_storeu(reinterpret_cast<vec128_t*>(out + count), vec128_add(base, offsets));
-            count += popcount(lookup);
-            base = vec128_add(base, increment);
-        }
+        const vec128_t offsets =
+          vec128_load(reinterpret_cast<const vec128_t*>(&Lookup.offset_indices[nnz]));
+        vec128_storeu(reinterpret_cast<vec128_t*>(out + count), vec128_add(base, offsets));
+        count += popcount(nnz);
+        base = vec128_add(base, increment);
     }
     count_out = count;
     #endif
