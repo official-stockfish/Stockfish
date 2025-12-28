@@ -76,9 +76,9 @@ jobs:
       - name: Compile ${{ matrix.config.binaries }} build
         run: |
           make clean
-          make -j4 profile-build ARCH=$BINARY COMP=$COMP WINE_PATH="$SDE"
+          make -j4 profile-build ARCH=$BINARY COMP=$COMP RUN_PREFIX="$SDE"
           make strip ARCH=$BINARY COMP=$COMP
-          WINE_PATH="$SDE" ../tests/signature.sh $benchref
+          RUN_PREFIX="$SDE" ../tests/signature.sh $benchref
           mv ./stockfish$EXT ../stockfish-$NAME-$BINARY$EXT
 
       - name: Remove non src files
