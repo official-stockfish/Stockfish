@@ -320,9 +320,8 @@ namespace Bitboards {
 // Returns the bitboard of target square for the given step
 // from the given square. If the step is off the board, returns empty bitboard.
 constexpr Bitboard safe_destination(Square s, int step) {
-    constexpr auto abs = [](int v) { return v < 0 ? -v : v; };
-    Square         to  = Square(s + step);
-    return is_ok(to) && abs(file_of(s) - file_of(to)) <= 2 ? square_bb(to) : Bitboard(0);
+    Square to = Square(s + step);
+    return is_ok(to) && std::abs(file_of(s) - file_of(to)) <= 2 ? square_bb(to) : 0;
 }
 
 constexpr Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
