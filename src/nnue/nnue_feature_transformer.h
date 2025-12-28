@@ -145,15 +145,8 @@ class FeatureTransformer {
     }
 
     inline void scale_weights(bool read) {
-        for (IndexType j = 0; j < InputDimensions; ++j)
-        {
-            WeightType* w = &weights[j * HalfDimensions];
-            for (IndexType i = 0; i < HalfDimensions; ++i)
-                w[i] = read ? w[i] * 2 : w[i] / 2;
-        }
-
-        for (IndexType i = 0; i < HalfDimensions; ++i)
-            biases[i] = read ? biases[i] * 2 : biases[i] / 2;
+        for (auto& w : weights) w = read ? w * 2 : w / 2;
+        for (auto& b : biases)  b = read ? b * 2 : b / 2;
     }
 
     // Read network parameters
