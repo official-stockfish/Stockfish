@@ -98,10 +98,8 @@ class Position {
     const std::array<Piece, SQUARE_NB>& piece_array() const;
     Square                              ep_square() const;
     bool                                empty(Square s) const;
-    template<PieceType Pt>
-    int count(Color c) const;
-    template<PieceType Pt>
-    int count() const;
+    int count(Piece pc) const;
+    int count(PieceType pt) const;
     template<PieceType Pt>
     Square square(Color c) const;
 
@@ -208,7 +206,6 @@ class Position {
     std::array<Bitboard, PIECE_TYPE_NB> byTypeBB;
     std::array<Bitboard, COLOR_NB>      byColorBB;
 
-    int          pieceCount[PIECE_NB];
     int          castlingRightsMask[SQUARE_NB];
     Square       castlingRookSquare[CASTLING_RIGHT_NB];
     Bitboard     castlingPath[CASTLING_RIGHT_NB];
@@ -249,14 +246,12 @@ inline Bitboard Position::pieces(Color c, PieceTypes... pts) const {
     return pieces(c) & pieces(pts...);
 }
 
-template<PieceType Pt>
-inline int Position::count(Color c) const {
-    return pieceCount[make_piece(c, Pt)];
+inline int Position::count(Piece pc) const {
+    return popcount(pieces(type_of(pc)) & pieces(color_of(pc)));
 }
 
-template<PieceType Pt>
-inline int Position::count() const {
-    return count<Pt>(WHITE) + count<Pt>(BLACK);
+inline int Position::count(PieceType pt) const {
+    return popcount(pieces(pt));
 }
 
 template<PieceType Pt>
@@ -350,8 +345,6 @@ inline void Position::put_piece(Piece pc, Square s, DirtyThreats* const dts) {
     board[s] = pc;
     byTypeBB[ALL_PIECES] |= byTypeBB[type_of(pc)] |= s;
     byColorBB[color_of(pc)] |= s;
-    pieceCount[pc]++;
-    pieceCount[make_piece(color_of(pc), ALL_PIECES)]++;
 
     if (dts)
         update_piece_threats<true>(pc, s, dts);
@@ -367,8 +360,6 @@ inline void Position::remove_piece(Square s, DirtyThreats* const dts) {
     byTypeBB[type_of(pc)] ^= s;
     byColorBB[color_of(pc)] ^= s;
     board[s] = NO_PIECE;
-    pieceCount[pc]--;
-    pieceCount[make_piece(color_of(pc), ALL_PIECES)]--;
 }
 
 inline void Position::move_piece(Square from, Square to, DirtyThreats* const dts) {

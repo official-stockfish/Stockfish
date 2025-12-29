@@ -42,7 +42,7 @@ namespace Stockfish {
 // an approximation of the material advantage on the board in terms of pawns.
 int Eval::simple_eval(const Position& pos) {
     Color c = pos.side_to_move();
-    return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c)) + pos.non_pawn_material(c)
+    return PawnValue * (pos.count(make_piece(c, PAWN)) - pos.count(make_piece(~c, PAWN))) + pos.non_pawn_material(c)
          - pos.non_pawn_material(~c);
 }
 
@@ -77,7 +77,7 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
     optimism += optimism * nnueComplexity / 476;
     nnue -= nnue * nnueComplexity / 18236;
 
-    int material = 534 * pos.count<PAWN>() + pos.non_pawn_material();
+    int material = 534 * pos.count(PAWN) + pos.non_pawn_material();
     int v        = (nnue * (77871 + material) + optimism * (7191 + material)) / 77871;
 
     // Damp down the evaluation linearly when shuffling

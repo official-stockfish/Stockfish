@@ -500,8 +500,8 @@ struct WinRateParams {
 
 WinRateParams win_rate_params(const Position& pos) {
 
-    int material = pos.count<PAWN>() + 3 * pos.count<KNIGHT>() + 3 * pos.count<BISHOP>()
-                 + 5 * pos.count<ROOK>() + 9 * pos.count<QUEEN>();
+    int material = pos.count(PAWN) + 3 * pos.count(KNIGHT) + 3 * pos.count(BISHOP)
+                 + 5 * pos.count(ROOK) + 9 * pos.count(QUEEN);
 
     // The fitted model only uses data for material counts in [17, 78], and is anchored at count 58.
     double m = std::clamp(material, 17, 78) / 58.0;
