@@ -98,8 +98,8 @@ class Position {
     const std::array<Piece, SQUARE_NB>& piece_array() const;
     Square                              ep_square() const;
     bool                                empty(Square s) const;
-    int count(Piece pc) const;
-    int count(PieceType pt) const;
+    int                                 count(Piece pc) const;
+    int                                 count(PieceType pt) const;
     template<PieceType Pt>
     Square square(Color c) const;
 
@@ -250,9 +250,7 @@ inline int Position::count(Piece pc) const {
     return popcount(pieces(type_of(pc)) & pieces(color_of(pc)));
 }
 
-inline int Position::count(PieceType pt) const {
-    return popcount(pieces(pt));
-}
+inline int Position::count(PieceType pt) const { return popcount(pieces(pt)); }
 
 template<PieceType Pt>
 inline Square Position::square(Color c) const {

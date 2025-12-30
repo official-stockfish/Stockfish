@@ -853,8 +853,8 @@ void Position::do_move(Move                      m,
             // Update hash keys
             // Zobrist::psq[pc][to] is zero, so we don't need to clear it
             k ^= Zobrist::psq[promotion][to];
-            st->materialKey ^= Zobrist::psq[promotion][8 + count(promotion) - 1]
-                             ^ Zobrist::psq[pc][8 + count(pc)];
+            st->materialKey ^=
+              Zobrist::psq[promotion][8 + count(promotion) - 1] ^ Zobrist::psq[pc][8 + count(pc)];
             st->nonPawnKey[us] ^= Zobrist::psq[promotion][to];
 
             if (promotionType <= BISHOP)

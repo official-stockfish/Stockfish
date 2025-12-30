@@ -398,8 +398,7 @@ TBTable<WDL>::TBTable(const std::string& code) :
 
     // Set the leading color. In case both sides have pawns the leading color
     // is the side with fewer pawns because this leads to better compression.
-    bool c = !pos.count(B_PAWN)
-          || (pos.count(W_PAWN) && pos.count(B_PAWN) >= pos.count(W_PAWN));
+    bool c = !pos.count(B_PAWN) || (pos.count(W_PAWN) && pos.count(B_PAWN) >= pos.count(W_PAWN));
 
     pawnCount[0] = pos.count(make_piece(c ? WHITE : BLACK, PAWN));
     pawnCount[1] = pos.count(make_piece(c ? BLACK : WHITE, PAWN));
