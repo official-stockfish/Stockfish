@@ -106,9 +106,9 @@ struct DynStats {
     }
     // Sets all values in the range to 0
     void clear_range(int value, size_t threadIdx, size_t numaTotal) {
-        size_t start = threadIdx * SizeMultiplier;
+        size_t start = uint64_t(threadIdx) * size / numaTotal;
         assert(start < size);
-        size_t end = threadIdx + 1 == numaTotal ? size : start + SizeMultiplier;
+        size_t end = threadIdx + 1 == numaTotal ? size : uint64_t(threadIdx + 1) * size / numaTotal;
 
         while (start < end)
             data[start++].fill(value);
