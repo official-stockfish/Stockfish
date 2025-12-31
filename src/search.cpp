@@ -582,8 +582,8 @@ void Search::Worker::clear() {
     captureHistory.fill(-689);
 
     // Each thread is responsible for clearing their part of shared history
-    sharedHistory.correctionHistory.clear_range(0, numaThreadIdx);
-    sharedHistory.pawnHistory.clear_range(-1238, numaThreadIdx);
+    sharedHistory.correctionHistory.clear_range(0, numaThreadIdx, numaTotal);
+    sharedHistory.pawnHistory.clear_range(-1238, numaThreadIdx, numaTotal);
 
     ttMoveHistory = 0;
 
