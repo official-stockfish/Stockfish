@@ -502,7 +502,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             return false;
 
         bool success = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) == 0;
-#ifdef PTHREAD_MUTEX_ROBUST
+#if _POSIX_C_SOURCE >= 200809L
         if (success)
             success = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST) == 0;
 #endif
@@ -524,7 +524,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             if (rc == 0)
                 return true;
 
-#ifdef PTHREAD_MUTEX_ROBUST
+#if _POSIX_C_SOURCE >= 200809L
             if (rc == EOWNERDEAD)
             {
                 if (pthread_mutex_consistent(&header_ptr_->mutex) == 0)
