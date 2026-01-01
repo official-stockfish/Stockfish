@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include <utility>
 
 #include "bitboard.h"
+#include "history.h"
 #include "misc.h"
 #include "movegen.h"
 #include "syzygy/tbprobe.h"
@@ -692,13 +693,14 @@ bool Position::gives_check(Move m) const {
 // to a StateInfo object. The move is assumed to be legal. Pseudo-legal
 // moves should be filtered out before this function is called.
 // If a pointer to the TT table is passed, the entry for the new position
-// will be prefetched
+// will be prefetched, and likewise for shared history.
 void Position::do_move(Move                      m,
                        StateInfo&                newSt,
                        bool                      givesCheck,
                        DirtyPiece&               dp,
                        DirtyThreats&             dts,
-                       const TranspositionTable* tt = nullptr) {
+                       const TranspositionTable* tt      = nullptr,
+                       const SharedHistories*    history = nullptr) {
 
     assert(m.is_ok());
     assert(&newSt != st);
@@ -853,6 +855,7 @@ void Position::do_move(Move                      m,
             k ^= Zobrist::psq[promotion][to];
             st->materialKey ^= Zobrist::psq[promotion][8 + pieceCount[promotion] - 1]
                              ^ Zobrist::psq[pc][8 + pieceCount[pc]];
+            st->nonPawnKey[us] ^= Zobrist::psq[promotion][to];
 
             if (promotionType <= BISHOP)
                 st->minorPieceKey ^= Zobrist::psq[promotion][to];
@@ -879,6 +882,15 @@ void Position::do_move(Move                      m,
     // If en passant is impossible, then k will not change and we can prefetch earlier
     if (tt && !checkEP)
         prefetch(tt->first_entry(adjust_key50(k)));
+
+    if (history)
+    {
+        prefetch(&history->pawn_entry(*this)[pc][to]);
+        prefetch(&history->pawn_correction_entry(*this));
+        prefetch(&history->minor_piece_correction_entry(*this));
+        prefetch(&history->nonpawn_correction_entry<WHITE>(*this));
+        prefetch(&history->nonpawn_correction_entry<BLACK>(*this));
+    }
 
     // Set capture piece
     st->capturedPiece = captured;

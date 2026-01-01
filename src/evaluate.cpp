@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ namespace Stockfish {
 // an approximation of the material advantage on the board in terms of pawns.
 int Eval::simple_eval(const Position& pos) {
     Color c = pos.side_to_move();
-    return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c))
-         + (pos.non_pawn_material(c) - pos.non_pawn_material(~c));
+    return PawnValue * (pos.count<PAWN>(c) - pos.count<PAWN>(~c)) + pos.non_pawn_material(c)
+         - pos.non_pawn_material(~c);
 }
 
 bool Eval::use_smallnet(const Position& pos) { return std::abs(simple_eval(pos)) > 962; }

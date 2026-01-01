@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@
 #include "full_threats.h"
 
 #include <array>
+#include <cstdint>
 #include <initializer_list>
+#include <utility>
 
 #include "../../bitboard.h"
 #include "../../misc.h"
@@ -31,26 +33,28 @@
 
 namespace Stockfish::Eval::NNUE::Features {
 
-// Lookup array for indexing threats
-IndexType offsets[PIECE_NB][SQUARE_NB];
-
 struct HelperOffsets {
     int cumulativePieceOffset, cumulativeOffset;
 };
-std::array<HelperOffsets, PIECE_NB> helper_offsets;
 
 // Information on a particular pair of pieces and whether they should be excluded
 struct PiecePairData {
     // Layout: bits 8..31 are the index contribution of this piece pair, bits 0 and 1 are exclusion info
     uint32_t data;
-    PiecePairData() {}
-    PiecePairData(bool excluded_pair, bool semi_excluded_pair, IndexType feature_index_base) {
-        data =
-          excluded_pair << 1 | (semi_excluded_pair && !excluded_pair) | feature_index_base << 8;
-    }
+
+    constexpr PiecePairData() :
+        data(0) {}
+
+    constexpr PiecePairData(bool      excluded_pair,
+                            bool      semi_excluded_pair,
+                            IndexType feature_index_base) :
+        data((uint32_t(excluded_pair) << 1) | (uint32_t(semi_excluded_pair && !excluded_pair))
+             | (uint32_t(feature_index_base) << 8)) {}
+
     // lsb: excluded if from < to; 2nd lsb: always excluded
-    uint8_t   excluded_pair_info() const { return (uint8_t) data; }
-    IndexType feature_index_base() const { return data >> 8; }
+    constexpr uint8_t excluded_pair_info() const { return static_cast<uint8_t>(data); }
+
+    constexpr IndexType feature_index_base() const { return static_cast<IndexType>(data >> 8); }
 };
 
 constexpr std::array<Piece, 12> AllPieces = {
@@ -58,12 +62,119 @@ constexpr std::array<Piece, 12> AllPieces = {
   B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
 };
 
-// The final index is calculated from summing data found in these two LUTs, as well
-// as offsets[attacker][from]
-PiecePairData index_lut1[PIECE_NB][PIECE_NB];              // [attacker][attacked]
-uint8_t       index_lut2[PIECE_NB][SQUARE_NB][SQUARE_NB];  // [attacker][from][to]
+template<PieceType PT>
+constexpr auto make_piece_indices_type() {
+    static_assert(PT != PieceType::PAWN);
 
-static void init_index_luts() {
+    std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB> out{};
+
+    for (Square from = SQ_A1; from <= SQ_H8; ++from)
+    {
+        Bitboard attacks = PseudoAttacks[PT][from];
+
+        for (Square to = SQ_A1; to <= SQ_H8; ++to)
+        {
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+        }
+    }
+
+    return out;
+}
+
+template<Piece P>
+constexpr auto make_piece_indices_piece() {
+    static_assert(type_of(P) == PieceType::PAWN);
+
+    std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB> out{};
+
+    constexpr Color C = color_of(P);
+
+    for (Square from = SQ_A1; from <= SQ_H8; ++from)
+    {
+        Bitboard attacks = PseudoAttacks[C][from];
+
+        for (Square to = SQ_A1; to <= SQ_H8; ++to)
+        {
+            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
+        }
+    }
+
+    return out;
+}
+
+constexpr auto index_lut2_array() {
+    constexpr auto KNIGHT_ATTACKS = make_piece_indices_type<PieceType::KNIGHT>();
+    constexpr auto BISHOP_ATTACKS = make_piece_indices_type<PieceType::BISHOP>();
+    constexpr auto ROOK_ATTACKS   = make_piece_indices_type<PieceType::ROOK>();
+    constexpr auto QUEEN_ATTACKS  = make_piece_indices_type<PieceType::QUEEN>();
+    constexpr auto KING_ATTACKS   = make_piece_indices_type<PieceType::KING>();
+
+    std::array<std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB>, PIECE_NB> indices{};
+
+    indices[W_PAWN] = make_piece_indices_piece<W_PAWN>();
+    indices[B_PAWN] = make_piece_indices_piece<B_PAWN>();
+
+    indices[W_KNIGHT] = KNIGHT_ATTACKS;
+    indices[B_KNIGHT] = KNIGHT_ATTACKS;
+
+    indices[W_BISHOP] = BISHOP_ATTACKS;
+    indices[B_BISHOP] = BISHOP_ATTACKS;
+
+    indices[W_ROOK] = ROOK_ATTACKS;
+    indices[B_ROOK] = ROOK_ATTACKS;
+
+    indices[W_QUEEN] = QUEEN_ATTACKS;
+    indices[B_QUEEN] = QUEEN_ATTACKS;
+
+    indices[W_KING] = KING_ATTACKS;
+    indices[B_KING] = KING_ATTACKS;
+
+    return indices;
+}
+
+constexpr auto init_threat_offsets() {
+    std::array<HelperOffsets, PIECE_NB>                    indices{};
+    std::array<std::array<IndexType, SQUARE_NB>, PIECE_NB> offsets{};
+
+    int cumulativeOffset = 0;
+    for (Piece piece : AllPieces)
+    {
+        int pieceIdx              = piece;
+        int cumulativePieceOffset = 0;
+
+        for (Square from = SQ_A1; from <= SQ_H8; ++from)
+        {
+            offsets[pieceIdx][from] = cumulativePieceOffset;
+
+            if (type_of(piece) != PAWN)
+            {
+                Bitboard attacks = PseudoAttacks[type_of(piece)][from];
+                cumulativePieceOffset += constexpr_popcount(attacks);
+            }
+
+            else if (from >= SQ_A2 && from <= SQ_H7)
+            {
+                Bitboard attacks = (pieceIdx < 8) ? pawn_attacks_bb<WHITE>(square_bb(from))
+                                                  : pawn_attacks_bb<BLACK>(square_bb(from));
+                cumulativePieceOffset += constexpr_popcount(attacks);
+            }
+        }
+
+        indices[pieceIdx] = {cumulativePieceOffset, cumulativeOffset};
+
+        cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
+    }
+
+    return std::pair{indices, offsets};
+}
+
+constexpr auto helper_offsets = init_threat_offsets().first;
+// Lookup array for indexing threats
+constexpr auto offsets = init_threat_offsets().second;
+
+constexpr auto init_index_luts() {
+    std::array<std::array<PiecePairData, PIECE_NB>, PIECE_NB> indices{};
+
     for (Piece attacker : AllPieces)
     {
         for (Piece attacked : AllPieces)
@@ -78,56 +189,21 @@ static void init_index_luts() {
                               + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
                                   * helper_offsets[attacker].cumulativePieceOffset;
 
-            bool excluded                  = map < 0;
-            index_lut1[attacker][attacked] = PiecePairData(excluded, semi_excluded, feature);
+            bool excluded               = map < 0;
+            indices[attacker][attacked] = PiecePairData(excluded, semi_excluded, feature);
         }
     }
 
-    for (Piece attacker : AllPieces)
-    {
-        for (int from = 0; from < SQUARE_NB; ++from)
-        {
-            for (int to = 0; to < SQUARE_NB; ++to)
-            {
-                Bitboard attacks               = attacks_bb(attacker, Square(from));
-                index_lut2[attacker][from][to] = popcount((square_bb(Square(to)) - 1) & attacks);
-            }
-        }
-    }
+    return indices;
 }
 
-void init_threat_offsets() {
-    int cumulativeOffset = 0;
-    for (Piece piece : AllPieces)
-    {
-        int pieceIdx              = piece;
-        int cumulativePieceOffset = 0;
+// The final index is calculated from summing data found in these two LUTs, as well
+// as offsets[attacker][from]
 
-        for (Square from = SQ_A1; from <= SQ_H8; ++from)
-        {
-            offsets[pieceIdx][from] = cumulativePieceOffset;
-
-            if (type_of(piece) != PAWN)
-            {
-                Bitboard attacks = attacks_bb(piece, from, 0ULL);
-                cumulativePieceOffset += popcount(attacks);
-            }
-
-            else if (from >= SQ_A2 && from <= SQ_H7)
-            {
-                Bitboard attacks = (pieceIdx < 8) ? pawn_attacks_bb<WHITE>(square_bb(from))
-                                                  : pawn_attacks_bb<BLACK>(square_bb(from));
-                cumulativePieceOffset += popcount(attacks);
-            }
-        }
-
-        helper_offsets[pieceIdx] = {cumulativePieceOffset, cumulativeOffset};
-
-        cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
-    }
-
-    init_index_luts();
-}
+// [attacker][attacked]
+constexpr auto index_lut1 = init_index_luts();
+// [attacker][from][to]
+constexpr auto index_lut2 = index_lut2_array();
 
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
@@ -247,11 +323,11 @@ void FullThreats::append_changed_indices(Color            perspective,
                 {
                     if (first)
                     {
-                        fusedData->dp2removedOriginBoard |= square_bb(to);
+                        fusedData->dp2removedOriginBoard |= to;
                         continue;
                     }
                 }
-                else if (fusedData->dp2removedOriginBoard & square_bb(to))
+                else if (fusedData->dp2removedOriginBoard & to)
                     continue;
             }
 
@@ -261,11 +337,11 @@ void FullThreats::append_changed_indices(Color            perspective,
                 {
                     if (first)
                     {
-                        fusedData->dp2removedTargetBoard |= square_bb(from);
+                        fusedData->dp2removedTargetBoard |= from;
                         continue;
                     }
                 }
-                else if (fusedData->dp2removedTargetBoard & square_bb(from))
+                else if (fusedData->dp2removedTargetBoard & from)
                     continue;
             }
         }
