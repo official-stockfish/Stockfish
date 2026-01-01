@@ -65,7 +65,7 @@ using namespace Search;
 namespace {
 
 constexpr int SEARCHEDLIST_CAPACITY = 32;
-constexpr int mainHistoryDefault = 68;
+constexpr int mainHistoryDefault    = 68;
 using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 
 // (*Scalers):
@@ -313,9 +313,10 @@ void Search::Worker::iterative_deepening() {
 
     lowPlyHistory.fill(97);
 
-    for (Color c: {WHITE, BLACK})
+    for (Color c : {WHITE, BLACK})
         for (int i = 0; i < UINT_16_HISTORY_SIZE; i++)
-            mainHistory[c][i] = (mainHistory[c][i] - mainHistoryDefault) * 3 / 4 + mainHistoryDefault;
+            mainHistory[c][i] =
+              (mainHistory[c][i] - mainHistoryDefault) * 3 / 4 + mainHistoryDefault;
 
     // Iterative deepening loop until requested to stop or the target depth is reached
     while (++rootDepth < MAX_PLY && !threads.stop
