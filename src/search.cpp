@@ -802,7 +802,7 @@ Value Search::Worker::search(
     // Step 5. Tablebases probe
     if (!rootNode && !excludedMove && tbConfig.cardinality)
     {
-        int piecesCount = pos.count<ALL_PIECES>();
+        int piecesCount = pos.count(ALL_PIECES);
 
         if (piecesCount <= tbConfig.cardinality
             && (piecesCount < tbConfig.cardinality || depth >= tbConfig.probeDepth)
