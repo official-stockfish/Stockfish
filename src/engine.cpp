@@ -169,7 +169,7 @@ void Engine::search_clear() {
     tt.clear(threads);
     threads.clear();
 
-    // @TODO wont work with multiple instances
+    // @TODO won't work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
 }
 
