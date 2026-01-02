@@ -37,26 +37,6 @@ struct HelperOffsets {
     int cumulativePieceOffset, cumulativeOffset;
 };
 
-// Information on a particular pair of pieces and whether they should be excluded
-struct PiecePairData {
-    // Layout: bits 8..31 are the index contribution of this piece pair, bits 0 and 1 are exclusion info
-    uint32_t data;
-
-    constexpr PiecePairData() :
-        data(0) {}
-
-    constexpr PiecePairData(bool      excluded_pair,
-                            bool      semi_excluded_pair,
-                            IndexType feature_index_base) :
-        data((uint32_t(excluded_pair) << 1) | (uint32_t(semi_excluded_pair && !excluded_pair))
-             | (uint32_t(feature_index_base) << 8)) {}
-
-    // lsb: excluded if from < to; 2nd lsb: always excluded
-    constexpr uint8_t excluded_pair_info() const { return static_cast<uint8_t>(data); }
-
-    constexpr IndexType feature_index_base() const { return static_cast<IndexType>(data >> 8); }
-};
-
 constexpr std::array<Piece, 12> AllPieces = {
   W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
   B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
@@ -173,7 +153,7 @@ constexpr auto helper_offsets = init_threat_offsets().first;
 constexpr auto offsets = init_threat_offsets().second;
 
 constexpr auto init_index_luts() {
-    std::array<std::array<PiecePairData, PIECE_NB>, PIECE_NB> indices{};
+    std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
 
     for (Piece attacker : AllPieces)
     {
@@ -189,8 +169,9 @@ constexpr auto init_index_luts() {
                               + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
                                   * helper_offsets[attacker].cumulativePieceOffset;
 
-            bool excluded               = map < 0;
-            indices[attacker][attacked] = PiecePairData(excluded, semi_excluded, feature);
+            bool excluded                  = map < 0;
+            indices[attacker][attacked][0] = excluded << 30 | feature;
+            indices[attacker][attacked][1] = (excluded || semi_excluded) << 30 | feature;
         }
     }
 
@@ -200,7 +181,7 @@ constexpr auto init_index_luts() {
 // The final index is calculated from summing data found in these two LUTs, as well
 // as offsets[attacker][from]
 
-// [attacker][attacked]
+// [attacker][attacked][from < to]
 constexpr auto index_lut1 = init_index_luts();
 // [attacker][from][to]
 constexpr auto index_lut2 = index_lut2_array();
@@ -218,14 +199,10 @@ inline sf_always_inline IndexType FullThreats::make_index(
 
     const auto piecePairData = index_lut1[attacker_oriented][attacked_oriented];
 
-    const bool less_than = from_oriented < to_oriented;
-    if ((piecePairData.excluded_pair_info() + less_than) & 2)
-        return FullThreats::Dimensions;
-
-    const IndexType index = piecePairData.feature_index_base()
-                          + offsets[attacker_oriented][from_oriented]
-                          + index_lut2[attacker_oriented][from_oriented][to_oriented];
-    sf_assume(index < Dimensions);
+    const IndexType index =
+      index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+      + offsets[attacker_oriented][from_oriented]
+      + index_lut2[attacker_oriented][from_oriented][to_oriented];
     return index;
 }
 
@@ -259,8 +236,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_if(index, index < Dimensions);
                 }
 
                 while (attacks_right)
@@ -270,8 +246,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_if(index, index < Dimensions);
                 }
             }
             else
@@ -288,8 +263,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                         IndexType index =
                           make_index(perspective, attacker, from, to, attacked, ksq);
 
-                        if (index < Dimensions)
-                            active.push_back(index);
+                        active.push_if(index, index < Dimensions);
                     }
                 }
             }
@@ -349,8 +323,7 @@ void FullThreats::append_changed_indices(Color            perspective,
         auto&           insert = add ? added : removed;
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
-        if (index < Dimensions)
-            insert.push_back(index);
+        insert.push_if(index, index < Dimensions);
     }
 }
 
