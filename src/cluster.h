@@ -147,8 +147,8 @@ uint64_t    tb_hits(const ThreadPool&);
 uint64_t    TT_saves(const ThreadPool&);
 inline void cluster_info(const ThreadPool&, Depth, TimePoint) {}
 inline void signals_init() {}
-inline void signals_poll(ThreadPool& threads) {}
-inline void signals_sync(ThreadPool& threads) {}
+inline void signals_poll(ThreadPool&) {}
+inline void signals_sync(ThreadPool&) {}
 
 #endif /* USE_MPI */
 
