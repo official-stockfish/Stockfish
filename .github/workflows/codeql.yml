@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
@@ -45,7 +47,7 @@ jobs:
 
       - name: Build
         working-directory: src
-        run: make -j build ARCH=x86-64-modern
+        run: make -j build
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

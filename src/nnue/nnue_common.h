@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -48,6 +48,12 @@
 
 namespace Stockfish::Eval::NNUE {
 
+using BiasType         = std::int16_t;
+using ThreatWeightType = std::int8_t;
+using WeightType       = std::int16_t;
+using PSQTWeightType   = std::int32_t;
+using IndexType        = std::uint32_t;
+
 // Version of the evaluation file
 constexpr std::uint32_t Version = 0x7AF32F20u;
 
@@ -76,7 +82,6 @@ constexpr std::size_t MaxSimdWidth = 32;
 
 // Type of input feature after conversion
 using TransformedFeatureType = std::uint8_t;
-using IndexType              = std::uint32_t;
 
 // Round n up to be a multiple of base
 template<typename IntType>
@@ -168,8 +173,8 @@ inline void write_little_endian(std::ostream& stream, const IntType* values, std
 // Read N signed integers from the stream s, putting them in the array out.
 // The stream is assumed to be compressed using the signed LEB128 format.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
-template<typename IntType>
-inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) {
+template<typename IntType, std::size_t Count>
+inline void read_leb_128(std::istream& stream, std::array<IntType, Count>& out) {
 
     // Check the presence of our LEB128 magic string
     char leb128MagicString[Leb128MagicStringSize];
@@ -184,7 +189,7 @@ inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) 
     auto bytes_left = read_little_endian<std::uint32_t>(stream);
 
     std::uint32_t buf_pos = BUF_SIZE;
-    for (std::size_t i = 0; i < count; ++i)
+    for (std::size_t i = 0; i < Count; ++i)
     {
         IntType result = 0;
         size_t  shift  = 0;
@@ -219,8 +224,8 @@ inline void read_leb_128(std::istream& stream, IntType* out, std::size_t count) 
 // This takes N integers from array values, compresses them with
 // the LEB128 algorithm and writes the result on the stream s.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
-template<typename IntType>
-inline void write_leb_128(std::ostream& stream, const IntType* values, std::size_t count) {
+template<typename IntType, std::size_t Count>
+inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>& values) {
 
     // Write our LEB128 magic string
     stream.write(Leb128MagicString, Leb128MagicStringSize);
@@ -228,7 +233,7 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
     static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
 
     std::uint32_t byte_count = 0;
-    for (std::size_t i = 0; i < count; ++i)
+    for (std::size_t i = 0; i < Count; ++i)
     {
         IntType      value = values[i];
         std::uint8_t byte;
@@ -254,13 +259,13 @@ inline void write_leb_128(std::ostream& stream, const IntType* values, std::size
         }
     };
 
-    auto write = [&](std::uint8_t byte) {
-        buf[buf_pos++] = byte;
+    auto write = [&](std::uint8_t b) {
+        buf[buf_pos++] = b;
         if (buf_pos == BUF_SIZE)
             flush();
     };
 
-    for (std::size_t i = 0; i < count; ++i)
+    for (std::size_t i = 0; i < Count; ++i)
     {
         IntType value = values[i];
         while (true)

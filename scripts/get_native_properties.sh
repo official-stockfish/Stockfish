@@ -26,12 +26,27 @@ check_znver_1_2() {
   [ "$vendor_id" = "AuthenticAMD" ] && [ "$cpu_family" = "23" ] && znver_1_2=true
 }
 
+# Set the file CPU loongarch64 architecture
+set_arch_loongarch64() {
+  if check_flags 'lasx'; then
+    true_arch='loongarch64-lasx'
+  elif check_flags 'lsx'; then
+    true_arch='loongarch64-lsx'
+  else
+    true_arch='loongarch64'
+  fi
+}
+
 # Set the file CPU x86_64 architecture
 set_arch_x86_64() {
-  if check_flags 'avx512vnni' 'avx512dq' 'avx512f' 'avx512bw' 'avx512vl'; then
-    true_arch='x86-64-vnni256'
+  if check_flags 'avx512f' 'avx512cd' 'avx512vl' 'avx512dq' 'avx512bw' 'avx512ifma' 'avx512vbmi' 'avx512vbmi2' 'avx512vpopcntdq' 'avx512bitalg' 'avx512vnni' 'vpclmulqdq' 'gfni' 'vaes'; then
+    true_arch='x86-64-avx512icl'
+  elif check_flags 'avx512vnni' 'avx512dq' 'avx512f' 'avx512bw' 'avx512vl'; then
+    true_arch='x86-64-vnni512'
   elif check_flags 'avx512f' 'avx512bw'; then
     true_arch='x86-64-avx512'
+  elif check_flags 'avxvnni'; then
+    true_arch='x86-64-avxvnni'
   elif [ -z "${znver_1_2+1}" ] && check_flags 'bmi2'; then
     true_arch='x86-64-bmi2'
   elif check_flags 'avx2'; then
@@ -43,6 +58,20 @@ set_arch_x86_64() {
   fi
 }
 
+set_arch_ppc_64() {
+  if grep -q -w "altivec" /proc/cpuinfo; then
+    power=$(grep -oP -m 1 'cpu\t+: POWER\K\d+' /proc/cpuinfo)
+    if [ "0$power" -gt 7 ]; then
+      # VSX started with POWER8
+      true_arch='ppc-64-vsx'
+    else
+      true_arch='ppc-64-altivec'
+    fi
+  else
+    true_arch='ppc-64'
+  fi
+}
+
 # Check the system type
 uname_s=$(uname -s)
 uname_m=$(uname -m)
@@ -51,12 +80,12 @@ case $uname_s in
     case $uname_m in
       'arm64')
         true_arch='apple-silicon'
-        file_arch='x86-64-sse41-popcnt' # Supported by Rosetta 2
+        file_arch='m1-apple-silicon'
         ;;
       'x86_64')
         flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '_.')
         set_arch_x86_64
-        if [ "$true_arch" = 'x86-64-vnni256' ] || [ "$true_arch" = 'x86-64-avx512' ]; then
+        if [ "$true_arch" = 'x86-64-avx512' ]; then
            file_arch='x86-64-bmi2'
         fi
         ;;
@@ -76,6 +105,10 @@ case $uname_s in
         file_os='ubuntu'
         true_arch='x86-32'
         ;;
+      'ppc64'*)
+        file_os='ubuntu'
+        set_arch_ppc_64
+        ;;
       'aarch64')
         file_os='android'
         true_arch='armv8'
@@ -90,6 +123,10 @@ case $uname_s in
           true_arch="$true_arch-neon"
         fi
         ;;
+      'loongarch64'*)
+        file_os='linux'
+        set_arch_loongarch64
+        ;;
       *) # Unsupported machine type, exit with error
         printf 'Unsupported machine type: %s\n' "$uname_m"
         exit 1
@@ -97,7 +134,13 @@ case $uname_s in
     esac
     file_ext='tar'
     ;;
-  'CYGWIN'*|'MINGW'*|'MSYS'*) # Windows system with POSIX compatibility layer
+  'MINGW'*'ARM64'*) # Windows ARM64 system with POSIX compatibility layer
+    # TODO: older chips might be armv8, but we have no good way to detect, /proc/cpuinfo shows x86 info
+    file_os='windows'
+    true_arch='armv8-dotprod'
+    file_ext='zip'
+    ;;
+  'CYGWIN'*|'MINGW'*|'MSYS'*) # Windows x86_64system with POSIX compatibility layer
     get_flags
     check_znver_1_2
     set_arch_x86_64

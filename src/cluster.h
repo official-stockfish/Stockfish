@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <istream>
 #include <string>
 
+#include "misc.h"
 #include "tt.h"
 
 namespace Stockfish {
@@ -34,7 +35,7 @@ namespace Search {
 class Worker;
 }
 
-/// The Cluster namespace contains functionality required to run on distributed
+/// The Distributed namespace contains functionality required to run on distributed
 /// memory architectures using MPI as the message passing interface. On a high level,
 /// a 'lazy SMP'-like scheme is implemented where TT saves of sufficient depth are
 /// collected on each rank and distributed to, and used by, all other ranks,
@@ -44,7 +45,7 @@ class Worker;
 /// quantities per MPI rank.  It is recommended to have one rank (MPI process) per node.
 /// For the non-MPI case, wrappers that will be compiler-optimized away are provided.
 
-namespace Cluster {
+namespace Distributed {
 
 /// Basic info to find the cluster-wide bestMove
 struct MoveInfo {
@@ -57,8 +58,8 @@ struct MoveInfo {
 
 #ifdef USE_MPI
 
-// store the TTEntry with its full key, so it can be saved on the receiver side
-using KeyedTTEntry                = std::pair<Key, TTEntry>;
+// store the TTData with its (full) key, so it can be saved on the receiver side
+using KeyedTTEntry                = std::pair<Key, TTData>;
 constexpr std::size_t TTCacheSize = 16;
 
 // Threads locally cache their high-depth TT entries till a batch can be send by MPI
@@ -67,7 +68,7 @@ class TTCache: public std::array<KeyedTTEntry, N> {
 
     struct Compare {
         inline bool operator()(const KeyedTTEntry& lhs, const KeyedTTEntry& rhs) {
-            return lhs.second.depth() > rhs.second.depth();
+            return lhs.second.depth > rhs.second.depth;
         }
     };
     Compare compare;
@@ -96,7 +97,7 @@ inline bool is_root() { return rank() == 0; }
 void        save(TranspositionTable&,
                  ThreadPool&,
                  Search::Worker* thread,
-                 TTEntry*        tte,
+                 TTWriter        ttWriter,
                  Key             k,
                  Value           v,
                  bool            PvHit,
@@ -105,7 +106,7 @@ void        save(TranspositionTable&,
                  Move            m,
                  Value           ev,
                  uint8_t         generation8);
-void        pick_moves(MoveInfo& mi, std::string& PVLine);
+void        pick_moves(MoveInfo& mi, std::vector<std::vector<char>>& PVLine);
 void        ttSendRecvBuff_resize(size_t nThreads);
 uint64_t    nodes_searched(const ThreadPool&);
 uint64_t    tb_hits(const ThreadPool&);
@@ -128,7 +129,7 @@ constexpr bool is_root() { return true; }
 inline void    save(TranspositionTable&,
                     ThreadPool&,
                     Search::Worker*,
-                    TTEntry* tte,
+                    TTWriter ttWriter,
                     Key      k,
                     Value    v,
                     bool     PvHit,
@@ -137,17 +138,17 @@ inline void    save(TranspositionTable&,
                     Move     m,
                     Value    ev,
                     uint8_t  generation8) {
-    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+    ttWriter.write(k, v, PvHit, b, d, m, ev, generation8);
 }
-inline void pick_moves(MoveInfo&, std::string&) {}
+inline void pick_moves(MoveInfo&, std::vector<std::vector<char>>&) {}
 inline void ttSendRecvBuff_resize(size_t) {}
 uint64_t    nodes_searched(const ThreadPool&);
 uint64_t    tb_hits(const ThreadPool&);
 uint64_t    TT_saves(const ThreadPool&);
 inline void cluster_info(const ThreadPool&, Depth, TimePoint) {}
 inline void signals_init() {}
-inline void signals_poll(ThreadPool& threads) {}
-inline void signals_sync(ThreadPool& threads) {}
+inline void signals_poll(ThreadPool&) {}
+inline void signals_sync(ThreadPool&) {}
 
 #endif /* USE_MPI */
 

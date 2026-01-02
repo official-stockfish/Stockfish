@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ class Position;
 enum GenType {
     CAPTURES,
     QUIETS,
-    QUIET_CHECKS,
     EVASIONS,
     NON_EVASIONS,
     LEGAL
@@ -50,7 +49,7 @@ struct ExtMove: public Move {
 inline bool operator<(const ExtMove& f, const ExtMove& s) { return f.value < s.value; }
 
 template<GenType>
-ExtMove* generate(const Position& pos, ExtMove* moveList);
+Move* generate(const Position& pos, Move* moveList);
 
 // The MoveList struct wraps the generate() function and returns a convenient
 // list of moves. Using MoveList is sometimes preferable to directly calling
@@ -60,13 +59,13 @@ struct MoveList {
 
     explicit MoveList(const Position& pos) :
         last(generate<T>(pos, moveList)) {}
-    const ExtMove* begin() const { return moveList; }
-    const ExtMove* end() const { return last; }
-    size_t         size() const { return last - moveList; }
-    bool           contains(Move move) const { return std::find(begin(), end(), move) != end(); }
+    const Move* begin() const { return moveList; }
+    const Move* end() const { return last; }
+    size_t      size() const { return last - moveList; }
+    bool        contains(Move move) const { return std::find(begin(), end(), move) != end(); }
 
    private:
-    ExtMove moveList[MAX_MOVES], *last;
+    Move moveList[MAX_MOVES], *last;
 };
 
 }  // namespace Stockfish

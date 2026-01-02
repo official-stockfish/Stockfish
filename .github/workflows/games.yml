@@ -1,0 +1,43 @@
+# This workflow will play games with a debug enabled SF using the PR
+
+name: Games
+on:
+  workflow_call:
+jobs:
+  Matetrack:
+    name: Games
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout SF repo 
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: Stockfish
+          persist-credentials: false
+
+      - name: build debug enabled version of SF
+        working-directory: Stockfish/src
+        run: make -j build debug=yes
+
+      - name: Checkout fastchess repo
+        uses: actions/checkout@v4
+        with:
+          repository: Disservin/fastchess
+          path: fastchess
+          ref: 894616028492ae6114835195f14a899f6fa237d3
+          persist-credentials: false
+
+      - name: fastchess build
+        working-directory: fastchess
+        run: make -j
+
+      - name: Run games
+        working-directory: fastchess
+        run: |
+          ./fastchess -rounds 4 -games 2 -repeat -concurrency 4 -openings file=app/tests/data/openings.epd format=epd order=random -srand $RANDOM\
+               -engine name=sf1 cmd=/home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish\
+               -engine name=sf2 cmd=/home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish\
+               -ratinginterval 1 -report penta=true -each proto=uci tc=4+0.04 -log file=fast.log | tee fast.out
+          cat fast.log
+          ! grep "Assertion" fast.log > /dev/null
+          ! grep "disconnect" fast.out > /dev/null

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <array>
 
 #include "../bitboard.h"
 #include "../cluster.h"
@@ -67,7 +68,7 @@ namespace {
 
 constexpr int TBPIECES = 7;  // Max number of supported pieces
 constexpr int MAX_DTZ =
-  1 << 18;  // Max DTZ supported, large enough to deal with the syzygy TB limit.
+  1 << 18;  // Max DTZ supported times 2, large enough to deal with the syzygy TB limit.
 
 enum {
     BigEndian,
@@ -444,6 +445,8 @@ class TBTables {
 
     std::deque<TBTable<WDL>> wdlTable;
     std::deque<TBTable<DTZ>> dtzTable;
+    size_t                   foundDTZFiles = 0;
+    size_t                   foundWDLFiles = 0;
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
         uint32_t homeBucket = uint32_t(key) & (Size - 1);
@@ -487,9 +490,17 @@ class TBTables {
         memset(hashTable, 0, sizeof(hashTable));
         wdlTable.clear();
         dtzTable.clear();
+        foundDTZFiles = 0;
+        foundWDLFiles = 0;
     }
-    size_t size() const { return wdlTable.size(); }
-    void   add(const std::vector<PieceType>& pieces);
+
+    void info() const {
+        if (Distributed::is_root())
+            sync_cout << "info string Found " << foundWDLFiles << " WDL and " << foundDTZFiles
+                      << " DTZ tablebase files (up to " << MaxCardinality << "-man)." << sync_endl;
+    }
+
+    void add(const std::vector<PieceType>& pieces);
 };
 
 TBTables TBTables;
@@ -502,13 +513,22 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
 
     for (PieceType pt : pieces)
         code += PieceToChar[pt];
+    code.insert(code.find('K', 1), "v");
 
-    TBFile file(code.insert(code.find('K', 1), "v") + ".rtbw");  // KRK -> KRvK
+    TBFile file_dtz(code + ".rtbz");  // KRK -> KRvK
+    if (file_dtz.is_open())
+    {
+        file_dtz.close();
+        foundDTZFiles++;
+    }
+
+    TBFile file(code + ".rtbw");  // KRK -> KRvK
 
     if (!file.is_open())  // Only WDL file is checked
         return;
 
     file.close();
+    foundWDLFiles++;
 
     MaxCardinality = std::max(int(pieces.size()), MaxCardinality);
 
@@ -567,7 +587,7 @@ int decompress_pairs(PairsData* d, uint64_t idx) {
     //       idx = k * d->span + idx % d->span    (2)
     //
     // So from (1) and (2) we can compute idx - I(K):
-    int diff = idx % d->span - d->span / 2;
+    int diff = int(idx % d->span - d->span / 2);
 
     // Sum the above to offset to find the offset corresponding to our idx
     offset += diff;
@@ -1075,7 +1095,7 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     // See https://web.archive.org/web/20201106232444/http://www.larsson.dogma.net/dcc99.pdf
     std::vector<bool> visited(d->symlen.size());
 
-    for (std::size_t sym = 0; sym < d->symlen.size(); ++sym)
+    for (Sym sym = 0; sym < d->symlen.size(); ++sym)
         if (!visited[sym])
             d->symlen[sym] = set_symlen(d, sym, visited);
 
@@ -1197,6 +1217,8 @@ template<TBType Type>
 void* mapped(TBTable<Type>& e, const Position& pos) {
 
     static std::mutex mutex;
+    // Because TB is the only usage of materialKey, check it here in debug mode
+    assert(pos.material_key_is_ok());
 
     // Use 'acquire' to avoid a thread reading 'ready' == true while
     // another is still working. (compiler reordering may cause this).
@@ -1327,7 +1349,7 @@ void Tablebases::init(const std::string& paths) {
     MaxCardinality = 0;
     TBFile::Paths  = paths;
 
-    if (paths.empty() || paths == "<empty>")
+    if (paths.empty())
         return;
 
     // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27
@@ -1467,8 +1489,7 @@ void Tablebases::init(const std::string& paths) {
         }
     }
 
-    if (Cluster::is_root())
-        sync_cout << "info string Found " << TBTables.size() << " tablebases" << sync_endl;
+    TBTables.info();
 }
 
 // Probe the WDL table for a particular position.
@@ -1576,7 +1597,11 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
+bool Tablebases::root_probe(Position&                    pos,
+                            Search::RootMoves&           rootMoves,
+                            bool                         rule50,
+                            bool                         rankDTZ,
+                            const std::function<bool()>& time_abort) {
 
     ProbeState result = OK;
     StateInfo  st;
@@ -1587,7 +1612,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
     // Check whether a position was repeated since the last zeroing move.
     bool rep = pos.has_repeated();
 
-    int dtz, bound = rule50 ? (MAX_DTZ - 100) : 1;
+    int dtz, bound = rule50 ? (MAX_DTZ / 2 - 100) : 1;
 
     // Probe and rank each move
     for (auto& m : rootMoves)
@@ -1601,7 +1626,7 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
             WDLScore wdl = -probe_wdl(pos, &result);
             dtz          = dtz_before_zeroing(wdl);
         }
-        else if (pos.is_draw(1))
+        else if ((rule50 && pos.is_draw(1)) || pos.is_repetition(1))
         {
             // In case a root move leads to a draw by repetition or 50-move rule,
             // we set dtz to zero. Note: since we are only 1 ply from the root,
@@ -1621,13 +1646,15 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
 
         pos.undo_move(m.pv[0]);
 
-        if (result == FAIL)
+        if (time_abort() || result == FAIL)
             return false;
 
         // Better moves are ranked higher. Certain wins are ranked equally.
         // Losing moves are ranked equally unless a 50-move draw is in sight.
-        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ : MAX_DTZ - (dtz + cnt50))
-                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ : -MAX_DTZ + (-dtz + cnt50))
+        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ - (rankDTZ ? dtz : 0)
+                                                        : MAX_DTZ / 2 - (dtz + cnt50))
+                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ - (rankDTZ ? dtz : 0)
+                                                     : -MAX_DTZ / 2 + (-dtz + cnt50))
                            : 0;
         m.tbRank = r;
 
@@ -1635,10 +1662,11 @@ bool Tablebases::root_probe(Position& pos, Search::RootMoves& rootMoves, bool ru
         // 1 cp to cursed wins and let it grow to 49 cp as the positions gets
         // closer to a real win.
         m.tbScore = r >= bound ? VALUE_MATE - MAX_PLY - 1
-                  : r > 0      ? Value((std::max(3, r - (MAX_DTZ - 200)) * int(PawnValue)) / 200)
-                  : r == 0     ? VALUE_DRAW
-                  : r > -bound ? Value((std::min(-3, r + (MAX_DTZ - 200)) * int(PawnValue)) / 200)
-                               : -VALUE_MATE + MAX_PLY + 1;
+                  : r > 0  ? Value((std::max(3, r - (MAX_DTZ / 2 - 200)) * int(PawnValue)) / 200)
+                  : r == 0 ? VALUE_DRAW
+                  : r > -bound
+                    ? Value((std::min(-3, r + (MAX_DTZ / 2 - 200)) * int(PawnValue)) / 200)
+                    : -VALUE_MATE + MAX_PLY + 1;
     }
 
     return true;
@@ -1683,9 +1711,11 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
     return true;
 }
 
-Config Tablebases::rank_root_moves(const OptionsMap&  options,
-                                   Position&          pos,
-                                   Search::RootMoves& rootMoves) {
+Config Tablebases::rank_root_moves(const OptionsMap&            options,
+                                   Position&                    pos,
+                                   Search::RootMoves&           rootMoves,
+                                   bool                         rankDTZ,
+                                   const std::function<bool()>& time_abort) {
     Config config;
 
     if (rootMoves.empty())
@@ -1708,10 +1738,11 @@ Config Tablebases::rank_root_moves(const OptionsMap&  options,
 
     if (config.cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
-        // Rank moves using DTZ tables
-        config.rootInTB = root_probe(pos, rootMoves, options["Syzygy50MoveRule"]);
+        // Rank moves using DTZ tables, bail out if time_abort flags zeitnot
+        config.rootInTB =
+          root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ, time_abort);
 
-        if (!config.rootInTB)
+        if (!config.rootInTB && !time_abort())
         {
             // DTZ tables are missing; try to rank moves using WDL tables
             dtz_available   = false;

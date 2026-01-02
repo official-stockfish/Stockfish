@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cctype>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <utility>
@@ -37,6 +38,8 @@ bool CaseInsensitiveLess::operator()(const std::string& s1, const std::string& s
       [](char c1, char c2) { return std::tolower(c1) < std::tolower(c2); });
 }
 
+void OptionsMap::add_info_listener(InfoListener&& message_func) { info = std::move(message_func); }
+
 void OptionsMap::setoption(std::istringstream& is) {
     std::string token, name, value;
 
@@ -52,18 +55,39 @@ void OptionsMap::setoption(std::istringstream& is) {
 
     if (options_map.count(name))
         options_map[name] = value;
-    else if (Cluster::is_root())
+    else if (Distributed::is_root())
         sync_cout << "No such option: " << name << sync_endl;
 }
 
-Option OptionsMap::operator[](const std::string& name) const {
+const Option& OptionsMap::operator[](const std::string& name) const {
     auto it = options_map.find(name);
-    return it != options_map.end() ? it->second : Option();
+    assert(it != options_map.end());
+    return it->second;
 }
 
-Option& OptionsMap::operator[](const std::string& name) { return options_map[name]; }
+// Inits options and assigns idx in the correct printing order
+void OptionsMap::add(const std::string& name, const Option& option) {
+    if (!options_map.count(name))
+    {
+        static size_t insert_order = 0;
+
+        options_map[name] = option;
+
+        options_map[name].parent = this;
+        options_map[name].idx    = insert_order++;
+    }
+    else
+    {
+        std::cerr << "Option \"" << name << "\" was already added!" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+}
+
 
 std::size_t OptionsMap::count(const std::string& name) const { return options_map.count(name); }
+
+Option::Option(const OptionsMap* map) :
+    parent(map) {}
 
 Option::Option(const char* v, OnChange f) :
     type("string"),
@@ -87,7 +111,7 @@ Option::Option(OnChange f) :
     max(0),
     on_change(std::move(f)) {}
 
-Option::Option(double v, int minv, int maxv, OnChange f) :
+Option::Option(int v, int minv, int maxv, OnChange f) :
     type("spin"),
     min(minv),
     max(maxv),
@@ -119,16 +143,7 @@ bool Option::operator==(const char* s) const {
     return !CaseInsensitiveLess()(currentValue, s) && !CaseInsensitiveLess()(s, currentValue);
 }
 
-
-// Inits options and assigns idx in the correct printing order
-
-void Option::operator<<(const Option& o) {
-
-    static size_t insert_order = 0;
-
-    *this = o;
-    idx   = insert_order++;
-}
+bool Option::operator!=(const char* s) const { return !(*this == s); }
 
 
 // Updates currentValue and triggers on_change() action. It's up to
@@ -140,7 +155,7 @@ Option& Option::operator=(const std::string& v) {
 
     if ((type != "button" && type != "string" && v.empty())
         || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (std::stof(v) < min || std::stof(v) > max)))
+        || (type == "spin" && (std::stoi(v) < min || std::stoi(v) > max)))
         return *this;
 
     if (type == "combo")
@@ -149,16 +164,23 @@ Option& Option::operator=(const std::string& v) {
         std::string        token;
         std::istringstream ss(defaultValue);
         while (ss >> token)
-            comboMap[token] << Option();
+            comboMap.add(token, Option());
         if (!comboMap.count(v) || v == "var")
             return *this;
     }
 
-    if (type != "button")
+    if (type == "string")
+        currentValue = v == "<empty>" ? "" : v;
+    else if (type != "button")
         currentValue = v;
 
     if (on_change)
-        on_change(*this);
+    {
+        const auto ret = on_change(*this);
+
+        if (ret && parent != nullptr && parent->info != nullptr)
+            parent->info(ret);
+    }
 
     return *this;
 }
@@ -171,11 +193,17 @@ std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
                 const Option& o = it.second;
                 os << "\noption name " << it.first << " type " << o.type;
 
-                if (o.type == "string" || o.type == "check" || o.type == "combo")
+                if (o.type == "check" || o.type == "combo")
                     os << " default " << o.defaultValue;
 
-                if (o.type == "spin")
-                    os << " default " << int(stof(o.defaultValue)) << " min " << o.min << " max "
+                else if (o.type == "string")
+                {
+                    std::string defaultValue = o.defaultValue.empty() ? "<empty>" : o.defaultValue;
+                    os << " default " << defaultValue;
+                }
+
+                else if (o.type == "spin")
+                    os << " default " << stoi(o.defaultValue) << " min " << o.min << " max "
                        << o.max;
 
                 break;

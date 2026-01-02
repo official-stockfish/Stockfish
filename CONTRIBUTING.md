@@ -49,7 +49,7 @@ further discussion._
 - Provide a clear and concise description of the changes in the pull request
   description.
 
-_First time contributors should add their name to [AUTHORS](../AUTHORS)._
+_First time contributors should add their name to [AUTHORS](./AUTHORS)._
 
 _Stockfish's development is not focused on adding new features. Thus any pull
 request introducing new features will potentially be closed without further
@@ -59,7 +59,7 @@ discussion._
 
 Changes to Stockfish C++ code should respect our coding style defined by
 [.clang-format](.clang-format). You can format your changes by running
-`make format`. This requires clang-format version 17 to be installed on your system.
+`make format`. This requires clang-format version 20 to be installed on your system.
 
 ## Navigate
 
@@ -85,7 +85,6 @@ under the GNU General Public License v3.0. See [Copying.txt][copying-link] for
 more details.
 
 Thank you for contributing to Stockfish and helping us make it even better!
-
 
 [copying-link]:           https://github.com/official-stockfish/Stockfish/blob/master/Copying.txt
 [discord-link]:           https://discord.gg/GWDRS3kU6R

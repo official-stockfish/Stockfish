@@ -6,7 +6,7 @@ jobs:
     name: ${{ matrix.sanitizers.name }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       CXXFLAGS: "-Werror"
     strategy:
@@ -21,22 +21,36 @@ jobs:
         sanitizers:
           - name: Run with thread sanitizer
             make_option: sanitize=thread
+            cxx_extra_flags: ""
             instrumented_option: sanitizer-thread
           - name: Run with UB sanitizer
             make_option: sanitize=undefined
+            cxx_extra_flags: ""
             instrumented_option: sanitizer-undefined
           - name: Run under valgrind
             make_option: ""
+            cxx_extra_flags: ""
             instrumented_option: valgrind
           - name: Run under valgrind-thread
             make_option: ""
+            cxx_extra_flags: ""
             instrumented_option: valgrind-thread
+          - name: Run non-instrumented
+            make_option: ""
+            cxx_extra_flags: ""
+            instrumented_option: none
+          - name: Run with glibcxx assertions
+            make_option: ""
+            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS
+            instrumented_option: none
     defaults:
       run:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Download required linux packages
         run: |
@@ -47,7 +61,7 @@ jobs:
         run: make net
 
       - name: Check compiler
-        run: $COMPILER -v
+        run: $COMPCXX -v
 
       - name: Test help target
         run: make help
@@ -55,11 +69,19 @@ jobs:
       - name: Check git
         run: git --version
 
+      # Since Linux Kernel 6.5 we are getting false positives from the ci,
+      # lower the ALSR entropy to disable ALSR, which works as a temporary workaround.
+      # https://github.com/google/sanitizers/issues/1716
+      # https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2056762
+
+      - name: Lower ALSR entropy
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
       # Sanitizers
 
       - name: ${{ matrix.sanitizers.name }}
         run: |
-          export CXXFLAGS="-O1 -fno-inline"
+          export CXXFLAGS="-O1 -fno-inline ${{ matrix.sanitizers.cxx_extra_flags }}"
           make clean
           make -j4 ARCH=x86-64-sse41-popcnt ${{ matrix.sanitizers.make_option }} debug=yes optimize=no build > /dev/null
-          ../tests/instrumented.sh --${{ matrix.sanitizers.instrumented_option }}
+          python3 ../tests/instrumented.py --${{ matrix.sanitizers.instrumented_option }} ./stockfish

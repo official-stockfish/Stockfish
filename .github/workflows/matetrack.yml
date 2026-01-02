@@ -1,0 +1,90 @@
+# This workflow will run matetrack on the PR
+
+name: Matetrack
+on:
+  workflow_call:
+jobs:
+  Matetrack:
+    name: Matetrack
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout SF repo 
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: Stockfish
+          persist-credentials: false
+
+      - name: build SF
+        working-directory: Stockfish/src
+        run: make -j profile-build
+
+      - name: Checkout matetrack repo
+        uses: actions/checkout@v4
+        with:
+          repository: vondele/matetrack
+          path: matetrack
+          ref: 2d96fa3373f90edb032b7ea7468473fb9e6f0343
+          persist-credentials: false
+
+      - name: matetrack install deps
+        working-directory: matetrack
+        run: pip install -r requirements.txt
+
+      - name: cache syzygy
+        id: cache-syzygy
+        uses: actions/cache@v4
+        with:
+           path: |
+              matetrack/3-4-5-wdl/
+              matetrack/3-4-5-dtz/
+           key: key-syzygy
+
+      - name: download syzygy 3-4-5 if needed
+        working-directory: matetrack
+        if: steps.cache-syzygy.outputs.cache-hit != 'true'
+        run: |
+          wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-wdl/
+          wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-dtz/
+
+      - name: Run matetrack th1
+        working-directory: matetrack
+        run: |
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 | tee matecheckout1.out
+          ! grep "issues were detected" matecheckout1.out > /dev/null
+
+      - name: Run matetrack th4
+        working-directory: matetrack
+        run: |
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 --threads 4 | tee matecheckout4.out
+          ! grep "issues were detected" matecheckout4.out > /dev/null
+
+      - name: Run matetrack th1 with --syzygy50MoveRule false
+        working-directory: matetrack
+        run: |
+          grep 5men cursed.epd > cursed5.epd
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile cursed5.epd --nodes 100000 --syzygy50MoveRule false | tee matecheckcursed1.out
+          ! grep "issues were detected" matecheckcursed1.out > /dev/null
+
+      - name: Run matetrack th4 with --syzygy50MoveRule false
+        working-directory: matetrack
+        run: |
+          grep 5men cursed.epd > cursed5.epd
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile cursed5.epd --nodes 100000 --threads 4 --syzygy50MoveRule false | tee matecheckcursed4.out
+          ! grep "issues were detected" matecheckcursed4.out > /dev/null
+
+      - name: Verify mate and TB win count for matecheckcursed[14].out
+        working-directory: matetrack
+        run: |
+          mates=$(grep "Found mates:" matecheckcursed1.out | awk '{print $3}')
+          tbwins=$(grep "Found TB wins:" matecheckcursed1.out | awk '{print $4}')
+          if [ $(($mates + $tbwins)) -ne 32 ]; then
+            echo "Sum of mates and TB wins is not 32 in matecheckcursed1.out" >&2
+            exit 1
+          fi
+          mates=$(grep "Found mates:" matecheckcursed4.out | awk '{print $3}')
+          tbwins=$(grep "Found TB wins:" matecheckcursed4.out | awk '{print $4}')
+          if [ $(($mates + $tbwins)) -ne 32 ]; then
+            echo "Sum of mates and TB wins is not 32 in matecheckcursed4.out" >&2
+            exit 1
+          fi

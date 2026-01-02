@@ -6,22 +6,22 @@ jobs:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       CXXFLAGS: "-Werror"
     strategy:
       fail-fast: false
       matrix:
         config:
-          - name: Ubuntu 20.04 GCC
-            os: ubuntu-20.04
+          - name: Ubuntu 22.04 GCC
+            os: ubuntu-22.04
             compiler: g++
             comp: gcc
             run_32bit_tests: true
             run_64bit_tests: true
             shell: bash
-          - name: Ubuntu 20.04 Clang
-            os: ubuntu-20.04
+          - name: Ubuntu 22.04 Clang
+            os: ubuntu-22.04
             compiler: clang++
             comp: clang
             run_32bit_tests: true
@@ -29,24 +29,25 @@ jobs:
             shell: bash
           - name: Android NDK aarch64
             os: ubuntu-22.04
-            compiler: aarch64-linux-android21-clang++
+            compiler: aarch64-linux-android29-clang++
             comp: ndk
             run_armv8_tests: true
             shell: bash
           - name: Android NDK arm
             os: ubuntu-22.04
-            compiler: armv7a-linux-androideabi21-clang++
+            compiler: armv7a-linux-androideabi29-clang++
             comp: ndk
             run_armv7_tests: true
             shell: bash
-          - name: Linux GCC riscv64
-            os: ubuntu-22.04
-            compiler: g++
-            comp: gcc
-            run_riscv64_tests: true
-            base_image: "riscv64/alpine:edge"
-            platform: linux/riscv64
-            shell: bash
+          # Currently segfaults in the CI unrelated to a Stockfish change.
+          # - name: Linux GCC riscv64
+          #   os: ubuntu-22.04
+          #   compiler: g++
+          #   comp: gcc
+          #   run_riscv64_tests: true
+          #   base_image: "riscv64/alpine:edge"
+          #   platform: linux/riscv64
+          #   shell: bash
           - name: Linux GCC ppc64
             os: ubuntu-22.04
             compiler: g++
@@ -55,21 +56,21 @@ jobs:
             base_image: "ppc64le/alpine:latest"
             platform: linux/ppc64le
             shell: bash
-          - name: MacOS 13 Apple Clang
-            os: macos-13
+          - name: macOS 15 Apple Clang
+            os: macos-15-intel
             compiler: clang++
             comp: clang
             run_64bit_tests: true
             shell: bash
-          - name: MacOS 14 Apple Clang M1
-            os: macos-14
+          - name: macOS 15 Apple Clang M1
+            os: macos-15
             compiler: clang++
             comp: clang
             run_64bit_tests: false
             run_m1_tests: true
             shell: bash
-          - name: MacOS 13 GCC 11
-            os: macos-13
+          - name: macOS 15 GCC 11
+            os: macos-15-intel
             compiler: g++-11
             comp: gcc
             run_64bit_tests: true
@@ -98,6 +99,14 @@ jobs:
             msys_sys: clang64
             msys_env: clang-x86_64-clang
             shell: msys2 {0}
+          - name: Windows 11 Mingw-w64 Clang arm64
+            os: windows-11-arm
+            compiler: clang++
+            comp: clang
+            run_armv8_tests: true
+            msys_sys: clangarm64
+            msys_env: clang-aarch64-clang
+            shell: msys2 {0}
     defaults:
       run:
         working-directory: src
@@ -106,6 +115,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Download required linux packages
         if: runner.os == 'Linux'
@@ -117,7 +127,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           if [ $COMP == ndk ]; then
-            NDKV="21.4.7075529"
+            NDKV="27.2.12479018"
             ANDROID_ROOT=/usr/local/lib/android
             ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
             SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
@@ -138,16 +148,16 @@ jobs:
       - name: Build Docker container
         if: matrix.config.base_image
         run: |
-          docker buildx build --load -t sf_builder - << EOF
+          docker buildx build --platform ${{ matrix.config.platform }} --load -t sf_builder - << EOF
           FROM ${{ matrix.config.base_image }}
           WORKDIR /app
           RUN apk update && apk add make g++
-          CMD ["sh", "script.sh"]
+          CMD ["sh", "src/script.sh"]
           EOF
 
       - name: Download required macOS packages
         if: runner.os == 'macOS'
-        run: brew install coreutils
+        run: brew install coreutils gcc@11
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
@@ -172,10 +182,10 @@ jobs:
             if [ $COMP == ndk ]; then
               export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
             fi
-            $COMPILER -v
+            $COMPCXX -v
           else
-            echo "$COMPILER -v" > script.sh
-            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+            echo "$COMPCXX -v" > script.sh
+            docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           fi
 
       - name: Test help target
@@ -301,8 +311,10 @@ jobs:
       - name: Test armv8 build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8 build
           ../tests/signature.sh $benchref
@@ -310,8 +322,10 @@ jobs:
       - name: Test armv8-dotprod build
         if: matrix.config.run_armv8_tests
         run: |
-          export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
-          export LDFLAGS="-static -Wno-unused-command-line-argument"
+          if [ $COMP == ndk ]; then
+            export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
+            export LDFLAGS="-static -Wno-unused-command-line-argument"
+          fi
           make clean
           make -j4 ARCH=armv8-dotprod build
           ../tests/signature.sh $benchref
@@ -341,8 +355,8 @@ jobs:
       - name: Test riscv64 build
         if: matrix.config.run_riscv64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
       # ppc64 tests
@@ -350,8 +364,8 @@ jobs:
       - name: Test ppc64 build
         if: matrix.config.run_ppc64_tests
         run: |
-          echo "export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}/src:/app sf_builder
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
       # Other tests

@@ -10,7 +10,7 @@ jobs:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
     runs-on: ${{ matrix.config.os }}
     env:
-      COMPILER: ${{ matrix.config.compiler }}
+      COMPCXX: ${{ matrix.config.compiler }}
       COMP: ${{ matrix.config.comp }}
       EMU: ${{ matrix.config.emu }}
       EXT: ${{ matrix.config.ext }}
@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Download required linux packages
         if: runner.os == 'Linux'
@@ -37,7 +38,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           if [ $COMP == ndk ]; then
-            NDKV="21.4.7075529"
+            NDKV="27.2.12479018"
             ANDROID_ROOT=/usr/local/lib/android
             ANDROID_SDK_ROOT=$ANDROID_ROOT/sdk
             SDKMANAGER=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
@@ -62,7 +63,7 @@ jobs:
           if [ $COMP == ndk ]; then
             export PATH=${{ env.ANDROID_NDK_BIN }}:$PATH
           fi
-          $COMPILER -v
+          $COMPCXX -v
 
       - name: Test help target
         run: make help
@@ -79,9 +80,9 @@ jobs:
             export LDFLAGS="-static -Wno-unused-command-line-argument"
           fi
           make clean
-          make -j4 profile-build ARCH=$BINARY COMP=$COMP WINE_PATH=$EMU
+          make -j4 profile-build ARCH=$BINARY COMP=$COMP RUN_PREFIX=$EMU
           make strip ARCH=$BINARY COMP=$COMP
-          WINE_PATH=$EMU ../tests/signature.sh $benchref
+          RUN_PREFIX=$EMU ../tests/signature.sh $benchref
           mv ./stockfish$EXT ../stockfish-android-$BINARY$EXT
 
       - name: Remove non src files
@@ -91,4 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-          path: .
+          path: |
+            .
+            !.git
+            !.output

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2020 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
     #include "search.h"
 
 namespace Stockfish {
-namespace Cluster {
+namespace Distributed {
 
 // Total number of ranks and rank within the communicator
 static int world_rank = MPI_PROC_NULL;
@@ -297,7 +297,7 @@ void cluster_info(const ThreadPool& threads, Depth depth, TimePoint elapsed) {
 void save(TranspositionTable& TT,
           ThreadPool&         threads,
           Search::Worker*     thread,
-          TTEntry*            tte,
+          TTWriter            ttWriter,
           Key                 k,
           Value               v,
           bool                PvHit,
@@ -308,7 +308,7 @@ void save(TranspositionTable& TT,
           uint8_t             generation8) {
 
     // Standard save to the TT
-    tte->save(k, v, PvHit, b, d, m, ev, generation8);
+    ttWriter.write(k, v, PvHit, b, d, m, ev, generation8);
 
     // If the entry is of sufficient depth to be worth communicating, take action.
     if (d > 3)
@@ -321,7 +321,7 @@ void save(TranspositionTable& TT,
         // prepares the send buffer.
         {
             std::lock_guard<std::mutex> lk(thread->ttCache.mutex);
-            thread->ttCache.buffer.replace(KeyedTTEntry(k, *tte));
+            thread->ttCache.buffer.replace(KeyedTTEntry(k, TTData(m, v, ev, d, b, PvHit)));
             ++TTCacheCounter;
         }
 
@@ -364,13 +364,11 @@ void save(TranspositionTable& TT,
                         for (size_t i = irank * recvBuffPerRankSize;
                              i < (irank + 1) * recvBuffPerRankSize; ++i)
                         {
-                            auto&&   e = TTSendRecvBuffs[sendRecvPosted % 2][i];
-                            bool     found;
-                            TTEntry* replace_tte;
-                            replace_tte = TT.probe(e.first, found);
-                            replace_tte->save(e.first, e.second.value(), e.second.is_pv(),
-                                              e.second.bound(), e.second.depth(), e.second.move(),
-                                              e.second.eval(), TT.generation());
+                            auto&& e = TTSendRecvBuffs[sendRecvPosted % 2][i];
+                            auto [ttHit, ttData, ttWriterForRecvd] = TT.probe(e.first);
+                            ttWriterForRecvd.write(e.first, e.second.value, e.second.is_pv,
+                                                   e.second.bound, e.second.depth, e.second.move,
+                                                   e.second.eval, TT.generation());
                         }
                 }
 
@@ -387,7 +385,7 @@ void save(TranspositionTable& TT,
 /// Picks the bestMove across ranks, and send the associated info and PV to the root of the cluster.
 /// Note that this bestMove and PV must be output by the root, the guarantee proper ordering of output.
 /// TODO update to the scheme in master.. can this use aggregation of votes?
-void pick_moves(MoveInfo& mi, std::string& PVLine) {
+void pick_moves(MoveInfo& mi, std::vector<std::vector<char>>& serializedInfo) {
 
     MoveInfo* pMoveInfo = NULL;
     if (is_root())
@@ -427,21 +425,33 @@ void pick_moves(MoveInfo& mi, std::string& PVLine) {
     // Send PV line to root as needed
     if (mi.rank != 0 && mi.rank == rank())
     {
-        int               size;
-        std::vector<char> vec;
-        vec.assign(PVLine.begin(), PVLine.end());
-        size = vec.size();
-        MPI_Send(&size, 1, MPI_INT, 0, 42, MoveComm);
-        MPI_Send(vec.data(), size, MPI_CHAR, 0, 42, MoveComm);
+        int numLines = serializedInfo.size();
+        MPI_Send(&numLines, 1, MPI_INT, 0, 42, MoveComm);
+
+        for (const auto& serializedInfoOne : serializedInfo)
+        {
+            int size;
+            size = serializedInfoOne.size();
+            MPI_Send(&size, 1, MPI_INT, 0, 42, MoveComm);
+            MPI_Send(serializedInfoOne.data(), size, MPI_CHAR, 0, 42, MoveComm);
+        }
     }
     if (mi.rank != 0 && is_root())
     {
-        int               size;
-        std::vector<char> vec;
-        MPI_Recv(&size, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
-        vec.resize(size);
-        MPI_Recv(vec.data(), size, MPI_CHAR, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
-        PVLine.assign(vec.begin(), vec.end());
+        serializedInfo.clear();
+
+        int numLines;
+        MPI_Recv(&numLines, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+
+        for (int i = 0; i < numLines; ++i)
+        {
+            int               size;
+            std::vector<char> vec;
+            MPI_Recv(&size, 1, MPI_INT, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+            vec.resize(size);
+            MPI_Recv(vec.data(), size, MPI_CHAR, mi.rank, 42, MoveComm, MPI_STATUS_IGNORE);
+            serializedInfo.push_back(std::move(vec));
+        }
     }
 }
 
@@ -466,7 +476,7 @@ uint64_t TT_saves(const ThreadPool& threads) { return TTsavesOthers + threads.TT
     #include "thread.h"
 
 namespace Stockfish {
-namespace Cluster {
+namespace Distributed {
 
 uint64_t nodes_searched(const ThreadPool& threads) { return threads.nodes_searched(); }
 

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include <iosfwd>
 
 #include "features/half_ka_v2_hm.h"
+#include "features/full_threats.h"
 #include "layers/affine_transform.h"
 #include "layers/affine_transform_sparse_input.h"
 #include "layers/clipped_relu.h"
@@ -35,10 +36,11 @@
 namespace Stockfish::Eval::NNUE {
 
 // Input features used in evaluation function
-using FeatureSet = Features::HalfKAv2_hm;
+using ThreatFeatureSet = Features::FullThreats;
+using PSQFeatureSet    = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensionsBig = 3072;
+constexpr IndexType TransformedFeatureDimensionsBig = 1024;
 constexpr int       L2Big                           = 15;
 constexpr int       L3Big                           = 32;
 
@@ -48,6 +50,12 @@ constexpr int       L3Small                           = 32;
 
 constexpr IndexType PSQTBuckets = 8;
 constexpr IndexType LayerStacks = 8;
+
+// If vector instructions are enabled, we update and refresh the
+// accumulator tile by tile such that each tile fits in the CPU's
+// vector registers.
+static_assert(PSQTBuckets % 8 == 0,
+              "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
 template<IndexType L1, int L2, int L3>
 struct NetworkArchitecture {
@@ -91,7 +99,7 @@ struct NetworkArchitecture {
             && fc_2.write_parameters(stream);
     }
 
-    std::int32_t propagate(const TransformedFeatureType* transformedFeatures) {
+    std::int32_t propagate(const TransformedFeatureType* transformedFeatures) const {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
             alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
@@ -130,8 +138,28 @@ struct NetworkArchitecture {
 
         return outputValue;
     }
+
+    std::size_t get_content_hash() const {
+        std::size_t h = 0;
+        hash_combine(h, fc_0.get_content_hash());
+        hash_combine(h, ac_sqr_0.get_content_hash());
+        hash_combine(h, ac_0.get_content_hash());
+        hash_combine(h, fc_1.get_content_hash());
+        hash_combine(h, ac_1.get_content_hash());
+        hash_combine(h, fc_2.get_content_hash());
+        hash_combine(h, get_hash_value());
+        return h;
+    }
 };
 
 }  // namespace Stockfish::Eval::NNUE
+
+template<Stockfish::Eval::NNUE::IndexType L1, int L2, int L3>
+struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>> {
+    std::size_t
+    operator()(const Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>& arch) const noexcept {
+        return arch.get_content_hash();
+    }
+};
 
 #endif  // #ifndef NNUE_ARCHITECTURE_H_INCLUDED

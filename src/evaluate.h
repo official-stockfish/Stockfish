@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2024 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,25 +29,28 @@ class Position;
 
 namespace Eval {
 
-constexpr inline int SmallNetThreshold = 1165, PsqtOnlyThreshold = 2500;
-
 // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
 // for the build process (profile-build and fishtest) to work. Do not change the
 // name of the macro or the location where this macro is defined, as it is used
 // in the Makefile/Fishtest.
-#define EvalFileDefaultNameBig "nn-ae6a388e4a1a.nnue"
-#define EvalFileDefaultNameSmall "nn-baff1ede1f90.nnue"
+#define EvalFileDefaultNameBig "nn-c288c895ea92.nnue"
+#define EvalFileDefaultNameSmall "nn-37f18f62d772.nnue"
 
 namespace NNUE {
 struct Networks;
+struct AccumulatorCaches;
+class AccumulatorStack;
 }
 
 std::string trace(Position& pos, const Eval::NNUE::Networks& networks);
 
-int   simple_eval(const Position& pos, Color c);
-Value evaluate(const NNUE::Networks& networks, const Position& pos, int optimism);
-
-
+int   simple_eval(const Position& pos);
+bool  use_smallnet(const Position& pos);
+Value evaluate(const NNUE::Networks&          networks,
+               const Position&                pos,
+               Eval::NNUE::AccumulatorStack&  accumulators,
+               Eval::NNUE::AccumulatorCaches& caches,
+               int                            optimism);
 }  // namespace Eval
 
 }  // namespace Stockfish
