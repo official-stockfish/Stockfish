@@ -246,12 +246,6 @@ void Search::Worker::start_searching() {
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
     main_manager()->bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
-    Move bestMove   = bestThread->rootMoves[0].pv[0];
-    Move ponderMove = Move::none();
-    if (bestThread->rootMoves[0].pv.size() > 1
-        || bestThread->rootMoves[0].extract_ponder_from_tt(tt, rootPos))
-        ponderMove = bestThread->rootMoves[0].pv[1];
-
     // Temporarily switch out onUpdateFull to capture the PV information that we need,
     // so that we can exchange it through MPI. (We may end up not actually printing
     // it out.)
@@ -263,6 +257,12 @@ void Search::Worker::start_searching() {
     main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth);
     assert(!serializedInfo.empty());
     main_manager()->updates.onUpdateFull = std::move(oldOnUpdateFull);
+
+    Move bestMove   = bestThread->rootMoves[0].pv[0];
+    Move ponderMove = Move::none();
+    if (bestThread->rootMoves[0].pv.size() > 1
+        || bestThread->rootMoves[0].extract_ponder_from_tt(tt, rootPos))
+        ponderMove = bestThread->rootMoves[0].pv[1];
 
     // Exchange info as needed
     Distributed::MoveInfo mi{bestMove.raw(), ponderMove.raw(), bestThread->completedDepth,
