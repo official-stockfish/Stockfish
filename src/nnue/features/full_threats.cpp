@@ -197,8 +197,6 @@ inline sf_always_inline IndexType FullThreats::make_index(
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
-    const auto piecePairData = index_lut1[attacker_oriented][attacked_oriented];
-
     const IndexType index =
       index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
       + offsets[attacker_oriented][from_oriented]
