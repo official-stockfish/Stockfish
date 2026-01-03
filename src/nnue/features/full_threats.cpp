@@ -234,7 +234,8 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    active.push_if(index, index < Dimensions);
+                    if (index < Dimensions)
+                        active.push_back(index);
                 }
 
                 while (attacks_right)
@@ -244,7 +245,8 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    active.push_if(index, index < Dimensions);
+                    if (index < Dimensions)
+                        active.push_back(index);
                 }
             }
             else
@@ -261,7 +263,8 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                         IndexType index =
                           make_index(perspective, attacker, from, to, attacked, ksq);
 
-                        active.push_if(index, index < Dimensions);
+                        if (index < Dimensions)
+                            active.push_back(index);
                     }
                 }
             }
@@ -321,7 +324,8 @@ void FullThreats::append_changed_indices(Color            perspective,
         auto&           insert = add ? added : removed;
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
-        insert.push_if(index, index < Dimensions);
+        if (index < Dimensions)
+            insert.push_back(index);
     }
 }
 
