@@ -92,3 +92,83 @@ jobs:
              .
              !.git
              !.output
+
+  Universal:
+    name: Ubuntu x86-64 Universal
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install GCC 15
+        uses: egor-tensin/setup-gcc@eaa888eb19115a521fa72b65cd94fe1f25bbcaac # @v1.3
+        with:
+          version: 15
+
+      - name: Download SDE package
+        uses: petarpetrovt/setup-sde@f0fa5971dc275704531e94264dd23250c442aa41 # @v2.4
+        with:
+          environmentVariableName: SDE_DIR
+          sdeVersion: 9.33.0
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=x86-64-universal profile-build RUN_PREFIX="$SDE_DIR/sde -future --"
+
+      - name: Strip binary
+        run: strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-ubuntu-x86-64-universal
+
+      - name: Check arch selection under SDE
+        run: ./scripts/check_universal.sh ./stockfish-ubuntu-x86-64-universal "$SDE_DIR/sde"
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu x86-64-universal
+          path: stockfish-ubuntu-x86-64-universal
+
+  UniversalWindows:
+    name: Windows x86-64 Universal
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup msys and install required packages
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          install: mingw-w64-x86_64-gcc make git zip
+
+      - name: Download SDE package
+        uses: petarpetrovt/setup-sde@f0fa5971dc275704531e94264dd23250c442aa41 # @v2.4
+        with:
+          environmentVariableName: SDE_DIR
+          sdeVersion: 9.33.0
+
+      - name: Build universal binary
+        run: |
+          SDE_PATH=$(cygpath "$SDE_DIR")
+          make -j4 -C src ARCH=x86-64-universal profile-build RUN_PREFIX="$SDE_PATH/sde.exe -future --"
+
+      - name: Strip binary
+        run: strip src/stockfish.exe
+
+      - name: Rename binary
+        run: mv src/stockfish.exe stockfish-windows-x86-64-universal.exe
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows x86-64-universal
+          path: stockfish-windows-x86-64-universal.exe

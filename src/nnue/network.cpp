@@ -43,9 +43,26 @@
 //     const unsigned char *const gEmbeddedNNUEEnd;     // a marker to the end
 //     const unsigned int         gEmbeddedNNUESize;    // the size of the embedded file
 // Note that this does not work in Microsoft Visual Studio.
-#if !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
+#if !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
 INCBIN(EmbeddedNNUEBig, EvalFileDefaultNameBig);
 INCBIN(EmbeddedNNUESmall, EvalFileDefaultNameSmall);
+#elif defined(UNIVERSAL_BINARY)
+    // When building for the universal binary, use C++26 #embed with weak symbols so that a
+    // separate, non-LTO nnue_embed.o (with strong symbols) can override them during the LTO link,
+    // (INCBIN can't deduplicate.)
+    #define WEAK_SYM __attribute__((weak))
+extern const unsigned char gEmbeddedNNUEBigData[] WEAK_SYM = {
+    #embed EvalFileDefaultNameBig
+};
+extern const unsigned int gEmbeddedNNUEBigSize        WEAK_SYM = sizeof(gEmbeddedNNUEBigData);
+extern const unsigned char* const gEmbeddedNNUEBigEnd WEAK_SYM =
+  gEmbeddedNNUEBigData + gEmbeddedNNUEBigSize;
+extern const unsigned char gEmbeddedNNUESmallData[] WEAK_SYM = {
+    #embed EvalFileDefaultNameSmall
+};
+extern const unsigned int gEmbeddedNNUESmallSize        WEAK_SYM = sizeof(gEmbeddedNNUESmallData);
+extern const unsigned char* const gEmbeddedNNUESmallEnd WEAK_SYM =
+  gEmbeddedNNUESmallData + gEmbeddedNNUESmallSize;
 #else
 const unsigned char        gEmbeddedNNUEBigData[1]   = {0x0};
 const unsigned char* const gEmbeddedNNUEBigEnd       = &gEmbeddedNNUEBigData[1];

@@ -2,6 +2,7 @@
 **/*.o
 **/*.s
 src/.depend
+src/temp_builds
 .build_sha.txt
 .build_date.txt
 
