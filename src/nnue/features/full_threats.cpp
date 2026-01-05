@@ -170,8 +170,9 @@ constexpr auto init_index_luts() {
                                   * helper_offsets[attacker].cumulativePieceOffset;
 
             bool excluded                  = map < 0;
-            indices[attacker][attacked][0] = excluded << 30 | feature;
-            indices[attacker][attacked][1] = (excluded || semi_excluded) << 30 | feature;
+            indices[attacker][attacked][0] = excluded ? FullThreats::Dimensions : feature;
+            indices[attacker][attacked][1] =
+              excluded || semi_excluded ? FullThreats::Dimensions : feature;
         }
     }
 
@@ -197,11 +198,9 @@ inline sf_always_inline IndexType FullThreats::make_index(
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
-    const IndexType index =
-      index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
-      + offsets[attacker_oriented][from_oriented]
-      + index_lut2[attacker_oriented][from_oriented][to_oriented];
-    return index;
+    return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+         + offsets[attacker_oriented][from_oriented]
+         + index_lut2[attacker_oriented][from_oriented][to_oriented];
 }
 
 // Get a list of indices for active features in ascending order
