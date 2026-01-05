@@ -155,32 +155,23 @@ class FeatureTransformer {
     // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates
     // reading the weights into a combined array, and then splitting.
     bool read_parameters(std::istream& stream) {
-        read_leb_128<BiasType>(stream, biases);
+        read_leb_128(stream, biases);
 
         if (UseThreats)
         {
             read_little_endian<ThreatWeightType>(stream, threatWeights.data(),
                                                  ThreatInputDimensions * HalfDimensions);
-            read_leb_128<WeightType>(stream, weights);
+            read_leb_128(stream, weights);
 
             auto combinedPsqtWeights =
               std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
 
-            read_leb_128<PSQTWeightType>(stream, *combinedPsqtWeights);
-
-            std::copy(combinedPsqtWeights->begin(),
-                      combinedPsqtWeights->begin() + ThreatInputDimensions * PSQTBuckets,
-                      std::begin(threatPsqtWeights));
-
-            std::copy(combinedPsqtWeights->begin() + ThreatInputDimensions * PSQTBuckets,
-                      combinedPsqtWeights->begin()
-                        + (ThreatInputDimensions + InputDimensions) * PSQTBuckets,
-                      std::begin(psqtWeights));
+            read_leb_128(stream, threatPsqtWeights, psqtWeights);
         }
         else
         {
-            read_leb_128<WeightType>(stream, weights);
-            read_leb_128<PSQTWeightType>(stream, psqtWeights);
+            read_leb_128(stream, weights);
+            read_leb_128(stream, psqtWeights);
         }
 
         permute_weights();
