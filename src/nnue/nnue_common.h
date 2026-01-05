@@ -169,52 +169,56 @@ inline void write_little_endian(std::ostream& stream, const IntType* values, std
             write_little_endian<IntType>(stream, values[i]);
 }
 
-
 // Read N signed integers from the stream s, putting them in the array out.
 // The stream is assumed to be compressed using the signed LEB128 format.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
-template<typename IntType, std::size_t Count>
-inline void read_leb_128(std::istream& stream, std::array<IntType, Count>& out) {
+template<typename BufType, typename IntType, std::size_t Count>
+inline void read_leb_128_detail(std::istream&               stream,
+                                std::array<IntType, Count>& out,
+                                std::uint32_t&              bytes_left,
+                                BufType&                    buf,
+                                std::uint32_t&              buf_pos) {
 
+    static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+    static_assert(sizeof(IntType) <= 4, "Not implemented for types larger than 32 bit");
+
+    IntType result = 0;
+    size_t  shift = 0, i = 0;
+    while (i < Count)
+    {
+        if (buf_pos == buf.size())
+        {
+            stream.read(reinterpret_cast<char*>(buf.data()),
+                        std::min(std::size_t(bytes_left), buf.size()));
+            buf_pos = 0;
+        }
+
+        std::uint8_t byte = buf[buf_pos++];
+        --bytes_left;
+        result |= (byte & 0x7f) << (shift % 32);
+        shift += 7;
+
+        if ((byte & 0x80) == 0)
+        {
+            out[i++] = (shift >= 32 || (byte & 0x40) == 0) ? result : result | ~((1 << shift) - 1);
+            result   = 0;
+            shift    = 0;
+        }
+    }
+}
+
+template<typename... Arrays>
+inline void read_leb_128(std::istream& stream, Arrays&... outs) {
     // Check the presence of our LEB128 magic string
     char leb128MagicString[Leb128MagicStringSize];
     stream.read(leb128MagicString, Leb128MagicStringSize);
     assert(strncmp(Leb128MagicString, leb128MagicString, Leb128MagicStringSize) == 0);
 
-    static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
+    auto                           bytes_left = read_little_endian<std::uint32_t>(stream);
+    std::array<std::uint8_t, 8192> buf;
+    std::uint32_t                  buf_pos = buf.size();
 
-    const std::uint32_t BUF_SIZE = 4096;
-    std::uint8_t        buf[BUF_SIZE];
-
-    auto bytes_left = read_little_endian<std::uint32_t>(stream);
-
-    std::uint32_t buf_pos = BUF_SIZE;
-    for (std::size_t i = 0; i < Count; ++i)
-    {
-        IntType result = 0;
-        size_t  shift  = 0;
-        do
-        {
-            if (buf_pos == BUF_SIZE)
-            {
-                stream.read(reinterpret_cast<char*>(buf), std::min(bytes_left, BUF_SIZE));
-                buf_pos = 0;
-            }
-
-            std::uint8_t byte = buf[buf_pos++];
-            --bytes_left;
-            result |= (byte & 0x7f) << shift;
-            shift += 7;
-
-            if ((byte & 0x80) == 0)
-            {
-                out[i] = (sizeof(IntType) * 8 <= shift || (byte & 0x40) == 0)
-                         ? result
-                         : result | ~((1 << shift) - 1);
-                break;
-            }
-        } while (shift < sizeof(IntType) * 8);
-    }
+    (read_leb_128_detail(stream, outs, bytes_left, buf, buf_pos), ...);
 
     assert(bytes_left == 0);
 }
