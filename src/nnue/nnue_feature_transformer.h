@@ -152,8 +152,6 @@ class FeatureTransformer {
     }
 
     // Read network parameters
-    // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates
-    // reading the weights into a combined array, and then splitting.
     bool read_parameters(std::istream& stream) {
         read_leb_128(stream, biases);
 
