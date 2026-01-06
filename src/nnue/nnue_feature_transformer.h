@@ -161,9 +161,6 @@ class FeatureTransformer {
                                                  ThreatInputDimensions * HalfDimensions);
             read_leb_128(stream, weights);
 
-            auto combinedPsqtWeights =
-              std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
-
             read_leb_128(stream, threatPsqtWeights, psqtWeights);
         }
         else
