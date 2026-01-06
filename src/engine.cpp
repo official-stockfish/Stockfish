@@ -57,14 +57,10 @@ Engine::Engine(std::optional<std::string> path) :
     numaContext(NumaConfig::from_system()),
     states(new std::deque<StateInfo>(1)),
     threads(),
-    networks(
-      numaContext,
-      // Heap-allocate because sizeof(NN::Networks) is large
-      std::make_unique<NN::Networks>(
-        std::make_unique<NN::NetworkBig>(NN::EvalFile{EvalFileDefaultNameBig, "None", ""},
-                                         NN::EmbeddedNNUEType::BIG),
-        std::make_unique<NN::NetworkSmall>(NN::EvalFile{EvalFileDefaultNameSmall, "None", ""},
-                                           NN::EmbeddedNNUEType::SMALL))) {
+    networks(numaContext,
+             // Heap-allocate because sizeof(NN::Networks) is large
+             std::make_unique<NN::Networks>(NN::EvalFile{EvalFileDefaultNameBig, "None", ""},
+                                            NN::EvalFile{EvalFileDefaultNameSmall, "None", ""})) {
 
     pos.set(StartFEN, false, &states->back());
 

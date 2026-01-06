@@ -130,9 +130,9 @@ using NetworkSmall = Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
 
 
 struct Networks {
-    Networks(std::unique_ptr<NetworkBig>&& nB, std::unique_ptr<NetworkSmall>&& nS) :
-        big(std::move(*nB)),
-        small(std::move(*nS)) {}
+    Networks(EvalFile bigFile, EvalFile smallFile) :
+        big(bigFile, EmbeddedNNUEType::BIG),
+        small(smallFile, EmbeddedNNUEType::BIG) {}
 
     NetworkBig   big;
     NetworkSmall small;

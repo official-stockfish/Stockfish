@@ -200,9 +200,7 @@ inline void read_leb_128_detail(std::istream&               stream,
 
         if ((byte & 0x80) == 0)
         {
-            out[i++] = (sizeof(IntType) * 8 <= shift || (byte & 0x40) == 0)
-                       ? result
-                       : result | ~((1 << shift) - 1);
+            out[i++] = (shift >= 32 || (byte & 0x40) == 0) ? result : result | ~((1 << shift) - 1);
             result   = 0;
             shift    = 0;
         }
