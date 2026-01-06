@@ -131,7 +131,7 @@ using NetworkSmall = Network<SmallNetworkArchitecture, SmallFeatureTransformer>;
 struct Networks {
     Networks(EvalFile bigFile, EvalFile smallFile) :
         big(bigFile, EmbeddedNNUEType::BIG),
-        small(smallFile, EmbeddedNNUEType::BIG) {}
+        small(smallFile, EmbeddedNNUEType::SMALL) {}
 
     NetworkBig   big;
     NetworkSmall small;
