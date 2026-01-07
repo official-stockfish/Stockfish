@@ -712,7 +712,7 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 // A temporary fix for the compiler bug with vectorization. (#4450)
 #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
     #define CLANG_BUG_FIX _Pragma("clang loop vectorize(disable)")
-#elif
+#else
     #define CLANG_BUG_FIX
 #endif
 
