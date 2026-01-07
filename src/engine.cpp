@@ -52,9 +52,15 @@ constexpr auto StartFEN   = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 constexpr int  MaxHashMB  = Is64Bit ? 33554432 : 2048;
 int            MaxThreads = std::max(1024, 4 * int(get_hardware_concurrency()));
 
+// The default configuration will attempt to group L3 domains up to 32 threads.
+// This size was found to be a good balance between the Elo gain of increased
+// history sharing and the speed loss from more cross-cache accesses (see
+// PR#6526). The user can always explicitly override this behavior.
+constexpr NumaAutoPolicy DefaultNumaPolicy = BundledL3Policy{32};
+
 Engine::Engine(std::optional<std::string> path) :
     binaryDirectory(path ? CommandLine::get_binary_directory(*path) : ""),
-    numaContext(NumaConfig::from_system()),
+    numaContext(NumaConfig::from_system(DefaultNumaPolicy)),
     states(new std::deque<StateInfo>(1)),
     threads(),
     networks(numaContext,
@@ -213,12 +219,12 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
 void Engine::set_numa_config_from_option(const std::string& o) {
     if (o == "auto" || o == "system")
     {
-        numaContext.set_numa_config(NumaConfig::from_system());
+        numaContext.set_numa_config(NumaConfig::from_system(DefaultNumaPolicy));
     }
     else if (o == "hardware")
     {
         // Don't respect affinity set in the system.
-        numaContext.set_numa_config(NumaConfig::from_system(false));
+        numaContext.set_numa_config(NumaConfig::from_system(DefaultNumaPolicy, false));
     }
     else if (o == "none")
     {
