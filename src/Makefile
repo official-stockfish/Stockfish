@@ -1111,6 +1111,13 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+# tbprobe.o must be compiled without LTO on Apple Silicon due to
+# miscompilation from strict aliasing violations in memory-mapped tablebase access
+ifeq ($(ARCH),apple-silicon)
+tbprobe.o: syzygy/tbprobe.cpp
+	$(CXX) $(filter-out -flto=full -flto=thin -flto,$(CXXFLAGS)) -c -o $@ $<
+endif
+
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
 FORCE:
