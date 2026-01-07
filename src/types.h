@@ -117,13 +117,13 @@ using Bitboard = uint64_t;
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
 
-enum Color : int8_t {
+enum Color : uint8_t {
     WHITE,
     BLACK,
     COLOR_NB = 2
 };
 
-enum CastlingRights : int8_t {
+enum CastlingRights : uint8_t {
     NO_CASTLING,
     WHITE_OO,
     WHITE_OOO = WHITE_OO << 1,
@@ -139,7 +139,7 @@ enum CastlingRights : int8_t {
     CASTLING_RIGHT_NB = 16
 };
 
-enum Bound : int8_t {
+enum Bound : uint8_t {
     BOUND_NONE,
     BOUND_UPPER,
     BOUND_LOWER,
@@ -190,13 +190,13 @@ constexpr Value QueenValue  = 2538;
 
 
 // clang-format off
-enum PieceType : std::int8_t {
+enum PieceType : std::uint8_t {
     NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
     ALL_PIECES = 0,
     PIECE_TYPE_NB = 8
 };
 
-enum Piece : std::int8_t {
+enum Piece : std::uint8_t {
     NO_PIECE,
     W_PAWN = PAWN,     W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
     B_PAWN = PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
@@ -227,7 +227,7 @@ constexpr Depth DEPTH_UNSEARCHED   = -2;
 constexpr Depth DEPTH_ENTRY_OFFSET = -3;
 
 // clang-format off
-enum Square : int8_t {
+enum Square : uint8_t {
     SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
     SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
     SQ_A3, SQ_B3, SQ_C3, SQ_D3, SQ_E3, SQ_F3, SQ_G3, SQ_H3,
@@ -255,7 +255,7 @@ enum Direction : int8_t {
     NORTH_WEST = NORTH + WEST
 };
 
-enum File : int8_t {
+enum File : uint8_t {
     FILE_A,
     FILE_B,
     FILE_C,
@@ -267,7 +267,7 @@ enum File : int8_t {
     FILE_NB
 };
 
-enum Rank : int8_t {
+enum Rank : uint8_t {
     RANK_1,
     RANK_2,
     RANK_3,
@@ -406,7 +406,7 @@ constexpr Key make_key(uint64_t seed) {
 }
 
 
-enum MoveType {
+enum MoveType : uint16_t {
     NORMAL,
     PROMOTION  = 1 << 14,
     EN_PASSANT = 2 << 14,
