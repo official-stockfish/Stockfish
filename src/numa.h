@@ -381,7 +381,7 @@ struct HasGroupCount<T,
     std::void_t<decltype(std::declval<T>()->Cache.GroupCount)>> 
     : std::true_type {};
 
-template <typename T, typename Pred, std::enable_if_t<HasGroupCount<T>, bool> = true>
+template <typename T, typename Pred, std::enable_if_t<HasGroupCount<T>::value, bool> = true>
 std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
     std::set<CpuIndex> cpus;
     // On Windows 10 this will read a 0 because GroupCount doesn't exist
@@ -403,7 +403,7 @@ std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
     return cpus;
 }
 
-template <typename T, std::enable_if_t<!HasGroupCount<T>, bool> = true>
+template <typename T, typename Pred, std::enable_if_t<!HasGroupCount<T>::value, bool> = true>
 std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
     std::set<CpuIndex> cpus;
 	    for (BYTE number = 0; number < WIN_PROCESSOR_GROUP_SIZE; ++number)
