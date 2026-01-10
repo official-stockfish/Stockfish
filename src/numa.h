@@ -378,7 +378,7 @@ struct HasGroupCount : std::false_type {};
 
 template <typename T>
 struct HasGroupCount<T, 
-    std::void_t<decltype(std::declval<T>()->Cache.GroupCount)>> 
+    std::void_t<decltype(std::declval<T>().Cache.GroupCount)>> 
     : std::true_type {};
 
 template <typename T, typename Pred, std::enable_if_t<HasGroupCount<T>::value, bool> = true>
