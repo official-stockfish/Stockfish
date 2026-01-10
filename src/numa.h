@@ -1113,7 +1113,7 @@ class NumaConfig {
     template<typename Pred>
     static std::optional<NumaConfig> try_get_l3_aware_config(
       bool respectProcessAffinity, size_t bundleSize, [[maybe_unused]] Pred&& is_cpu_allowed) {
-        // Get the normal system configuration so we know what to which NUMA node
+        // Get the normal system configuration so we know to which NUMA node
         // each L3 domain belongs.
         NumaConfig systemConfig =
           NumaConfig::from_system(SystemNumaPolicy{}, respectProcessAffinity);
