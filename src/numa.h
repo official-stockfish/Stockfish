@@ -371,6 +371,16 @@ inline WindowsAffinity get_process_affinity() {
     return affinity;
 }
 
+// Type machinery used to detect support for Cache->GroupCount
+
+template <typename T, typename = void>
+struct HasGroupCountT : std::false_type {};
+
+template <typename T>
+struct HasGroupCountT<T, 
+    std::void_t<decltype(std::declval<T>()->Cache.GroupCount)>> 
+    : std::true_type {};
+
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
@@ -1158,45 +1168,49 @@ class NumaConfig {
 
 #elif defined(_WIN64)
 
-        DWORD bufSize = 0;
-        GetLogicalProcessorInformationEx(RelationCache, nullptr, &bufSize);
-        if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
-            return std::nullopt;
+	// Windows 10 doesn't support GroupCount
+	if constexpr (HasGroupCountT<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>::value) {
+		DWORD bufSize = 0;
+		GetLogicalProcessorInformationEx(RelationCache, nullptr, &bufSize);
+		if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+		    return std::nullopt;
 
-        std::vector<char> buffer(bufSize);
-        auto info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.data());
-        if (!GetLogicalProcessorInformationEx(RelationCache, info, &bufSize))
-            return std::nullopt;
+		std::vector<char> buffer(bufSize);
+		auto info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer.data());
+		if (!GetLogicalProcessorInformationEx(RelationCache, info, &bufSize))
+		    return std::nullopt;
 
-        while (reinterpret_cast<char*>(info) < buffer.data() + bufSize)
-        {
-            info = std::launder(info);
-            if (info->Relationship == RelationCache && info->Cache.Level == 3)
-            {
-                L3Domain domain{};
-                for (WORD procGroup = 0; procGroup < info->Cache.GroupCount; ++procGroup)
-                {
-                    for (BYTE number = 0; number < WIN_PROCESSOR_GROUP_SIZE; ++number)
-                    {
-                        WORD           groupNumber = info->Cache.GroupMasks[procGroup].Group;
-                        const CpuIndex c =
-                          static_cast<CpuIndex>(groupNumber) * WIN_PROCESSOR_GROUP_SIZE
-                          + static_cast<CpuIndex>(number);
-                        if (!(info->Cache.GroupMasks[procGroup].Mask & (1ULL << number))
-                            || !is_cpu_allowed(c))
-                            continue;
-                        domain.systemNumaIndex = systemConfig.nodeByCpu.at(c);
-                        domain.cpus.insert(c);
-                    }
-                }
-                if (!domain.cpus.empty())
-                    l3Domains.push_back(std::move(domain));
-            }
-            // Variable length data structure, advance to next
-            info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(
-              reinterpret_cast<char*>(info) + info->Size);
-        }
-
+		while (reinterpret_cast<char*>(info) < buffer.data() + bufSize)
+		{
+		    info = std::launder(info);
+		    if (info->Relationship == RelationCache && info->Cache.Level == 3)
+		    {
+			L3Domain domain{};
+			// Using std::max with 1 allows this to run correctly on Windows 10 where
+			// info->Cache.GroupCount will be 0
+			for (WORD procGroup = 0; procGroup < std::max(info->Cache.GroupCount, 1); ++procGroup)
+			{
+			    for (BYTE number = 0; number < WIN_PROCESSOR_GROUP_SIZE; ++number)
+			    {
+				WORD           groupNumber = info->Cache.GroupMasks[procGroup].Group;
+				const CpuIndex c =
+				  static_cast<CpuIndex>(groupNumber) * WIN_PROCESSOR_GROUP_SIZE
+				  + static_cast<CpuIndex>(number);
+				if (!(info->Cache.GroupMasks[procGroup].Mask & (1ULL << number))
+				    || !is_cpu_allowed(c))
+				    continue;
+				domain.systemNumaIndex = systemConfig.nodeByCpu.at(c);
+				domain.cpus.insert(c);
+			    }
+			}
+			if (!domain.cpus.empty())
+			    l3Domains.push_back(std::move(domain));
+		    }
+		    // Variable length data structure, advance to next
+		    info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(
+		      reinterpret_cast<char*>(info) + info->Size);
+		}
+	}
 #endif
 
         if (!l3Domains.empty())
