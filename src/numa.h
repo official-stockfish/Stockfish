@@ -374,10 +374,10 @@ inline WindowsAffinity get_process_affinity() {
 // Type machinery used to emulate Cache->GroupCount
 
 template <typename T, typename = void>
-struct HasGroupCountT : std::false_type {};
+struct HasGroupCount : std::false_type {};
 
 template <typename T>
-struct HasGroupCountT<T, 
+struct HasGroupCount<T, 
     std::void_t<decltype(std::declval<T>()->Cache.GroupCount)>> 
     : std::true_type {};
 
@@ -403,10 +403,9 @@ std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
     return cpus;
 }
 
-template <typename T, std::enable_if_t<HasGroupCount<T>, bool> = false>
+template <typename T, std::enable_if_t<!HasGroupCount<T>, bool> = true>
 std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
     std::set<CpuIndex> cpus;
-    // On Windows 10 this will read a 0 because GroupCount doesn't exist
 	    for (BYTE number = 0; number < WIN_PROCESSOR_GROUP_SIZE; ++number)
 	    {
 		WORD           groupNumber = info->Cache.GroupMask.Group;
@@ -420,18 +419,6 @@ std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
 	    }
     return cpus;
 }
-
-template <typename T, std::enable_if_t<HasGroupCount<T>, bool> = true>
-int read_group_count(const T* info) {
-    return info->Cache.GroupCount;
-}
-
-template <typename T, std::enable_if_t<HasGroupCount<T>, bool> = false>
-int read_group_count(const T* info) {
-    return 1;
-}
-
-
 
 #endif
 
@@ -1238,7 +1225,7 @@ class NumaConfig {
 			L3Domain domain{};
 			domain.cpus = readCacheMembers(info, is_cpu_allowed);
 			if (!domain.cpus.empty()) {
-			    l3Domains.systemNumaIndex = systemConfig.nodeByCpu.get(*domain.cpus.begin());
+			    domain.systemNumaIndex = systemConfig.nodeByCpu.at(*domain.cpus.begin());
 			    l3Domains.push_back(std::move(domain));
 			}
 		    }
