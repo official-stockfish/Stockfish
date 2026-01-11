@@ -143,7 +143,7 @@ class Position {
                  const TranspositionTable* tt,
                  const SharedHistories*    worker);
     void undo_move(Move m);
-    void do_null_move(StateInfo& newSt, const TranspositionTable& tt);
+    void do_null_move(StateInfo& newSt);
     void undo_null_move();
 
     // Static Exchange Evaluation
