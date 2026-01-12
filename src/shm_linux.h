@@ -67,7 +67,7 @@ struct ShmHeader {
 class SharedMemoryBase {
    public:
     virtual ~SharedMemoryBase()                      = default;
-    virtual void               close() noexcept      = 0;
+    virtual void               close(bool skip_unmap = false) noexcept      = 0;
     virtual const std::string& name() const noexcept = 0;
 };
 
@@ -87,10 +87,10 @@ class SharedMemoryRegistry {
         active_instances_.erase(instance);
     }
 
-    static void cleanup_all() noexcept {
+    static void cleanup_all(bool skip_unmap = false) noexcept {
         std::scoped_lock lock(registry_mutex_);
         for (auto* instance : active_instances_)
-            instance->close();
+            instance->close(skip_unmap);
         active_instances_.clear();
     }
 };
@@ -103,12 +103,14 @@ class CleanupHooks {
     static std::once_flag register_once_;
 
     static void handle_signal(int sig) noexcept {
-        SharedMemoryRegistry::cleanup_all();
+        // Search threads may still be running, so skip munmap (but still perform
+        // other cleanup actions). The memory mappings will be released on exit.
+        SharedMemoryRegistry::cleanup_all(true);
         _Exit(128 + sig);
     }
 
     static void register_signal_handlers() noexcept {
-        std::atexit([]() { SharedMemoryRegistry::cleanup_all(); });
+        std::atexit([]() { SharedMemoryRegistry::cleanup_all(true); });
 
         constexpr int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,
                                    SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
@@ -318,7 +320,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         }
     }
 
-    void close() noexcept override {
+    void close(bool skip_unmap = false) noexcept override {
         if (fd_ == -1 && mapped_ptr_ == nullptr)
             return;
 
@@ -345,7 +347,10 @@ class SharedMemory: public detail::SharedMemoryBase {
             decrement_refcount_relaxed();
         }
 
-        unmap_region();
+        if (skip_unmap)
+            mapped_ptr_ = nullptr;
+        else
+            unmap_region();
 
         if (remove_region)
             shm_unlink(name_.c_str());
@@ -359,7 +364,8 @@ class SharedMemory: public detail::SharedMemoryBase {
             fd_ = -1;
         }
 
-        reset();
+        if (!skip_unmap)
+            reset();
     }
 
     const std::string& name() const noexcept override { return name_; }
