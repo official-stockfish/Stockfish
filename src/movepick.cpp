@@ -20,7 +20,6 @@
 
 #include <cassert>
 #include <limits>
-#include <utility>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -31,29 +30,21 @@ namespace Stockfish {
 namespace {
 
 enum Stages {
-    // generate main search moves
-    MAIN_TT,
-    CAPTURE_INIT,
+    TT = 0,
+    FIRST_STAGE_INIT = 1,
+
     GOOD_CAPTURE,
-    QUIET_INIT,
     GOOD_QUIET,
     BAD_CAPTURE,
     BAD_QUIET,
 
-    // generate evasion moves
-    EVASION_TT,
     EVASION_INIT,
+
+    QSEARCH,
+
     EVASION,
 
-    // generate probcut moves
-    PROBCUT_TT,
-    PROBCUT_INIT,
     PROBCUT,
-
-    // generate qsearch moves
-    QSEARCH_TT,
-    QCAPTURE_INIT,
-    QCAPTURE
 };
 
 #ifdef USE_AVX512
@@ -105,6 +96,7 @@ struct MoveSorter {
     }
 };
 #endif
+
 
 // Sort moves in descending order up to and including a given limit.
 // The order of moves smaller than the limit is left unspecified.
@@ -170,10 +162,15 @@ MovePicker::MovePicker(const Position&              p,
     ply(pl) {
 
     if (pos.checkers())
-        stage = EVASION_TT + !(ttm && pos.legal(ttm));
-
+    {
+        first_stage = EVASION;
+        stage = TT + !(ttm && pos.legal(ttm));
+    }
     else
-        stage = (depth > 0 ? MAIN_TT : QSEARCH_TT) + !(ttm && pos.legal(ttm));
+    {
+        first_stage = depth > 0 ? GOOD_CAPTURE : QSEARCH;
+        stage = TT + !(ttm && pos.legal(ttm));
+    }
 }
 
 // MovePicker constructor for ProbCut: we generate captures with Static Exchange
@@ -185,7 +182,8 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
     threshold(th) {
     assert(!pos.checkers());
 
-    stage = PROBCUT_TT + !(ttm && pos.capture_stage(ttm) && pos.legal(ttm));
+    first_stage = PROBCUT;
+    stage = TT + !(ttm && pos.capture_stage(ttm) && pos.legal(ttm));
 }
 
 // Assigns a numerical value to each move in a list, used for sorting.
@@ -282,48 +280,46 @@ Move MovePicker::select(Pred filter) {
 Move MovePicker::next_move() {
 
     constexpr int goodQuietThreshold = -14000;
-top:
+dispatch:
     switch (stage)
     {
 
-    case MAIN_TT :
-    case EVASION_TT :
-    case QSEARCH_TT :
-    case PROBCUT_TT :
-        ++stage;
+    case TT :
+        stage++;
         return ttMove;
 
-    case CAPTURE_INIT :
-    case PROBCUT_INIT :
-    case QCAPTURE_INIT : {
-        MoveList<CAPTURES> ml(pos);
+    case FIRST_STAGE_INIT :
+        if (first_stage == EVASION) {
+            MoveList<EVASIONS> ml(pos);
 
-        cur = endBadCaptures = moves;
-        endCur = endCaptures = score<CAPTURES>(ml);
+            cur    = moves;
+            endCur = score<EVASIONS>(ml);
+        } else {
+            MoveList<CAPTURES> ml(pos);
 
+            cur = endBadCaptures = moves;
+            endCur = score<CAPTURES>(ml);
+        }
         partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
-        ++stage;
-        goto top;
-    }
+
+        stage = first_stage;
+        goto dispatch;
 
     case GOOD_CAPTURE :
         if (select([&]() {
                 if (pos.see_ge(*cur, -cur->value / 18))
                     return true;
-                std::swap(*endBadCaptures++, *cur);
+                *endBadCaptures++ = *cur;
                 return false;
             }))
             return *(cur - 1);
 
-        ++stage;
-        [[fallthrough]];
-
-    case QUIET_INIT :
         if (!skipQuiets)
         {
             MoveList<QUIETS> ml(pos);
 
-            endCur = endGenerated = score<QUIETS>(ml);
+            cur = endBadCaptures;
+            endCur = endQuiets = score<QUIETS>(ml);
 
             partial_insertion_sort(cur, endCur, -3560 * depth);
         }
@@ -347,8 +343,7 @@ top:
             return *(cur - 1);
 
         // Prepare the pointers to loop over quiets again
-        cur    = endCaptures;
-        endCur = endGenerated;
+        endCur = endQuiets;
 
         ++stage;
         [[fallthrough]];
@@ -359,27 +354,17 @@ top:
 
         return Move::none();
 
-    case EVASION_INIT : {
-        MoveList<EVASIONS> ml(pos);
-
-        cur    = moves;
-        endCur = endGenerated = score<EVASIONS>(ml);
-
-        partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
-        ++stage;
-        [[fallthrough]];
-    }
-
+    case QSEARCH :
     case EVASION :
-    case QCAPTURE :
         return select([]() { return true; });
 
     case PROBCUT :
         return select([&]() { return pos.see_ge(*cur, threshold); });
-    }
 
-    assert(false);
-    return Move::none();  // Silence warning
+    default:
+        assert(false);
+        __builtin_unreachable();
+    }
 }
 
 void MovePicker::skip_quiet_moves() { skipQuiets = true; }
