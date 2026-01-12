@@ -64,7 +64,15 @@ PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
 ### Built-in benchmark for pgo-builds
-PGOBENCH = $(RUN_PREFIX) ./$(EXE) bench
+ifeq ($(COMP),clang)
+# clang/llvm gains speedup with multithreaded benchmark profile
+	ifndef PGO_BENCH_THREADS
+		export PGO_BENCH_THREADS := 4
+	endif
+	PGOBENCH = $(RUN_PREFIX) ./$(EXE) bench 16 $(PGO_BENCH_THREADS)
+else
+	PGOBENCH = $(RUN_PREFIX) ./$(EXE) bench
+endif
 
 ### Source and object files
 SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
