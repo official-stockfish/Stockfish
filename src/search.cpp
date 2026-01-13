@@ -1143,7 +1143,7 @@ moves_loop:  // When in check, search starts here
                 int doubleMargin = -4 + 199 * PvNode - 201 * !ttCapture - corrValAdj
                                  - 897 * ttMoveHistory / 127649 - (ss->ply > rootDepth) * 42;
                 int tripleMargin = 73 + 302 * PvNode - 248 * !ttCapture + 90 * ss->ttPv - corrValAdj
-                                 - (ss->ply * 2 > rootDepth * 3) * 50;
+                                 - (ss->ply > rootDepth) * 48;
 
                 extension =
                   1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
