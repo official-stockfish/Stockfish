@@ -364,7 +364,8 @@ class SharedMemory: public detail::SharedMemoryBase {
             fd_ = -1;
         }
 
-        reset();
+        if (!skip_unmap)
+            reset();
     }
 
     const std::string& name() const noexcept override { return name_; }
