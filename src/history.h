@@ -21,7 +21,6 @@
 
 #include <algorithm>
 #include <array>
-#include <atomic>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -52,26 +51,20 @@ static_assert((CORRHIST_BASE_SIZE & (CORRHIST_BASE_SIZE - 1)) == 0,
 // the entry. The first template parameter T is the base type of the array,
 // and the second template parameter D limits the range of updates in [-D, D]
 // when we update values with the << operator
-template<typename T, int D, bool Atomic = false>
+template<typename T, int D>
 struct StatsEntry {
     static_assert(std::is_arithmetic_v<T>, "Not an arithmetic type");
 
    private:
-    std::conditional_t<Atomic, std::atomic<T>, T> entry;
+    std::conditional_t<false, T, T> entry;
 
    public:
     void operator=(const T& v) {
-        if constexpr (Atomic)
-            entry.store(v, std::memory_order_relaxed);
-        else
-            entry = v;
+        entry = v;
     }
 
     operator T() const {
-        if constexpr (Atomic)
-            return entry.load(std::memory_order_relaxed);
-        else
-            return entry;
+        return entry;
     }
 
     void operator<<(int bonus) {
@@ -91,9 +84,6 @@ enum StatsType {
 
 template<typename T, int D, std::size_t... Sizes>
 using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
-
-template<typename T, int D, std::size_t... Sizes>
-using AtomicStats = MultiArray<StatsEntry<T, D, true>, Sizes...>;
 
 // DynStats is a dynamically sized array of Stats, used for thread-shared histories
 // which should scale with the total number of threads. The SizeMultiplier gives
@@ -151,7 +141,7 @@ using ContinuationHistory = MultiArray<PieceToHistory, PIECE_NB, SQUARE_NB>;
 
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
 using PawnHistory =
-  DynStats<AtomicStats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>, PAWN_HISTORY_BASE_SIZE>;
+  DynStats<Stats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>, PAWN_HISTORY_BASE_SIZE>;
 
 // Correction histories record differences between the static evaluation of
 // positions and their search score. It is used to improve the static evaluation
@@ -167,10 +157,10 @@ enum CorrHistType {
 
 template<typename T, int D>
 struct CorrectionBundle {
-    StatsEntry<T, D, true> pawn;
-    StatsEntry<T, D, true> minor;
-    StatsEntry<T, D, true> nonPawnWhite;
-    StatsEntry<T, D, true> nonPawnBlack;
+    StatsEntry<T, D> pawn;
+    StatsEntry<T, D> minor;
+    StatsEntry<T, D> nonPawnWhite;
+    StatsEntry<T, D> nonPawnBlack;
 
     void operator=(T val) {
         pawn         = val;
