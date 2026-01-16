@@ -1,0 +1,85 @@
+name: AVX2 Compiler Matrix
+
+on:
+  workflow_call:
+
+jobs:
+  avx2-compiler-matrix:
+    name: avx2 (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: gcc-10, comp: gcc, cxx: g++, image: "gcc:10" }
+          - { name: gcc-11, comp: gcc, cxx: g++, image: "gcc:11" }
+          - { name: gcc-12, comp: gcc, cxx: g++, image: "gcc:12" }
+          - { name: gcc-13, comp: gcc, cxx: g++, image: "gcc:13" }
+          - { name: gcc-14, comp: gcc, cxx: g++, image: "gcc:14" }
+          - { name: gcc-15, comp: gcc, cxx: g++, image: "gcc:15" }
+
+          # Using silkeh/clang for older versions
+          - { name: clang-10, comp: clang, cxx: clang++, image: "silkeh/clang:10", is_clang: true, ver: "10" }
+          - { name: clang-11, comp: clang, cxx: clang++, image: "silkeh/clang:11", is_clang: true, ver: "11" }
+          - { name: clang-12, comp: clang, cxx: clang++, image: "silkeh/clang:12", is_clang: true, ver: "12" }
+          - { name: clang-13, comp: clang, cxx: clang++, image: "silkeh/clang:13", is_clang: true, ver: "13" }
+          - { name: clang-14, comp: clang, cxx: clang++, image: "silkeh/clang:14", is_clang: true, ver: "14" }
+          - { name: clang-15, comp: clang, cxx: clang++, image: "silkeh/clang:15", is_clang: true, ver: "15" }
+          - { name: clang-16, comp: clang, cxx: clang++, image: "silkeh/clang:16", is_clang: true, ver: "16" }
+          - { name: clang-17, comp: clang, cxx: clang++, image: "silkeh/clang:17", is_clang: true, ver: "17" }
+
+          - { name: clang-18, comp: clang, cxx: clang++-18, image: "ubuntu:rolling", is_clang: true, ver: "18" }
+          - { name: clang-19, comp: clang, cxx: clang++-19, image: "ubuntu:rolling", is_clang: true, ver: "19" }
+          - { name: clang-20, comp: clang, cxx: clang++-20, image: "ubuntu:rolling", is_clang: true, ver: "20" }
+          - { name: clang-21, comp: clang, cxx: clang++-21, image: "ubuntu:rolling", is_clang: true, ver: "21" }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          if grep -q "buster" /etc/os-release; then
+            echo "Debian Buster detected. Switching to archive repositories..."
+            echo "deb http://archive.debian.org/debian buster main contrib non-free" > /etc/apt/sources.list
+            echo "deb http://archive.debian.org/debian-security buster/updates main contrib non-free" >> /etc/apt/sources.list
+            echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99-ignore-valid-until
+          fi
+
+          apt-get update
+          apt-get install -y curl git make
+
+      - name: Set up Clang
+        if: ${{ matrix.is_clang && matrix.image == 'ubuntu:rolling' }}
+        run: |
+          if [ "${{ matrix.ver }}" -le 20 ]; then
+            apt-get install -y clang-${{ matrix.ver }}
+          else
+            apt-get install -y \
+              clang-${{ matrix.ver }} \
+              llvm-${{ matrix.ver }}-dev \
+              llvm-${{ matrix.ver }}-linker-tools \
+              lld-${{ matrix.ver }}
+          fi
+
+      - name: Download network
+        working-directory: src
+        run: make net
+
+      - name: Build avx2 binary
+        working-directory: src
+        run: |
+          export CXXFLAGS="-Werror"
+          if [ "${{ matrix.ver }}" -ge 20 ]; then
+            export LDFLAGS="-fuse-ld=lld"
+            apt install -y lld
+          fi
+          make clean
+          make -j build ARCH=x86-64-avx2 COMP=${{ matrix.comp }} COMPCXX=${{ matrix.cxx }}
+
+      - name: Smoke test
+        working-directory: src
+        run: ./stockfish bench 16 1 6

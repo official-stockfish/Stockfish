@@ -47,10 +47,10 @@ template<Direction offset>
 inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     alignas(64) static constexpr auto SPLAT_TABLE = [] {
         std::array<Move, 64> table{};
-        for (int8_t i = 0; i < 64; i++)
+        for (int i = 0; i < 64; i++)
         {
-            Square from{std::clamp<int8_t>(i - offset, 0, 63)};
-            table[i] = {Move(from, Square{i})};
+            Square from{uint8_t(std::clamp(i - offset, 0, 63))};
+            table[i] = {Move(from, Square{uint8_t(i)})};
         }
         return table;
     }();
@@ -68,7 +68,7 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
     alignas(64) static constexpr auto SPLAT_TABLE = [] {
         std::array<Move, 64> table{};
-        for (int8_t i = 0; i < 64; i++)
+        for (uint8_t i = 0; i < 64; i++)
             table[i] = {Move(SQUARE_ZERO, Square{i})};
         return table;
     }();

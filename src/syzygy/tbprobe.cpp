@@ -709,15 +709,11 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
     return value + 1;
 }
 
-// A temporary fix for the compiler bug with AVX-512. (#4450)
-#ifdef USE_AVX512
-    #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
-        #define CLANG_AVX512_BUG_FIX __attribute__((optnone))
-    #endif
-#endif
-
-#ifndef CLANG_AVX512_BUG_FIX
-    #define CLANG_AVX512_BUG_FIX
+// A temporary fix for the compiler bug with vectorization. (#4450)
+#if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
+    #define DISABLE_CLANG_LOOP_VEC _Pragma("clang loop vectorize(disable)")
+#else
+    #define DISABLE_CLANG_LOOP_VEC
 #endif
 
 // Compute a unique index out of a position and use it to probe the TB file. To
@@ -727,8 +723,7 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 //      idx = Binomial[1][s1] + Binomial[2][s2] + ... + Binomial[k][sk]
 //
 template<typename T, typename Ret = typename T::Ret>
-CLANG_AVX512_BUG_FIX Ret
-do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) {
+Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) {
 
     Square     squares[TBPIECES];
     Piece      pieces[TBPIECES];
@@ -812,8 +807,11 @@ do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) 
     // Now we map again the squares so that the square of the lead piece is in
     // the triangle A1-D1-D4.
     if (file_of(squares[0]) > FILE_D)
+    {
+        DISABLE_CLANG_LOOP_VEC
         for (int i = 0; i < size; ++i)
             squares[i] = flip_file(squares[i]);
+    }
 
     // Encode leading pawns starting with the one with minimum MapPawns[] and
     // proceeding in ascending order.
@@ -832,19 +830,26 @@ do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) 
     // In positions without pawns, we further flip the squares to ensure leading
     // piece is below RANK_5.
     if (rank_of(squares[0]) > RANK_4)
+    {
+        DISABLE_CLANG_LOOP_VEC
         for (int i = 0; i < size; ++i)
             squares[i] = flip_rank(squares[i]);
+    }
 
     // Look for the first piece of the leading group not on the A1-D4 diagonal
     // and ensure it is mapped below the diagonal.
+    DISABLE_CLANG_LOOP_VEC
     for (int i = 0; i < d->groupLen[0]; ++i)
     {
         if (!off_A1H8(squares[i]))
             continue;
 
         if (off_A1H8(squares[i]) > 0)  // A1-H8 diagonal flip: SQ_A3 -> SQ_C1
+        {
+            DISABLE_CLANG_LOOP_VEC
             for (int j = i; j < size; ++j)
                 squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
+        }
         break;
     }
 
