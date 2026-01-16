@@ -104,9 +104,8 @@ class ClippedReLU {
                 _mm_store_si128(&out[i], _mm_packs_epi16(words0, words1));
             }
         }
-        constexpr IndexType Start = InputDimensions % SimdWidth == 0
-                                    ? InputDimensions / SimdWidth * SimdWidth
-                                    : InputDimensions / (SimdWidth / 2) * (SimdWidth / 2);
+        constexpr IndexType step  = InputDimensions % SimdWidth ? SimdWidth / 2 : SimdWidth;
+        constexpr IndexType Start = InputDimensions / step * step;
 
 #elif defined(USE_SSE2)
         constexpr IndexType NumChunks = InputDimensions / SimdWidth;
