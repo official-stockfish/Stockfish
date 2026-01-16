@@ -1,163 +1,362 @@
 #!/bin/sh
 
 #
-# Returns properties of the native system.
-# best architecture as supported by the CPU
-# filename of the best binary uploaded as an artifact during CI
+# Returns the best architecture supported by the CPU (as expected by src/Makefile ARCH=).
+#
+# Output format:
+#   "<true_arch>\n"
 #
 
-# Check if all the given flags are present in the CPU flags list
-check_flags() {
-  for flag; do
-    printf '%s\n' "$flags" | grep -q -w "$flag" || return 1
-  done
+# ---------------------------
+# Helpers (POSIX)
+# ---------------------------
+
+# Test hooks (optional env overrides)
+#   GP_UNAME_S: override `uname -s`
+#   GP_UNAME_M: override `uname -m`
+#   GP_CPUINFO: path to a cpuinfo-like fixture file (defaults to /proc/cpuinfo)
+#   GP_BITS: override getconf LONG_BIT result (32/64)
+#   GP_SYSCTL_FEATURES: override sysctl feature strings on Darwin x86_64
+
+cpuinfo_path=${GP_CPUINFO:-/proc/cpuinfo}
+
+# Normalize to a single-line, space-separated string.
+normalize_ws() {
+	printf '%s\n' "$*" | tr '\n\t' '  ' | tr -s ' '
 }
 
-# Set the CPU flags list
-# remove underscores and points from flags, e.g. gcc uses avx512vnni, while some cpuinfo can have avx512_vnni, some systems use sse4_1 others sse4.1
+die() {
+	printf '%s\n' "$*" >&2
+	exit 1
+}
+
+# Populate $flags from /proc/cpuinfo when available,
+# removing underscores and dots to reduce naming variations.
 get_flags() {
-  flags=$(awk '/^flags[ \t]*:|^Features[ \t]*:/{gsub(/^flags[ \t]*:[ \t]*|^Features[ \t]*:[ \t]*|[_.]/, ""); line=$0} END{print line}' /proc/cpuinfo)
+	if [ -r "$cpuinfo_path" ]; then
+		flags=$(
+			awk '
+				/^flags[ \t]*:|^Features[ \t]*:/ {
+					if (!found) {
+						gsub(/^flags[ \t]*:[ \t]*|^Features[ \t]*:[ \t]*|[_.]/, "");
+						line=$0
+						found=1
+					}
+				}
+				END { print line }
+			' "$cpuinfo_path" 2>/dev/null
+		)
+	else
+		flags=''
+	fi
+	flags=$(printf '%s\n' "$flags" | tr '[:upper:]' '[:lower:]')
+	flags=$(normalize_ws "$flags")
 }
 
-# Check for gcc march "znver1" or "znver2" https://en.wikichip.org/wiki/amd/cpuid
-check_znver_1_2() {
-  vendor_id=$(awk '/^vendor_id/{print $3; exit}' /proc/cpuinfo)
-  cpu_family=$(awk '/^cpu family/{print $4; exit}' /proc/cpuinfo)
-  [ "$vendor_id" = "AuthenticAMD" ] && [ "$cpu_family" = "23" ] && znver_1_2=true
+# Populate $flags from sysctl on Darwin x86_64.
+get_sysctl_flags() {
+	if [ -n "${GP_SYSCTL_FEATURES:-}" ]; then
+		flags=$(printf '%s\n' "$GP_SYSCTL_FEATURES")
+	else
+		flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features 2>/dev/null)
+	fi
+	flags=$(printf '%s\n' "$flags" | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '._')
+	flags=$(normalize_ws "$flags")
 }
 
-# Set the file CPU loongarch64 architecture
+# Best-effort bitness for fallback arch selection.
+get_bits() {
+	if [ -n "${GP_BITS:-}" ]; then
+		bits=$GP_BITS
+	else
+		bits=$(getconf LONG_BIT 2>/dev/null)
+	fi
+	case $bits in
+		32|64) : ;;
+		*) bits=64 ;;
+	esac
+}
+
+# Extract ARM architecture level (5/6/7/8/...) from /proc/cpuinfo when present.
+get_arm_arch_level() {
+	[ -r "$cpuinfo_path" ] || return 1
+	awk '
+		/^CPU architecture[ \t]*:/{
+			s=$0
+			sub(/^[^:]*:[ \t]*/, "", s)
+			if (match(s, /[0-9]+/)) { print substr(s, RSTART, RLENGTH); exit }
+		}
+		/^Processor[ \t]*:/{
+			s=$0
+			sub(/^[^:]*:[ \t]*/, "", s)
+			if (match(s, /ARMv[0-9]+/)) { print substr(s, RSTART+4, RLENGTH-4); exit }
+		}
+	' "$cpuinfo_path" 2>/dev/null
+}
+
+# Best-effort ARM architecture level (5/6/7/8/...) with a minimal fallback.
+# Prefer /proc/cpuinfo when available; fall back to uname -m only when it encodes it.
+get_arm_level() {
+	arm_level=$(get_arm_arch_level || :)
+	if [ -n "$arm_level" ]; then
+		printf '%s\n' "$arm_level"
+		return 0
+	fi
+	case ${1:-} in
+		armv5*) printf '5\n' ;;
+		armv6*) printf '6\n' ;;
+		armv7*) printf '7\n' ;;
+		armv8l) printf '8\n' ;;
+		*) return 1 ;;
+	esac
+}
+
+# Whole-token membership check.
+has_flag() {
+	case " $flags " in
+		*" $1 "*) return 0 ;;
+		*)        return 1 ;;
+	esac
+}
+
+match_flags() {
+	for f; do
+		has_flag "$f" || return 1
+	done
+	return 0
+}
+
+match_any_flags() {
+	for f; do
+		has_flag "$f" && return 0
+	done
+	return 1
+}
+
+# SSE3 is often exposed as "pni" in /proc/cpuinfo.
+match_sse3() {
+	match_any_flags sse3 pni
+}
+
+# AMD Zen1/2 exclusion logic (used for bmi2 tier).
+# https://web.archive.org/web/20250821132355/https://en.wikichip.org/wiki/amd/cpuid
+is_znver_1_2() (
+	[ -r "$cpuinfo_path" ] || exit 1
+	vendor_id=$(awk '/^vendor_id/{print $3; exit}' "$cpuinfo_path" 2>/dev/null)
+	cpu_family=$(awk '/^cpu family/{print $4; exit}' "$cpuinfo_path" 2>/dev/null)
+	[ "$vendor_id" = "AuthenticAMD" ] && [ "$cpu_family" = "23" ]
+)
+
+match_not_znver12_and_flags() {
+	is_znver_1_2 && return 1
+	match_flags "$@"
+}
+
+match_sse3_popcnt() {
+	has_flag popcnt || return 1
+	match_sse3
+}
+
+match_true() { return 0; }
+
+# Generic selector: reads lines like "arch|predicate|arg1 arg2 ..."
+# First match wins; blank lines and lines starting with '#' are ignored.
+select_arch_from_table() {
+	while IFS='|' read -r arch pred args; do
+		[ -z "$arch" ] && continue
+		case $arch in \#*) continue ;; esac
+
+		if [ -n "$args" ]; then
+			# Intentional splitting of args into words for the predicate.
+			# shellcheck disable=SC2086
+			$pred $args && { printf '%s\n' "$arch"; return 0; }
+		else
+			$pred && { printf '%s\n' "$arch"; return 0; }
+		fi
+	done
+	return 1
+}
+
+# ---------------------------
+# Arch selection (table-driven)
+# ---------------------------
+
 set_arch_loongarch64() {
-  if check_flags 'lasx'; then
-    true_arch='loongarch64-lasx'
-  elif check_flags 'lsx'; then
-    true_arch='loongarch64-lsx'
-  else
-    true_arch='loongarch64'
-  fi
+	true_arch=$(
+		select_arch_from_table <<'EOF'
+loongarch64-lasx|match_flags|lasx
+loongarch64-lsx|match_flags|lsx
+loongarch64|match_true|
+EOF
+	)
 }
 
-# Set the file CPU x86_64 architecture
 set_arch_x86_64() {
-  if check_flags 'avx512f' 'avx512cd' 'avx512vl' 'avx512dq' 'avx512bw' 'avx512ifma' 'avx512vbmi' 'avx512vbmi2' 'avx512vpopcntdq' 'avx512bitalg' 'avx512vnni' 'vpclmulqdq' 'gfni' 'vaes'; then
-    true_arch='x86-64-avx512icl'
-  elif check_flags 'avx512vnni' 'avx512dq' 'avx512f' 'avx512bw' 'avx512vl'; then
-    true_arch='x86-64-vnni512'
-  elif check_flags 'avx512f' 'avx512bw'; then
-    true_arch='x86-64-avx512'
-  elif check_flags 'avxvnni'; then
-    true_arch='x86-64-avxvnni'
-  elif [ -z "${znver_1_2+1}" ] && check_flags 'bmi2'; then
-    true_arch='x86-64-bmi2'
-  elif check_flags 'avx2'; then
-    true_arch='x86-64-avx2'
-  elif check_flags 'sse41' && check_flags 'popcnt'; then
-    true_arch='x86-64-sse41-popcnt'
-  else
-    true_arch='x86-64'
-  fi
+	true_arch=$(
+		select_arch_from_table <<'EOF'
+# Strongest -> weakest (first match wins)
+x86-64-avx512icl|match_flags|avx512f avx512cd avx512vl avx512dq avx512bw avx512ifma avx512vbmi avx512vbmi2 avx512vpopcntdq avx512bitalg avx512vnni vpclmulqdq gfni vaes
+x86-64-vnni512|match_flags|avx512vnni avx512dq avx512f avx512bw avx512vl
+x86-64-avx512|match_flags|avx512f avx512bw
+x86-64-avxvnni|match_flags|avxvnni
+x86-64-bmi2|match_not_znver12_and_flags|bmi2
+x86-64-avx2|match_flags|avx2
+x86-64-sse41-popcnt|match_flags|sse41 popcnt
+x86-64-ssse3|match_flags|ssse3
+x86-64-sse3-popcnt|match_sse3_popcnt|
+x86-64|match_true|
+EOF
+	)
 }
 
+set_arch_x86_32() {
+	true_arch=$(
+		select_arch_from_table <<'EOF'
+x86-32-sse41-popcnt|match_flags|sse41 popcnt
+x86-32-sse2|match_flags|sse2
+x86-32|match_true|
+EOF
+	)
+}
+
+# PPC64 needs a little parsing to distinguish vsx vs altivec.
 set_arch_ppc_64() {
-  if grep -q -w "altivec" /proc/cpuinfo; then
-    power=$(grep -oP -m 1 'cpu\t+: POWER\K\d+' /proc/cpuinfo)
-    if [ "0$power" -gt 7 ]; then
-      # VSX started with POWER8
-      true_arch='ppc-64-vsx'
-    else
-      true_arch='ppc-64-altivec'
-    fi
-  else
-    true_arch='ppc-64'
-  fi
+	if [ -r "$cpuinfo_path" ] && grep -q "altivec" "$cpuinfo_path" 2>/dev/null; then
+		# Typical: "cpu : POWER8E" (extract the number after POWER)
+		power=$(
+			awk -F: '/^cpu[ \t]*:/{print $2; exit}' "$cpuinfo_path" 2>/dev/null \
+				| sed -n 's/.*[Pp][Oo][Ww][Ee][Rr][^0-9]*\([0-9][0-9]*\).*/\1/p'
+		)
+		if [ -z "$power" ]; then
+			power=$(
+				awk -F: '/^cpu[ \t]*:/{print $2; exit}' "$cpuinfo_path" 2>/dev/null \
+					| sed -n 's/.*\([0-9][0-9]*\).*/\1/p'
+			)
+		fi
+		case $power in
+			''|*[!0-9]*)
+				true_arch='ppc-64-altivec'
+				;;
+			*)
+				if [ "$power" -gt 7 ] 2>/dev/null; then
+					true_arch='ppc-64-vsx'
+				else
+					true_arch='ppc-64-altivec'
+				fi
+				;;
+		esac
+	else
+		true_arch='ppc-64'
+	fi
 }
 
-# Check the system type
-uname_s=$(uname -s)
-uname_m=$(uname -m)
+# ---------------------------
+# OS / machine dispatch
+# ---------------------------
+
+uname_s=$(uname -s 2>/dev/null)
+uname_m=$(uname -m 2>/dev/null)
+uname_s=${GP_UNAME_S:-$uname_s}
+uname_m=${GP_UNAME_M:-$uname_m}
+
 case $uname_s in
-  'Darwin') # Mac OSX system
-    case $uname_m in
-      'arm64')
-        true_arch='apple-silicon'
-        file_arch='m1-apple-silicon'
-        ;;
-      'x86_64')
-        flags=$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ' | tr '[:upper:]' '[:lower:]' | tr -d '_.')
-        set_arch_x86_64
-        if [ "$true_arch" = 'x86-64-avx512' ]; then
-           file_arch='x86-64-bmi2'
-        fi
-        ;;
-    esac
-    file_os='macos'
-    file_ext='tar'
-    ;;
-  'Linux') # Linux system
-    get_flags
-    case $uname_m in
-      'x86_64')
-        file_os='ubuntu'
-        check_znver_1_2
-        set_arch_x86_64
-        ;;
-      'i686')
-        file_os='ubuntu'
-        true_arch='x86-32'
-        ;;
-      'ppc64'*)
-        file_os='ubuntu'
-        set_arch_ppc_64
-        ;;
-      'aarch64')
-        file_os='android'
-        true_arch='armv8'
-        if check_flags 'asimddp'; then
-          true_arch="$true_arch-dotprod"
-        fi
-        ;;
-      'armv7'*)
-        file_os='android'
-        true_arch='armv7'
-        if check_flags 'neon'; then
-          true_arch="$true_arch-neon"
-        fi
-        ;;
-      'loongarch64'*)
-        file_os='linux'
-        set_arch_loongarch64
-        ;;
-      *) # Unsupported machine type, exit with error
-        printf 'Unsupported machine type: %s\n' "$uname_m"
-        exit 1
-        ;;
-    esac
-    file_ext='tar'
-    ;;
-  'MINGW'*'ARM64'*) # Windows ARM64 system with POSIX compatibility layer
-    # TODO: older chips might be armv8, but we have no good way to detect, /proc/cpuinfo shows x86 info
-    file_os='windows'
-    true_arch='armv8-dotprod'
-    file_ext='zip'
-    ;;
-  'CYGWIN'*|'MINGW'*|'MSYS'*) # Windows x86_64system with POSIX compatibility layer
-    get_flags
-    check_znver_1_2
-    set_arch_x86_64
-    file_os='windows'
-    file_ext='zip'
-    ;;
-  *)
-    # Unknown system type, exit with error
-    printf 'Unsupported system type: %s\n' "$uname_s"
-    exit 1
-    ;;
+	Darwin)
+		case $uname_m in
+			arm64)
+				true_arch='apple-silicon'
+				;;
+			x86_64)
+				get_sysctl_flags
+				set_arch_x86_64
+				;;
+			*)
+				get_bits
+				if [ "$bits" = "32" ]; then
+					true_arch='general-32'
+				else
+					true_arch='general-64'
+				fi
+				;;
+		esac
+		;;
+
+	Linux)
+		get_flags
+		case $uname_m in
+			x86_64)
+				set_arch_x86_64
+				;;
+			i?86)
+				set_arch_x86_32
+				;;
+			ppc64*)
+				set_arch_ppc_64
+				;;
+			aarch64|arm64)
+				true_arch='armv8'
+				if match_flags asimddp; then
+					true_arch='armv8-dotprod'
+				fi
+				;;
+			armv5*|armv6*|armv7*|armv8l|arm*)
+				arm_level=$(get_arm_level "$uname_m" || :)
+				case $arm_level in
+					5|6)
+						true_arch='general-32'
+						;;
+					7|8)
+						true_arch='armv7'
+						if match_flags neon; then
+							true_arch='armv7-neon'
+						fi
+						;;
+					*)
+						true_arch='general-32'
+						if match_flags neon; then
+							true_arch='armv7-neon'
+						fi
+						;;
+				esac
+				;;
+			loongarch64*)
+				set_arch_loongarch64
+				;;
+			riscv64)
+				true_arch='riscv64'
+				;;
+			e2k*)
+				true_arch='e2k'
+				;;
+			ppc|ppc32|powerpc)
+				true_arch='ppc-32'
+				;;
+			*)
+				# Don't hard-fail: fall back to general-* so ARCH=native still builds
+				get_bits
+				if [ "$bits" = "32" ]; then
+					true_arch='general-32'
+				else
+					true_arch='general-64'
+				fi
+				;;
+		esac
+		;;
+
+	MINGW*ARM64*)
+		# Windows ARM64 (MSYS2/MinGW)
+		# Can't reliably detect ARM CPU features here
+		true_arch='armv8-dotprod'
+		;;
+
+	CYGWIN*|MINGW*|MSYS*)
+		# Windows x86_64 (MSYS2/Cygwin/MinGW)
+		get_flags
+		set_arch_x86_64
+		;;
+
+	*)
+		die "Unsupported system type: $uname_s"
+		;;
 esac
 
-if [ -z "$file_arch" ]; then
-  file_arch=$true_arch
-fi
-
-file_name="stockfish-$file_os-$file_arch.$file_ext"
-
-printf '%s %s\n' "$true_arch" "$file_name"
+printf '%s\n' "$true_arch"
