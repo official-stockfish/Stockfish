@@ -36,7 +36,6 @@
 #include "misc.h"
 #include "movegen.h"
 #include "syzygy/tbprobe.h"
-#include "tt.h"
 #include "uci.h"
 
 using std::string;
@@ -704,15 +703,14 @@ bool Position::gives_check(Move m) const {
 // Makes a move, and saves all information necessary
 // to a StateInfo object. The move is assumed to be legal. Pseudo-legal
 // moves should be filtered out before this function is called.
-// If a pointer to the TT table is passed, the entry for the new position
-// will be prefetched, and likewise for shared history.
-void Position::do_move(Move                      m,
-                       StateInfo&                newSt,
-                       bool                      givesCheck,
-                       DirtyPiece&               dp,
-                       DirtyThreats&             dts,
-                       const TranspositionTable* tt      = nullptr,
-                       const SharedHistories*    history = nullptr) {
+// If a pointer to shared history is passed, relevant entries for the new
+// position will be prefetched.
+void Position::do_move(Move                   m,
+                       StateInfo&             newSt,
+                       bool                   givesCheck,
+                       DirtyPiece&            dp,
+                       DirtyThreats&          dts,
+                       const SharedHistories* history = nullptr) {
 
     assert(m.is_ok());
     assert(&newSt != st);
@@ -909,8 +907,6 @@ void Position::do_move(Move                      m,
 
     // Update the key with the final value
     st->key = k;
-    if (tt)
-        prefetch(tt->first_entry(key()));
 
     if (history)
     {

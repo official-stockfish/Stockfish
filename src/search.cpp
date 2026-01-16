@@ -554,7 +554,7 @@ void Search::Worker::do_move(
     nodes.store(nodes.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     auto [dirtyPiece, dirtyThreats] = accumulatorStack.push();
-    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, &tt, &sharedHistory);
+    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, &sharedHistory);
 
     if (ss != nullptr)
     {
@@ -2192,7 +2192,7 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     if (pv[0] == Move::none())
         return false;
 
-    pos.do_move(pv[0], st, &tt);
+    pos.do_move(pv[0], st);
 
     auto [ttHit, ttData, ttWriter] = tt.probe(pos.key());
     if (ttHit)
