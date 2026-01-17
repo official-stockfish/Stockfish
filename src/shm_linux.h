@@ -106,7 +106,16 @@ class CleanupHooks {
         // Search threads may still be running, so skip munmap (but still perform
         // other cleanup actions). The memory mappings will be released on exit.
         SharedMemoryRegistry::cleanup_all(true);
-        _Exit(128 + sig);
+
+        // Invoke the default handler, which will exit
+        struct sigaction sa;
+        sa.sa_handler = SIG_DFL;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+        if (sigaction(sig, &sa, nullptr) == -1)
+            _Exit(128 + sig);
+
+        raise(sig);
     }
 
     static void register_signal_handlers() noexcept {
