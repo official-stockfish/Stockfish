@@ -124,9 +124,17 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 void sync_cout_start();
 void sync_cout_end();
 
-// True if and only if the binary is compiled on a little-endian machine
-static inline const std::uint16_t Le             = 1;
-static inline const bool          IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
+// True if and only if the binary is compiled on a little-endian machine.
+static inline const bool IsLittleEndian = []() {
+#if defined(__GNUC__) || defined(__clang__)
+    return __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
+#elif defined(_MSC_VER)
+    return true;
+#else
+    const std::uint16_t Le = 1;
+    return *reinterpret_cast<const char*>(&Le) == 1;
+#endif
+}();
 
 
 template<typename T, std::size_t MaxSize>
