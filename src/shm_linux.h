@@ -112,7 +112,8 @@ class CleanupHooks {
         sa.sa_handler = SIG_DFL;
         sigemptyset(&sa.sa_mask);
         sa.sa_flags = 0;
-        sigaction(sig, &sa, nullptr);
+        if (sigaction(sig, &sa, nullptr) == -1)
+            _Exit(128 + sig);
 
         raise(sig);
     }
