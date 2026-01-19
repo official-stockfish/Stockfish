@@ -132,7 +132,7 @@ class FeatureTransformer {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
 
-        if (UseThreats)
+        if constexpr (UseThreats)
             permute<8>(threatWeights, PackusEpi16Order);
     }
 
@@ -140,7 +140,7 @@ class FeatureTransformer {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
 
-        if (UseThreats)
+        if constexpr (UseThreats)
             permute<8>(threatWeights, InversePackusEpi16Order);
     }
 
@@ -155,7 +155,7 @@ class FeatureTransformer {
     bool read_parameters(std::istream& stream) {
         read_leb_128(stream, biases);
 
-        if (UseThreats)
+        if constexpr (UseThreats)
         {
             read_little_endian<ThreatWeightType>(stream, threatWeights.data(),
                                                  ThreatInputDimensions * HalfDimensions);
@@ -171,7 +171,7 @@ class FeatureTransformer {
 
         permute_weights();
 
-        if (!UseThreats)
+        if constexpr (!UseThreats)
             scale_weights(true);
 
         return !stream.fail();
@@ -183,12 +183,12 @@ class FeatureTransformer {
 
         copy->unpermute_weights();
 
-        if (!UseThreats)
+        if constexpr (!UseThreats)
             copy->scale_weights(false);
 
         write_leb_128<BiasType>(stream, copy->biases);
 
-        if (UseThreats)
+        if constexpr (UseThreats)
         {
             write_little_endian<ThreatWeightType>(stream, copy->threatWeights.data(),
                                                   ThreatInputDimensions * HalfDimensions);
@@ -242,7 +242,7 @@ class FeatureTransformer {
         auto        psqt =
           (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket]);
 
-        if (UseThreats)
+        if constexpr (UseThreats)
         {
             const auto& threatPsqtAccumulation =
               (threatAccumulatorState.acc<HalfDimensions>()).psqtAccumulation;
@@ -334,7 +334,7 @@ class FeatureTransformer {
     #else
               6;
     #endif
-            if (UseThreats)
+            if constexpr (UseThreats)
             {
                 const vec_t* tin0 =
                   reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
@@ -386,7 +386,7 @@ class FeatureTransformer {
                 BiasType sum1 =
                   accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
 
-                if (UseThreats)
+                if constexpr (UseThreats)
                 {
                     BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
                     BiasType sum1t =

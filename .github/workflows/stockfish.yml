@@ -120,3 +120,5 @@ jobs:
       contents: write # For deleting/creating a (pre)release
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
+  CompilerCheck:
+    uses: ./.github/workflows/avx2_compilers.yml
