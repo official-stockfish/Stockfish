@@ -1153,6 +1153,7 @@ void Position::update_piece_threats(Piece                     pc,
     write_multiple_dirties<DirtyThreat::PcSqOffset, DirtyThreat::PcOffset>(*this, all_attackers,
                                                                            dt_template, dts);
 #else
+#error "AVX512ICL only"
     while (threatened)
     {
         Square threatenedSq = pop_lsb(threatened);
