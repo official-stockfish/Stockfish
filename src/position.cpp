@@ -1061,8 +1061,8 @@ inline void add_dirty_threat(
   DirtyThreats* const dts, Piece pc, Piece threatened, Square s, Square threatenedSq) {
     if (PutPiece)
     {
-        dts->threatenedSqs |= square_bb(threatenedSq);
-        dts->threateningSqs |= square_bb(s);
+        dts->threatenedSqs |= threatenedSq;
+        dts->threateningSqs |= s;
     }
 
     dts->list.push_back({pc, threatened, s, threatenedSq, PutPiece});
@@ -1131,30 +1131,25 @@ void Position::update_piece_threats(Piece                     pc,
       | (attacks_bb<PAWN>(s, BLACK) & whitePawns) | (PseudoAttacks[KING][s] & kings);
 
 #ifdef USE_AVX512ICL
-    if (threatened)
+    if constexpr (PutPiece)
     {
-        if constexpr (PutPiece)
-        {
-            dts->threatenedSqs |= threatened;
-            dts->threateningSqs |= square_bb(s);
-        }
-
-        DirtyThreat dt_template{pc, NO_PIECE, s, Square(0), PutPiece};
-        write_multiple_dirties<DirtyThreat::ThreatenedSqOffset, DirtyThreat::ThreatenedPcOffset>(
-          *this, threatened, dt_template, dts);
+        dts->threatenedSqs |= threatened;
+        dts->threateningSqs |= s;
     }
 
+    DirtyThreat dt_template{pc, NO_PIECE, s, Square(0), PutPiece};
+    write_multiple_dirties<DirtyThreat::ThreatenedSqOffset, DirtyThreat::ThreatenedPcOffset>(
+      *this, threatened, dt_template, dts);
+
     Bitboard all_attackers = sliders | incoming_threats;
-    if (!all_attackers)
-        return;  // Square s is threatened iff there's at least one attacker
 
     if constexpr (PutPiece)
     {
-        dts->threatenedSqs |= square_bb(s);
+        dts->threatenedSqs |= s;
         dts->threateningSqs |= all_attackers;
     }
 
-    DirtyThreat dt_template{NO_PIECE, pc, Square(0), s, PutPiece};
+    dt_template = {NO_PIECE, pc, Square(0), s, PutPiece};
     write_multiple_dirties<DirtyThreat::PcSqOffset, DirtyThreat::PcOffset>(*this, all_attackers,
                                                                            dt_template, dts);
 #else
