@@ -422,14 +422,4 @@ class FeatureTransformer {
 
 }  // namespace Stockfish::Eval::NNUE
 
-
-template<Stockfish::Eval::NNUE::IndexType TransformedFeatureDimensions>
-struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>> {
-    std::size_t
-    operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft)
-      const noexcept {
-        return ft.get_content_hash();
-    }
-};
-
 #endif  // #ifndef NNUE_FEATURE_TRANSFORMER_H_INCLUDED

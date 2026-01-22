@@ -37,11 +37,11 @@ namespace Eval::NNUE {
 struct EvalFile {
     // Default net name, will use one of the EvalFileDefaultName* macros defined
     // in evaluate.h
-    FixedString<256> defaultName;
+    FixedString<255> defaultName;
     // Selected net name, either via uci option or default
-    FixedString<256> current;
+    FixedString<255> current;
     // Net description extracted from the net file
-    FixedString<256> netDescription;
+    FixedString<255> netDescription;
 };
 
 struct NnueEvalTrace {
@@ -59,16 +59,5 @@ std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& ca
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
-
-template<>
-struct std::hash<Stockfish::Eval::NNUE::EvalFile> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::EvalFile& evalFile) const noexcept {
-        std::size_t h = 0;
-        Stockfish::hash_combine(h, evalFile.defaultName);
-        Stockfish::hash_combine(h, evalFile.current);
-        Stockfish::hash_combine(h, evalFile.netDescription);
-        return h;
-    }
-};
 
 #endif  // #ifndef NNUE_MISC_H_INCLUDED

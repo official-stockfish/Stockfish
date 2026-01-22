@@ -135,27 +135,16 @@ struct Networks {
 
     NetworkBig   big;
     NetworkSmall small;
+
+    std::size_t get_content_hash() const {
+        std::size_t h = 0;
+        hash_combine(h, big.get_content_hash());
+        hash_combine(h, small.get_content_hash());
+        return h;
+    }
 };
 
 
 }  // namespace Stockfish
-
-template<typename ArchT, typename FeatureTransformerT>
-struct std::hash<Stockfish::Eval::NNUE::Network<ArchT, FeatureTransformerT>> {
-    std::size_t operator()(
-      const Stockfish::Eval::NNUE::Network<ArchT, FeatureTransformerT>& network) const noexcept {
-        return network.get_content_hash();
-    }
-};
-
-template<>
-struct std::hash<Stockfish::Eval::NNUE::Networks> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::Networks& networks) const noexcept {
-        std::size_t h = 0;
-        Stockfish::hash_combine(h, networks.big);
-        Stockfish::hash_combine(h, networks.small);
-        return h;
-    }
-};
 
 #endif

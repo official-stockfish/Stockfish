@@ -420,7 +420,6 @@ std::set<CpuIndex> readCacheMembers(const T* info, Pred&& is_cpu_allowed) {
 #if defined(__linux__) && !defined(__ANDROID__)
 
 inline std::set<CpuIndex> get_process_affinity() {
-
     std::set<CpuIndex> cpus;
 
     // For unsupported systems, or in case of a soft error, we may assume
@@ -1586,7 +1585,7 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
         CpuIndex    cpu     = *cfg.nodes[idx].begin();  // get a CpuIndex from NumaIndex
         NumaIndex   sys_idx = cfg_sys.is_cpu_assigned(cpu) ? cfg_sys.nodeByCpu.at(cpu) : 0;
         std::string s       = cfg_sys.to_string() + "$" + std::to_string(sys_idx);
-        return std::hash<std::string>{}(s);
+        return static_cast<std::size_t>(hash_string(s));
     }
 
     void ensure_present(NumaIndex idx) const {

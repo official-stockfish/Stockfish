@@ -154,12 +154,4 @@ struct NetworkArchitecture {
 
 }  // namespace Stockfish::Eval::NNUE
 
-template<Stockfish::Eval::NNUE::IndexType L1, int L2, int L3>
-struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>> {
-    std::size_t
-    operator()(const Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>& arch) const noexcept {
-        return arch.get_content_hash();
-    }
-};
-
 #endif  // #ifndef NNUE_ARCHITECTURE_H_INCLUDED
