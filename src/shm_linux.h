@@ -33,7 +33,6 @@
 #include <string>
 #include <inttypes.h>
 #include <type_traits>
-#include <unordered_set>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -184,6 +183,8 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     static std::string make_sentinel_base(const std::string& name) {
         char     buf[32];
+        // Using std::to_string here causes non-deterministic PGO builds.
+        // snprintf, being part of libc, is insensitive to the formatted values.
         std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIu64, hash_string(name));
         return buf;
     }
@@ -444,7 +445,8 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     std::string sentinel_full_path(pid_t pid) const {
         char buf[1024];
-        snprintf(buf, sizeof(buf), "/dev/shm/%s.%ld", sentinel_base_.c_str(), long(pid));
+        // See above snprintf comment
+        std::snprintf(buf, sizeof(buf), "/dev/shm/%s.%ld", sentinel_base_.c_str(), long(pid));
         return buf;
     }
 

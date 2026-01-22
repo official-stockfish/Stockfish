@@ -327,14 +327,12 @@ inline std::size_t get_raw_data_hash(const T& value) {
 template<typename T>
 inline void hash_combine(std::size_t& seed, const T& v) {
     std::size_t x;
+    // For primitive types we avoid using the default hasher, which may be
+    // nondeterministic across program invocations
     if constexpr (std::is_integral<T>())
-    {
         x = v;
-    }
     else
-    {
         x = std::hash<T>{}(v);
-    }
     seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
