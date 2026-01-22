@@ -30,7 +30,6 @@
 #include <iosfwd>
 #include <optional>
 #include <cstring>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>

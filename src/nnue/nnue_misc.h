@@ -20,7 +20,6 @@
 #define NNUE_MISC_H_INCLUDED
 
 #include <cstddef>
-#include <memory>
 #include <string>
 
 #include "../misc.h"

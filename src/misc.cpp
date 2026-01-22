@@ -29,6 +29,7 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string_view>
