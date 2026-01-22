@@ -184,7 +184,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     static std::string make_sentinel_base(const std::string& name) {
         char     buf[32];
-        std::snprintf(buf, sizeof(buf), "sfshm_%016llu", hash_string(name));
+        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIu64, hash_string(name));
         return buf;
     }
 
