@@ -33,7 +33,6 @@
 #include <string>
 #include <inttypes.h>
 #include <type_traits>
-#include <unordered_set>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -51,6 +50,7 @@
     #define SF_MAX_SEM_NAME_LEN 255
 #endif
 
+#include "misc.h"
 
 namespace Stockfish::shm {
 
@@ -74,17 +74,18 @@ class SharedMemoryBase {
 class SharedMemoryRegistry {
    private:
     static std::mutex                            registry_mutex_;
-    static std::unordered_set<SharedMemoryBase*> active_instances_;
+    static std::vector<SharedMemoryBase*> active_instances_;
 
    public:
     static void register_instance(SharedMemoryBase* instance) {
         std::scoped_lock lock(registry_mutex_);
-        active_instances_.insert(instance);
+        active_instances_.push_back(instance);
     }
 
     static void unregister_instance(SharedMemoryBase* instance) {
         std::scoped_lock lock(registry_mutex_);
-        active_instances_.erase(instance);
+        active_instances_.erase(
+            std::remove(active_instances_.begin(), active_instances_.end(), instance), active_instances_.end());
     }
 
     static void cleanup_all(bool skip_unmap = false) noexcept {
@@ -96,7 +97,7 @@ class SharedMemoryRegistry {
 };
 
 inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
-inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
+inline std::vector<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
 class CleanupHooks {
    private:
@@ -181,9 +182,10 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     static std::string make_sentinel_base(const std::string& name) {
-        uint64_t hash = std::hash<std::string>{}(name);
         char     buf[32];
-        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIx64, static_cast<uint64_t>(hash));
+        // Using std::to_string here causes non-deterministic PGO builds.
+        // snprintf, being part of libc, is insensitive to the formatted values.
+        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIu64, hash_string(name));
         return buf;
     }
 
@@ -442,11 +444,10 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     std::string sentinel_full_path(pid_t pid) const {
-        std::string path = "/dev/shm/";
-        path += sentinel_base_;
-        path.push_back('.');
-        path += std::to_string(pid);
-        return path;
+        char buf[1024];
+        // See above snprintf comment
+        std::snprintf(buf, sizeof(buf), "/dev/shm/%s.%ld", sentinel_base_.c_str(), long(pid));
+        return buf;
     }
 
     void decrement_refcount_relaxed() noexcept {
