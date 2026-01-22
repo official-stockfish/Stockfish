@@ -20,6 +20,7 @@
 #define SHM_H_INCLUDED
 
 #include <algorithm>
+#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -535,7 +536,7 @@ struct SystemWideSharedConstant {
             static_cast<std::size_t>(hash_string(getExecutablePathHash()));
 
         char buf[1024];
-        snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash, discriminator);
+        std::snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash, discriminator);
         std::string shm_name = buf;
 
 #if !defined(_WIN32)

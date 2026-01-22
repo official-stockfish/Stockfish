@@ -27,13 +27,13 @@
 #include <cstdio>
 #include <exception>  // IWYU pragma: keep
 // IWYU pragma: no_include <__exception/terminate.h>
-#include <functional>
 #include <iosfwd>
 #include <optional>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #define stringify2(x) #x
