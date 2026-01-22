@@ -36,6 +36,7 @@ class Valgrind:
             "--error-exitcode=42",
             "--errors-for-leak-kinds=all",
             "--leak-check=full",
+            "--track-origins=yes"
         ]
 
     @staticmethod

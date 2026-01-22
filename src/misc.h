@@ -314,16 +314,15 @@ inline std::uint64_t hash_bytes(const char* data, std::size_t size) {
 }
 
 
-inline std::uint64_t hash_string(const std::string& sv) {
-    return hash_bytes(sv.data(), sv.size());
-}
+inline std::uint64_t hash_string(const std::string& sv) { return hash_bytes(sv.data(), sv.size()); }
 
 template<typename T>
 inline std::size_t get_raw_data_hash(const T& value) {
     // We must have no padding bytes because we're reinterpreting as char
     static_assert(std::has_unique_object_representations<T>());
 
-    return static_cast<std::size_t>(hash_bytes(reinterpret_cast<const char*>(&value), sizeof(value)));
+    return static_cast<std::size_t>(
+      hash_bytes(reinterpret_cast<const char*>(&value), sizeof(value)));
 }
 
 template<typename T>
@@ -341,22 +340,17 @@ class FixedString {
    public:
     FixedString() { clear(); }
 
-    FixedString(const char* str) {
-        size_t len = std::strlen(str);
-        if (len > Capacity)
-            std::terminate();
-        std::memcpy(data_, str, len);
-        length_        = len;
-        data_[length_] = '\0';
-    }
-
     FixedString(const std::string& str) {
         if (str.size() > Capacity)
             std::terminate();
+        clear();
         std::memcpy(data_, str.data(), str.size());
         length_        = str.size();
         data_[length_] = '\0';
     }
+
+    FixedString(const char* str) :
+        FixedString(std::string(str)) {}
 
     std::size_t size() const { return length_; }
     std::size_t capacity() const { return Capacity; }
