@@ -264,23 +264,31 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
     // 4. En passant square.
     // Ignore if square is invalid or not on side to move relative rank 6.
-    bool enpassant = false;
+    bool enpassant = false, legalEP = false;
 
     if (((ss >> col) && (col >= 'a' && col <= 'h'))
         && ((ss >> row) && (row == (sideToMove == WHITE ? '6' : '3'))))
     {
         st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
+        Bitboard pawns  = attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN);
+        Bitboard target = (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)));
+        Bitboard occ    =  pieces() ^ target ^ st->epSquare;
+
         // En passant square will be considered only if
         // a) side to move have a pawn threatening epSquare
         // b) there is an enemy pawn in front of epSquare
         // c) there is no piece on epSquare or behind epSquare
-        enpassant = attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN)
-                 && (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)))
+        enpassant = pawns
+                 && target
                  && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+
+        // If no pawn can execute the en passant capture without leaving the king in check, don't record the epSquare
+        while (pawns)
+            legalEP |= !(attackers_to(square<KING>(sideToMove), occ ^ pop_lsb(pawns)) & pieces(~sideToMove) & ~target);
     }
 
-    if (!enpassant)
+    if (!enpassant || !legalEP)
         st->epSquare = SQ_NONE;
 
     // 5-6. Halfmove clock and fullmove number
