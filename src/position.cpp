@@ -326,11 +326,16 @@ void Position::set_check_info() const {
 
     Square ksq = square<KING>(~sideToMove);
 
+    // Cache pieces() call for bishop and rook attacks
+    const Bitboard occupied = pieces();
+    const Bitboard bishopAtk = attacks_bb<BISHOP>(ksq, occupied);
+    const Bitboard rookAtk   = attacks_bb<ROOK>(ksq, occupied);
+
     st->checkSquares[PAWN]   = attacks_bb<PAWN>(ksq, ~sideToMove);
     st->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
-    st->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
-    st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
-    st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
+    st->checkSquares[BISHOP] = bishopAtk;
+    st->checkSquares[ROOK]   = rookAtk;
+    st->checkSquares[QUEEN]  = bishopAtk | rookAtk;
     st->checkSquares[KING]   = 0;
 }
 
