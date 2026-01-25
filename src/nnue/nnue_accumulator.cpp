@@ -370,22 +370,71 @@ struct AccumulatorUpdateContext {
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = fromTile[k];
 
+    #if defined(USE_AVX512ICL)
+            // AVX-512 ICL: 2-way unroll to break dependency chains
+            {
+                int i = 0;
+                for (; i + 1 < removed.ssize(); i += 2)
+                {
+                    const size_t offset0 = Dimensions * removed[i];
+                    const size_t offset1 = Dimensions * removed[i + 1];
+                    auto*        col0 = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset0]);
+                    auto*        col1 = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset1]);
+
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                    {
+                        acc[k] = vec_sub_16(acc[k], vec_convert_8_16(col0[k]));
+                        acc[k] = vec_sub_16(acc[k], vec_convert_8_16(col1[k]));
+                    }
+                }
+                for (; i < removed.ssize(); ++i)
+                {
+                    const size_t offset = Dimensions * removed[i];
+                    auto*        column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
+                }
+            }
+            {
+                int i = 0;
+                for (; i + 1 < added.ssize(); i += 2)
+                {
+                    const size_t offset0 = Dimensions * added[i];
+                    const size_t offset1 = Dimensions * added[i + 1];
+                    auto*        col0 = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset0]);
+                    auto*        col1 = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset1]);
+
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                    {
+                        acc[k] = vec_add_16(acc[k], vec_convert_8_16(col0[k]));
+                        acc[k] = vec_add_16(acc[k], vec_convert_8_16(col1[k]));
+                    }
+                }
+                for (; i < added.ssize(); ++i)
+                {
+                    const size_t offset = Dimensions * added[i];
+                    auto*        column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
+                    for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+                        acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
+                }
+            }
+    #else
             for (int i = 0; i < removed.ssize(); ++i)
             {
                 size_t       index  = removed[i];
                 const size_t offset = Dimensions * index;
                 auto*        column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
 
-    #ifdef USE_NEON
+        #ifdef USE_NEON
                 for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
                 {
                     acc[k]     = vec_sub_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
                     acc[k + 1] = vec_sub_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
                 }
-    #else
+        #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                     acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
+        #endif
             }
 
             for (int i = 0; i < added.ssize(); ++i)
@@ -394,17 +443,18 @@ struct AccumulatorUpdateContext {
                 const size_t offset = Dimensions * index;
                 auto*        column = reinterpret_cast<const vec_i8_t*>(&threatWeights[offset]);
 
-    #ifdef USE_NEON
+        #ifdef USE_NEON
                 for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
                 {
                     acc[k]     = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
                     acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
                 }
-    #else
+        #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                     acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
+        #endif
             }
+    #endif
 
             for (IndexType k = 0; k < Tiling::NumRegs; k++)
                 vec_store(&toTile[k], acc[k]);
