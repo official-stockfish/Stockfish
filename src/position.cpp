@@ -731,8 +731,6 @@ void Position::do_move(Move                      m,
     Piece  pc       = piece_on(from);
     Piece  captured = m.type_of() == EN_PASSANT ? make_piece(them, PAWN) : piece_on(to);
 
-    bool checkEP = false;
-
     dp.pc             = pc;
     dp.from           = from;
     dp.to             = to;
@@ -836,9 +834,30 @@ void Position::do_move(Move                      m,
     // If the moving piece is a pawn do some special extra work
     if (type_of(pc) == PAWN)
     {
-        // Check later if the en passant square needs to be set
+        // Check if the en passant square needs to be set. Accurate e.p. info is needed
+        // for correct zobrist key generation and 3-fold checking.
         if ((int(to) ^ int(from)) == 16)
-            checkEP = true;
+        {
+            Square   epSquare = to - pawn_push(us);
+            Bitboard pawns    = attacks_bb<PAWN>(epSquare, us) & pieces(them, PAWN);
+
+            // If there are no pawns attacking the ep square, ep is not possible.
+            if (pawns)
+            {
+                Square   ksq         = square<KING>(them);
+                Bitboard notBlockers = ~st->previous->blockersForKing[them];
+                bool     noDiscovery = (from & notBlockers) || file_of(from) == file_of(ksq);
+
+                // If the pawn gives discovered check, ep is never legal. Else, if at least one
+                // pawn was not a blocker for the enemy king or lies on the same line as the
+                // enemy king and en passant square, a legal capture exists.
+                if (noDiscovery && (pawns & (notBlockers | line_bb(epSquare, ksq))))
+                {
+                    st->epSquare = epSquare;
+                    k ^= Zobrist::enpassant[file_of(epSquare)];
+                }
+            }
+        }
 
         else if (m.type_of() == PROMOTION)
         {
@@ -883,9 +902,10 @@ void Position::do_move(Move                      m,
             st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
     }
 
-    // If en passant is impossible, then k will not change and we can prefetch earlier
-    if (tt && !checkEP)
-        prefetch(tt->first_entry(adjust_key50(k)));
+    // Update the key with the final value
+    st->key = k;
+    if (tt)
+        prefetch(tt->first_entry(key()));
 
     if (history)
     {
@@ -906,63 +926,6 @@ void Position::do_move(Move                      m,
 
     // Update king attacks used for fast check detection
     set_check_info();
-
-    // Accurate e.p. info is needed for correct zobrist key generation and 3-fold checking
-    while (checkEP)
-    {
-        auto updateEpSquare = [&] {
-            st->epSquare = to - pawn_push(us);
-            k ^= Zobrist::enpassant[file_of(st->epSquare)];
-        };
-
-        Bitboard pawns = attacks_bb<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN);
-
-        // If there are no pawns attacking the ep square, ep is not possible
-        if (!pawns)
-            break;
-
-        // If there are checkers other than the to be captured pawn, ep is never legal
-        if (checkers() & ~square_bb(to))
-            break;
-
-        if (more_than_one(pawns))
-        {
-            // If there are two pawns potentially being able to capture and at least one
-            // is not pinned, ep is legal as there are no horizontal exposed checks
-            if (!more_than_one(blockers_for_king(them) & pawns))
-            {
-                updateEpSquare();
-                break;
-            }
-
-            // If there is no pawn on our king's file, and thus both pawns are pinned
-            // by bishops, ep is not legal as the king square must be in front of the to square.
-            // And because the ep square and the king are not on a common diagonal, either ep capture
-            // would expose the king to a check from one of the bishops
-            if (!(file_bb(square<KING>(them)) & pawns))
-                break;
-
-            // Otherwise remove the pawn on the king file, as an ep capture by it can never be legal and the
-            // check below relies on there only being one pawn
-            pawns &= ~file_bb(square<KING>(them));
-        }
-
-        Square   ksq      = square<KING>(them);
-        Square   capsq    = to;
-        Bitboard occupied = (pieces() ^ lsb(pawns) ^ capsq) | (to - pawn_push(us));
-
-        // If our king is not attacked after making the move, ep is legal.
-        if (!(attacks_bb<ROOK>(ksq, occupied) & pieces(us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(us, QUEEN, BISHOP)))
-            updateEpSquare();
-
-        break;
-    }
-
-    // Update the key with the final value
-    st->key = k;
-    if (tt)
-        prefetch(tt->first_entry(key()));
 
     // Calculate the repetition info. It is the ply distance from the previous
     // occurrence of the same position, negative in the 3-fold case, or zero
