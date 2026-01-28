@@ -36,7 +36,7 @@
 #include <utility>
 #include <variant>
 
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__)
     #include "shm_linux.h"
 #endif
 
@@ -407,7 +407,7 @@ class SharedMemoryBackend {
     std::string last_error_message;
 };
 
-#elif !defined(__ANDROID__)
+#elif defined(__linux__) && !defined(__ANDROID__)
 
 template<typename T>
 class SharedMemoryBackend {
