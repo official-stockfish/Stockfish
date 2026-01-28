@@ -36,7 +36,7 @@
 #include <utility>
 #include <variant>
 
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__)
     #include "shm_linux.h"
 #endif
 
@@ -60,7 +60,7 @@
         #define NOMINMAX
     #endif
     #include <windows.h>
-#else
+#elif defined(__linux__)
     #include <cstring>
     #include <fcntl.h>
     #include <pthread.h>
@@ -407,7 +407,7 @@ class SharedMemoryBackend {
     std::string last_error_message;
 };
 
-#elif !defined(__ANDROID__)
+#elif defined(__linux__) && !defined(__ANDROID__)
 
 template<typename T>
 class SharedMemoryBackend {
@@ -538,7 +538,7 @@ struct SystemWideSharedConstant {
         std::snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash, discriminator);
         std::string shm_name = buf;
 
-#if !defined(_WIN32)
+#if defined(__linux__) && !defined(__ANDROID__)
         // POSIX shared memory names must start with a slash
         shm_name = "/sf_" + createHashString(shm_name);
 
