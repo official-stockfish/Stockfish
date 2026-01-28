@@ -19,6 +19,10 @@
 #ifndef SHM_LINUX_H_INCLUDED
 #define SHM_LINUX_H_INCLUDED
 
+#if !defined(__linux__) || defined(__ANDROID__)
+#error shm_linux.h should not be included on this platform.
+#endif
+
 #include <atomic>
 #include <cassert>
 #include <cerrno>
@@ -40,15 +44,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#if defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
-    #include <limits.h>
-    #define SF_MAX_SEM_NAME_LEN NAME_MAX
-#elif defined(__APPLE__)
-    #define SF_MAX_SEM_NAME_LEN 31
-#else
-    #define SF_MAX_SEM_NAME_LEN 255
-#endif
+#include <limits.h>
+#define SF_MAX_SEM_NAME_LEN NAME_MAX
 
 #include "misc.h"
 
