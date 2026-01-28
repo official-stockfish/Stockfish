@@ -455,9 +455,11 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
                     __builtin_unreachable(); \
             } while (0)
     #endif
+#elif defined(__clang__)
+    #define sf_assume(cond) __builtin_assume(cond)
 #else
-    // do nothing for other compilers
     #define sf_assume(cond)
+    // do nothing for other compilers
 #endif
 
 }  // namespace Stockfish
