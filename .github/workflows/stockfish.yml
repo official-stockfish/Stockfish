@@ -103,15 +103,19 @@ jobs:
   IWYU:
     uses: ./.github/workflows/iwyu.yml
   Sanitizers:
+    if: ${{ always() }}
     needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before sanitizers
     uses: ./.github/workflows/sanitizers.yml
   Tests:
+    if: ${{ always() }}
     needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before tests
     uses: ./.github/workflows/tests.yml
   Matetrack:
+    if: ${{ always() }}
     needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before matetrack
     uses: ./.github/workflows/matetrack.yml
   Games:
+    if: ${{ always() }}
     needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before games
     uses: ./.github/workflows/games.yml
   Binaries:
@@ -135,5 +139,6 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   CompilerCheck:
+    if: ${{ always() }}
     needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before compiler check
     uses: ./.github/workflows/avx2_compilers.yml
