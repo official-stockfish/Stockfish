@@ -29,7 +29,7 @@ jobs:
           sudo add-apt-repository 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main'
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           sudo apt update
-          sudo apt install -y libclang-17-dev clang-17 libc++-17-dev
+          sudo apt install -y libclang-17-dev clang-17 libc++-17-dev cmake
 
       - name: Set up include-what-you-use
         run: |
