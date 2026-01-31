@@ -15,6 +15,7 @@ jobs:
   Prerelease:
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
+    needs: [Matrix]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
@@ -53,16 +54,25 @@ jobs:
         id: commit_date
         run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
 
+      - name: Official Release?
+        id: official_release
+        # Check for "Official release version of Stockfish" in the commit message
+        run: |
+          if git log -1 --pretty=%B | grep -q "Official release version of Stockfish"; then
+            echo "OFFICIAL_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "OFFICIAL_RELEASE=false" >> $GITHUB_ENV
+          fi
+
       # Create a new pre-release, the other upload_binaries.yml will upload the binaries
       # to this pre-release.
       - name: Create Prerelease
-        if: github.ref_name == 'master' && env.CHANGES == '0'
+        if: github.ref_name == 'master' && env.CHANGES == '0' && env.OFFICIAL_RELEASE == 'false'
         uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
-
   Matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -80,29 +90,38 @@ jobs:
         run: |
           TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
           echo "ARM_MATRIX=$TASKS_ARM" >> $GITHUB_OUTPUT
+  # Testing Jobs
+  IWYU:
+    uses: ./.github/workflows/iwyu.yml
+  Sanitizers:
+    if: ${{ always() }}
+    uses: ./.github/workflows/sanitizers.yml
+  Tests:
+    if: ${{ always() }}
+    uses: ./.github/workflows/tests.yml
+  Matetrack:
+    if: ${{ always() }}
+    uses: ./.github/workflows/matetrack.yml
+  Games:
+    if: ${{ always() }}
+    uses: ./.github/workflows/games.yml
+  CompilerCheck:
+    if: ${{ always() }}
+    uses: ./.github/workflows/avx2_compilers.yml
+  # Release Jobs
   Compilation:
-    needs: [Matrix]
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
     uses: ./.github/workflows/compilation.yml
     with:
       matrix: ${{ needs.Matrix.outputs.matrix }}
   ARMCompilation:
-    needs: [Matrix]
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
     uses: ./.github/workflows/arm_compilation.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
-  IWYU:
-    uses: ./.github/workflows/iwyu.yml
-  Sanitizers:
-    uses: ./.github/workflows/sanitizers.yml
-  Tests:
-    uses: ./.github/workflows/tests.yml
-  Matetrack:
-    uses: ./.github/workflows/matetrack.yml
-  Games:
-    uses: ./.github/workflows/games.yml
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, Compilation]
+    needs: [Prerelease, Matrix, Compilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.matrix }}
@@ -112,7 +131,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
   ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, ARMCompilation]
+    needs: [Prerelease, Matrix, ARMCompilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
@@ -120,5 +139,3 @@ jobs:
       contents: write # For deleting/creating a (pre)release
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
-  CompilerCheck:
-    uses: ./.github/workflows/avx2_compilers.yml

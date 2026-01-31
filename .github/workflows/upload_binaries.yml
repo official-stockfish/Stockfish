@@ -92,8 +92,18 @@ jobs:
           CHANGES=$(git rev-list HEAD..origin/master --count)
           echo "CHANGES=$CHANGES" >> $GITHUB_ENV
 
+      - name: Official Release?
+        id: official_release
+        # Check for "Official release version of Stockfish" in the commit message
+        run: |
+          if git log -1 --pretty=%B | grep -q "Official release version of Stockfish"; then
+            echo "OFFICIAL_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "OFFICIAL_RELEASE=false" >> $GITHUB_ENV
+          fi
+
       - name: Prerelease
-        if: github.ref_name == 'master' && env.CHANGES == '0'
+        if: github.ref_name == 'master' && env.CHANGES == '0' && env.OFFICIAL_RELEASE == 'false'
         continue-on-error: true
         uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
         with:
