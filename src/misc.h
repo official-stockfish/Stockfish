@@ -447,15 +447,25 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 #if defined(__clang__)
     #define sf_assume(cond) __builtin_assume(cond)
 #elif defined(__GNUC__)
-    #define sf_assume(cond) \
-        do \
-        { \
-            if (!(cond)) \
-                __builtin_unreachable(); \
-        } while (0)
+    #if __GNUC__ >= 13
+        #define sf_assume(cond) __attribute__((assume(cond)))
+    #else
+        #define sf_assume(cond) \
+            do \
+            { \
+                if (!(cond)) \
+                    __builtin_unreachable(); \
+            } while (0)
+    #endif
 #else
     // do nothing for other compilers
     #define sf_assume(cond)
+#endif
+
+#ifdef __GNUC__
+    #define sf_unreachable() __builtin_unreachable()
+#else
+    #define sf_unreachable()
 #endif
 
 }  // namespace Stockfish
