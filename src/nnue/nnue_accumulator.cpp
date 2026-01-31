@@ -611,7 +611,7 @@ void update_accumulator_incremental(
         sf_assume(addedSize == 1 || addedSize == 2);
         sf_assume(removedSize == 1 || removedSize == 2);
 
-        if (addedSize <= 0 || removedSize <= 0)
+        if (!(removedSize == 1 || removedSize == 2) || !(addedSize == 1 || addedSize == 2))
             sf_unreachable();
 
         if ((Forward && removedSize == 1) || (!Forward && addedSize == 1))
