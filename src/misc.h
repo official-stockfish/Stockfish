@@ -444,22 +444,18 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
     #define sf_always_inline
 #endif
 
-#if defined(__GNUC__) && !defined(__clang__)
-    #if __GNUC__ >= 13
-        #define sf_assume(cond) __attribute__((assume(cond)))
-    #else
-        #define sf_assume(cond) \
-            do \
-            { \
-                if (!(cond)) \
-                    __builtin_unreachable(); \
-            } while (0)
-    #endif
-#elif defined(__clang__)
+#if defined(__clang__)
     #define sf_assume(cond) __builtin_assume(cond)
+#elif defined(__GNUC__)
+    #define sf_assume(cond) \
+        do \
+        { \
+            if (!(cond)) \
+                __builtin_unreachable(); \
+        } while (0)
 #else
-    #define sf_assume(cond)
     // do nothing for other compilers
+    #define sf_assume(cond)
 #endif
 
 }  // namespace Stockfish

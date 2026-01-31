@@ -507,14 +507,15 @@ void double_inc_update(Color                                                   p
     assert(added.size() < 2);
     PSQFeatureSet::append_changed_indices(perspective, ksq, target_state.diff, removed, added);
 
-    assert(added.size() == 1);
-    assert(removed.size() == 2 || removed.size() == 3);
+    [[maybe_unused]] const int addedSize   = added.ssize();
+    [[maybe_unused]] const int removedSize = removed.ssize();
+
+    assert(addedSize == 1);
+    assert(removedSize == 2 || removedSize == 3);
 
     // Workaround compiler warning for uninitialized variables, replicated on
     // profile builds on windows with gcc 14.2.0.
-    // TODO remove once unneeded
-    [[maybe_unused]] const int addedSize   = added.ssize();
-    [[maybe_unused]] const int removedSize = removed.ssize();
+    // Also helps with optimizations on some compilers.
 
     sf_assume(addedSize == 1);
     sf_assume(removedSize == 2 || removedSize == 3);
@@ -605,7 +606,7 @@ void update_accumulator_incremental(
 
         // Workaround compiler warning for uninitialized variables, replicated
         // on profile builds on windows with gcc 14.2.0.
-        // TODO remove once unneeded
+        // Also helps with optimizations on some compilers.
 
         sf_assume(addedSize == 1 || addedSize == 2);
         sf_assume(removedSize == 1 || removedSize == 2);
