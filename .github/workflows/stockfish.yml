@@ -103,12 +103,16 @@ jobs:
   IWYU:
     uses: ./.github/workflows/iwyu.yml
   Sanitizers:
+    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before sanitizers
     uses: ./.github/workflows/sanitizers.yml
   Tests:
+    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before tests
     uses: ./.github/workflows/tests.yml
   Matetrack:
+    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before matetrack
     uses: ./.github/workflows/matetrack.yml
   Games:
+    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before games
     uses: ./.github/workflows/games.yml
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
@@ -131,4 +135,5 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   CompilerCheck:
+    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before compiler check
     uses: ./.github/workflows/avx2_compilers.yml
