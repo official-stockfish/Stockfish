@@ -306,14 +306,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #endif
 }
 
-inline std::uint64_t hash_bytes(const char* data, std::size_t size) {
-    // FNV-1a 64-bit
-    const char*   p = data;
-    std::uint64_t h = 14695981039346656037ull;
-    for (std::size_t i = 0; i < size; ++i)
-        h = (h ^ p[i]) * 1099511628211ull;
-    return h;
-}
+uint64_t hash_bytes(const char*, size_t);
 
 template<typename T>
 inline std::size_t get_raw_data_hash(const T& value) {

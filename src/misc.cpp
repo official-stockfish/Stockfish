@@ -428,6 +428,45 @@ std::ostream& operator<<(std::ostream& os, SyncCout sc) {
 void sync_cout_start() { std::cout << IO_LOCK; }
 void sync_cout_end() { std::cout << IO_UNLOCK; }
 
+// Hash function based on public domain MurmurHash64A, by Austin Appleby.
+uint64_t hash_bytes(const char* data, size_t size) {
+    const uint64_t m = 0xc6a4a7935bd1e995ull;
+    const int      r = 47;
+
+    uint64_t h = size * m;
+
+    const char* end = data + (size & ~(size_t) 7);
+
+    for (const char* p = data; p != end; p += 8)
+    {
+        uint64_t k;
+        std::memcpy(&k, p, sizeof(k));
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h ^= k;
+        h *= m;
+    }
+
+    if (size & 7)
+    {
+        uint64_t k = 0;
+        for (int i = (size & 7) - 1; i >= 0; i--)
+            k = (k << 8) | (uint64_t) end[i];
+
+        h ^= k;
+        h *= m;
+    }
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+
+    return h;
+}
+
 // Trampoline helper to avoid moving Logger to misc.h
 void start_logger(const std::string& fname) { Logger::start(fname); }
 
