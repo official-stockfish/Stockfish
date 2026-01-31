@@ -12,7 +12,7 @@ on:
 jobs:
   Artifacts:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     env:
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
