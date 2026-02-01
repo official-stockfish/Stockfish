@@ -218,10 +218,19 @@ class FeatureTransformer {
 
     std::size_t get_content_hash() const {
         std::size_t h = 0;
+
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_raw_data_hash(psqtWeights));
+
+        if constexpr (UseThreats)
+        {
+            hash_combine(h, get_raw_data_hash(threatWeights));
+            hash_combine(h, get_raw_data_hash(threatPsqtWeights));
+        }
+
         hash_combine(h, get_hash_value());
+
         return h;
     }
 
