@@ -813,13 +813,10 @@ void Position::do_move(Move                      m,
         st->epSquare = SQ_NONE;
     }
 
-    // Update castling rights if needed
-    if (st->castlingRights && (castlingRightsMask[from] | castlingRightsMask[to]))
-    {
-        k ^= Zobrist::castling[st->castlingRights];
-        st->castlingRights &= ~(castlingRightsMask[from] | castlingRightsMask[to]);
-        k ^= Zobrist::castling[st->castlingRights];
-    }
+    // Update castling rights.
+    k ^= Zobrist::castling[st->castlingRights];
+    st->castlingRights &= ~(castlingRightsMask[from] | castlingRightsMask[to]);
+    k ^= Zobrist::castling[st->castlingRights];
 
     // Move the piece. The tricky Chess960 castling is handled earlier
     if (m.type_of() != CASTLING)
