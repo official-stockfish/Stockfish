@@ -20,7 +20,7 @@
 #define SHM_LINUX_H_INCLUDED
 
 #if !defined(__linux__) || defined(__ANDROID__)
-#error shm_linux.h should not be included on this platform.
+    #error shm_linux.h should not be included on this platform.
 #endif
 
 #include <atomic>
@@ -63,14 +63,14 @@ struct ShmHeader {
 
 class SharedMemoryBase {
    public:
-    virtual ~SharedMemoryBase()                      = default;
-    virtual void               close(bool skip_unmap = false) noexcept      = 0;
-    virtual const std::string& name() const noexcept = 0;
+    virtual ~SharedMemoryBase()                                        = default;
+    virtual void               close(bool skip_unmap = false) noexcept = 0;
+    virtual const std::string& name() const noexcept                   = 0;
 };
 
 class SharedMemoryRegistry {
    private:
-    static std::mutex                            registry_mutex_;
+    static std::mutex                     registry_mutex_;
     static std::vector<SharedMemoryBase*> active_instances_;
 
    public:
@@ -82,7 +82,8 @@ class SharedMemoryRegistry {
     static void unregister_instance(SharedMemoryBase* instance) {
         std::scoped_lock lock(registry_mutex_);
         active_instances_.erase(
-            std::remove(active_instances_.begin(), active_instances_.end(), instance), active_instances_.end());
+          std::remove(active_instances_.begin(), active_instances_.end(), instance),
+          active_instances_.end());
     }
 
     static void cleanup_all(bool skip_unmap = false) noexcept {
@@ -93,7 +94,7 @@ class SharedMemoryRegistry {
     }
 };
 
-inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
+inline std::mutex                     SharedMemoryRegistry::registry_mutex_;
 inline std::vector<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
 class CleanupHooks {
@@ -179,7 +180,7 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     static std::string make_sentinel_base(const std::string& name) {
-        char     buf[32];
+        char buf[32];
         // Using std::to_string here causes non-deterministic PGO builds.
         // snprintf, being part of libc, is insensitive to the formatted values.
         std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIu64, hash_string(name));
