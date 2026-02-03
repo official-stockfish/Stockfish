@@ -535,7 +535,8 @@ struct SystemWideSharedConstant {
         std::size_t executable_hash = hash_string(getExecutablePathHash());
 
         char buf[1024];
-        std::snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash, discriminator);
+        std::snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash,
+                      discriminator);
         std::string shm_name = buf;
 
 #if defined(__linux__) && !defined(__ANDROID__)
