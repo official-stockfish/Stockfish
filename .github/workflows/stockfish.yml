@@ -15,6 +15,7 @@ jobs:
   Prerelease:
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
+    needs: [Matrix]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
@@ -72,7 +73,6 @@ jobs:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
-
   Matrix:
     runs-on: ubuntu-latest
     outputs:
@@ -90,37 +90,38 @@ jobs:
         run: |
           TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
           echo "ARM_MATRIX=$TASKS_ARM" >> $GITHUB_OUTPUT
-  Compilation:
-    needs: [Matrix]
-    uses: ./.github/workflows/compilation.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.matrix }}
-  ARMCompilation:
-    needs: [Matrix]
-    uses: ./.github/workflows/arm_compilation.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+  # Testing Jobs
   IWYU:
     uses: ./.github/workflows/iwyu.yml
   Sanitizers:
     if: ${{ always() }}
-    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before sanitizers
     uses: ./.github/workflows/sanitizers.yml
   Tests:
     if: ${{ always() }}
-    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before tests
     uses: ./.github/workflows/tests.yml
   Matetrack:
     if: ${{ always() }}
-    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before matetrack
     uses: ./.github/workflows/matetrack.yml
   Games:
     if: ${{ always() }}
-    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before games
     uses: ./.github/workflows/games.yml
+  CompilerCheck:
+    if: ${{ always() }}
+    uses: ./.github/workflows/avx2_compilers.yml
+  # Release Jobs
+  Compilation:
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
+    uses: ./.github/workflows/compilation.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.matrix }}
+  ARMCompilation:
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
+    uses: ./.github/workflows/arm_compilation.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, Compilation]
+    needs: [Prerelease, Matrix, Compilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.matrix }}
@@ -130,7 +131,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
   ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, ARMCompilation]
+    needs: [Prerelease, Matrix, ARMCompilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
@@ -138,7 +139,3 @@ jobs:
       contents: write # For deleting/creating a (pre)release
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
-  CompilerCheck:
-    if: ${{ always() }}
-    needs: [Binaries, ARM_Binaries] # Prefer Binary Upload to be done before compiler check
-    uses: ./.github/workflows/avx2_compilers.yml
