@@ -385,7 +385,7 @@ constexpr Color color_of(Piece pc) {
     return Color(pc >> 3);
 }
 
-constexpr bool is_ok(Square s) { return s >= SQ_A1 && s <= SQ_H8; }
+constexpr bool is_ok(Square s) { return s <= SQ_H8; }
 
 constexpr File file_of(Square s) { return File(s & 7); }
 
