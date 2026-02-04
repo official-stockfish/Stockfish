@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <deque>
 #include <map>
 #include <memory>
 #include <string>
