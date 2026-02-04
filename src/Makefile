@@ -892,6 +892,13 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
+### 3.11 Inline settings
+ifeq ($(optimize), yes)
+	ifeq ($(comp), clang)
+		CXXFLAGS += -Xclang -mllvm -Xclang -inline-threshold=500
+	endif
+endif
+
 ### ==========================================================================
 ### Section 4. Public Targets
 ### ==========================================================================
