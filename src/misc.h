@@ -457,6 +457,8 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
                     __builtin_unreachable(); \
             } while (0)
     #endif
+#elif defined(_MSC_VER)
+    #define sf_assume(cond) __assume(cond)
 #else
     // do nothing for other compilers
     #define sf_assume(cond)
@@ -464,6 +466,8 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 
 #ifdef __GNUC__
     #define sf_unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER)
+    #define sf_unreachable() __assume(0)
 #else
     #define sf_unreachable()
 #endif

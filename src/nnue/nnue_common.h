@@ -216,7 +216,7 @@ inline void read_leb_128(std::istream& stream, Arrays&... outs) {
 
     auto                           bytes_left = read_little_endian<std::uint32_t>(stream);
     std::array<std::uint8_t, 8192> buf;
-    std::uint32_t                  buf_pos = buf.size();
+    std::uint32_t                  buf_pos = std::uint32_t(buf.size());
 
     (read_leb_128_detail(stream, outs, bytes_left, buf, buf_pos), ...);
 
