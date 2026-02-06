@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <iostream>
 
+#include "../../memory.h"
 #include "../nnue_common.h"
 #include "../simd.h"
 
@@ -224,7 +225,6 @@ class AffineTransform {
             constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
             constexpr IndexType NumRegs   = OutputDimensions / OutputSimdWidth;
 
-            const auto   input32 = reinterpret_cast<const std::int32_t*>(input);
             const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
             vec_t        acc[NumRegs];
             for (IndexType k = 0; k < NumRegs; ++k)
@@ -232,8 +232,9 @@ class AffineTransform {
 
             for (IndexType i = 0; i < NumChunks; ++i)
             {
-                const vec_t in0 = vec_set_32(input32[i]);
-                const auto  col0 =
+                const vec_t in0 =
+                  vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
+                const auto col0 =
                   reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
 
                 for (IndexType k = 0; k < NumRegs; ++k)
