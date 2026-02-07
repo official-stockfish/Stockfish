@@ -21,6 +21,7 @@
 #include "full_threats.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <utility>
@@ -273,13 +274,15 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
 
 // Get a list of indices for recently changed features
 
-void FullThreats::append_changed_indices(Color            perspective,
-                                         Square           ksq,
-                                         const DiffType&  diff,
-                                         IndexList&       removed,
-                                         IndexList&       added,
-                                         FusedUpdateData* fusedData,
-                                         bool             first) {
+void FullThreats::append_changed_indices(Color                   perspective,
+                                         Square                  ksq,
+                                         const DiffType&         diff,
+                                         IndexList&              removed,
+                                         IndexList&              added,
+                                         FusedUpdateData*        fusedData,
+                                         bool                    first,
+                                         const ThreatWeightType* prefetchBase,
+                                         IndexType               prefetchStride) {
 
     for (const auto& dirty : diff.list)
     {
@@ -324,7 +327,12 @@ void FullThreats::append_changed_indices(Color            perspective,
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
         if (index < Dimensions)
+        {
+            if (prefetchBase)
+                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
+                  prefetchBase + static_cast<std::ptrdiff_t>(index) * prefetchStride);
             insert.push_back(index);
+        }
     }
 }
 
