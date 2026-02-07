@@ -78,7 +78,9 @@ alignas(CacheLineSize) static constexpr struct OffsetIndices {
         #define RESTRICT
     #endif
 
-// Find indices of nonzero numbers in an int32_t array
+// Find indices of nonzero 32-bit values in a packed byte buffer.
+// The input pointer addresses a sequence of 32-bit blocks stored in a
+// std::uint8_t array.
 template<const IndexType InputDimensions>
 void find_nnz(const std::uint8_t* RESTRICT input,
               std::uint16_t* RESTRICT      out,
