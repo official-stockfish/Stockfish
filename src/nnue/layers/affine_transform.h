@@ -96,7 +96,7 @@ static void affine_transform_non_ssse3(std::int32_t*       output,
         #elif defined(USE_NEON)
 
         int32x4_t  sum = {biases[i]};
-        const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
+        const auto row = reinterpret_cast<const SIMD::vec_i8x8_t*>(&weights[offset]);
         for (IndexType j = 0; j < NumChunks; ++j)
         {
             int16x8_t product = vmull_s8(inputVector[j * 2], row[j * 2]);
