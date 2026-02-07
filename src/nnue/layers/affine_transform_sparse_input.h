@@ -123,7 +123,7 @@ void find_nnz(const std::uint8_t* RESTRICT input,
     IndexType count = 0;
     for (IndexType i = 0; i < NumChunks; ++i)
     {
-        const __m512i inputV = _mm512_load_si512(input + i * SimdWidth * sizeof(uint32_t));
+        const __m512i inputV = _mm512_load_si512(input + i * SimdWidth * sizeof(std::uint32_t));
 
         // Get a bitmask and gather non zero indices
         const __mmask16 nnzMask = _mm512_test_epi32_mask(inputV, inputV);
