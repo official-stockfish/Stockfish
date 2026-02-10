@@ -306,14 +306,7 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #endif
 }
 
-inline std::uint64_t hash_bytes(const char* data, std::size_t size) {
-    // FNV-1a 64-bit
-    const char*   p = data;
-    std::uint64_t h = 14695981039346656037ull;
-    for (std::size_t i = 0; i < size; ++i)
-        h = (h ^ p[i]) * 1099511628211ull;
-    return h;
-}
+uint64_t hash_bytes(const char*, size_t);
 
 template<typename T>
 inline std::size_t get_raw_data_hash(const T& value) {
@@ -457,6 +450,8 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
                     __builtin_unreachable(); \
             } while (0)
     #endif
+#elif defined(_MSC_VER)
+    #define sf_assume(cond) __assume(cond)
 #else
     // do nothing for other compilers
     #define sf_assume(cond)
@@ -464,6 +459,8 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 
 #ifdef __GNUC__
     #define sf_unreachable() __builtin_unreachable()
+#elif defined(_MSC_VER)
+    #define sf_unreachable() __assume(0)
 #else
     #define sf_unreachable()
 #endif

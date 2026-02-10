@@ -65,7 +65,6 @@ using namespace Search;
 namespace {
 
 constexpr int SEARCHEDLIST_CAPACITY = 32;
-constexpr int mainHistoryDefault    = 68;
 using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 
 // (*Scalers):
@@ -316,8 +315,7 @@ void Search::Worker::iterative_deepening() {
 
     for (Color c : {WHITE, BLACK})
         for (int i = 0; i < UINT_16_HISTORY_SIZE; i++)
-            mainHistory[c][i] =
-              (mainHistory[c][i] - mainHistoryDefault) * 3 / 4 + mainHistoryDefault;
+            mainHistory[c][i] = mainHistory[c][i] * 3 / 4;
 
     // Iterative deepening loop until requested to stop or the target depth is reached
     while (++rootDepth < MAX_PLY && !threads.stop
@@ -569,7 +567,7 @@ void Search::Worker::do_move(
 }
 
 void Search::Worker::do_null_move(Position& pos, StateInfo& st, Stack* const ss) {
-    pos.do_null_move(st, tt);
+    pos.do_null_move(st);
     ss->currentMove                   = Move::null();
     ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
     ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
@@ -585,7 +583,7 @@ void Search::Worker::undo_null_move(Position& pos) { pos.undo_null_move(); }
 
 // Reset histories, usually before a new game
 void Search::Worker::clear() {
-    mainHistory.fill(mainHistoryDefault);
+    mainHistory.fill(0);
     captureHistory.fill(-689);
 
     // Each thread is responsible for clearing their part of shared history
@@ -1144,7 +1142,7 @@ moves_loop:  // When in check, search starts here
                 int doubleMargin = -4 + 199 * PvNode - 201 * !ttCapture - corrValAdj
                                  - 897 * ttMoveHistory / 127649 - (ss->ply > rootDepth) * 42;
                 int tripleMargin = 73 + 302 * PvNode - 248 * !ttCapture + 90 * ss->ttPv - corrValAdj
-                                 - (ss->ply * 2 > rootDepth * 3) * 50;
+                                 - (ss->ply > rootDepth) * 48;
 
                 extension =
                   1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
