@@ -1140,7 +1140,7 @@ void Position::update_piece_threats(Piece                     pc,
             Square sliderSq = pop_lsb(sliders);
             Piece  slider   = piece_on(sliderSq);
 
-            const Bitboard ray        = RayPassBB[sliderSq][s] & ~BetweenBB[sliderSq][s];
+            const Bitboard ray        = RayPassBB[sliderSq][s];
             const Bitboard discovered = ray & (rAttacks | bAttacks) & occupied;
 
             assert(!more_than_one(discovered));
