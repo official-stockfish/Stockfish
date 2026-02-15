@@ -1515,6 +1515,23 @@ bool Position::pos_is_ok() const {
     if ((pieces(PAWN) & (Rank1BB | Rank8BB)) || pieceCount[W_PAWN] > 8 || pieceCount[B_PAWN] > 8)
         assert(0 && "pos_is_ok: Pawns");
 
+
+    if (ep_square() != SQ_NONE)
+    {
+        Square ksq = square<KING>(sideToMove);
+
+        Bitboard captured = (ep_square() + pawn_push(~sideToMove)) & pieces(~sideToMove, PAWN);
+        Bitboard pawns    = attacks_bb<PAWN>(ep_square(), ~sideToMove) & pieces(sideToMove, PAWN);
+        Bitboard potentialCheckers = pieces(~sideToMove) ^ captured;
+
+        if (!captured || !pawns
+            || ((attackers_to(ksq, pieces() ^ captured ^ ep_square() ^ lsb(pawns))
+                 & potentialCheckers)
+                && (attackers_to(ksq, pieces() ^ captured ^ ep_square() ^ msb(pawns))
+                    & potentialCheckers)))
+            assert(0 && "pos_is_ok: En passant square");
+    }
+
     if ((pieces(WHITE) & pieces(BLACK)) || (pieces(WHITE) | pieces(BLACK)) != pieces()
         || popcount(pieces(WHITE)) > 16 || popcount(pieces(BLACK)) > 16)
         assert(0 && "pos_is_ok: Bitboards");
