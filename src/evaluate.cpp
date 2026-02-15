@@ -26,7 +26,6 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
-#include <tuple>
 
 #include "nnue/network.h"
 #include "nnue/nnue_misc.h"
@@ -46,8 +45,6 @@ int Eval::simple_eval(const Position& pos) {
          - pos.non_pawn_material(~c);
 }
 
-bool Eval::use_smallnet(const Position& pos) { return std::abs(simple_eval(pos)) > 962; }
-
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
 Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
@@ -58,22 +55,21 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
 
     assert(!pos.checkers());
 
-    bool smallNet           = use_smallnet(pos);
-    auto [psqt, positional] = smallNet ? networks.small.evaluate(pos, accumulators, caches.small)
-                                       : networks.big.evaluate(pos, accumulators, caches.big);
+    int  simpleEval = simple_eval(pos);
+    bool smallNet   = std::abs(simpleEval) > 962;
 
-    Value nnue = (125 * psqt + 131 * positional) / 128;
+    Value nnue = smallNet ? networks.small.evaluate(pos, accumulators, caches.small)
+                          : networks.big.evaluate(pos, accumulators, caches.big);
 
     // Re-evaluate the position when higher eval accuracy is worth the time spent
     if (smallNet && (std::abs(nnue) < 277))
     {
-        std::tie(psqt, positional) = networks.big.evaluate(pos, accumulators, caches.big);
-        nnue                       = (125 * psqt + 131 * positional) / 128;
-        smallNet                   = false;
+        nnue     = networks.big.evaluate(pos, accumulators, caches.big);
+        smallNet = false;
     }
 
     // Blend optimism and eval with nnue complexity
-    int nnueComplexity = std::abs(psqt - positional);
+    int nnueComplexity = std::abs(2 * simpleEval - nnue);
     optimism += optimism * nnueComplexity / 476;
     nnue -= nnue * nnueComplexity / 18236;
 
@@ -107,9 +103,8 @@ std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
-    auto [psqt, positional] = networks.big.evaluate(pos, *accumulators, caches->big);
-    Value v                 = psqt + positional;
-    v                       = pos.side_to_move() == WHITE ? v : -v;
+    Value v = networks.big.evaluate(pos, *accumulators, caches->big);
+    v       = pos.side_to_move() == WHITE ? v : -v;
     ss << "NNUE evaluation        " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)\n";
 
     v = evaluate(networks, pos, *accumulators, *caches, VALUE_ZERO);
