@@ -96,7 +96,7 @@ extern Magic Magics[SQUARE_NB][2];
 
 constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
-    return (1ULL << s);
+    return 1ULL << s;
 }
 
 
@@ -403,7 +403,7 @@ inline constexpr auto PseudoAttacks = []() constexpr {
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
 
-    assert((Pt != PAWN || c < COLOR_NB) && (is_ok(s)));
+    assert((Pt != PAWN || c < COLOR_NB) && is_ok(s));
     return Pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[Pt][s];
 }
 
@@ -414,7 +414,7 @@ inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
-    assert((Pt != PAWN) && (is_ok(s)));
+    assert(Pt != PAWN && is_ok(s));
 
     switch (Pt)
     {
@@ -433,7 +433,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 // Sliding piece attacks do not continue passed an occupied square.
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
-    assert((pt != PAWN) && (is_ok(s)));
+    assert(pt != PAWN && is_ok(s));
 
     switch (pt)
     {
@@ -448,19 +448,10 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
     }
 }
 
-inline Bitboard attacks_bb(Piece pc, Square s) {
-    if (type_of(pc) == PAWN)
-        return PseudoAttacks[color_of(pc)][s];
-
-    return PseudoAttacks[type_of(pc)][s];
-}
-
-
 inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
-    if (type_of(pc) == PAWN)
-        return PseudoAttacks[color_of(pc)][s];
-
-    return attacks_bb(type_of(pc), s, occupied);
+    return type_of(pc) == PAWN
+        ? PseudoAttacks[color_of(pc)][s]
+        : attacks_bb(type_of(pc), s, occupied);
 }
 
 }  // namespace Stockfish
