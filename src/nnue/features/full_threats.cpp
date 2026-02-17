@@ -212,7 +212,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
 
     for (Color color : {WHITE, BLACK})
     {
-        for (PieceType pt = PAWN; pt <= KING; ++pt)
+        for (PieceType pt = PAWN; pt < KING; ++pt)
         {
             Color    c        = Color(perspective ^ color);
             Piece    attacker = make_piece(c, pt);
