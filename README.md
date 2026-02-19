@@ -152,7 +152,7 @@ project][lc0-data-link], which is made available under the [Open Database Licens
 [lc0-data-link]:      https://storage.lczero.org/files/training_data
 [odbl-link]:          https://opendatacommons.org/licenses/odbl/odbl-10.txt
 
-[build-badge]:        https://img.shields.io/github/actions/workflow/status/official-stockfish/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=stockfish&logo=github
+[build-badge]:        https://img.shields.io/github/check-runs/official-stockfish/Stockfish/master?style=for-the-badge&logo=github&label=stockfish
 [commits-badge]:      https://img.shields.io/github/commits-since/official-stockfish/Stockfish/latest?style=for-the-badge
 [discord-badge]:      https://img.shields.io/discord/435943710472011776?style=for-the-badge&label=discord&logo=Discord
 [fishtest-badge]:     https://img.shields.io/website?style=for-the-badge&down_color=red&down_message=Offline&label=Fishtest&up_color=success&up_message=Online&url=https%3A%2F%2Ftests.stockfishchess.org%2Ftests%2Ffinished
