@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <iostream>
 
+#include "../../memory.h"
 #include "../nnue_common.h"
 #include "../simd.h"
 
@@ -95,7 +96,7 @@ static void affine_transform_non_ssse3(std::int32_t*       output,
         #elif defined(USE_NEON)
 
         int32x4_t  sum = {biases[i]};
-        const auto row = reinterpret_cast<const int8x8_t*>(&weights[offset]);
+        const auto row = reinterpret_cast<const SIMD::vec_i8x8_t*>(&weights[offset]);
         for (IndexType j = 0; j < NumChunks; ++j)
         {
             int16x8_t product = vmull_s8(inputVector[j * 2], row[j * 2]);
@@ -224,7 +225,6 @@ class AffineTransform {
             constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
             constexpr IndexType NumRegs   = OutputDimensions / OutputSimdWidth;
 
-            const auto   input32 = reinterpret_cast<const std::int32_t*>(input);
             const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
             vec_t        acc[NumRegs];
             for (IndexType k = 0; k < NumRegs; ++k)
@@ -232,8 +232,9 @@ class AffineTransform {
 
             for (IndexType i = 0; i < NumChunks; ++i)
             {
-                const vec_t in0 = vec_set_32(input32[i]);
-                const auto  col0 =
+                const vec_t in0 =
+                  vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
+                const auto col0 =
                   reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
 
                 for (IndexType k = 0; k < NumRegs; ++k)

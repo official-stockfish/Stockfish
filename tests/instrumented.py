@@ -4,6 +4,7 @@ import sys
 import subprocess
 import pathlib
 import os
+import fnmatch
 
 from testing import (
     EPD,
@@ -474,6 +475,94 @@ class TestSyzygy(metaclass=OrderedClassMembers):
         self.stockfish.check_output(check_output)
         self.stockfish.expect("bestmove *")
 
+class TestEnPassantSanitization(metaclass=OrderedClassMembers):
+    def beforeAll(self):
+        self.stockfish = Stockfish()
+
+    def afterAll(self):
+        self.stockfish.quit()
+        assert self.stockfish.close() == 0
+
+    def afterEach(self):
+        assert postfix_check(self.stockfish.get_output()) == True
+        self.stockfish.clear_output()
+
+    def test_position_1(self):
+        self.stockfish.send_command("position fen rnbqkbnr/ppp1p1pp/5p2/3pP3/8/8/PPPP1PPP/RNBQKBNR w kq d6 0 3")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*rnbqkbnr/ppp1p1pp/5p2/3pP3/8/8/PPPP1PPP/RNBQKBNR w kq d6 0 3*")
+
+    def test_position_2(self):
+        self.stockfish.send_command("position fen k7/8/8/1pP5/2K5/8/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k7/8/8/1pP5/2K5/8/8/8 w - b6 0 1*")
+
+    def test_position_3(self):
+        self.stockfish.send_command("position fen k1r5/8/8/1pP5/2K5/8/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k1r5/8/8/1pP5/2K5/8/8/8 w - - 0 1*")
+
+    def test_position_4(self):
+        self.stockfish.send_command("position fen k1r5/8/8/1pP5/8/2K5/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k1r5/8/8/1pP5/8/2K5/8/8 w - - 0 1*")
+
+    def test_position_5(self):
+        self.stockfish.send_command("position fen k1r5/8/8/PpP5/8/2K5/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k1r5/8/8/PpP5/8/2K5/8/8 w - b6 0 1*")
+
+    def test_position_6(self):
+        self.stockfish.send_command("position fen k1r5/8/8/PpP5/2K5/8/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k1r5/8/8/PpP5/2K5/8/8/8 w - b6 0 1*")
+
+    def test_position_7(self):
+        self.stockfish.send_command("position fen k7/4b3/8/PpP5/1K6/8/8/8 w - b6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k7/4b3/8/PpP5/1K6/8/8/8 w - b6 0 1*")
+
+    def test_position_8(self):
+        self.stockfish.send_command("position fen k7/b5b1/8/2PpP3/3K4/8/8/8 w - d6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k7/b5b1/8/2PpP3/3K4/8/8/8 w - - 0 1*")
+
+    def test_position_9(self):
+        self.stockfish.send_command("position fen k7/8/8/r2pPK2/8/8/8/8 w - d6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k7/8/8/r2pPK2/8/8/8/8 w - - 0 1*")
+
+    def test_position_10(self):
+        self.stockfish.send_command("position fen k7/8/8/r1PpPK2/8/8/8/8 w - d6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k7/8/8/r1PpPK2/8/8/8/8 w - d6 0 1*")
+
+    def test_position_11(self):
+        self.stockfish.send_command("position fen kb6/8/8/3pP3/5K2/8/8/8 w - d6 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*kb6/8/8/3pP3/5K2/8/8/8 w - d6 0 1*")
+
+    def test_position_find_draw(self):
+        self.stockfish.send_command("position fen q4kb1/3Q2nq/8/r3PpK1/2n5/7q/8/q7 w - f6 0 1 moves d7c8 f8f7 c8d7 f7f8 d7d8 f8f7")
+        self.stockfish.send_command("go nodes 10000")
+
+        def check_output(output):
+            if fnmatch.fnmatch(output, "* score cp 0 * pv d8d7*"):
+                return True
+        
+        self.stockfish.check_output(check_output)
+        self.stockfish.expect("bestmove d8d7*")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Stockfish with testing options")
@@ -508,7 +597,7 @@ if __name__ == "__main__":
     framework = MiniTestFramework()
 
     # Each test suite will be run inside a temporary directory
-    framework.run([TestCLI, TestInteractive, TestSyzygy])
+    framework.run([TestCLI, TestInteractive, TestSyzygy, TestEnPassantSanitization])
 
     EPD.delete_bench_epd()
     TSAN.unset_tsan_option()

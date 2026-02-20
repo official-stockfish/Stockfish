@@ -30,8 +30,8 @@ class Position;
 
 namespace Stockfish::Eval::NNUE::Features {
 
-static constexpr int numValidTargets[PIECE_NB] = {0, 6, 12, 10, 10, 12, 8, 0,
-                                                  0, 6, 12, 10, 10, 12, 8, 0};
+static constexpr int numValidTargets[PIECE_NB] = {0, 6, 10, 8, 8, 10, 0, 0,
+                                                  0, 6, 10, 8, 8, 10, 0, 0};
 
 class FullThreats {
    public:
@@ -42,7 +42,7 @@ class FullThreats {
     static constexpr std::uint32_t HashValue = 0x8f234cb8u;
 
     // Number of feature dimensions
-    static constexpr IndexType Dimensions = 79856;
+    static constexpr IndexType Dimensions = 60144;
 
     // clang-format off
     // Orient a square according to perspective (rotates by 180 for black)
@@ -58,12 +58,12 @@ class FullThreats {
     };
 
     static constexpr int map[PIECE_TYPE_NB-2][PIECE_TYPE_NB-2] = {
-      {0,  1, -1,  2, -1, -1},
-      {0,  1,  2,  3,  4,  5},
-      {0,  1,  2,  3, -1,  4},
-      {0,  1,  2,  3, -1,  4},
-      {0,  1,  2,  3,  4,  5},
-      {0,  1,  2,  3, -1, -1}
+      { 0,  1, -1,  2, -1, -1},
+      { 0,  1,  2,  3,  4, -1},
+      { 0,  1,  2,  3, -1, -1},
+      { 0,  1,  2,  3, -1, -1},
+      { 0,  1,  2,  3,  4, -1},
+      {-1, -1, -1, -1, -1, -1}
     };
     // clang-format on
 
@@ -86,13 +86,15 @@ class FullThreats {
     static void append_active_indices(Color perspective, const Position& pos, IndexList& active);
 
     // Get a list of indices for recently changed features
-    static void append_changed_indices(Color            perspective,
-                                       Square           ksq,
-                                       const DiffType&  diff,
-                                       IndexList&       removed,
-                                       IndexList&       added,
-                                       FusedUpdateData* fd    = nullptr,
-                                       bool             first = false);
+    static void append_changed_indices(Color                   perspective,
+                                       Square                  ksq,
+                                       const DiffType&         diff,
+                                       IndexList&              removed,
+                                       IndexList&              added,
+                                       FusedUpdateData*        fd             = nullptr,
+                                       bool                    first          = false,
+                                       const ThreatWeightType* prefetchBase   = nullptr,
+                                       IndexType               prefetchStride = 0);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.

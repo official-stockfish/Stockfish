@@ -449,6 +449,10 @@ class Move {
         return Square(data & 0x3F);
     }
 
+    // Same as to_sq() but without assertion, for branchless code paths
+    // where the result is masked/ignored when move is not ok
+    constexpr Square to_sq_unchecked() const { return Square(data & 0x3F); }
+
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
 
     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }

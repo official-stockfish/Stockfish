@@ -19,6 +19,10 @@
 #ifndef SHM_LINUX_H_INCLUDED
 #define SHM_LINUX_H_INCLUDED
 
+#if !defined(__linux__) || defined(__ANDROID__)
+    #error shm_linux.h should not be included on this platform.
+#endif
+
 #include <atomic>
 #include <cassert>
 #include <cerrno>
@@ -33,7 +37,6 @@
 #include <string>
 #include <inttypes.h>
 #include <type_traits>
-#include <unordered_set>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -41,16 +44,10 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
+#define SF_MAX_SEM_NAME_LEN NAME_MAX
 
-#if defined(__NetBSD__) || defined(__DragonFly__) || defined(__linux__)
-    #include <limits.h>
-    #define SF_MAX_SEM_NAME_LEN NAME_MAX
-#elif defined(__APPLE__)
-    #define SF_MAX_SEM_NAME_LEN 31
-#else
-    #define SF_MAX_SEM_NAME_LEN 255
-#endif
-
+#include "misc.h"
 
 namespace Stockfish::shm {
 
@@ -66,25 +63,27 @@ struct ShmHeader {
 
 class SharedMemoryBase {
    public:
-    virtual ~SharedMemoryBase()                      = default;
-    virtual void               close(bool skip_unmap = false) noexcept      = 0;
-    virtual const std::string& name() const noexcept = 0;
+    virtual ~SharedMemoryBase()                                        = default;
+    virtual void               close(bool skip_unmap = false) noexcept = 0;
+    virtual const std::string& name() const noexcept                   = 0;
 };
 
 class SharedMemoryRegistry {
    private:
-    static std::mutex                            registry_mutex_;
-    static std::unordered_set<SharedMemoryBase*> active_instances_;
+    static std::mutex                     registry_mutex_;
+    static std::vector<SharedMemoryBase*> active_instances_;
 
    public:
     static void register_instance(SharedMemoryBase* instance) {
         std::scoped_lock lock(registry_mutex_);
-        active_instances_.insert(instance);
+        active_instances_.push_back(instance);
     }
 
     static void unregister_instance(SharedMemoryBase* instance) {
         std::scoped_lock lock(registry_mutex_);
-        active_instances_.erase(instance);
+        active_instances_.erase(
+          std::remove(active_instances_.begin(), active_instances_.end(), instance),
+          active_instances_.end());
     }
 
     static void cleanup_all(bool skip_unmap = false) noexcept {
@@ -95,8 +94,8 @@ class SharedMemoryRegistry {
     }
 };
 
-inline std::mutex                            SharedMemoryRegistry::registry_mutex_;
-inline std::unordered_set<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
+inline std::mutex                     SharedMemoryRegistry::registry_mutex_;
+inline std::vector<SharedMemoryBase*> SharedMemoryRegistry::active_instances_;
 
 class CleanupHooks {
    private:
@@ -106,7 +105,16 @@ class CleanupHooks {
         // Search threads may still be running, so skip munmap (but still perform
         // other cleanup actions). The memory mappings will be released on exit.
         SharedMemoryRegistry::cleanup_all(true);
-        _Exit(128 + sig);
+
+        // Invoke the default handler, which will exit
+        struct sigaction sa;
+        sa.sa_handler = SIG_DFL;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+        if (sigaction(sig, &sa, nullptr) == -1)
+            _Exit(128 + sig);
+
+        raise(sig);
     }
 
     static void register_signal_handlers() noexcept {
@@ -172,9 +180,10 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     static std::string make_sentinel_base(const std::string& name) {
-        uint64_t hash = std::hash<std::string>{}(name);
-        char     buf[32];
-        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIx64, static_cast<uint64_t>(hash));
+        char buf[32];
+        // Using std::to_string here causes non-deterministic PGO builds.
+        // snprintf, being part of libc, is insensitive to the formatted values.
+        std::snprintf(buf, sizeof(buf), "sfshm_%016" PRIu64, hash_string(name));
         return buf;
     }
 
@@ -433,11 +442,10 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
     std::string sentinel_full_path(pid_t pid) const {
-        std::string path = "/dev/shm/";
-        path += sentinel_base_;
-        path.push_back('.');
-        path += std::to_string(pid);
-        return path;
+        char buf[1024];
+        // See above snprintf comment
+        std::snprintf(buf, sizeof(buf), "/dev/shm/%s.%ld", sentinel_base_.c_str(), long(pid));
+        return buf;
     }
 
     void decrement_refcount_relaxed() noexcept {

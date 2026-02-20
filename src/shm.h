@@ -20,6 +20,7 @@
 #define SHM_H_INCLUDED
 
 #include <algorithm>
+#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -35,7 +36,7 @@
 #include <utility>
 #include <variant>
 
-#if !defined(_WIN32) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__)
     #include "shm_linux.h"
 #endif
 
@@ -59,7 +60,7 @@
         #define NOMINMAX
     #endif
     #include <windows.h>
-#else
+#elif defined(__linux__)
     #include <cstring>
     #include <fcntl.h>
     #include <pthread.h>
@@ -406,7 +407,7 @@ class SharedMemoryBackend {
     std::string last_error_message;
 };
 
-#elif !defined(__ANDROID__)
+#elif defined(__linux__) && !defined(__ANDROID__)
 
 template<typename T>
 class SharedMemoryBackend {
@@ -512,12 +513,9 @@ template<typename T>
 struct SystemWideSharedConstant {
    private:
     static std::string createHashString(const std::string& input) {
-        size_t hash = std::hash<std::string>{}(input);
-
-        std::stringstream ss;
-        ss << std::hex << std::setfill('0') << hash;
-
-        return ss.str();
+        char buf[1024];
+        std::snprintf(buf, sizeof(buf), "%016" PRIx64, hash_string(input));
+        return buf;
     }
 
    public:
@@ -534,13 +532,14 @@ struct SystemWideSharedConstant {
     // that are not present in the content, for example NUMA node allocation.
     SystemWideSharedConstant(const T& value, std::size_t discriminator = 0) {
         std::size_t content_hash    = std::hash<T>{}(value);
-        std::size_t executable_hash = std::hash<std::string>{}(getExecutablePathHash());
+        std::size_t executable_hash = hash_string(getExecutablePathHash());
 
-        std::string shm_name = std::string("Local\\sf_") + std::to_string(content_hash) + "$"
-                             + std::to_string(executable_hash) + "$"
-                             + std::to_string(discriminator);
+        char buf[1024];
+        std::snprintf(buf, sizeof(buf), "Local\\sf_%zu$%zu$%zu", content_hash, executable_hash,
+                      discriminator);
+        std::string shm_name = buf;
 
-#if !defined(_WIN32)
+#if defined(__linux__) && !defined(__ANDROID__)
         // POSIX shared memory names must start with a slash
         shm_name = "/sf_" + createHashString(shm_name);
 

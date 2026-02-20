@@ -141,10 +141,10 @@ class ClippedReLU {
         constexpr IndexType Start = NumChunks * SimdWidth;
 
 #elif defined(USE_NEON)
-        constexpr IndexType NumChunks = InputDimensions / (SimdWidth / 2);
-        const int8x8_t      Zero      = {0};
-        const auto          in        = reinterpret_cast<const int32x4_t*>(input);
-        const auto          out       = reinterpret_cast<int8x8_t*>(output);
+        constexpr IndexType    NumChunks = InputDimensions / (SimdWidth / 2);
+        const SIMD::vec_i8x8_t Zero      = {0};
+        const auto             in        = reinterpret_cast<const SIMD::vec_i32x4_t*>(input);
+        const auto             out       = reinterpret_cast<SIMD::vec_i8x8_t*>(output);
         for (IndexType i = 0; i < NumChunks; ++i)
         {
             int16x8_t  shifted;

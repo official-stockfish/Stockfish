@@ -181,11 +181,17 @@ inline __m128i vec_convert_8_16(uint64_t x) {
     #define MaxChunkSize 16
 
 #elif USE_NEON
-using vec_t      = int16x8_t;
-using vec_i8_t   = int8x16_t;
-using psqt_vec_t = int32x4_t;
-using vec128_t   = uint16x8_t;
-using vec_uint_t = uint32x4_t;
+using vec_i8x8_t __attribute__((may_alias))  = int8x8_t;
+using vec_i16x8_t __attribute__((may_alias)) = int16x8_t;
+using vec_i8x16_t __attribute__((may_alias)) = int8x16_t;
+using vec_u16x8_t __attribute__((may_alias)) = uint16x8_t;
+using vec_i32x4_t __attribute__((may_alias)) = int32x4_t;
+
+using vec_t __attribute__((may_alias))      = int16x8_t;
+using vec_i8_t __attribute__((may_alias))   = int8x16_t;
+using psqt_vec_t __attribute__((may_alias)) = int32x4_t;
+using vec128_t __attribute__((may_alias))   = uint16x8_t;
+using vec_uint_t __attribute__((may_alias)) = uint32x4_t;
     #define vec_load(a) (*(a))
     #define vec_store(a, b) *(a) = (b)
     #define vec_add_16(a, b) vaddq_s16(a, b)
@@ -216,7 +222,7 @@ static constexpr std::uint32_t Mask[4] = {1, 2, 4, 8};
 
     #ifndef __aarch64__
 // Single instruction doesn't exist on 32-bit ARM
-inline int8x16_t vmovl_high_s8(int8x16_t val) { return vmovl_s8(vget_high_s8(val)); }
+inline int16x8_t vmovl_high_s8(int8x16_t val) { return vmovl_s8(vget_high_s8(val)); }
     #endif
 
 #else
