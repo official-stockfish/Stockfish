@@ -237,7 +237,7 @@ class MiniTestFramework:
 
             if isinstance(e, UnexpectedOutputException):
                 self.print_failure(
-                    f" {method} encountered unexpeted output: \"{e.actual}\" when output matching \"{e.expected}\" was expected"
+                    f" {method} encountered unexpected output: \"{e.actual}\" when output matching \"{e.expected}\" was expected"
                 )
 
             if isinstance(e, AssertionError):
