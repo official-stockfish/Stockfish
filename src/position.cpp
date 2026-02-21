@@ -612,19 +612,24 @@ bool Position::pseudo_legal(const Move m) const {
     // Handle the special case of a pawn move
     if (type_of(pc) == PAWN)
     {
-        // We have already handled promotion moves, so destination cannot be on the 8th/1st rank
+        // Promotions are handled above, so destination cannot be on rank 1/8
         if ((Rank8BB | Rank1BB) & to)
             return false;
 
-        // Check if it's a valid capture, single push, or double push
-        const bool isCapture    = bool(attacks_bb<PAWN>(from, us) & pieces(~us) & to);
-        const bool isSinglePush = (from + pawn_push(us) == to) && empty(to);
-        const bool isDoublePush = (from + 2 * pawn_push(us) == to)
-                               && (relative_rank(us, from) == RANK_2) && empty(to)
-                               && empty(to - pawn_push(us));
+        // If destination has an enemy piece, this can only be a capture
+        if (pieces(~us) & to)
+            return bool(attacks_bb<PAWN>(from, us) & to);
 
-        if (!(isCapture || isSinglePush || isDoublePush))
-            return false;
+        // Destination has no enemy and friendly occupancy was checked above,
+        // so destination is guaranteed empty.
+
+        // Single push
+        if (from + pawn_push(us) == to)
+            return true;
+
+        // Double push: only the intermediate square needs an emptiness check
+        return from + 2 * pawn_push(us) == to && relative_rank(us, from) == RANK_2
+            && empty(from + pawn_push(us));
     }
     else if (!(attacks_bb(type_of(pc), from, pieces()) & to))
         return false;
