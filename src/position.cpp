@@ -1250,7 +1250,19 @@ void Position::do_null_move(StateInfo& newSt) {
 
     sideToMove = ~sideToMove;
 
-    set_check_info();
+    st->blockersForKing[WHITE] = st->previous->blockersForKing[WHITE];
+    st->blockersForKing[BLACK] = st->previous->blockersForKing[BLACK];
+    st->pinners[WHITE]         = st->previous->pinners[WHITE];
+    st->pinners[BLACK]         = st->previous->pinners[BLACK];
+
+    Square ksq = square<KING>(~sideToMove);
+
+    st->checkSquares[PAWN]   = attacks_bb<PAWN>(ksq, ~sideToMove);
+    st->checkSquares[KNIGHT] = attacks_bb<KNIGHT>(ksq);
+    st->checkSquares[BISHOP] = attacks_bb<BISHOP>(ksq, pieces());
+    st->checkSquares[ROOK]   = attacks_bb<ROOK>(ksq, pieces());
+    st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
+    st->checkSquares[KING]   = 0;
 
     st->repetition = 0;
 
