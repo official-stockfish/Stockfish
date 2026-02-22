@@ -89,8 +89,10 @@ void TimeManagement::init(Search::LimitsType& limits,
     // Maximum move horizon
     int centiMTG = limits.movestogo ? std::min(limits.movestogo * 100, 5000) : 5051;
 
-    // If less than one second, gradually reduce mtg
-    if (scaledTime < 1000)
+    // If less than one second, gradually reduce mtg.
+    // We only do this if the increment doesn't safely cover the move overhead,
+    // to prevent the engine from panicking in increment time scrambles.
+    if (scaledTime < 1000 && limits.inc[us] <= moveOverhead)
         centiMTG = int(scaledTime * 5.051);
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
