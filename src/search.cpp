@@ -519,7 +519,7 @@ void Search::Worker::iterative_deepening() {
                 if (mainThread->ponder)
                     mainThread->stopOnPonderhit = true;
                 else
-                    threads.stop = true;
+                    threads.stop = threads.abortedSearch = true;
             }
             else
                 threads.increaseDepth = mainThread->ponder || elapsedTime <= totalTime * 0.50;
