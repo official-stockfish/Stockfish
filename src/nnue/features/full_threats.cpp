@@ -149,32 +149,66 @@ constexpr auto init_threat_offsets() {
     return std::pair{indices, offsets};
 }
 
-constexpr auto helper_offsets = init_threat_offsets().first;
+constexpr auto threat_offsets = init_threat_offsets();
+constexpr auto helper_offsets = threat_offsets.first;
 // Lookup array for indexing threats
-constexpr auto offsets = init_threat_offsets().second;
+constexpr auto offsets = threat_offsets.second;
+
+constexpr IndexType total_dimensions() {
+    IndexType total = 0;
+
+    for (Piece piece : AllPieces)
+        total += numValidTargets[piece] * helper_offsets[piece].cumulativePieceOffset;
+
+    return total;
+}
+
+static_assert(total_dimensions() == FullThreats::Dimensions);
 
 constexpr auto init_index_luts() {
     std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
 
     for (Piece attacker : AllPieces)
     {
+        std::array<int, PIECE_NB> targetBuckets{};
+        for (auto& bucket : targetBuckets)
+            bucket = -1;
+
+        int nextTargetBucket = 0;
+
         for (Piece attacked : AllPieces)
         {
-            bool      enemy        = (attacker ^ attacked) == 8;
             PieceType attackerType = type_of(attacker);
             PieceType attackedType = type_of(attacked);
 
-            int  map           = FullThreats::map[attackerType - 1][attackedType - 1];
-            bool semi_excluded = attackerType == attackedType && (enemy || attackerType != PAWN);
-            IndexType feature  = helper_offsets[attacker].cumulativeOffset
-                              + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
-                                  * helper_offsets[attacker].cumulativePieceOffset;
+            int map = FullThreats::map[attackerType - 1][attackedType - 1];
+            bool excluded = map < 0 || (attacker == W_PAWN && attacked == B_PAWN);
 
-            bool excluded                  = map < 0;
-            indices[attacker][attacked][0] = excluded ? FullThreats::Dimensions : feature;
-            indices[attacker][attacked][1] =
-              excluded || semi_excluded ? FullThreats::Dimensions : feature;
+            if (excluded)
+            {
+                indices[attacker][attacked][0] = FullThreats::Dimensions;
+                indices[attacker][attacked][1] = FullThreats::Dimensions;
+                continue;
+            }
+
+            Piece canonical = attacked;
+            if (attackerType == attackedType && attackerType != PAWN)
+                canonical = make_piece(color_of(attacker), attackerType);
+
+            int& targetBucket = targetBuckets[canonical];
+            if (targetBucket < 0)
+                targetBucket = nextTargetBucket++;
+
+            IndexType feature =
+              helper_offsets[attacker].cumulativeOffset
+              + targetBucket * helper_offsets[attacker].cumulativePieceOffset;
+
+            bool semi_excluded              = attackerType == attackedType && attackerType != PAWN;
+            indices[attacker][attacked][0] = feature;
+            indices[attacker][attacked][1] = semi_excluded ? FullThreats::Dimensions : feature;
         }
+
+        assert(nextTargetBucket == numValidTargets[attacker]);
     }
 
     return indices;
@@ -194,12 +228,16 @@ inline sf_always_inline IndexType FullThreats::make_index(
     const std::int8_t orientation   = OrientTBL[ksq] ^ (56 * perspective);
     unsigned          from_oriented = uint8_t(from) ^ orientation;
     unsigned          to_oriented   = uint8_t(to) ^ orientation;
+    bool              from_to_direc = from_oriented < to_oriented;
+
+    if (((attacker ^ attacked) == 8) && ((attacker | attacked) > 9))
+        std::swap(from_oriented, to_oriented);
 
     std::int8_t swap              = 8 * perspective;
     unsigned    attacker_oriented = attacker ^ swap;
     unsigned    attacked_oriented = attacked ^ swap;
 
-    return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+    return index_lut1[attacker_oriented][attacked_oriented][from_to_direc]
          + offsets[attacker_oriented][from_oriented]
          + index_lut2[attacker_oriented][from_oriented][to_oriented];
 }
