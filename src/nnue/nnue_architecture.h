@@ -36,7 +36,7 @@
 namespace Stockfish::Eval::NNUE {
 
 // Input features used in evaluation function
-using ThreatFeatureSet = Features::FullThreats;
+using ThreatFeatureSet = Features::FullThreatsv2;
 using PSQFeatureSet    = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion

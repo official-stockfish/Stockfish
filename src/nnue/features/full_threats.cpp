@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features FullThreats of NNUE evaluation function
+//Definition of input features FullThreatsv2 of NNUE evaluation function
 
 #include "full_threats.h"
 
@@ -163,7 +163,7 @@ constexpr IndexType total_dimensions() {
     return total;
 }
 
-static_assert(total_dimensions() == FullThreats::Dimensions);
+static_assert(total_dimensions() == FullThreatsv2::Dimensions);
 
 constexpr auto init_index_luts() {
     std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
@@ -181,13 +181,13 @@ constexpr auto init_index_luts() {
             PieceType attackerType = type_of(attacker);
             PieceType attackedType = type_of(attacked);
 
-            int map = FullThreats::map[attackerType - 1][attackedType - 1];
+            int map = FullThreatsv2::map[attackerType - 1][attackedType - 1];
             bool excluded = map < 0 || (attacker == W_PAWN && attacked == B_PAWN);
 
             if (excluded)
             {
-                indices[attacker][attacked][0] = FullThreats::Dimensions;
-                indices[attacker][attacked][1] = FullThreats::Dimensions;
+                indices[attacker][attacked][0] = FullThreatsv2::Dimensions;
+                indices[attacker][attacked][1] = FullThreatsv2::Dimensions;
                 continue;
             }
 
@@ -205,7 +205,7 @@ constexpr auto init_index_luts() {
 
             bool semi_excluded              = attackerType == attackedType && attackerType != PAWN;
             indices[attacker][attacked][0] = feature;
-            indices[attacker][attacked][1] = semi_excluded ? FullThreats::Dimensions : feature;
+            indices[attacker][attacked][1] = semi_excluded ? FullThreatsv2::Dimensions : feature;
         }
 
         assert(nextTargetBucket == numValidTargets[attacker]);
@@ -223,7 +223,7 @@ constexpr auto index_lut1 = init_index_luts();
 constexpr auto index_lut2 = index_lut2_array();
 
 // Index of a feature for a given king position and another piece on some square
-inline sf_always_inline IndexType FullThreats::make_index(
+inline sf_always_inline IndexType FullThreatsv2::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
     const std::int8_t orientation   = OrientTBL[ksq] ^ (56 * perspective);
     unsigned          from_oriented = uint8_t(from) ^ orientation;
@@ -244,7 +244,7 @@ inline sf_always_inline IndexType FullThreats::make_index(
 
 // Get a list of indices for active features in ascending order
 
-void FullThreats::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
+void FullThreatsv2::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
     Square   ksq      = pos.square<KING>(perspective);
     Bitboard occupied = pos.pieces();
 
@@ -312,7 +312,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
 
 // Get a list of indices for recently changed features
 
-void FullThreats::append_changed_indices(Color                   perspective,
+void FullThreatsv2::append_changed_indices(Color                   perspective,
                                          Square                  ksq,
                                          const DiffType&         diff,
                                          IndexList&              removed,
@@ -374,7 +374,7 @@ void FullThreats::append_changed_indices(Color                   perspective,
     }
 }
 
-bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
+bool FullThreatsv2::requires_refresh(const DiffType& diff, Color perspective) {
     return perspective == diff.us && (int8_t(diff.ksq) & 0b100) != (int8_t(diff.prevKsq) & 0b100);
 }
 

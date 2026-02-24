@@ -33,7 +33,7 @@ namespace Stockfish::Eval::NNUE::Features {
 static constexpr int numValidTargets[PIECE_NB] = {0, 5, 9, 7, 7, 9, 0, 0,
                                                   0, 6, 9, 7, 7, 9, 0, 0};
 
-class FullThreats {
+class FullThreatsv2 {
    public:
     // Feature name
     static constexpr const char* Name = "Full_Threatsv2(Friend)";
