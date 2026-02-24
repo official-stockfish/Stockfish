@@ -508,18 +508,17 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
          | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
          | (attacks_bb<PAWN>(s, BLACK) & pieces(WHITE, PAWN))
          | (attacks_bb<PAWN>(s, WHITE) & pieces(BLACK, PAWN))
-         | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT)) | (attacks_bb<KING>(s) & pieces(KING));
+         | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
+         | (attacks_bb<KING>(s) & pieces(KING));
 }
 
 bool Position::attackers_to_exist(Square s, Bitboard occupied, Color c) const {
 
-    return ((attacks_bb<ROOK>(s) & pieces(c, ROOK, QUEEN))
-            && (attacks_bb<ROOK>(s, occupied) & pieces(c, ROOK, QUEEN)))
-        || ((attacks_bb<BISHOP>(s) & pieces(c, BISHOP, QUEEN))
-            && (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN)))
-        || (((attacks_bb<PAWN>(s, ~c) & pieces(PAWN)) | (attacks_bb<KNIGHT>(s) & pieces(KNIGHT))
-             | (attacks_bb<KING>(s) & pieces(KING)))
-            & pieces(c));
+    return (attacks_bb<ROOK>(s, occupied) & pieces(c, ROOK, QUEEN))
+        || (attacks_bb<BISHOP>(s, occupied) & pieces(c, BISHOP, QUEEN))
+        || (attacks_bb<PAWN>(s, ~c) & pieces(c, PAWN))
+        || (attacks_bb<KNIGHT>(s) & pieces(c, KNIGHT))
+        || (attacks_bb<KING>(s) & pieces(c, KING));
 }
 
 // Tests whether a pseudo-legal move is legal
