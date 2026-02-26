@@ -122,9 +122,20 @@ class FeatureTransformer {
 
     static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
 
+    static constexpr std::uint32_t combine_hash(std::initializer_list<std::uint32_t> hashes) {
+        std::uint32_t hash = 0;
+        for (const auto component_hash : hashes)
+        {
+            hash = (hash << 1) | (hash >> 31);
+            hash ^= component_hash;
+        }
+        return hash;
+    }
+
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
-        return (UseThreats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
+        return (UseThreats ? combine_hash({ThreatFeatureSet::HashValue, PSQFeatureSet::HashValue})
+                           : PSQFeatureSet::HashValue)
              ^ (OutputDimensions * 2);
     }
 
