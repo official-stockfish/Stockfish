@@ -231,6 +231,15 @@ inline sf_always_inline IndexType FullThreatsv2::make_index(
     unsigned          to_oriented   = uint8_t(to) ^ orientation;
     bool              from_to_direc = from_oriented < to_oriented;
 
+    // In the case when two pieces of the same type are attacking, one half of
+    // the indices (in this case, the ones corresponding to from < to) are unused.
+    // We can take advantage of this to merge the two threat planes by mapping one
+    // to indices corresponding to from < to and the other to indices corresponding
+    // to from > to. Here this is accomplished by swapping the oriented from, to
+    // squares when the two pieces are opposites. This means that attacks of the
+    // type X -> X use the usual from > to indices, and attacks of the type
+    // X -> ~X now use the from < to indices. This cannot be applied to pawns,
+    // since their attacks are not fully symmetrical.
     if ((attacker == ~attacked) && type_of(attacker) > PAWN)
         std::swap(from_oriented, to_oriented);
 
