@@ -18,8 +18,9 @@
 
 //Definition of input features FullThreatsv2 of NNUE evaluation function
 
-#include "full_threats.h"
+#include "full_threatsv2.h"
 
+#include <assert.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -230,7 +231,7 @@ inline sf_always_inline IndexType FullThreatsv2::make_index(
     unsigned          to_oriented   = uint8_t(to) ^ orientation;
     bool              from_to_direc = from_oriented < to_oriented;
 
-    if (((attacker ^ attacked) == 8) && ((attacker | attacked) > 9))
+    if ((attacker == ~attacked) && type_of(attacker) > PAWN)
         std::swap(from_oriented, to_oriented);
 
     std::int8_t swap              = 8 * perspective;
