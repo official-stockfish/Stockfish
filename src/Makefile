@@ -71,11 +71,11 @@ SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 	misc.cpp movegen.cpp movepick.cpp position.cpp \
 	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
 	nnue/nnue_accumulator.cpp nnue/nnue_misc.cpp nnue/network.cpp \
-	nnue/features/half_ka_v2_hm.cpp nnue/features/full_threats.cpp \
+	nnue/features/half_ka_v2_hm.cpp nnue/features/full_threatsv2.cpp \
 	engine.cpp score.cpp memory.cpp
 
 HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h history.h \
-		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/features/full_threats.h \
+		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/features/full_threatsv2.h \
 		nnue/layers/affine_transform.h nnue/layers/affine_transform_sparse_input.h \
 		nnue/layers/clipped_relu.h nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h \
 		nnue/nnue_architecture.h nnue/nnue_common.h nnue/nnue_feature_transformer.h nnue/simd.h \

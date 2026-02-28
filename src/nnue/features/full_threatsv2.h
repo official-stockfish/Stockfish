@@ -30,19 +30,19 @@ class Position;
 
 namespace Stockfish::Eval::NNUE::Features {
 
-static constexpr int numValidTargets[PIECE_NB] = {0, 6, 10, 8, 8, 10, 0, 0,
-                                                  0, 6, 10, 8, 8, 10, 0, 0};
+static constexpr int numValidTargets[PIECE_NB] = {0, 5, 9, 7, 7, 9, 0, 0,
+                                                  0, 6, 9, 7, 7, 9, 0, 0};
 
-class FullThreats {
+class FullThreatsv2 {
    public:
     // Feature name
-    static constexpr const char* Name = "Full_Threats(Friend)";
+    static constexpr const char* Name = "Full_Threatsv2(Friend)";
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue = 0x8f234cb8u;
+    static constexpr std::uint32_t HashValue = 0x8f234cb9u;
 
     // Number of feature dimensions
-    static constexpr IndexType Dimensions = 60144;
+    static constexpr IndexType Dimensions = 53564;
 
     // clang-format off
     // Orient a square according to perspective (rotates by 180 for black)
