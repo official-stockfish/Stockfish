@@ -24,7 +24,7 @@ jobs:
         with:
           repository: vondele/matetrack
           path: matetrack
-          ref: 2d96fa3373f90edb032b7ea7468473fb9e6f0343
+          ref: 6c8405fac9028ca66a077f5c96c918fec0ef8d1d
           persist-credentials: false
 
       - name: matetrack install deps
@@ -58,6 +58,12 @@ jobs:
         run: |
           python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 --threads 4 | tee matecheckout4.out
           ! grep "issues were detected" matecheckout4.out > /dev/null
+
+      - name: Run matetrack th4 gameplay
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --time 3 --timeinc 0.01 --threads 4 | tee matecheckout4g.out
+          ! grep "issues were detected" matecheckout4g.out > /dev/null
 
       - name: Run matetrack th1 with --syzygy50MoveRule false
         working-directory: matetrack
