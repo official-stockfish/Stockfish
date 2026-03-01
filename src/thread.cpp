@@ -378,10 +378,13 @@ Thread* ThreadPool::get_best_thread() const {
         const bool bestThreadInProvenWin = is_win(bestThreadScore);
         const bool newThreadInProvenWin  = is_win(newThreadScore);
 
-        const bool bestThreadInProvenLoss =
-          bestThreadScore != -VALUE_INFINITE && is_loss(bestThreadScore);
+        const bool bestThreadInProvenLoss = bestThreadScore != -VALUE_INFINITE
+                                         && is_loss(bestThreadScore)
+                                         && !bestThread->worker->rootMoves[0].scoreLowerbound
+                                         && !bestThread->worker->rootMoves[0].scoreUpperbound;
         const bool newThreadInProvenLoss =
-          newThreadScore != -VALUE_INFINITE && is_loss(newThreadScore);
+          newThreadScore != -VALUE_INFINITE && is_loss(newThreadScore)
+          && !th->worker->rootMoves[0].scoreLowerbound && !th->worker->rootMoves[0].scoreUpperbound;
 
         // We make sure not to pick a thread with truncated principal variation
         const bool betterVotingValue =

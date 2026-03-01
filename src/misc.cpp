@@ -18,6 +18,7 @@
 
 #include "misc.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
