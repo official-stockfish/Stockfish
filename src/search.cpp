@@ -262,8 +262,7 @@ void Search::Worker::iterative_deepening() {
     Move pv[MAX_PLY + 1];
 
     Depth lastBestMoveDepth = 0;
-    Value lastBestScore     = -VALUE_INFINITE;
-    auto  lastBestPV        = std::vector{Move::none()};
+    Move  lastBestMove      = Move::none();
 
     Value  alpha, beta;
     Value  bestValue     = -VALUE_INFINITE;
@@ -421,48 +420,42 @@ void Search::Worker::iterative_deepening() {
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
-            if (mainThread
-                && (threads.stop || pvIdx + 1 == multiPV || nodes > 10000000)
-                // A thread that aborted search can have a mated-in/TB-loss score and
-                // PV that cannot be trusted, i.e. it can be delayed or refuted if we
-                // would have had time to fully search other root-moves. Thus here we
-                // suppress any exact mated-in/TB loss output and, if we do, below pick
-                // the score/PV from the previously completed iteration with the most
-                // recent bestmove change.
-                && !(threads.stop && is_loss(rootMoves[0].uciScore)
-                     && rootMoves[0].score == rootMoves[0].uciScore))
+            if (mainThread && (threads.stop || pvIdx + 1 == multiPV || nodes > 10000000))
+            {
+                // A thread that aborted search can have a mated-in/TB-loss score that
+                // cannot be trusted, i.e. it can be delayed or refuted if we would have
+                // had time to fully search other root-moves. Thus we mark it as an
+                // upperbound here, unless it is already a bound.
+                // For non-mainThreads we do the same further down to ensure that best
+                // thread selection is not affected by unproven mated-in/TB loss scores.
+                if (threads.stop && is_loss(rootMoves[pvIdx].uciScore)
+                    && !rootMoves[pvIdx].scoreLowerbound)
+                    rootMoves[pvIdx].scoreUpperbound = true;
                 main_manager()->pv(*this, threads, tt, rootDepth);
+            }
 
             if (threads.stop)
                 break;
         }
 
         if (!threads.stop)
+        {
             completedDepth = rootDepth;
-
-        // We make sure not to pick an unproven mated-in score,
-        // in case this thread prematurely stopped search (aborted-search).
-        if (completedDepth != rootDepth && rootMoves[0].score != -VALUE_INFINITE
-            && is_loss(rootMoves[0].score))
-        {
-            // Bring the last best move to the front for best thread selection.
-            Utility::move_to_front(rootMoves, [&lastBestPV = std::as_const(lastBestPV)](
-                                                const auto& rm) { return rm == lastBestPV[0]; });
-            rootMoves[0].pv    = lastBestPV;
-            rootMoves[0].score = rootMoves[0].uciScore = lastBestScore;
+            if (rootMoves[0].pv[0] != lastBestMove)
+            {
+                lastBestMove      = rootMoves[0].pv[0];
+                lastBestMoveDepth = rootDepth;
+            }
         }
-        else if (rootMoves[0].pv[0] != lastBestPV[0])
-        {
-            lastBestPV        = rootMoves[0].pv;
-            lastBestScore     = rootMoves[0].score;
-            lastBestMoveDepth = rootDepth;
-        }
+        else if (!mainThread && pvIdx < multiPV && is_loss(rootMoves[pvIdx].uciScore)
+                 && !rootMoves[pvIdx].scoreLowerbound)
+            rootMoves[pvIdx].scoreUpperbound = true;
 
         if (!mainThread)
             continue;
 
         // Have we found a "mate in x"?
-        if (limits.mate && rootMoves[0].score == rootMoves[0].uciScore
+        if (limits.mate && completedDepth == rootDepth
             && ((rootMoves[0].score >= VALUE_MATE_IN_MAX_PLY
                  && VALUE_MATE - rootMoves[0].score <= 2 * limits.mate)
                 || (rootMoves[0].score != -VALUE_INFINITE
@@ -1958,13 +1951,9 @@ void SearchManager::check_time(Search::Worker& worker) {
     if (ponder)
         return;
 
-    if (
-      // Later we rely on the fact that we can at least use the mainthread previous
-      // root-search score and PV in a multithreaded environment to prove mated-in scores.
-      worker.completedDepth >= 1
-      && ((worker.limits.use_time_management() && (elapsed > tm.maximum() || stopOnPonderhit))
-          || (worker.limits.movetime && elapsed >= worker.limits.movetime)
-          || (worker.limits.nodes && worker.threads.nodes_searched() >= worker.limits.nodes)))
+    if ((worker.limits.use_time_management() && (elapsed > tm.maximum() || stopOnPonderhit))
+        || (worker.limits.movetime && elapsed >= worker.limits.movetime)
+        || (worker.limits.nodes && worker.threads.nodes_searched() >= worker.limits.nodes))
         worker.threads.stop = true;
 }
 
