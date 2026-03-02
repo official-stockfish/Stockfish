@@ -81,23 +81,21 @@ void TimeManagement::init(Search::LimitsType& limits,
         moveOverhead *= npmsec;
     }
 
-    // These numbers are used where multiplications, divisions or comparisons
-    // with constants are involved.
+    // These numbers are used where multiplications, divisions,
+    // or comparisons with constants are involved.
     const int64_t   scaleFactor = useNodesTime ? npmsec : 1;
     const TimePoint scaledTime  = limits.time[us] / scaleFactor;
 
     // Maximum move horizon
-    int centiMTG = limits.movestogo ? std::min(limits.movestogo * 100, 5000) : 5051;
+    int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
 
     // If less than one second, gradually reduce mtg
     if (scaledTime < 1000)
-        centiMTG = int(scaledTime * 5.051);
+        mtg = int(scaledTime * 0.05);
 
     // Make sure timeLeft is > 0 since we may use it as a divisor
-    TimePoint timeLeft =
-      std::max(TimePoint(1),
-               limits.time[us]
-                 + (limits.inc[us] * (centiMTG - 100) - moveOverhead * (200 + centiMTG)) / 100);
+    TimePoint timeLeft = std::max(TimePoint(1), limits.time[us] + limits.inc[us] * (mtg - 1)
+                                                  - moveOverhead * (2 + mtg));
 
     // x basetime (+ z increment)
     // If there is a healthy increment, timeLeft can exceed the actual available
@@ -124,8 +122,8 @@ void TimeManagement::init(Search::LimitsType& limits,
     else
     {
         optScale =
-          std::min((0.88 + ply / 116.4) / (centiMTG / 100.0), 0.88 * limits.time[us] / timeLeft);
-        maxScale = 1.3 + 0.11 * (centiMTG / 100.0);
+          std::min((0.88 + ply / 116.4) / mtg, 0.88 * limits.time[us] / timeLeft);
+        maxScale = 1.3 + 0.11 * mtg;
     }
 
     // Limit the maximum possible time for this move
