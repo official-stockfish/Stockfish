@@ -998,6 +998,26 @@ moves_loop:  // When in check, search starts here
 
     value = bestValue;
 
+    // Dynamic candidate size (K) based on position type.
+    // Top K moves are fully searched at normal depth; remaining moves get LMR.
+    // This avoids missing strong moves in critical positions while maintaining
+    // efficiency in quiet positions.
+    bool isEndgame  = pos.non_pawn_material() < 2500;
+    int  candidateK = 2;  // Quiet position: TT move + 1 more at full depth
+
+    if (ss->inCheck)
+        candidateK = std::min(depth / 2 + 3, 10);  // In check: broader evasion search
+    else if (ttCapture || (is_valid(eval) && std::abs(eval - alpha) < 120))
+        candidateK = std::max(3, depth / 3 + 2);  // Tactical: captures or eval near boundary
+
+    // Endgame: increase K to catch quiet defensive moves
+    if (isEndgame)
+        candidateK += 1;
+
+    // Root: ensure broader move coverage to avoid overlooking any move
+    if constexpr (rootNode)
+        candidateK = std::max(candidateK, 4);
+
     int moveCount = 0;
 
     // Step 13. Loop through all pseudo-legal moves until no moves remain
@@ -1050,8 +1070,11 @@ moves_loop:  // When in check, search starts here
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
-            // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold
-            if (moveCount >= (3 + depth * depth) / (2 - improving))
+            // Skip quiet moves if movecount exceeds our FutilityMoveCount threshold.
+            // Endgame safeguard: widen threshold in low-material positions to avoid
+            // pruning quiet defensive moves too aggressively.
+            int fmcBonus = isEndgame ? depth + 1 : 0;
+            if (moveCount >= (3 + depth * depth + fmcBonus) / (2 - improving))
                 mp.skip_quiet_moves();
 
             // Reduced depth of the next LMR search
@@ -1085,8 +1108,9 @@ moves_loop:  // When in check, search starts here
                             + (*contHist[1])[movedPiece][move.to_sq()]
                             + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
 
-                // Continuation history based pruning
-                if (history < -3826 * depth)
+                // Continuation history based pruning.
+                // Endgame safeguard: relax threshold to preserve quiet defensive moves.
+                if (history < -3826 * depth + (isEndgame ? 1200 * depth : 0))
                     continue;
 
                 history += 73 * mainHistory[us][move.raw()] / 32;
@@ -1110,8 +1134,10 @@ moves_loop:  // When in check, search starts here
 
                 lmrDepth = std::max(lmrDepth, 0);
 
-                // Prune moves with negative SEE
-                if (!pos.see_ge(move, -25 * lmrDepth * lmrDepth))
+                // Prune moves with negative SEE.
+                // Endgame: use less aggressive SEE margin to preserve defensive resources.
+                int seePruneCoeff = isEndgame ? -20 : -25;
+                if (!pos.see_ge(move, seePruneCoeff * lmrDepth * lmrDepth))
                     continue;
             }
         }
@@ -1227,8 +1253,25 @@ moves_loop:  // When in check, search starts here
         if (allNode)
             r += r * 276 / (256 * depth + 254);
 
+        // Minimum coverage rule: cap reduction for the first 8 moves to ensure
+        // adequate search depth even for moves outside the top K candidates.
+        if (moveCount <= 8)
+            r = std::min(r, 3 * 1024);
+
+        // Endgame safeguard: reduce less in low-material positions to avoid
+        // missing quiet defensive moves (fortress, king activity, zugzwang).
+        if (isEndgame)
+            r -= 384;
+
+        // Root-node safeguard: ensure every root move is searched at a minimum
+        // depth so no legal move is completely overlooked.
+        if constexpr (rootNode)
+            r = std::min(r, std::max(0, (newDepth - std::max(1, depth / 3)) * 1024));
+
         // Step 17. Late moves reduction / extension (LMR)
-        if (depth >= 2 && moveCount > 1)
+        // Moves ranked within the top K candidates are searched at full depth
+        // (routed to Step 18), while remaining moves receive LMR.
+        if (depth >= 2 && moveCount > candidateK)
         {
             // In general we want to cap the LMR depth search at newDepth, but when
             // reduction is negative, we allow this move a limited search extension
