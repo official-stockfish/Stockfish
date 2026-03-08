@@ -122,9 +122,20 @@ class FeatureTransformer {
 
     static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
 
+    static constexpr std::uint32_t combine_hash(std::initializer_list<std::uint32_t> hashes) {
+        std::uint32_t hash = 0;
+        for (const auto component_hash : hashes)
+        {
+            hash = (hash << 1) | (hash >> 31);
+            hash ^= component_hash;
+        }
+        return hash;
+    }
+
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
-        return (UseThreats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
+        return (UseThreats ? combine_hash({ThreatFeatureSet::HashValue, PSQFeatureSet::HashValue})
+                           : PSQFeatureSet::HashValue)
              ^ (OutputDimensions * 2);
     }
 
@@ -142,13 +153,6 @@ class FeatureTransformer {
 
         if constexpr (UseThreats)
             permute<8>(threatWeights, InversePackusEpi16Order);
-    }
-
-    inline void scale_weights(bool read) {
-        for (auto& w : weights)
-            w = read ? w * 2 : w / 2;
-        for (auto& b : biases)
-            b = read ? b * 2 : b / 2;
     }
 
     // Read network parameters
@@ -171,9 +175,6 @@ class FeatureTransformer {
 
         permute_weights();
 
-        if constexpr (!UseThreats)
-            scale_weights(true);
-
         return !stream.fail();
     }
 
@@ -182,9 +183,6 @@ class FeatureTransformer {
         std::unique_ptr<FeatureTransformer> copy = std::make_unique<FeatureTransformer>(*this);
 
         copy->unpermute_weights();
-
-        if constexpr (!UseThreats)
-            copy->scale_weights(false);
 
         write_leb_128<BiasType>(stream, copy->biases);
 
@@ -277,7 +275,7 @@ class FeatureTransformer {
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
             const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(UseThreats ? 255 : 127 * 2);
+            const vec_t One  = vec_set_16(255);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -397,17 +395,13 @@ class FeatureTransformer {
 
                 if constexpr (UseThreats)
                 {
-                    BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
-                    BiasType sum1t =
+                    sum0 += threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
+                    sum1 +=
                       threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                    sum0 = std::clamp<BiasType>(sum0 + sum0t, 0, 255);
-                    sum1 = std::clamp<BiasType>(sum1 + sum1t, 0, 255);
                 }
-                else
-                {
-                    sum0 = std::clamp<BiasType>(sum0, 0, 127 * 2);
-                    sum1 = std::clamp<BiasType>(sum1, 0, 127 * 2);
-                }
+
+                sum0 = std::clamp<BiasType>(sum0, 0, 255);
+                sum1 = std::clamp<BiasType>(sum1, 0, 255);
 
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
             }

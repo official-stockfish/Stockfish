@@ -1131,7 +1131,9 @@ void Position::update_piece_threats(Piece                     pc,
     if constexpr (PutPiece)
     {
         dts->threatenedSqs |= threatened;
-        dts->threateningSqs |= s;
+        // A bit may only be set if that square actually produces a threat, so we
+        // must guard setting the square accordingly
+        dts->threateningSqs |= Bitboard(bool(threatened)) << s;
     }
 
     DirtyThreat dt_template{pc, NO_PIECE, s, Square(0), PutPiece};
@@ -1142,7 +1144,7 @@ void Position::update_piece_threats(Piece                     pc,
 
     if constexpr (PutPiece)
     {
-        dts->threatenedSqs |= s;
+        dts->threatenedSqs |= Bitboard(bool(all_attackers)) << s;  // same as above
         dts->threateningSqs |= all_attackers;
     }
 
