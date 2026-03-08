@@ -182,6 +182,7 @@ void Search::Worker::ensure_network_replicated() {
 void Search::Worker::start_searching() {
 
     accumulatorStack.reset();
+    lastIterationPV.clear();
 
     // Non-main threads go directly to iterative_deepening()
     if (!is_mainthread())
@@ -438,7 +439,10 @@ void Search::Worker::iterative_deepening() {
         }
 
         if (!threads.stop)
-            completedDepth = rootDepth;
+        {
+            completedDepth  = rootDepth;
+            lastIterationPV = rootMoves[0].pv;
+        }
 
         // We make sure not to pick an unproven mated-in score,
         // in case this thread prematurely stopped search (aborted-search).
@@ -661,6 +665,10 @@ Value Search::Worker::search(
     ss->moveCount = 0;
     bestValue     = -VALUE_INFINITE;
     maxValue      = VALUE_INFINITE;
+
+    ss->followPV  = rootNode || ((ss - 1)->followPV
+                 && static_cast<size_t>(ss->ply - 1) < lastIterationPV.size()
+                 && (ss - 1)->currentMove == lastIterationPV[ss->ply - 1]);
 
     // Check for the available remaining time
     if (is_mainthread())
@@ -929,7 +937,7 @@ Value Search::Worker::search(
     // Step 10. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
     // (*Scaler) Making IIR more aggressive scales poorly.
-    if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
+    if (!ss->followPV && !allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
     // Step 11. ProbCut
@@ -1079,7 +1087,7 @@ moves_loop:  // When in check, search starts here
                     && !pos.see_ge(move, -margin))
                     continue;
             }
-            else
+            else if (!ss->followPV || !PvNode)
             {
                 int history = (*contHist[0])[movedPiece][move.to_sq()]
                             + (*contHist[1])[movedPiece][move.to_sq()]
