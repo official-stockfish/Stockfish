@@ -129,6 +129,8 @@ void TimeManagement::init(Search::LimitsType& limits,
     }
 
     // Limit the maximum possible time for this move
+    // Modified to prevent zero/negative optimumTime or maximumTime
+    // Could perhaps be optimized/tuned in the future
     optimumTime = TimePoint(std::max(1.0, optScale * timeLeft));
     maximumTime = TimePoint(std::max(
       double(optimumTime),
