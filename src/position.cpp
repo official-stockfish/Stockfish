@@ -981,9 +981,8 @@ void Position::undo_move(Move m) {
         assert(type_of(pc) == m.promotion_type());
         assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
 
-        remove_piece(to);
         pc = make_piece(us, PAWN);
-        put_piece(pc, to);
+        swap_piece(to, pc);
     }
 
     if (m.type_of() == CASTLING)
