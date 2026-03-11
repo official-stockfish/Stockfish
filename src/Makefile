@@ -121,6 +121,7 @@ VPATH = syzygy:nnue:nnue/features
 # dotprod = yes/no    --- -DUSE_NEON_DOTPROD --- Use ARM advanced SIMD Int8 dot product instructions
 # lsx = yes/no        --- -mlsx              --- Use Loongson SIMD eXtension
 # lasx = yes/no       --- -mlasx             --- use Loongson Advanced SIMD eXtension
+# force_rebuild = yes/no ---                 --- Always recompile misc.cpp (yes, default) or skip forced recompilation (no)
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -177,6 +178,7 @@ dotprod = no
 arm_version = 0
 lsx = no
 lasx = no
+force_rebuild = yes
 STRIP = strip
 
 ifneq ($(shell which clang-format-20 2> /dev/null),)
@@ -1131,9 +1133,11 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+ifeq ($(force_rebuild),yes)
 # Force recompilation to ensure version info is up-to-date
 misc.o: FORCE
 FORCE:
+endif
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
