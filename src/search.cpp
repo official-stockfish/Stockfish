@@ -390,7 +390,7 @@ void Search::Worker::iterative_deepening() {
                 // excessive output that could hang GUIs like Fritz 19, only start
                 // at nodes > 10M (rather than depth N, which can be reached quickly)
                 if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
-                    && nodes > 10000000)
+                    && nodes.load(std::memory_order_relaxed) > 10000000)
                     main_manager()->pv(*this, threads, tt, rootDepth);
 
                 // In case of failing low/high increase aspiration window and re-search,
@@ -629,7 +629,7 @@ Value Search::Worker::search(
     // Check if we have an upcoming move that draws by repetition
     if (!rootNode && alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
     {
-        alpha = value_draw(nodes);
+        alpha = value_draw(nodes.load(std::memory_order_relaxed));
         if (alpha >= beta)
             return alpha;
     }
@@ -675,7 +675,9 @@ Value Search::Worker::search(
         // Step 2. Check for aborted search and immediate draw
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
-            return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : value_draw(nodes);
+            return (ss->ply >= MAX_PLY && !ss->inCheck)
+                   ? evaluate(pos)
+                   : value_draw(nodes.load(std::memory_order_relaxed));
 
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
@@ -1021,7 +1023,7 @@ moves_loop:  // When in check, search starts here
 
         ss->moveCount = ++moveCount;
 
-        if (rootNode && is_mainthread() && nodes > 10000000)
+        if (rootNode && is_mainthread() && nodes.load(std::memory_order_relaxed) > 10000000)
         {
             main_manager()->updates.onIter(
               {depth, UCIEngine::move(move, pos.is_chess960()), moveCount + pvIdx});
@@ -1185,7 +1187,7 @@ moves_loop:  // When in check, search starts here
 
         // Add extension to new depth
         newDepth += extension;
-        uint64_t nodeCount = rootNode ? uint64_t(nodes) : 0;
+        uint64_t nodeCount = rootNode ? uint64_t(nodes.load(std::memory_order_relaxed)) : 0;
 
         // Decrease reduction for PvNodes (*Scaler)
         if (ss->ttPv)
@@ -1305,7 +1307,7 @@ moves_loop:  // When in check, search starts here
         {
             RootMove& rm = *std::find(rootMoves.begin(), rootMoves.end(), move);
 
-            rm.effort += nodes - nodeCount;
+            rm.effort += nodes.load(std::memory_order_relaxed) - nodeCount;
 
             rm.averageScore =
               rm.averageScore != -VALUE_INFINITE ? (value + rm.averageScore) / 2 : value;
@@ -1354,7 +1356,8 @@ moves_loop:  // When in check, search starts here
 
         // In case we have an alternative move equal in eval to the current bestmove,
         // promote it to bestmove by pretending it just exceeds alpha (but not beta).
-        int inc = (value == bestValue && ss->ply + 2 >= rootDepth && (int(nodes) & 14) == 0
+        int inc = (value == bestValue && ss->ply + 2 >= rootDepth
+                   && (int(nodes.load(std::memory_order_relaxed)) & 14) == 0
                    && !is_win(std::abs(value) + 1));
 
         if (value + inc > bestValue)
@@ -1504,7 +1507,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     // Check if we have an upcoming move that draws by repetition
     if (alpha < VALUE_DRAW && pos.upcoming_repetition(ss->ply))
     {
-        alpha = value_draw(nodes);
+        alpha = value_draw(nodes.load(std::memory_order_relaxed));
         if (alpha >= beta)
             return alpha;
     }
