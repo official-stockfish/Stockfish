@@ -834,16 +834,8 @@ ifeq ($(pext),yes)
 endif
 
 ### 3.8.1 Try to include git commit sha for versioning
-GIT_SHA := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8)
-ifneq ($(GIT_SHA), )
-	CXXFLAGS += -DGIT_SHA=$(GIT_SHA)
-endif
-
-### 3.8.2 Try to include git commit date for versioning
-GIT_DATE := $(shell git show -s --date=format:'%Y%m%d' --format=%cd HEAD 2>/dev/null)
-ifneq ($(GIT_DATE), )
-	CXXFLAGS += -DGIT_DATE=$(GIT_DATE)
-endif
+GIT_SHA_FILE  := .git_sha.txt
+GIT_DATE_FILE := .git_date.txt
 
 ### 3.8.3 Try to include architecture
 ifneq ($(ARCH), )
@@ -1131,9 +1123,45 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+$(GIT_SHA_FILE): FORCE
+	@tmp="$@.tmp"; \
+	sha="$$(git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)"; \
+	printf '%s\n' "$$sha" > "$$tmp"; \
+	old=""; \
+	if [ -f "$@" ]; then \
+		read old < "$@"; \
+	fi; \
+	read new < "$$tmp"; \
+	if [ "$$old" = "$$new" ]; then \
+		rm -f "$$tmp"; \
+	else \
+		mv -f "$$tmp" "$@"; \
+	fi
+
+$(GIT_DATE_FILE): FORCE
+	@tmp="$@.tmp"; \
+	date="$$(git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)"; \
+	printf '%s\n' "$$date" > "$$tmp"; \
+	old=""; \
+	if [ -f "$@" ]; then \
+		read old < "$@"; \
+	fi; \
+	read new < "$$tmp"; \
+	if [ "$$old" = "$$new" ]; then \
+		rm -f "$$tmp"; \
+	else \
+		mv -f "$$tmp" "$@"; \
+	fi
+
 # Force recompilation to ensure version info is up-to-date
-misc.o: FORCE
-FORCE:
+misc.o: misc.cpp $(GIT_SHA_FILE) $(GIT_DATE_FILE)
+       @sha="$$(cat $(GIT_SHA_FILE))"; \
+       date="$$(cat $(GIT_DATE_FILE))"; \
+       defs=""; \
+       test -n "$$sha"  && defs="$$defs -DGIT_SHA=$$sha"; \
+       test -n "$$date" && defs="$$defs -DGIT_DATE=$$date"; \
+       echo "$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@"; \
+       $(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
