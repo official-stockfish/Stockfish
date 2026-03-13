@@ -1155,13 +1155,13 @@ $(GIT_DATE_FILE): FORCE
 
 # Force recompilation to ensure version info is up-to-date
 misc.o: misc.cpp $(GIT_SHA_FILE) $(GIT_DATE_FILE)
-       @sha="$$(cat $(GIT_SHA_FILE))"; \
-       date="$$(cat $(GIT_DATE_FILE))"; \
-       defs=""; \
-       test -n "$$sha"  && defs="$$defs -DGIT_SHA=$$sha"; \
-       test -n "$$date" && defs="$$defs -DGIT_DATE=$$date"; \
-       echo "$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@"; \
-       $(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@
+	@sha="$$(cat $(GIT_SHA_FILE))"; \
+	date="$$(cat $(GIT_DATE_FILE))"; \
+	defs=""; \
+	test -n "$$sha"  && defs="$$defs -DGIT_SHA=$$sha"; \
+	test -n "$$date" && defs="$$defs -DGIT_DATE=$$date"; \
+	echo "$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@"; \
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
