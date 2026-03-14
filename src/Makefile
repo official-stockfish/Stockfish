@@ -836,6 +836,25 @@ endif
 ### 3.8.1 Try to include git commit sha for versioning
 GIT_SHA_FILE  := .git_sha.txt
 GIT_DATE_FILE := .git_date.txt
+GIT_SHA       := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
+GIT_DATE      := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
+COMPILER_DATE := $(shell printf '%s\n' '__DATE__' | $(CXX) -E -x c++ - 2>/dev/null | tail -n 1)
+BUILD_DATE    := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
+
+define cache_file_contents
+$(shell tmp="$(1).tmp"; \
+	printf '%s\n' "$(2)" > "$$tmp"; \
+	if ! cmp -s "$$tmp" "$(1)" 2>/dev/null; then \
+		mv -f "$$tmp" "$(1)"; \
+	else \
+		rm -f "$$tmp"; \
+	fi)
+endef
+
+ifneq ($(filter $(MAKECMDGOALS),help strip install clean net objclean profileclean format config-sanity),$(MAKECMDGOALS))
+_ := $(call cache_file_contents,$(GIT_SHA_FILE),$(GIT_SHA))
+_ := $(call cache_file_contents,$(GIT_DATE_FILE),$(BUILD_DATE))
+endif
 
 ### 3.8.3 Try to include architecture
 ifneq ($(ARCH), )
@@ -1123,45 +1142,16 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
-$(GIT_SHA_FILE): FORCE
-	@tmp="$@.tmp"; \
-	sha="$$(git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)"; \
-	printf '%s\n' "$$sha" > "$$tmp"; \
-	old=""; \
-	if [ -f "$@" ]; then \
-		read old < "$@"; \
-	fi; \
-	read new < "$$tmp"; \
-	if [ "$$old" = "$$new" ]; then \
-		rm -f "$$tmp"; \
-	else \
-		mv -f "$$tmp" "$@"; \
-	fi
-
-$(GIT_DATE_FILE): FORCE
-	@tmp="$@.tmp"; \
-	date="$$(git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)"; \
-	printf '%s\n' "$$date" > "$$tmp"; \
-	old=""; \
-	if [ -f "$@" ]; then \
-		read old < "$@"; \
-	fi; \
-	read new < "$$tmp"; \
-	if [ "$$old" = "$$new" ]; then \
-		rm -f "$$tmp"; \
-	else \
-		mv -f "$$tmp" "$@"; \
-	fi
-
-# Force recompilation to ensure version info is up-to-date
+# Cache git metadata when available, otherwise cache the compiler date.
 misc.o: misc.cpp $(GIT_SHA_FILE) $(GIT_DATE_FILE)
 	@sha="$$(cat $(GIT_SHA_FILE))"; \
-	date="$$(cat $(GIT_DATE_FILE))"; \
-	defs=""; \
-	test -n "$$sha"  && defs="$$defs -DGIT_SHA=$$sha"; \
-	test -n "$$date" && defs="$$defs -DGIT_DATE=$$date"; \
-	echo "$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@"; \
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $$defs -c $< -o $@
+	set -- $(CXX) $(CPPFLAGS) $(CXXFLAGS); \
+	test -n "$$sha"  && set -- "$$@" -DGIT_SHA=$$sha; \
+	test -n "$(GIT_DATE)" && set -- "$$@" -DGIT_DATE=$(GIT_DATE); \
+	set -- "$$@" -c $< -o $@; \
+	printf '%s ' "$$@"; \
+	printf '\n'; \
+	"$$@"
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
