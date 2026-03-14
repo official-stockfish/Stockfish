@@ -323,30 +323,44 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         if (++num_castling_rights > 4)
             return PositionSetError("Invalid FEN. Maximum of 4 castling rights can be specified.");
 
-        Square rsq;
+        Square rsq  = SQ_NONE;
         Color  c    = islower(token) ? BLACK : WHITE;
         Piece  rook = make_piece(c, ROOK);
+        Piece  king = make_piece(c, KING);
 
         token = char(toupper(token));
 
         if (token == 'K')
-            for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook && file_of(rsq) >= FILE_A;
-                 --rsq)
-            {}
-
+        {
+            rsq = relative_square(c, SQ_H1);
+            for (int i = 0; i < 7; ++i, --rsq)
+            {
+                const Piece pc = piece_on(rsq);
+                if (pc == rook || pc == king)
+                    break;
+            }
+        }
         else if (token == 'Q')
-            for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook && file_of(rsq) <= FILE_H;
-                 ++rsq)
-            {}
-
+        {
+            rsq = relative_square(c, SQ_A1);
+            for (int i = 0; i < 7; ++i, ++rsq)
+            {
+                const Piece pc = piece_on(rsq);
+                if (pc == rook || pc == king)
+                    break;
+            }
+        }
         else if (token >= 'A' && token <= 'H')
+        {
             rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
-
+        }
         else
+        {
             return PositionSetError(std::string("Invalid FEN. Expected castling rights. Got: ")
                                     + std::string(1, token));
+        }
 
-        if (piece_on(rsq) != rook)
+        if (!is_ok(rsq) || piece_on(rsq) != rook)
             return PositionSetError(
               "Invalid FEN. Trying to set castling rights without required rook.");
 
