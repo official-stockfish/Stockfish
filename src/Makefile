@@ -1142,6 +1142,9 @@ config-sanity: net
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
+%.o: %.cpp
+	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS)) -c -o $@ $<
+
 # Cache git metadata when available, otherwise cache the compiler date.
 misc.o: misc.cpp $(GIT_SHA_FILE) $(GIT_DATE_FILE)
 	@sha="$$(cat $(GIT_SHA_FILE))"; \
