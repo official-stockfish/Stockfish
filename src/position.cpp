@@ -162,8 +162,8 @@ void Position::init() {
 
 
 // Initializes the position object with the given FEN string.
-// This function is not very robust - make sure that input FENs are correct,
-// this is assumed to be the responsibility of the GUI.
+// The FEN string is strictly validated; if it is invalid or inconsistent,
+// a PositionSetError describing the problem is returned, otherwise std::nullopt.
 std::optional<PositionSetError>
 Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     /*
@@ -247,7 +247,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         }
         else
         {
-            if (file > FILE_NB)
+            if (file >= FILE_NB)
                 return PositionSetError("Invalid FEN. Invalid file reached.");
 
             const size_t idx = PieceToChar.find(token);
@@ -301,7 +301,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         return PositionSetError(std::string("Invalid FEN. Invalid side to move: ")
                                 + std::string(1, token));
     sideToMove = (token == 'w' ? WHITE : BLACK);
-    ss >> token;
+    if (!(ss >> token) || !isspace(token) || ss.eof())
+        return PositionSetError("Invalid FEN. Expected whitespace after side to move.");
 
     // 3. Castling availability. Compatible with 3 standards: Normal FEN standard,
     // Shredder-FEN that uses the letters of the columns on which the rooks began
@@ -318,7 +319,11 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             break;
 
         if (num_castling_rights == 0 && token == '-')
+        {
+            if (!(ss >> token) || !isspace(token) || ss.eof())
+                return PositionSetError("Invalid FEN. Expected whitespace after castling rights.");
             break;
+        }
 
         if (++num_castling_rights > 4)
             return PositionSetError("Invalid FEN. Maximum of 4 castling rights can be specified.");
@@ -366,8 +371,6 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
         set_castling_right(c, rsq);
     }
-
-    ss >> std::ws;
 
     // 4. En passant square.
     // Ignore if square is invalid or not on side to move relative rank 6.
@@ -427,7 +430,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     if (attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
         return PositionSetError("Unsupported position. King can be captured.");
 
-    Bitboard our_checkers = attackers_to_exist(square<KING>(sideToMove), pieces(), ~sideToMove);
+    Bitboard our_checkers = attackers_to(square<KING>(sideToMove), pieces()) & pieces(~sideToMove);
     switch (popcount(our_checkers))
     {
     case 0 :

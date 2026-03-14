@@ -208,9 +208,6 @@ std::optional<PositionSetError> Engine::set_position(const std::string&         
         auto m = UCIEngine::to_move(pos, move);
 
         if (m == Move::none())
-            break;
-
-        if (!pos.pseudo_legal(m) || !pos.legal(m))
             return PositionSetError("Illegal move: " + move);
 
         states->emplace_back();
