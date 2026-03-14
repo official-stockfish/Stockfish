@@ -414,7 +414,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     ss >> std::skipws >> st->rule50 >> gamePly;
 
     // Normally values larger than 99 would be pointless but we do support ignoring 50 move rule for TB purposes.
-    if (st->rule50 < 0 || st->rule50 > 100000)
+    // Limit at 2**15 as it's used multiplicativly with position evaluation during search.
+    if (st->rule50 < 0 || st->rule50 > 32767)
         return PositionSetError("Unsupported position. Rule50 counter out of range.");
 
     if (gamePly < 0 || gamePly > 100000)
