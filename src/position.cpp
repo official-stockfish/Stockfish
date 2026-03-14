@@ -365,7 +365,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
                                     + std::string(1, token));
         }
 
-        if (!is_ok(rsq) || piece_on(rsq) != rook)
+        if (piece_on(rsq) != rook)
             return PositionSetError(
               "Invalid FEN. Trying to set castling rights without required rook.");
 
