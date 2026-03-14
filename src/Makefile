@@ -834,12 +834,12 @@ ifeq ($(pext),yes)
 endif
 
 ### 3.8.1 Try to include git commit sha for versioning
-GIT_SHA_FILE  := .git_sha.txt
-GIT_DATE_FILE := .git_date.txt
-GIT_SHA       := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
-GIT_DATE      := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
-COMPILER_DATE := $(shell printf '%s\n' '__DATE__' | $(CXX) -E -x c++ - 2>/dev/null | tail -n 1)
-BUILD_DATE    := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
+BUILD_SHA_FILE  := .build_sha.txt
+BUILD_DATE_FILE := .build_date.txt
+GIT_SHA         := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
+GIT_DATE        := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
+COMPILER_DATE   := $(shell printf '%s\n' '__DATE__' | $(CXX) -E -x c++ - 2>/dev/null | tail -n 1)
+BUILD_DATE      := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
 
 define cache_file_contents
 $(shell tmp="$(1).tmp"; \
@@ -852,8 +852,8 @@ $(shell tmp="$(1).tmp"; \
 endef
 
 ifneq ($(filter $(MAKECMDGOALS),help strip install clean net objclean profileclean format config-sanity),$(MAKECMDGOALS))
-_ := $(call cache_file_contents,$(GIT_SHA_FILE),$(GIT_SHA))
-_ := $(call cache_file_contents,$(GIT_DATE_FILE),$(BUILD_DATE))
+_ := $(call cache_file_contents,$(BUILD_SHA_FILE),$(GIT_SHA))
+_ := $(call cache_file_contents,$(BUILD_DATE_FILE),$(BUILD_DATE))
 endif
 
 ### 3.8.3 Try to include architecture
@@ -1146,8 +1146,8 @@ $(EXE): $(OBJS)
 	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS)) -c -o $@ $<
 
 # Cache git metadata when available, otherwise cache the compiler date.
-misc.o: misc.cpp $(GIT_SHA_FILE) $(GIT_DATE_FILE)
-	@sha="$$(cat $(GIT_SHA_FILE))"; \
+misc.o: misc.cpp $(BUILD_SHA_FILE) $(BUILD_DATE_FILE)
+	@sha="$$(cat $(BUILD_SHA_FILE))"; \
 	set -- $(CXX) $(CPPFLAGS) $(CXXFLAGS); \
 	test -n "$$sha"  && set -- "$$@" -DGIT_SHA=$$sha; \
 	test -n "$(GIT_DATE)" && set -- "$$@" -DGIT_DATE=$(GIT_DATE); \

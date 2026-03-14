@@ -2,8 +2,8 @@
 **/*.o
 **/*.s
 src/.depend
-.git_sha.txt
-.git_date.txt
+.build_sha.txt
+.build_date.txt
 
 # Built binary
 src/stockfish*
