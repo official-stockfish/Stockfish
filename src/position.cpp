@@ -309,19 +309,21 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     // the game instead of KQkq and also X-FEN standard that, in case of Chess960,
     // if an inner rook is associated with the castling right, the castling tag is
     // replaced by the file letter of the involved rook, as for the Shredder-FEN.
+    //
+    // NOTE: Due to the prevalnce of incorrect (or missing) castling rights the 
+    // validation is less strict. However, incorrect castling rights are still sanitized.
     int num_castling_rights = 0;
     for (;;)
     {
         if (!(ss >> token))
-            return PositionSetError("Invalid FEN. Unexpected end of stream.");
+            break;
 
         if (isspace(token))
             break;
 
         if (num_castling_rights == 0 && token == '-')
         {
-            if (!(ss >> token) || !isspace(token) || ss.eof())
-                return PositionSetError("Invalid FEN. Expected whitespace after castling rights.");
+            ss >> std::ws;
             break;
         }
 
@@ -329,35 +331,48 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             return PositionSetError("Invalid FEN. Maximum of 4 castling rights can be specified.");
 
         Square rsq  = SQ_NONE;
+        Square ksq  = SQ_NONE;
         Color  c    = islower(token) ? BLACK : WHITE;
         Piece  rook = make_piece(c, ROOK);
         Piece  king = make_piece(c, KING);
 
         token = char(toupper(token));
 
-        if (token == 'K')
+        if (token == 'K' || token == 'Q')
         {
-            rsq = relative_square(c, SQ_H1);
-            for (int i = 0; i < 7; ++i, --rsq)
+            const int dir = token == 'K' ? -1 : 1;
+            Square    sq  = relative_square(c, token == 'K' ? SQ_H1 : SQ_A1);
+            // Look for a rook and a king for the castling. King must come later.
+            // Only the first rook is noted.
+            // If the castling rights are available the king must always be between files 2 and 7 inclusive
+            // so there is no need to check the last square.
+            for (int i = 0; i < 7; ++i, sq = Square(sq + dir))
             {
-                const Piece pc = piece_on(rsq);
-                if (pc == rook || pc == king)
+                const Piece pc = piece_on(sq);
+                if (pc == king)
+                {
+                    ksq = sq;
                     break;
-            }
-        }
-        else if (token == 'Q')
-        {
-            rsq = relative_square(c, SQ_A1);
-            for (int i = 0; i < 7; ++i, ++rsq)
-            {
-                const Piece pc = piece_on(rsq);
-                if (pc == rook || pc == king)
-                    break;
+                }
+                else if (pc == rook && rsq == SQ_NONE)
+                {
+                    rsq = sq;
+                }
             }
         }
         else if (token >= 'A' && token <= 'H')
         {
-            rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+            const Square rsqCandidate = make_square(File(token - 'A'), relative_rank(c, RANK_1));;
+            if (piece_on(rsqCandidate) == rook)
+                rsq = rsqCandidate;
+
+            // If the castling rights are available the king must always be between files 2 and 7 inclusive.
+            Square sq = relative_square(c, SQ_B1);
+            for (int i = 0; i < 6; ++i, ++sq)
+            {
+                if (piece_on(sq) == king)
+                    ksq = sq;
+            }
         }
         else
         {
@@ -365,11 +380,9 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
                                     + std::string(1, token));
         }
 
-        if (piece_on(rsq) != rook)
-            return PositionSetError(
-              "Invalid FEN. Trying to set castling rights without required rook.");
-
-        set_castling_right(c, rsq);
+        // Only apply castling rights if they can be valid.
+        if (ksq != SQ_NONE && rsq != SQ_NONE)
+            set_castling_right(c, rsq);
     }
 
     // 4. En passant square.
