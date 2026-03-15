@@ -29,6 +29,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <sys/stat.h>
