@@ -388,9 +388,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     // 4. En passant square.
     // Ignore if square is invalid or not on side to move relative rank 6.
     bool          enpassant = false, legalEP = false;
-    unsigned char col, row;
-    if (!(ss >> col))
-        return PositionSetError("Invalid FEN. Unexpected end of stream.");
+    unsigned char col = '-', row;
+    ss >> col;
     if (col != '-')
     {
         if (!(ss >> row))
@@ -443,7 +442,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
     if (attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
         return PositionSetError("Unsupported position. King can be captured.");
-        
+
     assert(pos_is_ok());
 
     return std::nullopt;
