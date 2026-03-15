@@ -443,27 +443,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
     if (attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
         return PositionSetError("Unsupported position. King can be captured.");
-
-    Bitboard our_checkers = attackers_to(square<KING>(sideToMove), pieces()) & pieces(~sideToMove);
-    switch (popcount(our_checkers))
-    {
-    case 0 :
-        [[fallthrough]];
-    case 1 :
-        break;
-    case 2 : {
-        Square a = pop_lsb(our_checkers);
-        Square b = pop_lsb(our_checkers);
-
-        // The king cannot be collinear with the checkers
-        if (!(between_bb(a, b) & pieces(KING, sideToMove)))
-            break;
-        [[fallthrough]];
-    }
-    default :
-        return PositionSetError("Unsupported position. Too many checkers.");
-    }
-
+        
     assert(pos_is_ok());
 
     return std::nullopt;
