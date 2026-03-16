@@ -242,7 +242,7 @@ constexpr bool is_strictly_assignable_v =
 // MultiArray is a generic N-dimensional array.
 // The template parameters (Size and Sizes) encode the dimensions of the array.
 template<typename T, std::size_t Size, std::size_t... Sizes>
-class MultiArray {
+class alignas(32) MultiArray {
     using ChildType = typename Detail::MultiArrayHelper<T, Size, Sizes...>::ChildType;
     using ArrayType = std::array<ChildType, Size>;
     ArrayType data_;
