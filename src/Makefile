@@ -833,7 +833,7 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### 3.8.1 Try to include git commit sha for versioning
+### 3.8.1 Try to include git info for versioning and avoid recompiles if nothing changes
 BUILD_SHA_FILE  := .build_sha.txt
 BUILD_DATE_FILE := .build_date.txt
 GIT_SHA         := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
@@ -854,7 +854,7 @@ _ := $(call cache_file_contents,$(BUILD_SHA_FILE),$(GIT_SHA))
 _ := $(call cache_file_contents,$(BUILD_DATE_FILE),$(BUILD_DATE))
 endif
 
-### 3.8.3 Try to include architecture
+### 3.8.2 Try to include architecture
 ifneq ($(ARCH), )
 	CXXFLAGS += -DARCH=$(ARCH)
 endif
