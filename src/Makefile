@@ -842,12 +842,9 @@ COMPILER_DATE   := $(shell printf '%s\n' '__DATE__' | $(CXX) -E -x c++ - 2>/dev/
 BUILD_DATE      := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
 
 define cache_file_contents
-$(shell tmp="$(1).tmp"; \
-	printf '%s\n' "$(2)" > "$$tmp"; \
-	if ! cmp -s "$$tmp" "$(1)" 2>/dev/null; then \
-		mv -f "$$tmp" "$(1)"; \
-	else \
-		rm -f "$$tmp"; \
+$(shell \
+	if [ ! -f "$(1)" ] || [ "$$(cat "$(1)" 2>/dev/null)" != "$(2)" ]; then \
+		printf '%s\n' "$(2)" > "$(1)"; \
 	fi)
 endef
 
