@@ -364,6 +364,10 @@ Thread* ThreadPool::get_best_thread() const {
     for (auto&& th : threads)
         votes[th->worker->rootMoves[0].pv[0]] += thread_voting_value(th.get());
 
+    auto has_bound = [](const Thread* th) {
+        return th->worker->rootMoves[0].scoreLowerbound || th->worker->rootMoves[0].scoreUpperbound;
+    };
+
     for (auto&& th : threads)
     {
         const auto bestThreadScore = bestThread->worker->rootMoves[0].score;
@@ -375,13 +379,15 @@ Thread* ThreadPool::get_best_thread() const {
         const auto bestThreadMoveVote = votes[bestThreadPV[0]];
         const auto newThreadMoveVote  = votes[newThreadPV[0]];
 
-        const bool bestThreadInProvenWin = is_win(bestThreadScore);
-        const bool newThreadInProvenWin  = is_win(newThreadScore);
+        // Aborted searches may lead to inexact win scores.
+        const bool bestThreadInProvenWin = is_win(bestThreadScore) && !has_bound(bestThread);
+        const bool newThreadInProvenWin  = is_win(newThreadScore) && !has_bound(th.get());
 
+        // Loss scores may be inexact only for aborted d1 searches.
         const bool bestThreadInProvenLoss =
-          bestThreadScore != -VALUE_INFINITE && is_loss(bestThreadScore);
+          bestThreadScore != -VALUE_INFINITE && is_loss(bestThreadScore) && !has_bound(bestThread);
         const bool newThreadInProvenLoss =
-          newThreadScore != -VALUE_INFINITE && is_loss(newThreadScore);
+          newThreadScore != -VALUE_INFINITE && is_loss(newThreadScore) && !has_bound(th.get());
 
         // We make sure not to pick a thread with truncated principal variation
         const bool betterVotingValue =
@@ -391,7 +397,7 @@ Thread* ThreadPool::get_best_thread() const {
         if (bestThreadInProvenWin)
         {
             // Make sure we pick the shortest mate / TB conversion
-            if (newThreadScore > bestThreadScore)
+            if (newThreadInProvenWin && newThreadScore > bestThreadScore)
                 bestThread = th.get();
         }
         else if (bestThreadInProvenLoss)
