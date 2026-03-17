@@ -838,7 +838,8 @@ BUILD_SHA_FILE  := .build_sha.txt
 BUILD_DATE_FILE := .build_date.txt
 GIT_SHA         := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
 GIT_DATE        := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
-COMPILER_DATE   := $(shell printf '%s\n' '__DATE__' | $(CXX) -E -x c++ - 2>/dev/null | tail -n 1)
+COMPILER_DATE   := $(shell date +%Y%m%d 2>/dev/null)
+
 BUILD_DATE      := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
 
 define cache_file_contents
