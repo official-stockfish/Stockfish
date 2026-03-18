@@ -702,29 +702,16 @@ void update_accumulator_refresh_cache(Color                                 pers
 
     using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
-    const Square             ksq   = pos.square<KING>(perspective);
-    auto&                    entry = cache[ksq][perspective];
-    PSQFeatureSet::IndexList removed, added;
+    const Square                                ksq   = pos.square<KING>(perspective);
+    auto&                                       entry = cache[ksq][perspective];
+    alignas(32) PSQFeatureSet::CompactIndexList removed, added;
 
     const Bitboard changedBB = get_changed_pieces(entry.pieces, pos.piece_array());
     Bitboard       removedBB = changedBB & entry.pieceBB;
     Bitboard       addedBB   = changedBB & pos.pieces();
 
-#if defined(USE_AVX512ICL)
     PSQFeatureSet::write_indices(entry.pieces, pos.piece_array(), removedBB, addedBB, perspective,
                                  ksq, removed, added);
-#else
-    while (removedBB)
-    {
-        Square sq = pop_lsb(removedBB);
-        removed.push_back(PSQFeatureSet::make_index(perspective, sq, entry.pieces[sq], ksq));
-    }
-    while (addedBB)
-    {
-        Square sq = pop_lsb(addedBB);
-        added.push_back(PSQFeatureSet::make_index(perspective, sq, pos.piece_on(sq), ksq));
-    }
-#endif
 
     entry.pieceBB = pos.pieces();
     entry.pieces  = pos.piece_array();

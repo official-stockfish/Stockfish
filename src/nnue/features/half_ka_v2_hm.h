@@ -54,13 +54,15 @@ class HalfKAv2_hm {
         PS_NB       = 11 * SQUARE_NB
     };
 
-    static constexpr IndexType PieceSquareIndex[COLOR_NB][PIECE_NB] = {
+    alignas(32) static constexpr uint16_t PieceSquareIndex[COLOR_NB][PIECE_NB] = {
       // Convention: W - us, B - them
       // Viewed from other side, W and B are reversed
       {PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
        PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE},
       {PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE,
        PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE}};
+
+    struct BatchIndexer;
 
    public:
     // Feature name
@@ -104,9 +106,9 @@ class HalfKAv2_hm {
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
+    using CompactIndexList                         = ValueList<uint16_t, MaxActiveDimensions>;
     using DiffType                                 = DirtyPiece;
 
-#if defined(USE_AVX512ICL)
     // Compute all changed feature indices and write them to the given lists
     static void write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
                               const std::array<Piece, SQUARE_NB>& newPieces,
@@ -114,9 +116,8 @@ class HalfKAv2_hm {
                               Bitboard                            addedBB,
                               Color                               perspective,
                               Square                              ksq,
-                              IndexList&                          removed,
-                              IndexList&                          added);
-#endif
+                              CompactIndexList&                   removed,
+                              CompactIndexList&                   added);
 
     // Index of a feature for a given king position and another piece on some square
 
