@@ -36,53 +36,37 @@ namespace {
 
 #if defined(USE_AVX512ICL)
 
-inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
-    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
-    _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
-                        _mm512_maskz_compress_epi16(mask, vector));
-    return moveList + popcount(mask);
-}
+// clang-format off
+const __m512i AllSquares = _mm512_set_epi8(
+  63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41,
+  40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18,
+  17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+// clang-format on
 
 template<Direction offset>
 inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
-    alignas(64) static constexpr auto SPLAT_TABLE = [] {
-        std::array<Move, 64> table{};
-        for (int i = 0; i < 64; i++)
-        {
-            Square from{uint8_t(std::clamp(i - offset, 0, 63))};
-            table[i] = {Move(from, Square{uint8_t(i)})};
-        }
-        return table;
-    }();
+    assert(popcount(to_bb) <= 8);  // <= 8 pawns per side
 
-    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
+    const __m128i toSquares =
+      _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
+    const __m128i moves       = _mm_or_si128(_mm_slli_epi16(fromSquares, Move::FromSqShift),
+                                             _mm_slli_epi16(toSquares, Move::ToSqShift));
 
-    moveList =
-      write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
-    moveList =
-      write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
-
-    return moveList;
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(moveList), moves);
+    return moveList + popcount(to_bb);
 }
 
 inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
-    alignas(64) static constexpr auto SPLAT_TABLE = [] {
-        std::array<Move, 64> table{};
-        for (uint8_t i = 0; i < 64; i++)
-            table[i] = {Move(SQUARE_ZERO, Square{i})};
-        return table;
-    }();
+    assert(popcount(to_bb) <= 32);  // Q can attack up to 27 squares
 
-    __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
+    const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
+    const __m512i toSquares =
+      _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, Move::ToSqShift));
 
-    auto table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data());
-
-    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
-                           _mm512_or_si512(_mm512_load_si512(table + 0), fromVec));
-    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
-                           _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
-
-    return moveList;
+    _mm512_storeu_si512(moveList, moves);
+    return moveList + popcount(to_bb);
 }
 
 #else
