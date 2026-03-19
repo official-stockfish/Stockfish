@@ -89,7 +89,9 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
                     + (*(ss - 4)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                   : 8;
 
-    return 12153 * pcv + 8620 * micv + 12355 * (wnpcv + bnpcv) + 7982 * cntcv;
+    // Divide weights by CORRECTION_HISTORY_K since stored entries are K times larger
+    return (12153 * pcv + 8620 * micv + 12355 * (wnpcv + bnpcv) + 7982 * cntcv)
+         / CORRECTION_HISTORY_K;
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation
@@ -108,17 +110,18 @@ void update_correction_history(const Position& pos,
     constexpr int nonPawnWeight = 187;
     auto&         shared        = workerThread.sharedHistory;
 
-    shared.pawn_correction_entry(pos).at(us).pawn << bonus;
-    shared.minor_piece_correction_entry(pos).at(us).minor << bonus * 153 / 128;
-    shared.nonpawn_correction_entry<WHITE>(pos).at(us).nonPawnWhite << bonus * nonPawnWeight / 128;
-    shared.nonpawn_correction_entry<BLACK>(pos).at(us).nonPawnBlack << bonus * nonPawnWeight / 128;
+    const int scaledBonus = bonus * CORRECTION_HISTORY_K;
+    shared.pawn_correction_entry(pos).at(us).pawn << scaledBonus;
+    shared.minor_piece_correction_entry(pos).at(us).minor << scaledBonus * 153 / 128;
+    shared.nonpawn_correction_entry<WHITE>(pos).at(us).nonPawnWhite << scaledBonus * nonPawnWeight / 128;
+    shared.nonpawn_correction_entry<BLACK>(pos).at(us).nonPawnBlack << scaledBonus * nonPawnWeight / 128;
 
     // Branchless: use mask to zero bonus when move is not ok
     const int    mask   = int(m.is_ok());
     const Square to     = m.to_sq_unchecked();
     const Piece  pc     = pos.piece_on(to);
-    const int    bonus2 = (bonus * 126 / 128) * mask;
-    const int    bonus4 = (bonus * 63 / 128) * mask;
+    const int    bonus2 = (scaledBonus * 126 / 128) * mask;
+    const int    bonus4 = (scaledBonus * 63 / 128) * mask;
     (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus2;
     (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus4;
 }
