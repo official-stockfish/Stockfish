@@ -38,7 +38,8 @@ namespace Stockfish {
 constexpr int PAWN_HISTORY_BASE_SIZE   = 8192;  // has to be a power of 2
 constexpr int UINT_16_HISTORY_SIZE     = std::numeric_limits<uint16_t>::max() + 1;
 constexpr int CORRHIST_BASE_SIZE       = UINT_16_HISTORY_SIZE;
-constexpr int CORRECTION_HISTORY_LIMIT = 1024;
+constexpr int HISTORY_K                = 3;
+constexpr int CORRECTION_HISTORY_LIMIT = 1024 * HISTORY_K;
 constexpr int LOW_PLY_HISTORY_SIZE     = 5;
 
 static_assert((PAWN_HISTORY_BASE_SIZE & (PAWN_HISTORY_BASE_SIZE - 1)) == 0,
@@ -132,14 +133,15 @@ struct DynStats {
 // during the current search, and is used for reduction and move ordering decisions.
 // It uses 2 tables (one for each color) indexed by the move's from and to squares,
 // see https://www.chessprogramming.org/Butterfly_Boards
-using ButterflyHistory = Stats<std::int16_t, 7183, COLOR_NB, UINT_16_HISTORY_SIZE>;
+using ButterflyHistory = Stats<std::int16_t, 7183 * HISTORY_K, COLOR_NB, UINT_16_HISTORY_SIZE>;
 
 // LowPlyHistory is addressed by ply and move's from and to squares, used
 // to improve move ordering near the root
 using LowPlyHistory = Stats<std::int16_t, 7183, LOW_PLY_HISTORY_SIZE, UINT_16_HISTORY_SIZE>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-using CapturePieceToHistory = Stats<std::int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
+using CapturePieceToHistory =
+  Stats<std::int16_t, 10692 * HISTORY_K, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
 using PieceToHistory = Stats<std::int16_t, 30000, PIECE_NB, SQUARE_NB>;
@@ -150,8 +152,8 @@ using PieceToHistory = Stats<std::int16_t, 30000, PIECE_NB, SQUARE_NB>;
 using ContinuationHistory = MultiArray<PieceToHistory, PIECE_NB, SQUARE_NB>;
 
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
-using PawnHistory =
-  DynStats<AtomicStats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>, PAWN_HISTORY_BASE_SIZE>;
+using PawnHistory = DynStats<AtomicStats<std::int16_t, 8192 * HISTORY_K, PIECE_NB, SQUARE_NB>,
+                             PAWN_HISTORY_BASE_SIZE>;
 
 // Correction histories record differences between the static evaluation of
 // positions and their search score. It is used to improve the static evaluation

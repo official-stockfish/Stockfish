@@ -89,7 +89,7 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
                     + (*(ss - 4)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                   : 8;
 
-    return 12153 * pcv + 8620 * micv + 12355 * (wnpcv + bnpcv) + 7982 * cntcv;
+    return (12153 * pcv + 8620 * micv + 12355 * (wnpcv + bnpcv) + 7982 * cntcv) / HISTORY_K;
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation
@@ -108,17 +108,20 @@ void update_correction_history(const Position& pos,
     constexpr int nonPawnWeight = 187;
     auto&         shared        = workerThread.sharedHistory;
 
-    shared.pawn_correction_entry(pos).at(us).pawn << bonus;
-    shared.minor_piece_correction_entry(pos).at(us).minor << bonus * 153 / 128;
-    shared.nonpawn_correction_entry<WHITE>(pos).at(us).nonPawnWhite << bonus * nonPawnWeight / 128;
-    shared.nonpawn_correction_entry<BLACK>(pos).at(us).nonPawnBlack << bonus * nonPawnWeight / 128;
+    const int scaledBonus = bonus * HISTORY_K;
+    shared.pawn_correction_entry(pos).at(us).pawn << scaledBonus;
+    shared.minor_piece_correction_entry(pos).at(us).minor << scaledBonus * 153 / 128;
+    shared.nonpawn_correction_entry<WHITE>(pos).at(us).nonPawnWhite
+      << scaledBonus * nonPawnWeight / 128;
+    shared.nonpawn_correction_entry<BLACK>(pos).at(us).nonPawnBlack
+      << scaledBonus * nonPawnWeight / 128;
 
     // Branchless: use mask to zero bonus when move is not ok
     const int    mask   = int(m.is_ok());
     const Square to     = m.to_sq_unchecked();
     const Piece  pc     = pos.piece_on(to);
-    const int    bonus2 = (bonus * 126 / 128) * mask;
-    const int    bonus4 = (bonus * 63 / 128) * mask;
+    const int    bonus2 = (scaledBonus * 126 / 128) * mask;
+    const int    bonus4 = (scaledBonus * 63 / 128) * mask;
     (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus2;
     (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus4;
 }
@@ -601,11 +604,11 @@ void Search::Worker::undo_null_move(Position& pos) { pos.undo_null_move(); }
 // Reset histories, usually before a new game
 void Search::Worker::clear() {
     mainHistory.fill(0);
-    captureHistory.fill(-678);
+    captureHistory.fill(-678 * HISTORY_K);
 
     // Each thread is responsible for clearing their part of shared history
     sharedHistory.correctionHistory.clear_range(0, numaThreadIdx, numaTotal);
-    sharedHistory.pawnHistory.clear_range(-1238, numaThreadIdx, numaTotal);
+    sharedHistory.pawnHistory.clear_range(-1238 * HISTORY_K, numaThreadIdx, numaTotal);
 
     ttMoveHistory = 0;
 
@@ -880,10 +883,11 @@ Value Search::Worker::search(
     if (((ss - 1)->currentMove).is_ok() && !(ss - 1)->inCheck && !priorCapture)
     {
         int evalDiff = std::clamp(-int((ss - 1)->staticEval + ss->staticEval), -214, 171) + 60;
-        mainHistory[~us][((ss - 1)->currentMove).raw()] << evalDiff * 10;
+        mainHistory[~us][((ss - 1)->currentMove).raw()] << evalDiff * 10 * HISTORY_K;
         if (!ttHit && type_of(pos.piece_on(prevSq)) != PAWN
             && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq] << evalDiff * 12;
+            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq]
+              << evalDiff * 12 * HISTORY_K;
     }
 
 
@@ -1458,10 +1462,11 @@ moves_loop:  // When in check, search starts here
         update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
                                       scaledBonus * 221 / 16384);
 
-        mainHistory[~us][((ss - 1)->currentMove).raw()] << scaledBonus * 235 / 32768;
+        mainHistory[~us][((ss - 1)->currentMove).raw()] << scaledBonus * 235 * HISTORY_K / 32768;
 
         if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq] << scaledBonus * 290 / 8192;
+            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq]
+              << scaledBonus * 290 * HISTORY_K / 8192;
     }
 
     // Bonus for prior capture countermove that caused the fail low
@@ -1469,7 +1474,7 @@ moves_loop:  // When in check, search starts here
     {
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
-        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 1018;
+        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 1018 * HISTORY_K;
     }
 
     if (PvNode)
@@ -1870,7 +1875,8 @@ void update_all_stats(const Position& pos,
     {
         // Increase stats for the best move in case it was a capture move
         capturedPiece = type_of(pos.piece_on(bestMove.to_sq()));
-        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus * 1286 / 1024;
+        captureHistory[movedPiece][bestMove.to_sq()][capturedPiece]
+          << bonus * 1286 * HISTORY_K / 1024;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
@@ -1883,7 +1889,7 @@ void update_all_stats(const Position& pos,
     {
         movedPiece    = pos.moved_piece(move);
         capturedPiece = type_of(pos.piece_on(move.to_sq()));
-        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1559 / 1024;
+        captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1559 * HISTORY_K / 1024;
     }
 }
 
@@ -1922,7 +1928,8 @@ void update_quiet_histories(
   const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus) {
 
     Color us = pos.side_to_move();
-    workerThread.mainHistory[us][move.raw()] << bonus;  // Untuned to prevent duplicate effort
+    workerThread.mainHistory[us][move.raw()]
+      << bonus * HISTORY_K;  // Untuned to prevent duplicate effort
 
     if (ss->ply < LOW_PLY_HISTORY_SIZE)
         workerThread.lowPlyHistory[ss->ply][move.raw()] << bonus * 682 / 1024;
@@ -1930,7 +1937,7 @@ void update_quiet_histories(
     update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(), bonus * 894 / 1024);
 
     workerThread.sharedHistory.pawn_entry(pos)[pos.moved_piece(move)][move.to_sq()]
-      << bonus * (bonus > 0 ? 974 : 543) / 1024;
+      << bonus * (bonus > 0 ? 974 : 543) * HISTORY_K / 1024;
 }
 
 }
