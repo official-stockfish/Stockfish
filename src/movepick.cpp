@@ -118,6 +118,39 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
     stage = PROBCUT_TT + !(ttm && pos.capture_stage(ttm) && pos.pseudo_legal(ttm));
 }
 
+#if defined(USE_AVX512)
+static void init_quiet_hist_buffer(int                    buf[][SQUARE_NB],
+                                   const Position&        pos,
+                                   const PieceToHistory** continuationHistory,
+                                   const SharedHistories* sharedHistory) {
+
+    // Load 16 contiguous int16 values and sign-extend to 16 int32 values
+    const auto load_i16_as_i32 = [](const auto* src) -> __m512i {
+        return _mm512_cvtepi16_epi32(_mm256_load_si256(reinterpret_cast<const __m256i*>(src)));
+    };
+
+    // Precompute a combined history score for every (piece, square)
+    // pair processing 16 squares per iteration. Each entry sum is
+    // 2 * pawnHistory + continuationHistory[0,1,2,3,5]
+    for (PieceType pt = PAWN; pt <= KING; ++pt)
+    {
+        const Piece pc = make_piece(pos.side_to_move(), pt);
+        auto&       ph = sharedHistory->pawn_entry(pos)[pc];
+
+        for (int sq = 0; sq < SQUARE_NB; sq += 16)
+        {
+            // Pawn history is weighted by 2 so shift left by 1
+            __m512i sum = _mm512_slli_epi32(load_i16_as_i32(&ph[sq]), 1);
+
+            for (int j : {0, 1, 2, 3, 5})
+                sum = _mm512_add_epi32(sum, load_i16_as_i32(&(*continuationHistory[j])[pc][sq]));
+
+            _mm512_store_epi32(&buf[pt][sq], sum);
+        }
+    }
+}
+#endif
+
 // Assigns a numerical value to each move in a list, used for sorting.
 // Captures are ordered by Most Valuable Victim (MVV), preferring captures
 // with a good history. Quiets moves are ordered using the history tables.
@@ -129,6 +162,9 @@ ExtMove* MovePicker::score(const MoveList<Type>& ml) {
     Color us = pos.side_to_move();
 
     [[maybe_unused]] Bitboard threatByLesser[KING + 1];
+    #if defined(USE_AVX512)
+    [[maybe_unused]] alignas(64) int histBuffer[KING + 1][SQUARE_NB];
+    #endif
     if constexpr (Type == QUIETS)
     {
         threatByLesser[PAWN]   = 0;
@@ -137,6 +173,10 @@ ExtMove* MovePicker::score(const MoveList<Type>& ml) {
           pos.attacks_by<KNIGHT>(~us) | pos.attacks_by<BISHOP>(~us) | threatByLesser[KNIGHT];
         threatByLesser[QUEEN] = pos.attacks_by<ROOK>(~us) | threatByLesser[ROOK];
         threatByLesser[KING]  = 0;
+
+        #if defined(USE_AVX512)
+            init_quiet_hist_buffer(histBuffer, pos, continuationHistory, sharedHistory);
+        #endif
     }
 
     ExtMove* it = cur;
@@ -159,12 +199,17 @@ ExtMove* MovePicker::score(const MoveList<Type>& ml) {
         {
             // histories
             m.value = 2 * (*mainHistory)[us][m.raw()];
-            m.value += 2 * sharedHistory->pawn_entry(pos)[pc][to];
-            m.value += (*continuationHistory[0])[pc][to];
-            m.value += (*continuationHistory[1])[pc][to];
-            m.value += (*continuationHistory[2])[pc][to];
-            m.value += (*continuationHistory[3])[pc][to];
-            m.value += (*continuationHistory[5])[pc][to];
+
+            #if defined(USE_AVX512)
+                m.value += histBuffer[pt][to];
+            #else
+                m.value += 2 * sharedHistory->pawn_entry(pos)[pc][to];
+                m.value += (*continuationHistory[0])[pc][to];
+                m.value += (*continuationHistory[1])[pc][to];
+                m.value += (*continuationHistory[2])[pc][to];
+                m.value += (*continuationHistory[3])[pc][to];
+                m.value += (*continuationHistory[5])[pc][to];
+            #endif
 
             // bonus for checks
             m.value += (bool(pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
