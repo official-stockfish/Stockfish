@@ -351,7 +351,7 @@ void Search::Worker::iterative_deepening() {
             selDepth = 0;
 
             // Reset aspiration window starting size
-            delta     = 5 + threadIdx % 8 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 10208;
+            delta     = 10 + threadIdx % 8 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 8192;
             Value avg = rootMoves[pvIdx].averageScore;
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
@@ -897,7 +897,7 @@ Value Search::Worker::search(
     // The depth condition is important for mate finding.
     {
         auto futility_margin = [&](Depth d) {
-            Value futilityMult = 76 - 21 * !ss->ttHit;
+            Value futilityMult = 85 - 15 * !ss->ttHit; // Tăng base margin để tính cẩn thận hơn
 
             return futilityMult * d
                  - (2686 * improving + 362 * opponentWorsening) * futilityMult / 1024  //
