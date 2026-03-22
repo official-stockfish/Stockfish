@@ -379,8 +379,8 @@ struct AccumulatorUpdateContext {
     #ifdef USE_NEON
                 for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
                 {
-                    acc[k]     = vec_sub_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
-                    acc[k + 1] = vec_sub_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
+                    acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
+                    acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
                 }
     #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
@@ -397,8 +397,8 @@ struct AccumulatorUpdateContext {
     #ifdef USE_NEON
                 for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
                 {
-                    acc[k]     = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
-                    acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
+                    acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
+                    acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
                 }
     #else
                 for (IndexType k = 0; k < Tiling::NumRegs; ++k)
@@ -890,8 +890,8 @@ void update_threats_accumulator_full(Color                                 persp
     #ifdef USE_NEON
             for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
             {
-                acc[k]     = vec_add_16(acc[k], vmovl_s8(vget_low_s8(column[k / 2])));
-                acc[k + 1] = vec_add_16(acc[k + 1], vmovl_high_s8(column[k / 2]));
+                acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
+                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
             }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
