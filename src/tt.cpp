@@ -25,6 +25,7 @@
 #include <cstring>
 #include <iostream>
 #include <numeric>
+#include <vector>
 
 #include "memory.h"
 #include "misc.h"
