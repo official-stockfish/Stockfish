@@ -31,7 +31,7 @@
     // IWYU pragma: no_include <bits/mman-map-flags-generic.h>
     #include <cstring>
     #include <mutex>
-    #include <vector>
+    #include <map>
 #endif
 
 #if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) \
@@ -132,13 +132,9 @@ void* aligned_large_pages_alloc(size_t allocSize) {
         #define HAS_HUGE_PAGES
 
 constexpr size_t HugePageSize = size_t(1) << 30;
-struct HugePageAllocation {
-    void*  mem;
-    size_t bytes;
-};
 
-static std::vector<HugePageAllocation> huge_pages;
-static std::mutex                      huge_pages_mtx;
+static std::map<void*, size_t> huge_pages;
+static std::mutex              huge_pages_mtx;
 
 static void* try_huge_pages_alloc(size_t allocSize) {
     size_t size = ((allocSize + HugePageSize - 1) / HugePageSize) * HugePageSize;
@@ -149,7 +145,7 @@ static void* try_huge_pages_alloc(size_t allocSize) {
         return nullptr;
 
     std::lock_guard lg(huge_pages_mtx);
-    huge_pages.push_back({mem, size});
+    huge_pages[mem] = size;
     return mem;
 }
     #endif  // defined(__linux__) && defined(MAP_HUGE_SHIFT)
@@ -237,18 +233,15 @@ void aligned_large_pages_free(void* mem) {
 
     #ifdef HAS_HUGE_PAGES
     std::lock_guard lg(huge_pages_mtx);
-    for (auto it = huge_pages.begin(); it != huge_pages.end(); ++it)
+    if (auto it = huge_pages.find(mem); it != huge_pages.end())
     {
-        if (it->mem == mem)
+        if (munmap(mem, it->second) != 0)
         {
-            if (munmap(mem, it->bytes) != 0)
-            {
-                std::cerr << "munmap failed: " << strerror(errno) << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            huge_pages.erase(it);
-            return;
+            std::cerr << "munmap failed: " << strerror(errno) << std::endl;
+            exit(EXIT_FAILURE);
         }
+        huge_pages.erase(it);
+        return;
     }
     #endif
 
