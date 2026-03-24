@@ -20,7 +20,6 @@
 
 #include <cstdlib>
 #include <iostream>  // std::cerr
-#include <ostream>   // std::endl
 
 #if __has_include("features.h")
     #include <features.h>
@@ -29,6 +28,7 @@
 #if defined(__linux__) && !defined(__ANDROID__)
     #include <errno.h>
     #include <sys/mman.h>
+    // IWYU pragma: no_include <bits/mman-map-flags-generic.h>
     #include <cstring>
     #include <mutex>
     #include <vector>
