@@ -18,11 +18,13 @@
 
 #include "tt.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <numeric>
 
 #include "memory.h"
 #include "misc.h"
@@ -153,9 +155,13 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
     aligned_large_pages_free(table);
 
-    clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
+    clusterCount   = mbSize * 1024 * 1024 / sizeof(Cluster);
+    size_t ttBytes = clusterCount * sizeof(Cluster);
 
-    table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
+    // Request 1GB pages if we'd get at least one per NUMA node
+    bool hugePageHint = ttBytes >= threads.numa_nodes() * HugePageSize;
+
+    table = static_cast<Cluster*>(aligned_large_pages_alloc_with_hint(ttBytes, hugePageHint));
 
     if (!table)
     {
@@ -173,9 +179,23 @@ void TranspositionTable::clear(ThreadPool& threads) {
     generation8              = 0;
     const size_t threadCount = threads.num_threads();
 
+    std::vector<size_t> threadToNuma = threads.get_bound_thread_to_numa_node();
+
+    std::vector<size_t> order(threadCount);
+    std::iota(order.begin(), order.end(), 0);
+
+    // To promote good interleaving between NUMA nodes, we permute threads so that
+    // all threads in a NUMA node clear a contiguous region of the TT.
+    if (threadToNuma.size() == threadCount)
+    {
+        std::stable_sort(order.begin(), order.end(), [&threadToNuma](size_t t1, size_t t2) {
+            return threadToNuma.at(t1) < threadToNuma.at(t2);
+        });
+    }
+
     for (size_t i = 0; i < threadCount; ++i)
     {
-        threads.run_on_thread(i, [this, i, threadCount]() {
+        threads.run_on_thread(order[i], [this, i, threadCount]() {
             // Each thread will zero its part of the hash table
             const size_t stride = clusterCount / threadCount;
             const size_t start  = stride * i;

@@ -98,7 +98,7 @@ void std_aligned_free(void* ptr) {
 }
 
 // aligned_large_pages_alloc() will return suitably aligned memory,
-// if possible using large pages, or on Linux for allocSize >= 1GB, 1GB huge pages.
+// if possible using large pages.
 
 #if defined(_WIN32)
 
@@ -114,7 +114,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       []() { return (void*) nullptr; });
 }
 
-void* aligned_large_pages_alloc(size_t allocSize) {
+void* aligned_large_pages_alloc_with_hint(size_t allocSize, bool) {
 
     // Try to allocate large pages
     void* mem = aligned_large_pages_alloc_windows(allocSize);
@@ -130,8 +130,6 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 
     #if defined(__linux__) && defined(MAP_HUGE_SHIFT)
         #define HAS_HUGE_PAGES
-
-constexpr size_t HugePageSize = size_t(1) << 30;
 
 static std::map<void*, size_t> huge_pages;
 static std::mutex              huge_pages_mtx;
@@ -150,9 +148,9 @@ static void* try_huge_pages_alloc(size_t allocSize) {
 }
     #endif  // defined(__linux__) && defined(MAP_HUGE_SHIFT)
 
-void* aligned_large_pages_alloc(size_t allocSize) {
+void* aligned_large_pages_alloc_with_hint(size_t allocSize, [[maybe_unused]] bool hugePageHint) {
     #ifdef HAS_HUGE_PAGES
-    if (allocSize >= HugePageSize)
+    if (hugePageHint && allocSize >= HugePageSize)
     {
         void* mem = try_huge_pages_alloc(allocSize);
         if (mem)
@@ -176,6 +174,10 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 }
 
 #endif
+
+void* aligned_large_pages_alloc(size_t size) {
+    return aligned_large_pages_alloc_with_hint(size, false);
+}
 
 bool has_large_pages() {
 

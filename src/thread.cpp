@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "bitboard.h"
@@ -435,6 +436,10 @@ void ThreadPool::wait_for_search_finished() const {
             th->wait_for_search_finished();
 }
 
+std::vector<size_t> ThreadPool::get_bound_thread_to_numa_node() const {
+    return boundThreadToNumaNode;
+}
+
 std::vector<size_t> ThreadPool::get_bound_thread_count_by_numa_node() const {
     std::vector<size_t> counts;
 
@@ -452,6 +457,13 @@ std::vector<size_t> ThreadPool::get_bound_thread_count_by_numa_node() const {
     }
 
     return counts;
+}
+
+size_t ThreadPool::numa_nodes() const {
+    std::unordered_set<size_t> seen;
+    for (NumaIndex n : boundThreadToNumaNode)
+        seen.insert(n);
+    return seen.size();
 }
 
 void ThreadPool::ensure_network_replicated() {
