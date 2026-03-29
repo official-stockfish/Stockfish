@@ -725,7 +725,7 @@ endif
 ifeq ($(avx2),yes)
 	CXXFLAGS += -DUSE_AVX2
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
-		CXXFLAGS += -mavx2 -mbmi
+		CXXFLAGS += -mavx2 -mbmi -mno-vzeroupper
 	endif
 endif
 
