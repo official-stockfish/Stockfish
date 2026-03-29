@@ -237,6 +237,10 @@ std::string compiler_info() {
 
     compiler += "\nCompilation settings       : ";
     compiler += (Is64Bit ? "64bit" : "32bit");
+#if defined(USE_KNM)
+    compiler += " AVX512";
+    compiler += " 4VNNIW";
+#endif
 #if defined(USE_AVX512ICL)
     compiler += " AVX512ICL";
 #endif
