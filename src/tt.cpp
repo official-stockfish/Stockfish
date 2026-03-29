@@ -57,7 +57,7 @@ struct TTEntry {
 
     bool is_occupied() const;
     void save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
-    // The returned age is a multiple of TranspositionTable::GENERATION_DELTA
+    // The returned age is a multiple of GENERATION_DELTA
     uint8_t relative_age(const uint8_t generation8) const;
 
    private:

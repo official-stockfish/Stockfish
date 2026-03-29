@@ -36,6 +36,8 @@ class Score;
 enum Square : uint8_t;
 using Value = int;
 
+constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 class UCIEngine {
    public:
     UCIEngine(int argc, char** argv);

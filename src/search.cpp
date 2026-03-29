@@ -501,7 +501,7 @@ void Search::Worker::iterative_deepening() {
         if (limits.use_time_management() && !threads.stop && !mainThread->stopOnPonderhit)
         {
             uint64_t nodesEffort =
-              rootMoves[0].effort * 100000 / std::max(size_t(1), size_t(nodes));
+              rootMoves[0].effort * 100000 / std::max(uint64_t(1), uint64_t(nodes));
 
             double fallingEval = (12.44 + 2.318 * (mainThread->bestPreviousAverageScore - bestValue)
                                   + 0.95 * (mainThread->iterValue[iterIdx] - bestValue))
@@ -829,7 +829,7 @@ Value Search::Worker::search(
             && pos.rule50_count() == 0 && !pos.can_castle(ANY_CASTLING))
         {
             TB::ProbeState err;
-            TB::WDLScore   wdl = Tablebases::probe_wdl(pos, &err);
+            TB::WDLScore   wdl = TB::probe_wdl(pos, &err);
 
             // Force check of time on the next occasion
             if (is_mainthread())
@@ -1059,7 +1059,7 @@ moves_loop:  // When in check, search starts here
 
         int delta = beta - alpha;
 
-        Depth r = reduction(improving, depth, moveCount, delta);
+        int r = reduction(improving, depth, moveCount, delta);
 
         // Increase reduction for ttPv nodes (*Scaler)
         // Larger values scale well
@@ -1753,7 +1753,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     return bestValue;
 }
 
-Depth Search::Worker::reduction(bool i, Depth d, int mn, int delta) const {
+int Search::Worker::reduction(bool i, Depth d, int mn, int delta) const {
     int reductionScale = reductions[d] * reductions[mn];
     return reductionScale - delta * 585 / rootDelta + !i * reductionScale * 206 / 512 + 1133;
 }
@@ -2038,8 +2038,8 @@ void syzygy_extend_pv(const OptionsMap&         options,
         for (const auto& m : MoveList<LEGAL>(pos))
             legalMoves.emplace_back(m);
 
-        Tablebases::Config config =
-          Tablebases::rank_root_moves(options, pos, legalMoves, false, time_abort);
+        TB::Config config =
+          TB::rank_root_moves(options, pos, legalMoves, false, time_abort);
         RootMove& rm = *std::find(legalMoves.begin(), legalMoves.end(), pvMove);
 
         if (legalMoves[0].tbRank != rm.tbRank)
@@ -2099,8 +2099,8 @@ void syzygy_extend_pv(const OptionsMap&         options,
           [](const Search::RootMove& a, const Search::RootMove& b) { return a.tbRank > b.tbRank; });
 
         // The winning side tries to minimize DTZ, the losing side maximizes it
-        Tablebases::Config config =
-          Tablebases::rank_root_moves(options, pos, legalMoves, true, time_abort);
+        TB::Config config =
+          TB::rank_root_moves(options, pos, legalMoves, true, time_abort);
 
         // If DTZ is not available we might not find a mate, so we bail out
         if (!config.rootInTB || config.cardinality > 0)
@@ -2224,11 +2224,8 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     pos.do_move(pv[0], st, &tt);
 
     auto [ttHit, ttData, ttWriter] = tt.probe(pos.key());
-    if (ttHit)
-    {
-        if (MoveList<LEGAL>(pos).contains(ttData.move))
-            pv.push_back(ttData.move);
-    }
+    if (ttHit && MoveList<LEGAL>(pos).contains(ttData.move))
+        pv.push_back(ttData.move);
 
     pos.undo_move(pv[0]);
     return pv.size() > 1;
