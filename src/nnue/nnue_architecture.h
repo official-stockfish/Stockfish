@@ -108,6 +108,8 @@ struct NetworkArchitecture {
             alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
             alignas(CacheLineSize) typename decltype(ac_1)::OutputBuffer ac_1_out;
             alignas(CacheLineSize) typename decltype(fc_2)::OutputBuffer fc_2_out;
+
+            Buffer() { std::memset(ac_sqr_0_out, 0, sizeof(ac_sqr_0_out)); }
         };
 
         Buffer buffer;
