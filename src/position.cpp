@@ -290,9 +290,9 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     const int wAdditionalQueens  = std::max((int) count<QUEEN>(WHITE) - 1, 0);
     const int bAdditionalQueens  = std::max((int) count<QUEEN>(BLACK) - 1, 0);
     if (wAdditionalKnights + wAdditionalBishops + wAdditionalRooks + wAdditionalQueens > 8 - wPawns)
-        return PositionSetError("Unsupported position. Too many major pieces for WHITE.");
+        return PositionSetError("Unsupported position. Too many pieces for WHITE.");
     if (bAdditionalKnights + bAdditionalBishops + bAdditionalRooks + bAdditionalQueens > 8 - bPawns)
-        return PositionSetError("Unsupported position. Too many major pieces for BLACK.");
+        return PositionSetError("Unsupported position. Too many pieces for BLACK.");
 
     // 2. Active color
     if (!(ss >> token))
@@ -363,7 +363,6 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         else if (token >= 'A' && token <= 'H')
         {
             const Square rsqCandidate = make_square(File(token - 'A'), relative_rank(c, RANK_1));
-            ;
             if (piece_on(rsqCandidate) == rook)
                 rsq = rsqCandidate;
 
@@ -1410,7 +1409,7 @@ void Position::undo_null_move() {
 
 
 // Tests if the SEE (Static Exchange Evaluation)
-// value of move is greater or equal to the given threshold. We'll use an
+// value of the move is greater or equal to the given threshold. We'll use an
 // algorithm similar to alpha-beta pruning with a null window.
 bool Position::see_ge(Move m, int threshold) const {
 

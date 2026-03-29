@@ -43,7 +43,7 @@ template<IndexType TransformedFeatureDimensions>
 void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
-                       AccumulatorState<PSQFeatureSet>&                        middle_state,
+                       const AccumulatorState<PSQFeatureSet>&                  middle_state,
                        AccumulatorState<PSQFeatureSet>&                        target_state,
                        const AccumulatorState<PSQFeatureSet>&                  computed);
 
@@ -51,7 +51,7 @@ template<IndexType TransformedFeatureDimensions>
 void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
-                       AccumulatorState<ThreatFeatureSet>&                     middle_state,
+                       const AccumulatorState<ThreatFeatureSet>&               middle_state,
                        AccumulatorState<ThreatFeatureSet>&                     target_state,
                        const AccumulatorState<ThreatFeatureSet>&               computed,
                        const DirtyPiece&                                       dp2);
@@ -492,7 +492,7 @@ template<IndexType TransformedFeatureDimensions>
 void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
-                       AccumulatorState<PSQFeatureSet>&                        middle_state,
+                       const AccumulatorState<PSQFeatureSet>&                  middle_state,
                        AccumulatorState<PSQFeatureSet>&                        target_state,
                        const AccumulatorState<PSQFeatureSet>&                  computed) {
 
@@ -540,7 +540,7 @@ template<IndexType TransformedFeatureDimensions>
 void double_inc_update(Color                                                   perspective,
                        const FeatureTransformer<TransformedFeatureDimensions>& featureTransformer,
                        const Square                                            ksq,
-                       AccumulatorState<ThreatFeatureSet>&                     middle_state,
+                       const AccumulatorState<ThreatFeatureSet>&               middle_state,
                        AccumulatorState<ThreatFeatureSet>&                     target_state,
                        const AccumulatorState<ThreatFeatureSet>&               computed,
                        const DirtyPiece&                                       dp2) {
@@ -658,7 +658,7 @@ void update_accumulator_incremental(
 
 Bitboard get_changed_pieces(const std::array<Piece, SQUARE_NB>& oldPieces,
                             const std::array<Piece, SQUARE_NB>& newPieces) {
-#if defined(USE_AVX512) || defined(USE_AVX2)
+#if defined(USE_AVX2)
     static_assert(sizeof(Piece) == 1);
     Bitboard sameBB = 0;
 
