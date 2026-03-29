@@ -214,7 +214,9 @@ class AffineTransformSparseInput {
     static constexpr IndexType PaddedOutputDimensions =
       ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
 
-#if (USE_SSSE3 | (USE_NEON >= 8))
+#if defined(USE_KNM)
+    static constexpr IndexType ChunkSize = 8;
+#elif (USE_SSSE3 | (USE_NEON >= 8))
     static constexpr IndexType ChunkSize = 4;
 #else
     static constexpr IndexType ChunkSize = 1;
@@ -232,59 +234,18 @@ class AffineTransformSparseInput {
     }
 
     static constexpr IndexType get_weight_index_scrambled(IndexType i) {
+#if defined(USE_KNM)
+        constexpr IndexType In = PaddedInputDimensions;
+        constexpr IndexType OutDim = OutputDimensions;
+        return ((i / In) >> 4) * 128
+             + ((i % In) >> 3) * (OutDim << 3)
+             + ((i / In) & 0xF) * 2
+             + (((i % In) >> 1) & 3) * 32
+             + ((i % In) & 1);
+#else
         return (i / ChunkSize) % (PaddedInputDimensions / ChunkSize) * OutputDimensions * ChunkSize
              + i / PaddedInputDimensions * ChunkSize + i % ChunkSize;
-    }
-
-    // Scrambled index mapping for the weight layout optimized for 4VNNIW SIMD instructions.
-    //
-    // The weight matrix (originally OutputDimensions x PaddedInputDimensions) is reorganized
-    // to group inputs in pairs of 8 units and outputs in blocks of 16 neurons.
-    // For each 8‑unit input pair and each 16‑neuron output group, the weights for the 16×8 = 128
-    // connections are stored in four consecutive chunks, each chunk corresponding to a 2‑unit
-    // sub‑group within the input pair (units 0‑1, 2‑3, 4‑5, 6‑7).
-    //
-    // Within a chunk, the weights for the 16 neurons are interleaved per neuron:
-    //   [neuron0_unit0, neuron0_unit1, neuron1_unit0, neuron1_unit1, ...,
-    //    neuron15_unit0, neuron15_unit1]
-    //
-    // Thus the overall memory order is:
-    //   for each input pair p (0..PaddedInputDimensions/8 - 1)
-    //     for each output group g (0..OutputDimensions/16 - 1)
-    //       for each 2‑unit sub‑group s (0..3)
-    //         for each neuron n in group g (0..15)
-    //           for each unit offset b within the sub‑group (0..1)
-    //             weight of output neuron (g*16 + n) for input unit (p*8 + s*2 + b)
-    //
-    // The mapping from the linear index i = out * InUnits + unit (where InUnits = PaddedInputDimensions)
-    // to the new linear index is:
-    //   pair   = unit / 8
-    //   sg     = (unit % 8) / 2          // sub‑group within the 8‑unit pair
-    //   sub    = (unit % 8) % 2          // offset inside the 2‑unit sub‑group
-    //   out_g  = out / 16                // output group
-    //   n      = out % 16                // neuron inside the group
-    //   new_idx = (pair * OutputDimensions * 8) + (out_g * 128) + (sg * 32) + (n * 2) + sub
-    //
-    // This layout is designed to feed 4VNNIW instructions that process 16 neurons × 8 inputs
-    // in a single operation.
-    static constexpr IndexType get_weight_index_scrambled_4vnniw(IndexType i) {
-        constexpr IndexType InBytes = PaddedInputDimensions;
-
-        const IndexType out = i / InBytes;
-        const IndexType byte = i % InBytes;
-
-        const IndexType pair = byte >> 3;          // byte / 8
-        const IndexType g = (byte >> 1) & 3;       // (byte/2) % 4
-        const IndexType sub = byte & 1;            // byte % 2
-
-        const IndexType out_group = out >> 4;      // out / 16
-        const IndexType n = out & 0xF;             // out % 16
-
-        return (pair * OutputDimensions << 3)      // pair * OutputDimensions * 8
-             + (out_group << 7)                    // out_group * 128
-             + (g << 5)                            // g * 32
-             + (n << 1)                            // n * 2
-             + sub;
+#endif
     }
 
     static constexpr IndexType get_weight_index(IndexType i) {
@@ -299,11 +260,7 @@ class AffineTransformSparseInput {
     bool read_parameters(std::istream& stream) {
         read_little_endian<BiasType>(stream, biases, OutputDimensions);
         for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
-#if defined(USE_KNM)
-            weights[get_weight_index_scrambled_4vnniw(i)] = static_cast<std::int16_t>(read_little_endian<WeightType>(stream));
-#else
             weights[get_weight_index(i)] = read_little_endian<WeightType>(stream);
-#endif
 
         return !stream.fail();
     }
@@ -313,11 +270,7 @@ class AffineTransformSparseInput {
         write_little_endian<BiasType>(stream, biases, OutputDimensions);
 
         for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
-#if defined(USE_KNM)
-            write_little_endian<WeightType>(stream, static_cast<WeightType>(weights[get_weight_index_scrambled_4vnniw(i)]));
-#else
             write_little_endian<WeightType>(stream, weights[get_weight_index(i)]);
-#endif
 
         return !stream.fail();
     }
@@ -325,14 +278,7 @@ class AffineTransformSparseInput {
     std::size_t get_content_hash() const {
         std::size_t h = 0;
         hash_combine(h, get_raw_data_hash(biases));
-#if defined(USE_KNM)
-        WeightType originalWeights[OutputDimensions * PaddedInputDimensions];
-        for (IndexType i = 0; i < OutputDimensions * PaddedInputDimensions; ++i)
-            originalWeights[i] = static_cast<WeightType>(weights[get_weight_index_scrambled_4vnniw(get_weight_index(i))]);
-        hash_combine(h, get_raw_data_hash(originalWeights));
-#else
         hash_combine(h, get_raw_data_hash(weights));
-#endif
         hash_combine(h, get_hash_value(0));
         return h;
     }
@@ -370,17 +316,12 @@ class AffineTransformSparseInput {
         #define vec_add_dpbusd_32 SIMD::neon_m128_add_dpbusd_epi32
     #endif
         constexpr IndexType OutputSimdWidth = sizeof(outvec_t) / sizeof(OutputType);
-        constexpr IndexType NumChunks =
-    #if defined(USE_KNM)
-          ceil_to_multiple<IndexType>(InputDimensions, 8) / 8;
-    #else
-          ceil_to_multiple<IndexType>(InputDimensions, 8) / ChunkSize;
-    #endif
+        constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / ChunkSize;
         constexpr IndexType NumAccums = OutputDimensions / OutputSimdWidth;
         // If we're using high-latency dot product instructions, split the accumulators
         // to create 3 separate dependency chains and merge at the end
         constexpr IndexType NumRegs =
-    #if defined(USE_VNNI) || defined(USE_KNM)
+    #if defined(USE_VNNI)
           3 * NumAccums;
     #else
           NumAccums;
@@ -405,79 +346,15 @@ class AffineTransformSparseInput {
     #else
         const std::int8_t* weights_cp = weights;
     #endif
-    #if defined(USE_VNNI) || defined(USE_KNM)
+    #if defined(USE_VNNI)
         for (IndexType k = NumAccums; k < NumRegs; ++k)
-        #if defined(USE_KNM)
-            acc[k] = _mm512_setzero_epi32();
-        #else
             acc[k] = vec_zero();
-        #endif
 
         while (start < end - 2)
         {
             const std::ptrdiff_t i0 = *start++;
             const std::ptrdiff_t i1 = *start++;
             const std::ptrdiff_t i2 = *start++;
-        #if defined(USE_KNM)
-            __m128i in0 =
-              _mm_cvtepu8_epi16(_mm_set1_epi64(load_as<__m64>(input + i0 * sizeof(__m64))));
-            __m128i in1 =
-              _mm_cvtepu8_epi16(_mm_set1_epi64(load_as<__m64>(input + i1 * sizeof(__m64))));
-            __m128i in2 =
-              _mm_cvtepu8_epi16(_mm_set1_epi64(load_as<__m64>(input + i2 * sizeof(__m64))));
-            const auto w0 =
-              reinterpret_cast<const invec_t*>(&weights_cp[i0 * 128 * NumAccums]);
-            const auto w1 =
-              reinterpret_cast<const invec_t*>(&weights_cp[i1 * 128 * NumAccums]);
-            const auto w2 =
-              reinterpret_cast<const invec_t*>(&weights_cp[i2 * 128 * NumAccums]);
-            for (IndexType k = 0; k < NumAccums; ++k)
-            {
-                __asm__ volatile( // Using inline assembly to avoid bugs caused by compiler optimization
-                    "vmovdqa32 %0, %%zmm8 \n\t"
-                    "vmovdqa32 %1, %%zmm9 \n\t"
-                    "vmovdqa32 %2, %%zmm10 \n\t"
-                    "vmovdqa32 %3, %%zmm0 \n\t"
-                    "vmovdqa32 %4, %%zmm1 \n\t"
-                    "vmovdqa32 %5, %%zmm2 \n\t"
-                    "vmovdqa32 %6, %%zmm3 \n\t"
-                    "vp4dpwssd %7, %%zmm0, %%zmm8 \n\t"
-                    "vmovdqa32 %8, %%zmm4 \n\t"
-                    "vmovdqa32 %9, %%zmm5 \n\t"
-                    "vmovdqa64 %%zmm8, %0 \n\t"
-                    "vmovdqa32 %10, %%zmm6 \n\t"
-                    "vmovdqa32 %11, %%zmm7 \n\t"
-                    "vp4dpwssd %12, %%zmm4, %%zmm9 \n\t"
-                    "vmovdqa32 %13, %%zmm0 \n\t"
-                    "vmovdqa32 %14, %%zmm1 \n\t"
-                    "vmovdqa64 %%zmm9, %1 \n\t"
-                    "vmovdqa32 %15, %%zmm2 \n\t"
-                    "vmovdqa32 %16, %%zmm3 \n\t"
-                    "vp4dpwssd %17, %%zmm0, %%zmm10 \n\t"
-                    "vmovdqa64 %%zmm10, %2"
-                    :
-                    "+m"(acc[k]),
-                    "+m"(acc[k + NumAccums]),
-                    "+m"(acc[k + 2 * NumAccums])
-                    :
-                    "m"(w0[k * 4 + 0]), "m"(w0[k * 4 + 1]), "m"(w0[k * 4 + 2]), "m"(w0[k * 4 + 3]), "m"(in0),
-                    "m"(w1[k * 4 + 0]), "m"(w1[k * 4 + 1]), "m"(w1[k * 4 + 2]), "m"(w1[k * 4 + 3]), "m"(in1),
-                    "m"(w2[k * 4 + 0]), "m"(w2[k * 4 + 1]), "m"(w2[k * 4 + 2]), "m"(w2[k * 4 + 3]), "m"(in2)
-                    :
-                    "zmm0", "zmm1", "zmm2", "zmm3", "zmm4",
-                    "zmm5", "zmm6", "zmm7", "zmm8", "zmm9",
-                    "zmm10"
-                );
-                /*
-                acc[k] =
-                  _mm512_4dpwssd_epi32(acc[k], w0[k * 4 + 0], w0[k * 4 + 1], w0[k * 4 + 2], w0[k * 4 + 3], &in0);
-                acc[k + NumAccums] =
-                  _mm512_4dpwssd_epi32(acc[k + NumAccums], w1[k * 4 + 0], w1[k * 4 + 1], w1[k * 4 + 2], w1[k * 4 + 3], &in1);
-                acc[k + 2 * NumAccums] =
-                  _mm512_4dpwssd_epi32(acc[k + 2 * NumAccums], w2[k * 4 + 0], w2[k * 4 + 1], w2[k * 4 + 2], w2[k * 4 + 3], &in2);
-                */
-            }
-        #else
             const invec_t        in0 =
               vec_set_32(load_as<std::int32_t>(input + i0 * sizeof(std::int32_t)));
             const invec_t in1 =
@@ -496,7 +373,6 @@ class AffineTransformSparseInput {
                 vec_add_dpbusd_32(acc[k + NumAccums], in1, col1[k]);
                 vec_add_dpbusd_32(acc[k + 2 * NumAccums], in2, col2[k]);
             }
-        #endif
         }
         for (IndexType k = 0; k < NumAccums; ++k)
             acc[k] = vec_add_32(vec_add_32(acc[k], acc[k + NumAccums]), acc[k + 2 * NumAccums]);
@@ -511,18 +387,15 @@ class AffineTransformSparseInput {
               reinterpret_cast<const invec_t*>(&weights_cp[i * 128 * NumAccums]);
             for (IndexType k = 0; k < NumAccums; ++k)
                 __asm__ volatile( // Using inline assembly to avoid bugs caused by compiler optimization
-                    "vmovdqa32 %0, %%zmm4 \n\t"
                     "vmovdqa32 %1, %%zmm0 \n\t"
                     "vmovdqa32 %2, %%zmm1 \n\t"
                     "vmovdqa32 %3, %%zmm2 \n\t"
                     "vmovdqa32 %4, %%zmm3 \n\t"
-                    "vp4dpwssd %5, %%zmm0, %%zmm4 \n\t"
-                    "vmovdqa64 %%zmm4, %0"
-                    : "+m"(acc[k])
+                    "vp4dpwssd %5, %%zmm0, %0"
+                    : "+x"(acc[k])
                     : "m"(w[k * 4 + 0]), "m"(w[k * 4 + 1]), "m"(w[k * 4 + 2]), "m"(w[k * 4 + 3]), "m"(in)
-                    : "zmm0", "zmm1", "zmm2", "zmm3", "zmm4"
+                    : "zmm0", "zmm1", "zmm2", "zmm3"
                 );
-            //    acc[k] = _mm512_4dpwssd_epi32(acc[k], w[k * 4 + 0], w[k * 4 + 1], w[k * 4 + 2], w[k * 4 + 3], &in);
         #else
             const invec_t in = vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
             const auto    col =
