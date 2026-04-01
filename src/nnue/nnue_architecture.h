@@ -130,6 +130,15 @@ struct NetworkArchitecture {
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
+        if (L1 == TransformedFeatureDimensionsSmall && L2 == L2Small && L3 == L3Small)
+        {
+            // TODO: Remove
+            std::int32_t fwdOut =
+                (buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
+            std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
+            return outputValue;
+        }
+
         // max value for fwdOut is (L1 + L3) * HiddenMaxVal * WeightMaxVal
         // for int8 activations and weights this is (L1 + L3) * 16129 making
         // fwdOut save from overflow until (L1 + L3) > 133,144

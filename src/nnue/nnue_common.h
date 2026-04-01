@@ -56,6 +56,8 @@ using IndexType        = std::uint32_t;
 
 // Version of the evaluation file
 constexpr std::uint32_t Version = 0x6A448AFA;
+// TODO: remove
+constexpr std::uint32_t tmpVersion = 0x7AF32F20u;
 
 // Constant used in evaluation value calculation
 constexpr int OutputScale     = 16;
