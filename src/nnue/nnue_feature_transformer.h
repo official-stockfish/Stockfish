@@ -274,8 +274,8 @@ class FeatureTransformer {
             static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-            const vec_t Zero = vec_zero();
-            const vec_t FtMax  = vec_set_16(FtMaxVal);
+            const vec_t Zero  = vec_zero();
+            const vec_t FtMax = vec_set_16(FtMaxVal);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
