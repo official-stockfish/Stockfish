@@ -130,12 +130,29 @@ struct NetworkArchitecture {
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
-        // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in
-        // quantized form, but we want 1.0 to be equal to 600*OutputScale
-        std::int32_t fwdOut =
-          (buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
-        std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
+        if (L1 == TransformedFeatureDimensionsSmall && L2 == L2Small && L3 == L3Small)
+        {
+            // TODO: Remove
+            std::int32_t fwdOut =
+                (buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
+            std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
+            return outputValue;
+        }
 
+        // max value for fwdOut is (L1 + L3) * HiddenMaxVal * WeightMaxVal
+        // for int8 activations and weights this is (L1 + L3) * 16129 making
+        // fwdOut save from overflow until (L1 + L3) > 133,144
+        std::int32_t fwdOut = buffer.fc_2_out[0] + buffer.fc_0_out[FC_0_OUTPUTS];
+        // fwdOut is such that 1.0 is equal to HiddenOneVal*(1<<WeightScaleBits) in
+        // quantized form, but we want 1.0 to be equal to 600*OutputScale
+        // to make overflow impossible we cast to int_64_t
+        constexpr std::int64_t multiplier = 600 * OutputScale;
+        constexpr std::int64_t denominator =
+            static_cast<std::int64_t>(1U << WeightScaleBits) * static_cast<std::int64_t>(HiddenOneVal);
+
+        std::int32_t outputValue = static_cast<std::int32_t>(
+            (static_cast<std::int64_t>(fwdOut) * multiplier) / denominator
+        );
         return outputValue;
     }
 
