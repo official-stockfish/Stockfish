@@ -130,11 +130,11 @@ struct NetworkArchitecture {
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
-        // fwdOut is such that 1.0 is equal to HiddenMaxVal*(1<<WeightScaleBits) in
+        // fwdOut is such that 1.0 is equal to HiddenOneVal*(1<<WeightScaleBits) in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale
         std::int32_t fwdOut = buffer.fc_2_out[0] + buffer.fc_0_out[FC_0_OUTPUTS];
         std::int32_t outputValue =
-          (fwdOut) * (600 * OutputScale) / (HiddenMaxVal * (1 << WeightScaleBits));
+          (fwdOut) * (600 * OutputScale) / (HiddenOneVal * (1 << WeightScaleBits));
 
         return outputValue;
     }
