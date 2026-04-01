@@ -55,11 +55,15 @@ using PSQTWeightType   = std::int32_t;
 using IndexType        = std::uint32_t;
 
 // Version of the evaluation file
-constexpr std::uint32_t Version = 0x7AF32F20u;
+constexpr std::uint32_t Version = 0x6A448AFA;
 
 // Constant used in evaluation value calculation
 constexpr int OutputScale     = 16;
 constexpr int WeightScaleBits = 6;
+constexpr int FtOneVal = 256;
+constexpr int FtMaxVal = 255;
+constexpr int HiddenOneVal = 128;
+constexpr int HiddenMaxVal = 127;
 
 // Size of cache line (in bytes)
 constexpr std::size_t CacheLineSize = 64;

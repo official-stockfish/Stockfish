@@ -275,7 +275,7 @@ class FeatureTransformer {
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
             const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(255);
+            const vec_t FtMax  = vec_set_16(FtMaxVal);
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -355,11 +355,11 @@ class FeatureTransformer {
                     const vec_t acc1b = vec_add_16(in1[j * 2 + 1], tin1[j * 2 + 1]);
 
                     const vec_t sum0a =
-                      vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
+                      vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
                     const vec_t sum0b =
-                      vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
-                    const vec_t sum1a = vec_min_16(acc1a, One);
-                    const vec_t sum1b = vec_min_16(acc1b, One);
+                      vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);
+                    const vec_t sum1a = vec_min_16(acc1a, FtMax);
+                    const vec_t sum1b = vec_min_16(acc1b, FtMax);
 
                     const vec_t pa = vec_mulhi_16(sum0a, sum1a);
                     const vec_t pb = vec_mulhi_16(sum0b, sum1b);
@@ -372,11 +372,11 @@ class FeatureTransformer {
                 for (IndexType j = 0; j < NumOutputChunks; ++j)
                 {
                     const vec_t sum0a =
-                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero), shift);
+                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 0], FtMax), Zero), shift);
                     const vec_t sum0b =
-                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 1], One), Zero), shift);
-                    const vec_t sum1a = vec_min_16(in1[j * 2 + 0], One);
-                    const vec_t sum1b = vec_min_16(in1[j * 2 + 1], One);
+                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 1], FtMax), Zero), shift);
+                    const vec_t sum1a = vec_min_16(in1[j * 2 + 0], FtMax);
+                    const vec_t sum1b = vec_min_16(in1[j * 2 + 1], FtMax);
 
                     const vec_t pa = vec_mulhi_16(sum0a, sum1a);
                     const vec_t pb = vec_mulhi_16(sum0b, sum1b);
@@ -400,8 +400,8 @@ class FeatureTransformer {
                       threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
                 }
 
-                sum0 = std::clamp<BiasType>(sum0, 0, 255);
-                sum1 = std::clamp<BiasType>(sum1, 0, 255);
+                sum0 = std::clamp<BiasType>(sum0, 0, FtMaxVal);
+                sum1 = std::clamp<BiasType>(sum1, 0, FtMaxVal);
 
                 output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
             }
