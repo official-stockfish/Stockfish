@@ -46,11 +46,19 @@ void OptionsMap::setoption(std::istringstream& is) {
 
     // Read the option name (can contain spaces)
     while (is >> token && token != "value")
-        name += (name.empty() ? "" : " ") + token;
+    {
+        if (!name.empty())
+            name += ' ';
+        name += token;
+    }
 
     // Read the option value (can contain spaces)
     while (is >> token)
-        value += (value.empty() ? "" : " ") + token;
+    {
+        if (!value.empty())
+            value += ' ';
+        value += token;
+    }
 
     if (options_map.count(name))
         options_map[name] = value;
@@ -66,14 +74,13 @@ const Option& OptionsMap::operator[](const std::string& name) const {
 
 // Inits options and assigns idx in the correct printing order
 void OptionsMap::add(const std::string& name, const Option& option) {
-    if (!options_map.count(name))
+    static size_t insert_order = 0;
+
+    auto [it, inserted] = options_map.try_emplace(name, option);
+    if (inserted)
     {
-        static size_t insert_order = 0;
-
-        options_map[name] = option;
-
-        options_map[name].parent = this;
-        options_map[name].idx    = insert_order++;
+        it->second.parent = this;
+        it->second.idx    = insert_order++;
     }
     else
     {
