@@ -21,6 +21,7 @@
 #include "full_threats.h"
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -72,7 +73,7 @@ constexpr auto make_piece_indices_piece() {
 
     for (Square from = SQ_A1; from <= SQ_H8; ++from)
     {
-        Bitboard attacks = PseudoAttacks[C][from];
+        Bitboard attacks = PawnPushOrAttacks[C][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
         {
@@ -135,8 +136,8 @@ constexpr auto init_threat_offsets() {
 
             else if (from >= SQ_A2 && from <= SQ_H7)
             {
-                Bitboard attacks = (pieceIdx < 8) ? pawn_attacks_bb<WHITE>(square_bb(from))
-                                                  : pawn_attacks_bb<BLACK>(square_bb(from));
+                Bitboard attacks =
+                  (pieceIdx < 8) ? PawnPushOrAttacks[WHITE][from] : PawnPushOrAttacks[BLACK][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
         }
@@ -209,6 +210,7 @@ inline sf_always_inline IndexType FullThreats::make_index(
 void FullThreats::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
     Square   ksq      = pos.square<KING>(perspective);
     Bitboard occupied = pos.pieces();
+    Bitboard pawns    = pos.pieces(PAWN);
 
     for (Color color : {WHITE, BLACK})
     {
@@ -245,6 +247,20 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
+                    if (index < Dimensions)
+                        active.push_back(index);
+                }
+
+                // Set of pawns which are prevented from movement by a pawn in front of them
+                Bitboard pushers = pawn_single_push_bb(~c, pawns) & pos.pieces(c, PAWN);
+                while (pushers)
+                {
+                    Square from     = pop_lsb(pushers);
+                    Square to       = from + pawn_push(c);
+                    Piece  attacked = pos.piece_on(to);
+                    assert(type_of(attacked) == PAWN);
+
+                    IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
                     if (index < Dimensions)
                         active.push_back(index);
                 }
