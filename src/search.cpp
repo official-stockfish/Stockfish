@@ -1448,7 +1448,7 @@ moves_loop:  // When in check, search starts here
         bool con3 = (!(ss - 1)->inCheck && bestValue <= -(ss - 1)->staticEval - 73);
 
         constexpr int conBonus[8] = { 0, 198, 118, 320, 174, 400, 262, 492 };
-        int idx = aa1 | (aa2 << 1) | (aa3 << 2);
+        int idx = con1 | (con2 << 1) | (con3 << 2);
 
         int bonusScale = -232;
         bonusScale -= (ss - 1)->statScore / 108;
