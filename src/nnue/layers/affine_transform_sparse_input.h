@@ -288,7 +288,7 @@ class AffineTransformSparseInput {
         // If we're using high-latency dot product instructions, split the accumulators
         // to create 3 separate dependency chains and merge at the end
         constexpr IndexType NumRegs =
-    #if defined(USE_VNNI)
+    #if defined(USE_VNNI) || defined(USE_NEON_DOTPROD)
           3 * NumAccums;
     #else
           NumAccums;
@@ -309,9 +309,14 @@ class AffineTransformSparseInput {
 
         // convince GCC to not do weird pointer arithmetic in the following loop
         const std::int8_t* weights_cp = weights;
-    #if defined(USE_VNNI)
+    #if defined(USE_VNNI) || defined(USE_NEON_DOTPROD)
+        #if defined(USE_VNNI)
         for (IndexType k = NumAccums; k < NumRegs; ++k)
             acc[k] = vec_zero();
+        #else
+        for (IndexType k = NumAccums; k < NumRegs; ++k)
+            acc[k] = vdupq_n_s32(0);
+        #endif
 
         while (start < end - 2)
         {
@@ -337,8 +342,13 @@ class AffineTransformSparseInput {
                 vec_add_dpbusd_32(acc[k + 2 * NumAccums], in2, col2[k]);
             }
         }
+        #if defined(USE_VNNI)
         for (IndexType k = 0; k < NumAccums; ++k)
             acc[k] = vec_add_32(vec_add_32(acc[k], acc[k + NumAccums]), acc[k + 2 * NumAccums]);
+        #else
+        for (IndexType k = 0; k < NumAccums; ++k)
+            acc[k] = vaddq_s32(vaddq_s32(acc[k], acc[k + NumAccums]), acc[k + 2 * NumAccums]);
+        #endif
     #endif
         while (start < end)
         {
