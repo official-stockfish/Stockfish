@@ -676,7 +676,7 @@ Value Search::Worker::search(
     maxValue      = VALUE_INFINITE;
 
     ss->followPV = rootNode
-                || ((ss - 1)->followPV && static_cast<size_t>(ss->ply - 1) < lastIterationPV.size()
+                || ((ss - 1)->followPV && size_t(ss->ply - 1) < lastIterationPV.size()
                     && (ss - 1)->currentMove == lastIterationPV[ss->ply - 1]);
 
     // Check for the available remaining time
