@@ -201,10 +201,12 @@ class AffineTransform {
     #if defined(USE_AVX512)
             using vec_t = __m512i;
         #define vec_set_32 _mm512_set1_epi32
+        #define vec_add_32 _mm512_add_epi32
         #define vec_add_dpbusd_32 SIMD::m512_add_dpbusd_epi32
     #elif defined(USE_AVX2)
             using vec_t = __m256i;
         #define vec_set_32 _mm256_set1_epi32
+        #define vec_add_32 _mm256_add_epi32
         #define vec_add_dpbusd_32 SIMD::m256_add_dpbusd_epi32
     #elif defined(USE_SSSE3)
             using vec_t = __m128i;
@@ -223,14 +225,45 @@ class AffineTransform {
             static_assert(OutputDimensions % OutputSimdWidth == 0);
 
             constexpr IndexType NumChunks = ceil_to_multiple<IndexType>(InputDimensions, 8) / 4;
-            constexpr IndexType NumRegs   = OutputDimensions / OutputSimdWidth;
+            constexpr IndexType NumAccums = OutputDimensions / OutputSimdWidth;
+
+    #if defined(USE_VNNI)
+            constexpr IndexType NumRegs = 2 * NumAccums;
+    #else
+            constexpr IndexType NumRegs = NumAccums;
+    #endif
 
             const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
             vec_t        acc[NumRegs];
-            for (IndexType k = 0; k < NumRegs; ++k)
+            for (IndexType k = 0; k < NumAccums; ++k)
                 acc[k] = biasvec[k];
+            for (IndexType k = NumAccums; k < NumRegs; ++k)
+                acc[k] = vec_set_32(0);
 
-            for (IndexType i = 0; i < NumChunks; ++i)
+            IndexType i = 0;
+    #if defined(USE_VNNI)
+            for (; i < NumChunks; i += 2)
+            {
+                const vec_t in0 =
+                  vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
+                const vec_t in1 =
+                  vec_set_32(load_as<std::int32_t>(input + (i + 1) * sizeof(std::int32_t)));
+                const auto col0 =
+                  reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
+                const auto col1 =
+                  reinterpret_cast<const vec_t*>(&weights[(i + 1) * OutputDimensions * 4]);
+
+                for (IndexType k = 0; k < NumAccums; ++k)
+                {
+                    vec_add_dpbusd_32(acc[k], in0, col0[k]);
+                    vec_add_dpbusd_32(acc[k + NumAccums], in1, col1[k]);
+                }
+            }
+
+            for (IndexType k = 0; k < NumAccums; ++k)
+                acc[k] = vec_add_32(acc[k], acc[k + NumAccums]);
+    #endif
+            for (; i < NumChunks; ++i)
             {
                 const vec_t in0 =
                   vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
