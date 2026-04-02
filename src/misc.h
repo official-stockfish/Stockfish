@@ -201,6 +201,11 @@ class ValueList {
         assert(size_ < MaxSize);
         values_[size_++] = value;
     }
+    inline void        push_back_if_lt(const T& value, T max) {
+        assert(size_ < MaxSize);
+        values_[size_] = value;
+        size_ += (value < max);
+    }
     const T* begin() const { return values_; }
     const T* end() const { return values_ + size_; }
     const T& operator[](int index) const { return values_[index]; }
