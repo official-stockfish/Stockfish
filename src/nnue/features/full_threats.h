@@ -42,7 +42,7 @@ class FullThreats {
     static constexpr std::uint32_t HashValue = 0x8f234cb8u;
 
     // Number of feature dimensions
-    static constexpr IndexType Dimensions = 79856;
+    static constexpr IndexType Dimensions = 73712;
 
     // clang-format off
     // Orient a square according to perspective (rotates by 180 for black)
