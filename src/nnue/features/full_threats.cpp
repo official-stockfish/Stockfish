@@ -267,6 +267,9 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
             }
             else
             {
+                Square   enemy_ksq = pos.square<KING>(~c);
+                Bitboard king_ring = attacks_bb<KING>(enemy_ksq);
+
                 while (bb)
                 {
                     Square   from    = pop_lsb(bb);
@@ -278,6 +281,19 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                         Piece     attacked = pos.piece_on(to);
                         IndexType index =
                           make_index(perspective, attacker, from, to, attacked, ksq);
+
+                        if (index < Dimensions)
+                            active.push_back(index);
+                    }
+
+                    // Set of attacks on king ring.
+                    Bitboard king_ring_attacks = attacks_bb(pt, from, occupied) & king_ring;
+                    Piece fake_opponent_king = make_piece(~c, KING);
+                    while (king_ring_attacks)
+                    {
+                        Square to = pop_lsb(king_ring_attacks);
+                        IndexType index =
+                                make_index(perspective, attacker, from, to, fake_opponent_king, ksq);
 
                         if (index < Dimensions)
                             active.push_back(index);

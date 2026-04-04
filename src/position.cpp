@@ -1219,12 +1219,18 @@ void Position::update_piece_threats(Piece                     pc,
                                     Square                    s,
                                     DirtyThreats* const       dts,
                                     [[maybe_unused]] Bitboard noRaysContaining) const {
+
+    const Square   enemyKsq    = square<KING>(~color_of(pc));
+
     const Bitboard occupied     = pieces();
     const Bitboard rookQueens   = pieces(ROOK, QUEEN);
     const Bitboard bishopQueens = pieces(BISHOP, QUEEN);
     const Bitboard rAttacks     = attacks_bb<ROOK>(s, occupied);
     const Bitboard bAttacks     = attacks_bb<BISHOP>(s, occupied);
     const Bitboard kings        = pieces(KING);
+    const Bitboard kingRing     = attacks_bb<KING>(enemyKsq);
+
+
     Bitboard       occupiedNoK  = occupied ^ kings;
 
     Bitboard sliders         = (rookQueens & rAttacks) | (bishopQueens & bAttacks);
@@ -1247,6 +1253,14 @@ void Position::update_piece_threats(Piece                     pc,
 
             if (addDirectAttacks)
                 add_dirty_threat<PutPiece>(dts, slider, pc, sliderSq, s);
+
+            Bitboard kingRingAttacks = attacks_bb(type_of(slider), sliderSq, occupied) & kingRing;
+            Piece fakeKing           = make_piece(~color_of(slider), KING);
+            while (kingRingAttacks)
+            {
+                Square to = pop_lsb(kingRingAttacks);
+                add_dirty_threat<!PutPiece>(dts, slider, fakeKing, sliderSq, to);
+            }
         }
     };
 
@@ -1263,7 +1277,10 @@ void Position::update_piece_threats(Piece                     pc,
     const Bitboard blackPawns = pieces(BLACK, PAWN);
 
 
-    Bitboard threatened = attacks_bb(pc, s, occupied) & occupiedNoK;
+    Bitboard attacks         = attacks_bb(pc, s, occupied);
+    Bitboard threatened      = attacks & occupiedNoK;
+    Bitboard kingRingAttacks = attacks & kingRing;
+
     Bitboard incoming_threats =
       (PseudoAttacks[KNIGHT][s] & knights) | (PseudoAttacks[KING][s] & kings);
 
@@ -1321,6 +1338,13 @@ void Position::update_piece_threats(Piece                     pc,
         add_dirty_threat<PutPiece>(dts, pc, threatenedPc, s, threatenedSq);
     }
 #endif
+
+    Piece fakeKing = make_piece(~color_of(pc), KING);
+    while (kingRingAttacks)
+    {
+        Square to = pop_lsb(kingRingAttacks);
+        add_dirty_threat<PutPiece>(dts, pc, fakeKing, s, to);
+    }
 
     if constexpr (ComputeRay)
     {
