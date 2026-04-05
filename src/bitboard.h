@@ -76,11 +76,14 @@ extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 
 // Magic holds all magic bitboards relevant data for a single square
 struct Magic {
-    Bitboard  mask;
+    Bitboard mask;
+#ifdef USE_PEXT
+    uint16_t* attacks;
+    Bitboard  pseudoAttacks;
+#else
     Bitboard* attacks;
-#ifndef USE_PEXT
-    Bitboard magic;
-    unsigned shift;
+    Bitboard  magic;
+    unsigned  shift;
 #endif
 
     // Compute the attack's index using the 'magic bitboards' approach
@@ -98,7 +101,13 @@ struct Magic {
 #endif
     }
 
-    Bitboard attacks_bb(Bitboard occupied) const { return attacks[index(occupied)]; }
+    Bitboard attacks_bb(Bitboard occupied) const {
+#ifdef USE_PEXT
+        return pdep(attacks[index(occupied)], pseudoAttacks);
+#else
+        return attacks[index(occupied)];
+#endif
+    }
 };
 
 extern Magic Magics[SQUARE_NB][2];
@@ -338,17 +347,18 @@ constexpr Bitboard safe_destination(Square s, int step) {
 }
 
 constexpr Bitboard sliding_attack(PieceType pt, Square sq, Bitboard occupied) {
-    Bitboard  attacks             = 0;
-    Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
-    Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
+    Bitboard            attacks = 0, dest = 0;
+    constexpr Direction RookDirections[4]   = {NORTH, SOUTH, EAST, WEST};
+    constexpr Direction BishopDirections[4] = {NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST};
 
     for (Direction d : (pt == ROOK ? RookDirections : BishopDirections))
     {
         Square s = sq;
-        while (safe_destination(s, d))
+        while ((dest = safe_destination(s, d)))
         {
-            attacks |= (s += d);
-            if (occupied & s)
+            attacks |= dest;
+            s += d;
+            if (occupied & dest)
             {
                 break;
             }

@@ -497,14 +497,14 @@ ifeq ($(COMP),mingw)
 			CXX=i686-w64-mingw32-c++-posix
 		endif
 	endif
-	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations
+	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations -fconstexpr-ops-limit=500000000
 endif
 
 ifeq ($(COMP),icx)
 	comp=icx
 	CXX=icpx
 	CXXFLAGS += --intel -pedantic -Wextra -Wshadow -Wmissing-prototypes \
-		-Wconditional-uninitialized -Wabi -Wdeprecated
+		-Wconditional-uninitialized -Wabi -Wdeprecated -fconstexpr-steps=500000000
 endif
 
 ifeq ($(COMP),clang)
@@ -515,7 +515,7 @@ ifeq ($(COMP),clang)
 	endif
 
 	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-prototypes \
-	            -Wconditional-uninitialized -flax-vector-conversions=none
+	            -Wconditional-uninitialized -flax-vector-conversions=none -fconstexpr-steps=500000000
 
 	ifeq ($(filter $(KERNEL),Darwin OpenBSD FreeBSD),)
 	ifeq ($(target_windows),)
@@ -829,7 +829,7 @@ endif
 ifeq ($(pext),yes)
 	CXXFLAGS += -DUSE_PEXT
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
-		CXXFLAGS += -mbmi2
+		CXXFLAGS += -mbmi2 -DUSE_COMPTIME_ATTACKS
 	endif
 endif
 
