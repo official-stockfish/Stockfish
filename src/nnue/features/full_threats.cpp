@@ -22,7 +22,6 @@
 
 #include <array>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <utility>
@@ -340,8 +339,8 @@ void FullThreats::append_changed_indices(Color                   perspective,
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
         if (prefetchBase)
-            prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
-                prefetchBase + static_cast<std::ptrdiff_t>(index) * prefetchStride);
+            prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
+                reinterpret_cast<uintptr_t>(prefetchBase) + index *  prefetchStride));
         insert.push_back_if_lt(index, Dimensions);
     }
 }

@@ -197,12 +197,12 @@ class ValueList {
    public:
     std::size_t size() const { return size_; }
     int         ssize() const { return int(size_); }
-    void        push_back(const T& value) {
+    void push_back(const T& value) {
         assert(size_ < MaxSize);
         values_[size_++] = value;
     }
     // pushes back value if value < max
-    inline void        push_back_if_lt(const T& value, T max) {
+    void push_back_if_lt(const T& value, const T& max) {
         assert(size_ < MaxSize);
         values_[size_] = value;
         size_ += (value < max);
