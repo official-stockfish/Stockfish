@@ -258,8 +258,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     assert(type_of(attacked) == PAWN);
 
                     IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back_if_lt(index, Dimensions);
                 }
             }
             else
