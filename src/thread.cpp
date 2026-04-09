@@ -394,12 +394,14 @@ Thread* ThreadPool::get_best_thread() const {
 
         if (bestThreadDecisive)
         {
-            assert((is_win(bestThreadScore) && is_win(newThreadScore))
-                   || (is_loss(bestThreadScore) && is_loss(newThreadScore)));
-
             // Make sure we pick the shortest mate / TB conversion.
             if (newThreadDecisive && std::abs(newThreadScore) > std::abs(bestThreadScore))
+            {
+                assert((is_win(bestThreadScore) && is_win(newThreadScore))
+                       || (is_loss(bestThreadScore) && is_loss(newThreadScore)));
+
                 bestThread = th.get();
+            }
         }
         else if (newThreadDecisive
                  || (!is_loss(newThreadScore)
