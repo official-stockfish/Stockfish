@@ -22,7 +22,6 @@
 
 #include <array>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <utility>
@@ -236,8 +235,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back_if_lt(index, Dimensions);
                 }
 
                 while (attacks_right)
@@ -247,8 +245,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back_if_lt(index, Dimensions);
                 }
 
                 // Set of pawns which are prevented from movement by a pawn in front of them
@@ -261,8 +258,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     assert(type_of(attacked) == PAWN);
 
                     IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back_if_lt(index, Dimensions);
                 }
             }
             else
@@ -279,8 +275,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                         IndexType index =
                           make_index(perspective, attacker, from, to, attacked, ksq);
 
-                        if (index < Dimensions)
-                            active.push_back(index);
+                        active.push_back_if_lt(index, Dimensions);
                     }
                 }
             }
@@ -342,13 +337,10 @@ void FullThreats::append_changed_indices(Color                   perspective,
         auto&           insert = add ? added : removed;
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
-        if (index < Dimensions)
-        {
-            if (prefetchBase)
-                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
-                  prefetchBase + static_cast<std::ptrdiff_t>(index) * prefetchStride);
-            insert.push_back(index);
-        }
+        if (prefetchBase)
+            prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
+              reinterpret_cast<uintptr_t>(prefetchBase) + index * prefetchStride));
+        insert.push_back_if_lt(index, Dimensions);
     }
 }
 
