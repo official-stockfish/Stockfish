@@ -1531,7 +1531,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     Key   posKey;
     Move  move, bestMove;
     Value bestValue, value, futilityBase;
-    bool  pvHit, givesCheck, capture;
+    bool  givesCheck, capture;
     int   moveCount;
 
     // Step 1. Initialize node
