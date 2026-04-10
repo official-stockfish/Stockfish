@@ -70,6 +70,10 @@ constexpr int TBPIECES = 7;  // Max number of supported pieces
 constexpr int MAX_DTZ =
   1 << 18;  // Max DTZ supported times 2, large enough to deal with the syzygy TB limit.
 
+enum {
+    BigEndian,
+    LittleEndian
+};
 enum TBType {
     WDL,
     DTZ
@@ -106,26 +110,29 @@ int  off_A1H8(int sq) { return int(rank_of(Square(sq))) - file_of(Square(sq)); }
 constexpr Value WDL_to_value[] = {-VALUE_MATE + MAX_PLY + 1, VALUE_DRAW - 2, VALUE_DRAW,
                                   VALUE_DRAW + 2, VALUE_MATE - MAX_PLY - 1};
 
-template<typename T>
-T read_le(const uint8_t* bytes) {
-    static_assert(std::is_unsigned_v<T>, "read_le expects an unsigned type");
+template<typename T, int Half = sizeof(T) / 2, int End = sizeof(T) - 1>
+inline void swap_endian(T& x) {
+    static_assert(std::is_unsigned_v<T>, "Argument of swap_endian not unsigned");
 
-    T value = 0;
-    for (size_t i = 0; i < sizeof(T); ++i)
-        value |= T(bytes[i]) << (i * 8);
-
-    return value;
+    uint8_t tmp, *c = (uint8_t*) &x;
+    for (int i = 0; i < Half; ++i)
+        tmp = c[i], c[i] = c[End - i], c[End - i] = tmp;
 }
+template<>
+inline void swap_endian<uint8_t>(uint8_t&) {}
 
-template<typename T>
-T read_be(const uint8_t* bytes) {
-    static_assert(std::is_unsigned_v<T>, "read_be expects an unsigned type");
+template<typename T, int LE>
+T number(void* addr) {
+    T v;
 
-    T value = 0;
-    for (size_t i = 0; i < sizeof(T); ++i)
-        value = T((value << 8) | bytes[i]);
+    if (uintptr_t(addr) & (alignof(T) - 1))  // Unaligned pointer (very rare)
+        std::memcpy(&v, addr, sizeof(T));
+    else
+        v = *((T*) addr);
 
-    return value;
+    if (LE != IsLittleEndian)
+        swap_endian(v);
+    return v;
 }
 
 // DTZ tables don't store valid scores for moves that reset the rule50 counter
@@ -147,8 +154,8 @@ int sign_of(T val) {
 
 // Numbers in little-endian used by sparseIndex[] to point into blockLength[]
 struct SparseEntry {
-    uint8_t block[4];   // Number of block
-    uint8_t offset[2];  // Offset within the block
+    char block[4];   // Number of block
+    char offset[2];  // Offset within the block
 };
 
 static_assert(sizeof(SparseEntry) == 6, "SparseEntry must be 6 bytes");
@@ -165,7 +172,7 @@ struct LR {
                     // bits is the right-hand symbol. If the symbol has length 1,
                     // then the left-hand symbol is the stored value.
     template<Side S>
-    Sym get() const {
+    Sym get() {
         return S == Left  ? ((lr[1] & 0xF) << 8) | lr[0]
              : S == Right ? (lr[2] << 4) | (lr[1] >> 4)
                           : (assert(false), Sym(-1));
@@ -314,19 +321,19 @@ std::string TBFile::Paths;
 // There are 8, 4, or 2 PairsData records for each TBTable, according to the type
 // of table and if positions have pawns or not. It is populated at first access.
 struct PairsData {
-    uint8_t        flags;        // Table flags, see enum TBFlag
-    uint8_t        maxSymLen;    // Maximum length in bits of the Huffman symbols
-    uint8_t        minSymLen;    // Minimum length in bits of the Huffman symbols
-    uint32_t       blocksNum;    // Number of blocks in the TB file
-    size_t         sizeofBlock;  // Block size in bytes
-    size_t         span;         // About every span values there is a SparseIndex[] entry
-    const uint8_t* lowestSym;    // lowestSym[l] is the symbol of length l with the lowest value
-    const LR*      btree;        // btree[sym] stores the left and right symbols that expand sym
-    const uint8_t* blockLength;  // Little-endian uint16_t block lengths
-    uint32_t blockLengthSize;  // Size of blockLength[] table: padded so it's bigger than blocksNum
-    const uint8_t* sparseIndex;      // SparseEntry bytes pointing into blockLength[]
-    size_t         sparseIndexSize;  // Size of SparseIndex[] table
-    const uint8_t* data;             // Start of Huffman compressed data
+    uint8_t   flags;            // Table flags, see enum TBFlag
+    uint8_t   maxSymLen;        // Maximum length in bits of the Huffman symbols
+    uint8_t   minSymLen;        // Minimum length in bits of the Huffman symbols
+    uint32_t  blocksNum;        // Number of blocks in the TB file
+    size_t    sizeofBlock;      // Block size in bytes
+    size_t    span;             // About every span values there is a SparseIndex[] entry
+    Sym*      lowestSym;        // lowestSym[l] is the symbol of length l with the lowest value
+    LR*       btree;            // btree[sym] stores the left and right symbols that expand sym
+    uint16_t* blockLength;      // Number of stored positions (minus one) for each block: 1..65536
+    uint32_t  blockLengthSize;  // Size of blockLength[] table: padded so it's bigger than blocksNum
+    SparseEntry* sparseIndex;   // Partial indices into blockLength[]
+    size_t       sparseIndexSize;  // Size of SparseIndex[] table
+    uint8_t*     data;             // Start of Huffman compressed data
     std::vector<uint64_t>
       base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
     std::vector<uint8_t>
@@ -349,7 +356,7 @@ struct TBTable {
 
     std::atomic_bool ready;
     void*            baseAddress;
-    const uint8_t*   map;
+    uint8_t*         map;
     uint64_t         mapping;
     Key              key;
     Key              key2;
@@ -363,8 +370,7 @@ struct TBTable {
 
     TBTable() :
         ready(false),
-        baseAddress(nullptr),
-        map(nullptr) {}
+        baseAddress(nullptr) {}
     explicit TBTable(const std::string& code);
     explicit TBTable(const TBTable<WDL>& wdl);
 
@@ -432,24 +438,6 @@ TBTable<DTZ>::TBTable(const TBTable<WDL>& wdl) :
     hasUniquePieces = wdl.hasUniquePieces;
     pawnCount[0]    = wdl.pawnCount[0];
     pawnCount[1]    = wdl.pawnCount[1];
-}
-
-const uint8_t* sparse_entry_at(const PairsData* d, size_t index) {
-    assert(index < d->sparseIndexSize);
-    return d->sparseIndex + index * sizeof(SparseEntry);
-}
-
-uint16_t block_length_at(const PairsData* d, uint32_t block) {
-    assert(block < d->blockLengthSize);
-    return read_le<uint16_t>(d->blockLength + size_t(block) * sizeof(uint16_t));
-}
-
-Sym lowest_sym_at(const PairsData* d, size_t index) {
-    return read_le<Sym>(d->lowestSym + index * sizeof(Sym));
-}
-
-uint16_t wide_dtz_map_at(const uint8_t* map, size_t index) {
-    return read_le<uint16_t>(map + index * sizeof(uint16_t));
 }
 
 // class TBTables creates and keeps ownership of the TBTable objects, one for
@@ -584,7 +572,7 @@ void TBTables::add(const std::vector<PieceType>& pieces) {
 // Huffman codes are the same for all blocks in the table. A non-symmetric pawnless TB file
 // will have one table for wtm and one for btm, a TB file with pawns will have tables per
 // file a,b,c,d also, in this case, one set for wtm and one for btm.
-int decompress_pairs(const PairsData* d, uint64_t idx) {
+int decompress_pairs(PairsData* d, uint64_t idx) {
 
     // Special case where all table positions store the same value
     if (d->flags & TBFlag::SingleValue)
@@ -608,9 +596,8 @@ int decompress_pairs(const PairsData* d, uint64_t idx) {
     uint32_t k = uint32_t(idx / d->span);
 
     // Then we read the corresponding SparseIndex[] entry
-    const uint8_t* sparseEntry = sparse_entry_at(d, k);
-    uint32_t       block       = read_le<uint32_t>(sparseEntry);
-    int            offset      = read_le<uint16_t>(sparseEntry + sizeof(uint32_t));
+    uint32_t block  = number<uint32_t, LittleEndian>(&d->sparseIndex[k].block);
+    int      offset = number<uint16_t, LittleEndian>(&d->sparseIndex[k].offset);
 
     // Now compute the difference idx - I(k). From the definition of k, we know that
     //
@@ -625,19 +612,19 @@ int decompress_pairs(const PairsData* d, uint64_t idx) {
     // Move to the previous/next block, until we reach the correct block that contains idx,
     // that is when 0 <= offset <= d->blockLength[block]
     while (offset < 0)
-        offset += block_length_at(d, --block) + 1;
+        offset += d->blockLength[--block] + 1;
 
-    while (offset > block_length_at(d, block))
-        offset -= block_length_at(d, block++) + 1;
+    while (offset > d->blockLength[block])
+        offset -= d->blockLength[block++] + 1;
 
     // Finally, we find the start address of our block of canonical Huffman symbols
-    const uint8_t* ptr = d->data + (uint64_t(block) * d->sizeofBlock);
+    uint32_t* ptr = (uint32_t*) (d->data + (uint64_t(block) * d->sizeofBlock));
 
     // Read the first 64 bits in our block, this is a (truncated) sequence of
     // unknown number of symbols of unknown length but we know the first one
     // is at the beginning of this 64-bit sequence.
-    uint64_t buf64 = read_be<uint64_t>(ptr);
-    ptr += sizeof(uint64_t);
+    uint64_t buf64 = number<uint64_t, BigEndian>(ptr);
+    ptr += 2;
     int buf64Size = 64;
     Sym sym;
 
@@ -657,7 +644,7 @@ int decompress_pairs(const PairsData* d, uint64_t idx) {
         sym = Sym((buf64 - d->base64[len]) >> (64 - len - d->minSymLen));
 
         // Now add the value of the lowest symbol of length len to get our symbol
-        sym += lowest_sym_at(d, len);
+        sym += number<Sym, LittleEndian>(&d->lowestSym[len]);
 
         // If our offset is within the number of values represented by symbol sym,
         // we are done.
@@ -673,8 +660,7 @@ int decompress_pairs(const PairsData* d, uint64_t idx) {
         if (buf64Size <= 32)
         {  // Refill the buffer
             buf64Size += 32;
-            buf64 |= uint64_t(read_be<uint32_t>(ptr)) << (64 - buf64Size);
-            ptr += sizeof(uint32_t);
+            buf64 |= uint64_t(number<uint32_t, BigEndian>(ptr++)) << (64 - buf64Size);
         }
     }
 
@@ -722,15 +708,14 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 
     auto flags = entry->get(0, f)->flags;
 
-    const uint8_t* map = entry->map;
-    uint16_t*      idx = entry->get(0, f)->map_idx;
+    uint8_t*  map = entry->map;
+    uint16_t* idx = entry->get(0, f)->map_idx;
     if (flags & TBFlag::Mapped)
     {
-        const auto mapIndex = size_t(idx[WDLMap[wdl + 2]] + value);
         if (flags & TBFlag::Wide)
-            value = wide_dtz_map_at(map, mapIndex);
+            value = ((uint16_t*) map)[idx[WDLMap[wdl + 2]] + value];
         else
-            value = map[mapIndex];
+            value = map[idx[WDLMap[wdl + 2]] + value];
     }
 
     // DTZ tables store distance to zero in number of moves or plies. We
@@ -1083,14 +1068,14 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     d->sizeofBlock     = 1ULL << *data++;
     d->span            = 1ULL << *data++;
     d->sparseIndexSize = size_t((tbSize + d->span - 1) / d->span);  // Round up
-    auto padding       = *data++;
-    d->blocksNum       = read_le<uint32_t>(data);
+    auto padding       = number<uint8_t, LittleEndian>(data++);
+    d->blocksNum       = number<uint32_t, LittleEndian>(data);
     data += sizeof(uint32_t);
     d->blockLengthSize = d->blocksNum + padding;  // Padded to ensure SparseIndex[]
                                                   // does not point out of range.
     d->maxSymLen = *data++;
     d->minSymLen = *data++;
-    d->lowestSym = data;
+    d->lowestSym = (Sym*) data;
     d->base64.resize(d->maxSymLen - d->minSymLen + 1);
 
     // See https://en.wikipedia.org/wiki/Huffman_coding
@@ -1107,7 +1092,9 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
     int base64_size = static_cast<int>(d->base64.size());
     for (int i = base64_size - 2; i >= 0; --i)
     {
-        d->base64[i] = (d->base64[i + 1] + lowest_sym_at(d, i) - lowest_sym_at(d, i + 1)) / 2;
+        d->base64[i] = (d->base64[i + 1] + number<Sym, LittleEndian>(&d->lowestSym[i])
+                        - number<Sym, LittleEndian>(&d->lowestSym[i + 1]))
+                     / 2;
 
         assert(d->base64[i] * 2 >= d->base64[i + 1]);
     }
@@ -1120,9 +1107,9 @@ uint8_t* set_sizes(PairsData* d, uint8_t* data) {
         d->base64[i] <<= 64 - i - d->minSymLen;  // Right-padding to 64 bits
 
     data += base64_size * sizeof(Sym);
-    d->symlen.resize(read_le<uint16_t>(data));
+    d->symlen.resize(number<uint16_t, LittleEndian>(data));
     data += sizeof(uint16_t);
-    d->btree = reinterpret_cast<const LR*>(data);
+    d->btree = (LR*) data;
 
     // The compression scheme used is "Recursive Pairing", that replaces the most
     // frequent adjacent pair of symbols in the source message by a new symbol,
@@ -1154,8 +1141,8 @@ uint8_t* set_dtz_map(TBTable<DTZ>& e, uint8_t* data, File maxFile) {
                 data += uintptr_t(data) & 1;  // Word alignment, we may have a mixed table
                 for (int i = 0; i < 4; ++i)
                 {  // Sequence like 3,x,x,x,1,x,0,2,x,x
-                    e.get(0, f)->map_idx[i] = uint16_t((data - e.map) / sizeof(uint16_t) + 1);
-                    data += 2 * read_le<uint16_t>(data) + 2;
+                    e.get(0, f)->map_idx[i] = uint16_t((uint16_t*) data - (uint16_t*) e.map + 1);
+                    data += 2 * number<uint16_t, LittleEndian>(data) + 2;
                 }
             }
             else
@@ -1225,14 +1212,14 @@ void set(T& e, uint8_t* data) {
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int i = 0; i < sides; i++)
         {
-            (d = e.get(i, f))->sparseIndex = data;
+            (d = e.get(i, f))->sparseIndex = (SparseEntry*) data;
             data += d->sparseIndexSize * sizeof(SparseEntry);
         }
 
     for (File f = FILE_A; f <= maxFile; ++f)
         for (int i = 0; i < sides; i++)
         {
-            (d = e.get(i, f))->blockLength = data;
+            (d = e.get(i, f))->blockLength = (uint16_t*) data;
             data += d->blockLengthSize * sizeof(uint16_t);
         }
 
