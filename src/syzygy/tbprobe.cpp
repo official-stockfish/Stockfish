@@ -104,8 +104,8 @@ int LeadPawnIdx[6][SQUARE_NB];  // [leadPawnsCnt][SQUARE_NB]
 int LeadPawnsSize[6][4];        // [leadPawnsCnt][FILE_A..FILE_D]
 
 // Comparison function to sort leading pawns in ascending MapPawns[] order
-bool pawns_comp(int i, int j) { return MapPawns[i] < MapPawns[j]; }
-int  off_A1H8(int sq) { return int(rank_of(Square(sq))) - file_of(Square(sq)); }
+bool pawns_comp(Square i, Square j) { return MapPawns[i] < MapPawns[j]; }
+int  off_A1H8(Square sq) { return int(rank_of(sq)) - file_of(sq); }
 
 constexpr Value WDL_to_value[] = {-VALUE_MATE + MAX_PLY + 1, VALUE_DRAW - 2, VALUE_DRAW,
                                   VALUE_DRAW + 2, VALUE_MATE - MAX_PLY - 1};
@@ -744,7 +744,7 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
 template<typename T, typename Ret = typename T::Ret>
 Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* result) {
 
-    int        squares[TBPIECES];
+    Square     squares[TBPIECES];
     Piece      pieces[TBPIECES];
     uint64_t   idx;
     int        next = 0, size = 0, leadPawnsCnt = 0;
@@ -781,15 +781,16 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         assert(type_of(pc) == PAWN);
 
         leadPawns = b = pos.pieces(color_of(pc), PAWN);
+        DISABLE_CLANG_LOOP_VEC
         do
-            squares[size++] = int(pop_lsb(b) ^ flipSquares);
+            squares[size++] = pop_lsb(b) ^ flipSquares;
         while (b);
 
         leadPawnsCnt = size;
 
         std::swap(squares[0], *std::max_element(squares, squares + leadPawnsCnt, pawns_comp));
 
-        tbFile = File(edge_distance(file_of(Square(squares[0]))));
+        tbFile = File(edge_distance(file_of(squares[0])));
     }
 
     // DTZ tables are one-sided, i.e. they store positions only for white to
@@ -801,10 +802,11 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
     b = pos.pieces() ^ leadPawns;
+    DISABLE_CLANG_LOOP_VEC
     do
     {
         Square s       = pop_lsb(b);
-        squares[size]  = int(s ^ flipSquares);
+        squares[size]  = s ^ flipSquares;
         pieces[size++] = Piece(pos.piece_on(s) ^ flipColor);
     } while (b);
 
@@ -825,11 +827,11 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // Now we map again the squares so that the square of the lead piece is in
     // the triangle A1-D1-D4.
-    if (file_of(Square(squares[0])) > FILE_D)
+    if (file_of(squares[0]) > FILE_D)
     {
         DISABLE_CLANG_LOOP_VEC
         for (int i = 0; i < size; ++i)
-            squares[i] = int(flip_file(Square(squares[i])));
+            squares[i] = flip_file(squares[i]);
     }
 
     // Encode leading pawns starting with the one with minimum MapPawns[] and
@@ -848,11 +850,11 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
     // In positions without pawns, we further flip the squares to ensure leading
     // piece is below RANK_5.
-    if (rank_of(Square(squares[0])) > RANK_4)
+    if (rank_of(squares[0]) > RANK_4)
     {
         DISABLE_CLANG_LOOP_VEC
         for (int i = 0; i < size; ++i)
-            squares[i] = int(flip_rank(Square(squares[i])));
+            squares[i] = flip_rank(squares[i]);
     }
 
     // Look for the first piece of the leading group not on the A1-D4 diagonal
@@ -867,7 +869,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         {
             DISABLE_CLANG_LOOP_VEC
             for (int j = i; j < size; ++j)
-                squares[j] = ((squares[j] >> 3) | (squares[j] << 3)) & 63;
+                squares[j] = Square(((squares[j] >> 3) | (squares[j] << 3)) & 63);
         }
         break;
     }
@@ -915,19 +917,18 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         // 6 to differentiate from the above case, rank_of() maps a1-d4 diagonal
         // to 0...3 and finally MapB1H1H7[] maps the b1-h1-h7 triangle to 0..27.
         else if (off_A1H8(squares[1]))
-            idx = (6 * 63 + rank_of(Square(squares[0])) * 28 + MapB1H1H7[squares[1]]) * 62
-                + squares[2] - adjust2;
+            idx = (6 * 63 + rank_of(squares[0]) * 28 + MapB1H1H7[squares[1]]) * 62 + squares[2]
+                - adjust2;
 
         // First two pieces are on a1-h8 diagonal, third below
         else if (off_A1H8(squares[2]))
-            idx = 6 * 63 * 62 + 4 * 28 * 62 + rank_of(Square(squares[0])) * 7 * 28
-                + (rank_of(Square(squares[1])) - adjust1) * 28 + MapB1H1H7[squares[2]];
+            idx = 6 * 63 * 62 + 4 * 28 * 62 + rank_of(squares[0]) * 7 * 28
+                + (rank_of(squares[1]) - adjust1) * 28 + MapB1H1H7[squares[2]];
 
         // All 3 pieces on the diagonal a1-h8
         else
-            idx = 6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28 + rank_of(Square(squares[0])) * 7 * 6
-                + (rank_of(Square(squares[1])) - adjust1) * 6
-                + (rank_of(Square(squares[2])) - adjust2);
+            idx = 6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28 + rank_of(squares[0]) * 7 * 6
+                + (rank_of(squares[1]) - adjust1) * 6 + (rank_of(squares[2]) - adjust2);
     }
     else
         // We don't have at least 3 unique pieces, like in KRRvKBB, just map
@@ -936,7 +937,7 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
 
 encode_remaining:
     idx *= d->groupIdx[0];
-    int* groupSq = squares + d->groupLen[0];
+    Square* groupSq = squares + d->groupLen[0];
 
     // Encode remaining pawns and then pieces according to square, in ascending order
     bool remainingPawns = entry->hasPawns && entry->pawnCount[1];
@@ -950,8 +951,10 @@ encode_remaining:
         // groups (similar to what was done earlier for leading group pieces).
         for (int i = 0; i < d->groupLen[next]; ++i)
         {
-            auto f      = [&](int s) { return groupSq[i] > s; };
-            auto adjust = std::count_if(squares, groupSq, f);
+            int adjust = 0;
+            DISABLE_CLANG_LOOP_VEC
+            for (Square* sq = squares; sq != groupSq; ++sq)
+                adjust += groupSq[i] > *sq;
             n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
         }
 
