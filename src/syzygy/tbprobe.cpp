@@ -781,7 +781,6 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
         assert(type_of(pc) == PAWN);
 
         leadPawns = b = pos.pieces(color_of(pc), PAWN);
-        DISABLE_CLANG_LOOP_VEC
         do
             squares[size++] = pop_lsb(b) ^ flipSquares;
         while (b);
@@ -802,7 +801,6 @@ Ret do_probe_table(const Position& pos, T* entry, WDLScore wdl, ProbeState* resu
     // Now we are ready to get all the position pieces (but the lead pawns) and
     // directly map them to the correct color and square.
     b = pos.pieces() ^ leadPawns;
-    DISABLE_CLANG_LOOP_VEC
     do
     {
         Square s       = pop_lsb(b);
