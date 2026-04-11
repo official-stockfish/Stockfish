@@ -451,7 +451,7 @@ endif
 ifeq ($(COMP),gcc)
 	comp=gcc
 	CXX=g++
-	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations -fno-ipa-cp-clone
+	CXXFLAGS += -pedantic -Wextra -Wshadow -Wmissing-declarations
 
 	ifeq ($(arch),$(filter $(arch),armv7 armv8 riscv64))
 		ifeq ($(OS),Android)
@@ -623,7 +623,7 @@ ifeq ($(COMP),gcc)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
 	else
-		CXXFLAGS += -Wstack-usage=128000
+		CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone
 	endif
 endif
 
@@ -1143,16 +1143,8 @@ $(EXE): $(OBJS)
 %.o: %.cpp
 	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS)) -c -o $@ $<
 
-# Cache git metadata when available, otherwise cache the compiler date.
 misc.o: misc.cpp $(BUILD_SHA_FILE) $(BUILD_DATE_FILE)
-	@sha="$$(cat $(BUILD_SHA_FILE))"; \
-	set -- $(CXX) $(CPPFLAGS) $(CXXFLAGS); \
-	test -n "$$sha"  && set -- "$$@" -DGIT_SHA=$$sha; \
-	test -n "$(GIT_DATE)" && set -- "$$@" -DGIT_DATE=$(GIT_DATE); \
-	set -- "$$@" -c $< -o $@; \
-	printf '%s ' "$$@"; \
-	printf '\n'; \
-	"$$@"
+	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(if $(GIT_SHA),-DGIT_SHA=$(GIT_SHA)) $(if $(GIT_DATE),-DGIT_DATE=$(GIT_DATE))) -c -o $@ $<
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \

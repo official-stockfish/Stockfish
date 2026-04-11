@@ -20,6 +20,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
+#include <cstdlib>
 #include <deque>
 #include <map>
 #include <memory>
@@ -379,34 +381,27 @@ Thread* ThreadPool::get_best_thread() const {
         const auto bestThreadMoveVote = votes[bestThreadPV[0]];
         const auto newThreadMoveVote  = votes[newThreadPV[0]];
 
-        // Aborted searches may lead to inexact win scores.
-        const bool bestThreadInProvenWin = is_win(bestThreadScore) && !has_bound(bestThread);
-        const bool newThreadInProvenWin  = is_win(newThreadScore) && !has_bound(th.get());
+        // Aborted (d1) searches may lead to inexact win (or loss) scores.
+        const bool bestThreadDecisive = bestThreadScore != -VALUE_INFINITE
+                                     && is_decisive(bestThreadScore) && !has_bound(bestThread);
+        const bool newThreadDecisive =
+          newThreadScore != -VALUE_INFINITE && is_decisive(newThreadScore) && !has_bound(th.get());
 
-        // Loss scores may be inexact only for aborted d1 searches.
-        const bool bestThreadInProvenLoss =
-          bestThreadScore != -VALUE_INFINITE && is_loss(bestThreadScore) && !has_bound(bestThread);
-        const bool newThreadInProvenLoss =
-          newThreadScore != -VALUE_INFINITE && is_loss(newThreadScore) && !has_bound(th.get());
-
-        // We make sure not to pick a thread with truncated principal variation
+        // We make sure not to pick a thread with a truncated principal variation.
         const bool betterVotingValue =
           thread_voting_value(th.get()) * int(newThreadPV.size() > 2)
           > thread_voting_value(bestThread) * int(bestThreadPV.size() > 2);
 
-        if (bestThreadInProvenWin)
+        if (bestThreadDecisive)
         {
-            // Make sure we pick the shortest mate / TB conversion
-            if (newThreadInProvenWin && newThreadScore > bestThreadScore)
+            assert((is_win(bestThreadScore) && is_win(newThreadScore))
+                   || (is_loss(bestThreadScore) && is_loss(newThreadScore)));
+
+            // Make sure we pick the shortest mate / TB conversion.
+            if (newThreadDecisive && std::abs(newThreadScore) > std::abs(bestThreadScore))
                 bestThread = th.get();
         }
-        else if (bestThreadInProvenLoss)
-        {
-            // Make sure we pick the shortest mated / TB conversion
-            if (newThreadInProvenLoss && newThreadScore < bestThreadScore)
-                bestThread = th.get();
-        }
-        else if (newThreadInProvenWin || newThreadInProvenLoss
+        else if (newThreadDecisive
                  || (!is_loss(newThreadScore)
                      && (newThreadMoveVote > bestThreadMoveVote
                          || (newThreadMoveVote == bestThreadMoveVote && betterVotingValue))))

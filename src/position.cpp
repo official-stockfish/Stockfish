@@ -966,13 +966,22 @@ void Position::do_move(Move                      m,
     // Move the piece. The tricky Chess960 castling is handled earlier
     if (m.type_of() != CASTLING)
     {
+        Piece toPc = pc;
+        if (m.type_of() == PROMOTION)
+            toPc = make_piece(us, m.promotion_type());
+
         if (captured && m.type_of() != EN_PASSANT)
         {
             remove_piece(from, &dts);
-            swap_piece(to, pc, &dts);
+            swap_piece(to, toPc, &dts);
         }
-        else
+        else if (pc == toPc)
             move_piece(from, to, &dts);
+        else
+        {
+            remove_piece(from, &dts);
+            put_piece(toPc, to, &dts);
+        }
     }
 
     // If the moving piece is a pawn do some special extra work
@@ -1010,8 +1019,6 @@ void Position::do_move(Move                      m,
 
             assert(relative_rank(us, to) == RANK_8);
             assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
-
-            swap_piece(to, promotion, &dts);
 
             dp.add_pc = promotion;
             dp.add_sq = to;
@@ -1184,13 +1191,8 @@ void write_multiple_dirties(const Position& p,
                             DirtyThreats*   dts) {
     static_assert(sizeof(DirtyThreat) == 4);
 
-    const __m512i board      = _mm512_loadu_si512(p.piece_array().data());
-    const __m512i AllSquares = _mm512_set_epi8(
-      63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41,
-      40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18,
-      17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-
-    const int dt_count = popcount(mask);
+    const __m512i board    = _mm512_loadu_si512(p.piece_array().data());
+    const int     dt_count = popcount(mask);
     assert(dt_count <= 16);
 
     const __m512i template_v = _mm512_set1_epi32(dt_template.raw());

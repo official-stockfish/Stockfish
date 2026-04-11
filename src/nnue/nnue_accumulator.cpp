@@ -746,20 +746,7 @@ void update_accumulator_refresh_cache(Color                                 pers
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
             acc[k] = entryTile[k];
 
-        int i = 0;
-        for (; i < std::min(removed.ssize(), added.ssize()); ++i)
-        {
-            size_t       indexR  = removed[i];
-            const size_t offsetR = Dimensions * indexR;
-            auto*        columnR = reinterpret_cast<const vec_t*>(&weights[offsetR]);
-            size_t       indexA  = added[i];
-            const size_t offsetA = Dimensions * indexA;
-            auto*        columnA = reinterpret_cast<const vec_t*>(&weights[offsetA]);
-
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = fused<Vec16Wrapper, Add, Sub>(acc[k], columnA[k], columnR[k]);
-        }
-        for (; i < removed.ssize(); ++i)
+        for (int i = 0; i < removed.ssize(); ++i)
         {
             size_t       index  = removed[i];
             const size_t offset = Dimensions * index;
@@ -768,7 +755,7 @@ void update_accumulator_refresh_cache(Color                                 pers
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = vec_sub_16(acc[k], column[k]);
         }
-        for (; i < added.ssize(); ++i)
+        for (int i = 0; i < added.ssize(); ++i)
         {
             size_t       index  = added[i];
             const size_t offset = Dimensions * index;
