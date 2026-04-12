@@ -481,7 +481,7 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         return 50000.0 / (static_cast<double>(ply) + 15.0);
     };
 
-float totalTime = 0;
+    float totalTime = 0;
     for (const auto& game : BenchmarkPositions)
         for (size_t i = 0; i < game.size(); ++i)
             totalTime += float(getCorrectedTime(i + 1));
