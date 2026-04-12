@@ -191,6 +191,7 @@ constexpr auto index_lut2 = index_lut2_array();
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
+
     const std::int8_t orientation   = OrientTBL[ksq] ^ (56 * perspective);
     unsigned          from_oriented = uint8_t(from) ^ orientation;
     unsigned          to_oriented   = uint8_t(to) ^ orientation;
@@ -263,9 +264,6 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
             }
             else
             {
-                Square   enemy_ksq = pos.square<KING>(~c);
-                Bitboard king_ring = attacks_bb<KING>(enemy_ksq);
-
                 while (bb)
                 {
                     Square   from    = pop_lsb(bb);
@@ -279,19 +277,6 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                           make_index(perspective, attacker, from, to, attacked, ksq);
 
                         active.push_back_if_lt(index, Dimensions);
-                    }
-
-                    // Set of attacks on king ring.
-                    Bitboard king_ring_attacks = attacks_bb(pt, from, occupied) & king_ring;
-                    Piece fake_opponent_king = make_piece(~c, KING);
-                    while (king_ring_attacks)
-                    {
-                        Square to = pop_lsb(king_ring_attacks);
-                        IndexType index =
-                                make_index(perspective, attacker, from, to, fake_opponent_king, ksq);
-
-                        if (index < Dimensions)
-                            active.push_back(index);
                     }
                 }
             }
@@ -356,6 +341,7 @@ void FullThreats::append_changed_indices(Color                   perspective,
         if (prefetchBase)
             prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
               reinterpret_cast<uintptr_t>(prefetchBase) + index * prefetchStride));
+
         insert.push_back_if_lt(index, Dimensions);
     }
 }
