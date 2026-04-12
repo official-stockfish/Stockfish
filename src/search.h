@@ -81,11 +81,12 @@ struct PVMoves {
     }
 
     void resize(std::size_t newSize) {
-        assert(newSize <= MAX_PLY + 1);
+        assert(newSize <= length);
         length = newSize;
     }
 
     void update(Move move, const PVMoves* childPv) {
+        assert(childPv == nullptr || childPv->size() <= MAX_PLY);
         length = childPv ? childPv->length : 0;
 
         if (childPv)
