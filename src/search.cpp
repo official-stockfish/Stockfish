@@ -511,7 +511,8 @@ bool Search::Worker::iterative_deepening() {
 
             double bestMoveInstability = 1.088 + 2.315 * totBestMoveChanges / threads.size();
 
-            double highBestMoveEffort = nodesEffort > 86000 ? 0.74 : 0.96;
+            double highBestMoveEffort = std::clamp(
+              interpolate(int64_t(nodesEffort), int64_t(78000), int64_t(94000), 0.96, 0.74), 0.74, 0.96);
 
             double totalTime = mainThread->tm.optimum() * fallingEval * reduction
                              * bestMoveInstability * highBestMoveEffort;
