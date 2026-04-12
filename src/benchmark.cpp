@@ -495,8 +495,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         for (const std::string& fen : game)
         {
             setup.commands.emplace_back("position fen " + fen);
-            setup.commands.emplace_back("go movetime " + 
-                std::to_string(static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor)));
+            const int correctedTime = static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor);
+            setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
         }
     }
 
