@@ -233,7 +233,7 @@ void Search::Worker::start_searching() {
     Skill   skill =
       Skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
-    if (int(options["MultiPV"]) == 1 && !limits.depth && !skill.enabled())
+    if (!limits.depth && !skill.enabled())
         bestThread = threads.get_best_thread()->worker.get();
 
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
@@ -424,6 +424,24 @@ bool Search::Worker::iterative_deepening() {
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
 
+            // In multiPV analysis we do not let aborted searches spoil mated-in/
+            // TB loss scores from a completed search in an earlier PV line.
+            // A mated-in/TB loss from an aborted search for pvIdx > 0 can only become
+            // bestmove in the sorting below, if the current bestmove (and hence also
+            // the previously searched pvIdx - 1 line) is already a proven loss.
+            if (threads.stop && pvIdx && is_loss(rootMoves[pvIdx - 1].score)
+                && rootMoves[pvIdx] < rootMoves[pvIdx - 1])
+            {
+                rootMoves[pvIdx].score = rootMoves[pvIdx].uciScore =
+                  (rootMoves[pvIdx].previousScore != -VALUE_INFINITE
+                   && rootMoves[pvIdx].previousScore < rootMoves[pvIdx - 1].score)
+                    ? rootMoves[pvIdx].previousScore
+                    : rootMoves[pvIdx - 1].score;
+                rootMoves[pvIdx].previousScore   = -VALUE_INFINITE;
+                rootMoves[pvIdx].scoreLowerbound = rootMoves[pvIdx].scoreUpperbound = false;
+                rootMoves[pvIdx].pv.resize(1);
+            }
+
             // Sort the PV lines searched so far and update the GUI
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
@@ -450,7 +468,7 @@ bool Search::Worker::iterative_deepening() {
         // A mated-in/TB-loss score from an aborted search cannot be trusted: the loss
         // could be delayed or refuted upon exploring the remaining root-moves.
         // Thus here we roll back to the score from the previous iteration.
-        else if (rootMoves[0].score != -VALUE_INFINITE && is_loss(rootMoves[0].score))
+        else if (!pvIdx && rootMoves[0].score != -VALUE_INFINITE && is_loss(rootMoves[0].score))
         {
             // Bring the last best move to the front for best thread selection.
             if (!lastIterationPV.empty())
