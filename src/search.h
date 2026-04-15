@@ -23,7 +23,6 @@
 #include <array>
 #include <atomic>
 #include <cassert>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -31,6 +30,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstring>
 
 #include "history.h"
 #include "misc.h"
@@ -58,11 +58,52 @@ class OptionsMap;
 
 namespace Search {
 
+struct PVMoves {
+    Move        moves[MAX_PLY + 1];
+    std::size_t length = 0;
+
+    Move*       begin() { return moves; }
+    const Move* begin() const { return moves; }
+    Move*       end() { return moves + length; }
+    const Move* end() const { return moves + length; }
+
+    Move&       operator[](std::size_t index) { return moves[index]; }
+    const Move& operator[](std::size_t index) const { return moves[index]; }
+
+    bool        empty() const { return length == 0; }
+    std::size_t size() const { return length; }
+
+    void clear() { length = 0; }
+
+    void push_back(Move move) {
+        assert(length < MAX_PLY + 1);
+        moves[length++] = move;
+    }
+
+    void resize(std::size_t newSize) {
+        assert(newSize <= length);
+        length = newSize;
+    }
+
+    void update(Move move, const PVMoves* childPv) {
+        assert(childPv == nullptr || childPv->size() <= MAX_PLY);
+        length = childPv ? childPv->length : 0;
+
+        if (childPv)
+        {
+            std::memcpy(moves + 1, childPv->moves, length * sizeof(Move));
+        }
+
+        moves[0] = move;
+        ++length;
+    }
+};
+
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
 // its own array of Stack objects, indexed by the current ply.
 struct Stack {
-    Move*                       pv;
+    PVMoves*                    pv;
     PieceToHistory*             continuationHistory;
     CorrectionHistory<PieceTo>* continuationCorrectionHistory;
     int                         ply;
@@ -85,8 +126,7 @@ struct Stack {
 // fail low). Score is normally set at -VALUE_INFINITE for all non-pv moves.
 struct RootMove {
 
-    explicit RootMove(Move m) :
-        pv(1, m) {}
+    explicit RootMove(Move m) { pv.push_back(m); }
     bool extract_ponder_from_tt(const TranspositionTable& tt, Position& pos);
     bool operator==(const Move& m) const { return pv[0] == m; }
     // Sort in descending order
@@ -94,18 +134,18 @@ struct RootMove {
         return m.score != score ? m.score < score : m.previousScore < previousScore;
     }
 
-    uint64_t          effort           = 0;
-    Value             score            = -VALUE_INFINITE;
-    Value             previousScore    = -VALUE_INFINITE;
-    Value             averageScore     = -VALUE_INFINITE;
-    Value             meanSquaredScore = -VALUE_INFINITE * VALUE_INFINITE;
-    Value             uciScore         = -VALUE_INFINITE;
-    bool              scoreLowerbound  = false;
-    bool              scoreUpperbound  = false;
-    int               selDepth         = 0;
-    int               tbRank           = 0;
-    Value             tbScore;
-    std::vector<Move> pv;
+    uint64_t effort           = 0;
+    Value    score            = -VALUE_INFINITE;
+    Value    previousScore    = -VALUE_INFINITE;
+    Value    averageScore     = -VALUE_INFINITE;
+    Value    meanSquaredScore = -VALUE_INFINITE * VALUE_INFINITE;
+    Value    uciScore         = -VALUE_INFINITE;
+    bool     scoreLowerbound  = false;
+    bool     scoreUpperbound  = false;
+    int      selDepth         = 0;
+    int      tbRank           = 0;
+    Value    tbScore;
+    PVMoves  pv;
 };
 
 using RootMoves = std::vector<RootMove>;
@@ -343,7 +383,7 @@ class Worker {
     Depth     rootDepth, completedDepth;
     Value     rootDelta;
 
-    std::vector<Move> lastIterationPV;
+    PVMoves lastIterationPV;
 
     size_t                    threadIdx, numaThreadIdx, numaTotal;
     NumaReplicatedAccessToken numaAccessToken;
