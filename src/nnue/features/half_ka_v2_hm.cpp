@@ -52,7 +52,7 @@ void HalfKAv2_hm::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
     const uint16_t flip   = 56 * perspective;
     const __m512i  orient = _mm512_set1_epi16((uint16_t) OrientTBL[ksq] ^ flip);
     const __m512i  psi =
-      _mm512_zextsi256_si512(_mm256_loadu_si256((const __m256i*) psiTable[perspective]));
+      _mm512_castsi256_si512(_mm256_loadu_si256((const __m256i*) psiTable[perspective]));
     const __m512i psi_plus_bucket =
       _mm512_add_epi16(psi, _mm512_set1_epi16((uint16_t) KingBuckets[int(ksq) ^ flip]));
 
