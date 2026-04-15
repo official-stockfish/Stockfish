@@ -373,6 +373,12 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 #endif
 }
 
+template<typename T1, typename T2>
+inline constexpr T2 interpolate(T1 x, T1 x0, T1 x1, T2 y0, T2 y1) {
+    assert(x0 != x1);
+    return T2(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+}
+
 uint64_t hash_bytes(const char*, size_t);
 
 template<typename T>
