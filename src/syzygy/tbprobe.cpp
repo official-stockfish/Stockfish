@@ -949,8 +949,10 @@ encode_remaining:
         // groups (similar to what was done earlier for leading group pieces).
         for (int i = 0; i < d->groupLen[next]; ++i)
         {
-            auto f      = [&](Square s) { return groupSq[i] > s; };
-            auto adjust = std::count_if(squares, groupSq, f);
+            int adjust = 0;
+            DISABLE_CLANG_LOOP_VEC
+            for (Square* sq = squares; sq != groupSq; ++sq)
+                adjust += groupSq[i] > *sq;
             n += Binomial[i + 1][groupSq[i] - adjust - 8 * remainingPawns];
         }
 
