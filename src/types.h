@@ -220,11 +220,11 @@ using Depth = int;
 constexpr Depth DEPTH_QS = 0;
 // For transposition table entries where no searching at all was done
 // (whether regular or qsearch) we use DEPTH_UNSEARCHED, which should thus
-// compare lower than any quiescence or regular depth. DEPTH_ENTRY_OFFSET
-// is used only for the transposition table entry occupancy check (see tt.cpp),
-// and should thus be lower than DEPTH_UNSEARCHED.
-constexpr Depth DEPTH_UNSEARCHED   = -2;
-constexpr Depth DEPTH_ENTRY_OFFSET = -3;
+// compare lower than any quiescence or regular depth. DEPTH_NONE is used
+// for the transposition table entry occupancy check (see tt.cpp), and
+// should thus be lower than DEPTH_UNSEARCHED.
+constexpr Depth DEPTH_UNSEARCHED = -2;
+constexpr Depth DEPTH_NONE       = -3;
 
 // clang-format off
 enum Square : uint8_t {
