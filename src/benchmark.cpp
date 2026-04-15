@@ -483,15 +483,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     float totalTime = 0;
     for (const auto& game : BenchmarkPositions)
-    {
-        int ply = 1;
-        for (int i = 0; i < static_cast<int>(game.size()); ++i)
-        {
-            const float correctedTime = float(getCorrectedTime(ply));
-            totalTime += correctedTime;
-            ply += 1;
-        }
-    }
+        for (size_t i = 0; i < game.size(); ++i)
+            totalTime += float(getCorrectedTime(i + 1));
 
     float timeScaleFactor = static_cast<float>(desiredTimeS * 1000) / totalTime;
 
@@ -502,11 +495,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         for (const std::string& fen : game)
         {
             setup.commands.emplace_back("position fen " + fen);
-
-            const int correctedTime = static_cast<int>(getCorrectedTime(ply) * timeScaleFactor);
+            const int correctedTime = static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor);
             setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
-
-            ply += 1;
         }
     }
 
