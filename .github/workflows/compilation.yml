@@ -24,7 +24,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -85,7 +85,7 @@ jobs:
         run: git clean -fx
 
       - name: Upload artifact for (pre)-release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
           path: |
