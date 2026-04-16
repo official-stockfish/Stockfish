@@ -27,7 +27,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <tuple>
 
 #include "../misc.h"
 #include "../types.h"
@@ -48,7 +47,7 @@ enum class EmbeddedNNUEType {
     SMALL,
 };
 
-using NetworkOutput = std::tuple<Value, Value>;
+using NetworkOutput = Value;
 
 // The network must be a trivial type, i.e. the memory must be in-line.
 // This is required to allow sharing the network via shared memory, as
