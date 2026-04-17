@@ -52,6 +52,11 @@
 
 namespace Stockfish {
 
+static constexpr int LmrDivisor[16] = {
+    3307, 2930, 2874, 2818, 3215, 3225, 3224, 2782, 2858, 2919,
+    3088, 3275, 3180, 2868, 3006, 3599
+};
+
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -1097,6 +1102,7 @@ moves_loop:  // When in check, search starts here
             }
             else if (!ss->followPV || !PvNode)
             {
+                int dIndex = std::clamp(int(depth), 1, 16) - 1;
                 int history = (*contHist[0])[movedPiece][move.to_sq()]
                             + (*contHist[1])[movedPiece][move.to_sq()]
                             + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
@@ -1108,7 +1114,7 @@ moves_loop:  // When in check, search starts here
                 history += 71 * mainHistory[us][move.raw()] / 32;
 
                 // (*Scaler): Generally, lower divisors scales well
-                lmrDepth += history / 2995;
+                lmrDepth += history / LmrDivisor[dIndex];
 
                 Value futilityValue = ss->staticEval + 42 + 151 * !bestMove + 120 * lmrDepth
                                     + 86 * (ss->staticEval > alpha);
