@@ -138,6 +138,11 @@ void AccumulatorStack::pop() noexcept {
     size--;
 }
 
+std::size_t AccumulatorStack::threatDeltaCount() const noexcept {
+    assert(size > 0);
+    return threat_accumulators[size - 1].diff.list.size();
+}
+
 template<IndexType Dimensions>
 void AccumulatorStack::evaluate(const Position&                       pos,
                                 const FeatureTransformer<Dimensions>& featureTransformer,

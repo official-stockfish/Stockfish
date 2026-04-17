@@ -1239,6 +1239,13 @@ moves_loop:  // When in check, search starts here
         // Decrease/increase reduction for moves with a good/bad history
         r -= ss->statScore * 428 / 4096;
 
+        // Reduce less for moves that create/destroy many NNUE threat features.
+        // Baseline subtraction (~6) neutralizes typical quiet moves; only moves
+        // with above-average tactical impact get reduced less. Scaled by depth
+        // so the effect grows proportionally with search depth.
+        int threatDelta = std::clamp(int(accumulatorStack.threatDeltaCount()) - 6, 0, 20);
+        r -= threatDelta * depth * 2;
+
         // Scale up reductions for expected ALL nodes
         if (allNode)
             r += r * 273 / (256 * depth + 260);

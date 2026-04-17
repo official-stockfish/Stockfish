@@ -160,6 +160,8 @@ class AccumulatorStack {
     std::pair<DirtyPiece&, DirtyThreats&> push() noexcept;
     void                                  pop() noexcept;
 
+    [[nodiscard]] std::size_t threatDeltaCount() const noexcept;
+
     template<IndexType Dimensions>
     void evaluate(const Position&                       pos,
                   const FeatureTransformer<Dimensions>& featureTransformer,
