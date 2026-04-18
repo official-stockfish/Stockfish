@@ -16,17 +16,17 @@ STOCKFISH_EXE=$1
 SDE_EXE=$2
 EXPECTED_BENCH=$3
 
-if [[ $(uname) == 'Linux' ]]; then
+if [ "$(uname)" = 'Linux' ]; then
 # Windows 11 doesn't support these old arches
 PAIRS="
 p4p:x86-64
 nhm:x86-64-sse41-popcnt
 "
 else
-PAIRS=""
+PAIRS=''
 fi
 
-PAIRS+="
+PAIRS="$PAIRS
 snb:x86-64-sse41-popcnt
 ivb:x86-64-sse41-popcnt
 hsw:x86-64-bmi2
@@ -60,7 +60,7 @@ for pair in $PAIRS; do
     fi
 done
 
-if [[ $FAIL != 0 ]]; then
+if [ "$FAIL" != 0 ]; then
     echo "check_universal.sh: failed"
     exit 1
 fi
