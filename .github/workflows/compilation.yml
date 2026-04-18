@@ -93,7 +93,7 @@ jobs:
              !.git
              !.output
 
-  Universal:
+  UniversalLinux:
     name: Ubuntu x86-64 Universal
     runs-on: ubuntu-22.04
     defaults:
