@@ -16,9 +16,17 @@ STOCKFISH_EXE=$1
 SDE_EXE=$2
 EXPECTED_BENCH=$3
 
+if [[ $(uname) == 'Linux' ]]; then
+# Windows 11 doesn't support these old arches
 PAIRS="
 p4p:x86-64
 nhm:x86-64-sse41-popcnt
+"
+else
+PAIRS=""
+fi
+
+PAIRS+="
 snb:x86-64-sse41-popcnt
 ivb:x86-64-sse41-popcnt
 hsw:x86-64-bmi2
