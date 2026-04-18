@@ -37,32 +37,30 @@ icl:x86-64-avx512icl
 adl:x86-64-avxvnni
 "
 
-results=$(
-    i=0
-    for pair in $PAIRS; do
-        i=$((i + 1))
-        (
-            cpu=${pair%%:*}
-            expected_compiler=${pair##*:}
-            compiler_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" compiler 2>&1 || true)
-            bench_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" bench 2>&1 || true)
-            actual_compiler=$(printf '%s\n' "$compiler_out" | awk -F: '/Compilation architecture/ {
-                sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
-            }')
-            actual_bench=$(printf '%s\n' "$bench_out" | awk -F: '/Nodes searched/ {
-                sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
-            }')
-            if [ "$actual_compiler" != "$expected_compiler" ] || [ "$actual_bench" != "$EXPECTED_BENCH" ]; then
-                printf '===== -%s output (expected %s/%s, got %s/%s) =====\n' \
-                    "$cpu" "$expected_compiler" "$EXPECTED_BENCH" "${actual_compiler:--}" "$actual_bench" >&2
-                echo "fail"
-            fi
-        ) &
-    done
-    wait
-)
+FAIL=0
+i=0
+for pair in $PAIRS; do
+    i=$((i + 1))
+    cpu=${pair%%:*}
+    expected_compiler=${pair##*:}
+    compiler_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" compiler 2>&1 || true)
+    bench_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" bench 2>&1 || true)
+    actual_compiler=$(printf '%s\n' "$compiler_out" | awk -F: '/Compilation architecture/ {
+        sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
+    }')
+    actual_bench=$(printf '%s\n' "$bench_out" | awk -F: '/Nodes searched/ {
+        sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
+    }')
+    if [ "$actual_compiler" != "$expected_compiler" ] || [ "$actual_bench" != "$EXPECTED_BENCH" ]; then
+        printf '===== CPU %s output (expected %s/%s, got %s/%s) =====\n' \
+            "$cpu" "$expected_compiler" "$EXPECTED_BENCH" "${actual_compiler:--}" "$actual_bench" >&2
+        FAIL=1
+    else
+        printf 'CPU %s ok\n' "$cpu" >&2
+    fi
+done
 
-if [ -n "$results" ]; then
+if [[ $FAIL != 0 ]]; then
     echo "check_universal.sh: failed"
     exit 1
 fi
