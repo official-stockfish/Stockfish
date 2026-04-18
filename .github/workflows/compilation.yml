@@ -124,8 +124,15 @@ jobs:
       - name: Rename binary
         run: mv src/stockfish stockfish-ubuntu-x86-64-universal
 
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
       - name: Check arch selection under SDE
-        run: ./scripts/check_universal.sh ./stockfish-ubuntu-x86-64-universal "$SDE_DIR/sde"
+        run: ./scripts/check_universal.sh ./stockfish-ubuntu-x86-64-universal "$SDE_DIR/sde" "$benchref"
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@v4
@@ -166,6 +173,16 @@ jobs:
 
       - name: Rename binary
         run: mv src/stockfish.exe stockfish-windows-x86-64-universal.exe
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check arch selection under SDE
+        run: ./scripts/check_universal.sh ./stockfish-windows-x86-64-universal.exe "$SDE_DIR/sde" "$benchref"
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@v4

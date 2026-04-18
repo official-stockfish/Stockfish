@@ -3,17 +3,18 @@
 # Verify that the universal binary selects the correct per-arch build under
 # Intel SDE emulation for a range of target CPUs
 #
-# Usage: check_universal.sh STOCKFISH_EXE SDE_EXE
+# Usage: check_universal.sh STOCKFISH_EXE SDE_EXE EXPECTED_BENCH
 
 set -eu
 
-if [ $# -ne 2 ]; then
-    echo "Usage: $0 STOCKFISH_EXE SDE_EXE" >&2
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 STOCKFISH_EXE SDE_EXE EXPECTED_BENCH" >&2
     exit 2
 fi
 
 STOCKFISH_EXE=$1
 SDE_EXE=$2
+EXPECTED_BENCH=$3
 
 PAIRS="
 p4p:x86-64
@@ -34,29 +35,28 @@ results=$(
         i=$((i + 1))
         (
             cpu=${pair%%:*}
-            expected=${pair##*:}
-            out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" compiler 2>&1 || true)
-            actual=$(printf '%s\n' "$out" | awk -F: '/Compilation architecture/ {
+            expected_compiler=${pair##*:}
+            compiler_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" compiler 2>&1 || true)
+            bench_out=$("$SDE_EXE" "-$cpu" -- "$STOCKFISH_EXE" bench 2>&1 || true)
+            actual_compiler=$(printf '%s\n' "$compiler_out" | awk -F: '/Compilation architecture/ {
                 sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
             }')
-            if [ "$actual" != "$expected" ]; then
-                printf '===== -%s output (expected %s, got %s) =====\n%s\n' \
-                    "$cpu" "$expected" "${actual:--}" "$out" >&2
+            actual_bench=$(printf '%s\n' "$bench_out" | awk -F: '/Nodes searched/ {
+                sub(/^[[:space:]]+/, "", $2); sub(/[[:space:]]+$/, "", $2); print $2; exit
+            }')
+            if [ "$actual_compiler" != "$expected_compiler" ] || [ "$actual_bench" != "$EXPECTED_BENCH" ]; then
+                printf '===== -%s output (expected %s/%s, got %s/%s) =====\n' \
+                    "$cpu" "$expected_compiler" "$EXPECTED_BENCH" "${actual_compiler:--}" "$actual_bench" >&2
+                echo "fail"
             fi
-            printf '%d %s %s %s\n' "$i" "$cpu" "$expected" "${actual:--}"
         ) &
     done
     wait
 )
 
-printf '%s\n' "$results" | sort -n | awk '
-    { if ($4 == $3) printf "Testing -%-4s (expect %s) ... OK\n", $2, $3
-      else { printf "Testing -%-4s (expect %s) ... FAIL (got %s)\n", $2, $3, $4; fail++ } }
-    END {
-        if (fail) {
-            print "check_universal.sh: " fail " architecture(s) selected wrongly" > "/dev/stderr"
-            exit 1
-        }
-        print "check_universal.sh: Good! Universal binary has correct hardware detection."
-    }
-'
+if [ -n "$results" ]; then
+    echo "check_universal.sh: failed"
+    exit 1
+fi
+
+echo "check_universal.sh: Good! Universal binary has correct hardware detection."
