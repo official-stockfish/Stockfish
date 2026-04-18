@@ -1268,7 +1268,7 @@ UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -W
 ifeq ($(KERNEL),Linux)
     UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
 else
-    UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition
+    UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition -static
 endif
 
 # $(call arch-namespace,x86-64-avx2) => Stockfish_x86_64_avx2
