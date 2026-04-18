@@ -1264,9 +1264,9 @@ TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $
 ARCH_OBJS := $(TEMP_DIR)/x86-64/stockfish.o \
              $(patsubst %,$(TEMP_DIR)/%/stockfish.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
 
-UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -lpthread -static-libstdc++ -static-libgcc -Wno-c++26-extensions
+UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
 ifeq ($(KERNEL),Linux)
-    UNIVERSAL_FINAL_FLAGS += -lrt
+    UNIVERSAL_FINAL_FLAGS += -lrt -lpthread
 else
     UNIVERSAL_FINAL_FLAGS += -Wl,--allow-multiple-definition
 endif
