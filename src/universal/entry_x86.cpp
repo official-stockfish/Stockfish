@@ -46,8 +46,6 @@ struct CpuFeatures {
     bool gfni;             // Galois Field instructions
     bool vaes;             // AES instructions (AVX512 variant)
     bool avxvnni;          // AVX-VNNI (non-512 dot product instructions)
-    bool os_avx;           // OS saves/restores YMM state (XCR0 bits 1+2)
-    bool os_avx512;        // OS saves/restores ZMM state (XCR0 bits 1,2,5,6,7)
 };
 
 
@@ -79,13 +77,13 @@ static int dispatch(const CpuFeatures& f, int argc, char* argv[]) {
     if (!f.sse41 || !f.popcnt)
         return entry_x86_64(argc, argv);
 
-    if (!f.avx2 || !f.os_avx)
+    if (!f.avx2)
         return entry_x86_64_sse41_popcnt(argc, argv);
 
     if (!f.bmi2 || has_slow_bmi2())
         return entry_x86_64_avx2(argc, argv);
 
-    if (!f.avx512f || !f.avx512vl || !f.avx512bw || !f.os_avx512)
+    if (!f.avx512f || !f.avx512vl || !f.avx512bw)
     {
         if (f.avxvnni)
             return entry_x86_64_avxvnni(argc, argv);
