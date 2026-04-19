@@ -107,16 +107,31 @@ std::string Eval::trace(Position& pos, const Eval::NNUE::Networks& networks) {
 
     ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
-    auto [psqt, positional] = networks.big.evaluate(pos, *accumulators, caches->big);
-    Value v                 = psqt + positional;
-    v                       = pos.side_to_move() == WHITE ? v : -v;
-    ss << "NNUE evaluation        " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)\n";
+    auto [psqtSmall, positionalSmall] = networks.small.evaluate(pos, *accumulators, caches->small);
+    Value vSmall                      = psqtSmall + positionalSmall;
+    bool  useBig                      = std::abs(vSmall) < 277;
+    ss << "(Small net) NNUE evaluation        " << vSmall << " (side to move, internal units)\n";
+    vSmall = pos.side_to_move() == WHITE ? vSmall : -vSmall;
+    ss << "(Small net) NNUE evaluation        " << 0.01 * UCIEngine::to_cp(vSmall, pos)
+       << " (white side)\n";
 
-    v = evaluate(networks, pos, *accumulators, *caches, VALUE_ZERO);
-    v = pos.side_to_move() == WHITE ? v : -v;
-    ss << "Final evaluation       " << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)";
-    ss << " [with scaled NNUE, ...]";
-    ss << "\n";
+    auto [psqtBig, positionalBig] = networks.big.evaluate(pos, *accumulators, caches->big);
+    Value vBig                    = psqtBig + positionalBig;
+    ss << "(Big net) NNUE evaluation          " << vBig << " (side to move, internal units)\n";
+    vBig = pos.side_to_move() == WHITE ? vBig : -vBig;
+    ss << "(Big net) NNUE evaluation          " << 0.01 * UCIEngine::to_cp(vBig, pos)
+       << " (white side)\n";
+
+    ss << "SimpleEval                         " << simple_eval(pos)
+       << " (side to move, internal units)\n\n";
+
+    Value v = evaluate(networks, pos, *accumulators, *caches, VALUE_ZERO);
+    v       = pos.side_to_move() == WHITE ? v : -v;
+
+    ss << "Final evaluation " << "(using "
+       << (use_smallnet(pos) && !useBig ? "small net) " : "big net)   ");
+    ss << 0.01 * UCIEngine::to_cp(v, pos) << " (white side)";
+    ss << " [with scaled NNUE, ...]\n";
 
     return ss.str();
 }
