@@ -1,5 +1,4 @@
 #include <cpuid.h>
-#include <stdio.h>
 #include <stdint.h>
 
 #define DEFINE_BUILD(x) \
@@ -24,33 +23,9 @@ DEFINE_BUILD(x86_64_avx512)
 DEFINE_BUILD(x86_64_vnni512)
 DEFINE_BUILD(x86_64_avx512icl)
 
-// Returns true if this CPU is an AMD vendor
-static bool is_amd() {
-    unsigned int eax, ebx, ecx, edx;
-    __cpuid(0, eax, ebx, ecx, edx);
-    return ebx == 0x68747541 && edx == 0x69746e65 && ecx == 0x444d4163;  // "AuthenticAMD"
-}
-
-// Returns the CPU's extended family number from CPUID leaf 1
-static unsigned get_cpu_family() {
-    unsigned int eax, ebx, ecx, edx;
-    __cpuid(1, eax, ebx, ecx, edx);
-    // Base family is bits[11:8]; if 0xF, add extended family bits[27:20]
-    unsigned family = (eax >> 8) & 0xf;
-    if (family == 0xf)
-        family += (eax >> 20) & 0xff;
-    return family;
-}
-
 // AMD Zen/Zen+/Zen2 (family 17h) implement pdep/pext via microcode.
-static bool has_slow_bmi2() { return is_amd() && get_cpu_family() == 0x17; }
-
-// Reads XCR0 via XGETBV to check which extended register states the OS saves.
-// CPUID feature bits alone don't guarantee the OS saves/restores them on context switches.
-static uint64_t read_xcr0() {
-    uint32_t xcr0_eax, xcr0_edx;
-    asm("xgetbv" : "=a"(xcr0_eax), "=d"(xcr0_edx) : "c"(0U));
-    return (static_cast<uint64_t>(xcr0_edx) << 32) | xcr0_eax;
+static bool has_slow_bmi2() {
+    return __builtin_cpu_is("amd") && (__builtin_cpu_is("znver1") || __builtin_cpu_is("znver2"));
 }
 
 struct CpuFeatures {
@@ -75,55 +50,29 @@ struct CpuFeatures {
     bool os_avx512;        // OS saves/restores ZMM state (XCR0 bits 1,2,5,6,7)
 };
 
-// Queries all relevant CPUID leaves and XCR0 to populate a CpuFeatures struct
+
 static CpuFeatures query_cpu_features() {
-    CpuFeatures  f = {};
-    unsigned int eax, ebx, ecx, edx;
-
-    if (__get_cpuid_max(0, &eax) < 1)
-        return f;
-
-    // Leaf 1: basic feature flags
-    __cpuid(1, eax, ebx, ecx, edx);
-    f.sse41  = (ecx & (1U << 19)) != 0;
-    f.popcnt = (ecx & (1U << 23)) != 0;
-
-    // OSXSAVE (bit 27) means we can call XGETBV to check OS register support
-    if (ecx & (1U << 27))
-    {
-        static constexpr uint64_t XCR0_SSE_AVX_MASK = 0x06;
-        static constexpr uint64_t XCR0_AVX512_MASK  = 0xE6;
-
-        uint64_t xcr0 = read_xcr0();
-        f.os_avx      = (xcr0 & XCR0_SSE_AVX_MASK) == XCR0_SSE_AVX_MASK;
-        f.os_avx512   = (xcr0 & XCR0_AVX512_MASK) == XCR0_AVX512_MASK;
-    }
-
-    // Leaf 7.0: structured extended feature flags
-    if (!__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx))
-        return f;
-
-    f.avx2            = (ebx & (1U << 5)) != 0;
-    f.bmi2            = (ebx & (1U << 8)) != 0;
-    f.avx512f         = (ebx & (1U << 16)) != 0;
-    f.avx512ifma      = (ebx & (1U << 21)) != 0;
-    f.avx512vl        = (ebx & (1U << 31)) != 0;
-    f.avx512bw        = (ebx & (1U << 30)) != 0;
-    f.avx512vbmi      = (ecx & (1U << 1)) != 0;
-    f.avx512vbmi2     = (ecx & (1U << 6)) != 0;
-    f.gfni            = (ecx & (1U << 8)) != 0;
-    f.vaes            = (ecx & (1U << 9)) != 0;
-    f.vpclmulqdq      = (ecx & (1U << 10)) != 0;
-    f.avx512vnni      = (ecx & (1U << 11)) != 0;
-    f.avx512bitalg    = (ecx & (1U << 12)) != 0;
-    f.avx512vpopcntdq = (ecx & (1U << 14)) != 0;
-
-    // Leaf 7.1: additional extended feature flags
-    if (__get_cpuid_count(7, 1, &eax, &ebx, &ecx, &edx))
-        f.avxvnni = (eax & (1U << 4)) != 0;
-
-    return f;
+    return {
+      .sse41           = (bool) __builtin_cpu_supports("sse4.1"),
+      .popcnt          = (bool) __builtin_cpu_supports("popcnt"),
+      .avx2            = (bool) __builtin_cpu_supports("avx2"),
+      .bmi2            = (bool) __builtin_cpu_supports("bmi2"),
+      .avx512f         = (bool) __builtin_cpu_supports("avx512f"),
+      .avx512vl        = (bool) __builtin_cpu_supports("avx512vl"),
+      .avx512bw        = (bool) __builtin_cpu_supports("avx512bw"),
+      .avx512vnni      = (bool) __builtin_cpu_supports("avx512vnni"),
+      .avx512ifma      = (bool) __builtin_cpu_supports("avx512ifma"),
+      .avx512vbmi      = (bool) __builtin_cpu_supports("avx512vbmi"),
+      .avx512vbmi2     = (bool) __builtin_cpu_supports("avx512vbmi2"),
+      .avx512vpopcntdq = (bool) __builtin_cpu_supports("avx512vpopcntdq"),
+      .avx512bitalg    = (bool) __builtin_cpu_supports("avx512bitalg"),
+      .vpclmulqdq      = (bool) __builtin_cpu_supports("vpclmulqdq"),
+      .gfni            = (bool) __builtin_cpu_supports("gfni"),
+      .vaes            = (bool) __builtin_cpu_supports("vaes"),
+      .avxvnni         = (bool) __builtin_cpu_supports("avxvnni"),
+    };
 }
+
 
 // Selects the most capable ISA variant supported by this CPU and OS
 static int dispatch(const CpuFeatures& f, int argc, char* argv[]) {
@@ -162,6 +111,7 @@ static int dispatch(const CpuFeatures& f, int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
+    __builtin_cpu_init();
     CpuFeatures features = query_cpu_features();
     return dispatch(features, argc, argv);
 }
