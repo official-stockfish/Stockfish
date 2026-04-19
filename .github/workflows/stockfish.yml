@@ -78,6 +78,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
+      universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,6 +91,10 @@ jobs:
         run: |
           TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
           echo "ARM_MATRIX=$TASKS_ARM" >> $GITHUB_OUTPUT
+      - id: set-universal-matrix
+        run: |
+          TASKS_UNIVERSAL=$(echo $(cat .github/ci/universal_matrix.json) )
+          echo "UNIVERSAL_MATRIX=$TASKS_UNIVERSAL" >> $GITHUB_OUTPUT
   # Testing Jobs
   IWYU:
     uses: ./.github/workflows/iwyu.yml
@@ -135,6 +140,16 @@ jobs:
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+    permissions:
+      contents: write # For deleting/creating a (pre)release
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+  Universal_Binaries:
+    if: github.repository == 'official-stockfish/Stockfish'
+    needs: [Prerelease, Matrix, Compilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.universal_matrix }}
     permissions:
       contents: write # For deleting/creating a (pre)release
     secrets:
