@@ -59,13 +59,13 @@ jobs:
           cp CONTRIBUTING.md ../stockfish/
 
       - name: Create tar
-        if: ${{ !startsWith(matrix.config.os, 'windows') }}
+        if: ${{ startsWith(matrix.config.archive_ext, 'tar') }}
         run: |
           chmod +x ./stockfish/stockfish-$NAME-$BINARY$EXT
-          tar -cvf stockfish-$NAME-$BINARY.tar stockfish
+          tar -cavf stockfish-$NAME-$BINARY."${{ matrix.config.archive_ext }}" stockfish
 
       - name: Create zip
-        if: ${{ startsWith(matrix.config.os, 'windows') }}
+        if: ${{ matrix.config.archive_ext == 'zip' }}
         run: |
           zip -r stockfish-$NAME-$BINARY.zip stockfish
 
