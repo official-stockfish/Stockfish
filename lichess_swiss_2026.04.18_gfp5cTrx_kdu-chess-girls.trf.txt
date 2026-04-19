@@ -1,0 +1,19 @@
+012 KDU Chess  Girls
+022 https://lichess.org/swiss/gfp5cTrx
+032 Lichess
+042 Apr 18, 2026
+052 Apr 18, 2026
+062 9
+092 Individual: Swiss-System
+102 https://lichess.org/swiss
+XXR 7
+XXC black1
+001    1       ashven404                        1761                             0.0          3 b 0     6 w -     4 b -     5 w -         -         -         -
+001    2       siluni02                         1730                             5.5          6 w 1     5 b 0     7 w 1     9 b 1     3 b =     4 w 1     8 w 1
+001    3       alpha_zero_1925                  1654                             6.5          1 w 1     7 b 1     5 w 1     4 b 1     2 w =     8 b 1     9 w 1
+001    4       seha2013                         1556                             5.0          7 w 1     9 b 1     1 w +     3 w 0     5 b 1     2 b 0     6 w 1
+001    5       sasi_1016                        1555                             5.0          8 w 1     2 w 1     3 b 0     1 b +     4 w 0     9 b 1     7 b 1
+001    6       upeksha16                        1316                             4.0          2 b 0     1 b +         U     8 w 0     9 w 1     7 b 1     4 b 0
+001    7       sithulii                         1205                             1.0          4 b 0     3 w 0     2 b 0         U     8 b 0     6 w 0     5 w 0
+001    8       sraycalm2002                     1200                             3.0          5 b 0         U     9 w 0     6 b 1     7 w 1     3 w 0     2 b 0
+001    9       hansini17                        1178                             2.0              U     4 w 0     8 b 1     2 w 0     6 b 0     5 w 0     3 b 0
