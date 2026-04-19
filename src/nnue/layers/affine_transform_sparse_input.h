@@ -38,6 +38,13 @@
 namespace Stockfish::Eval::NNUE::Layers {
 
 #if (USE_SSSE3 | (USE_NEON >= 8))
+
+#if defined(USE_NEON)
+using NNZOutputType = std::uint8_t;
+#else
+using NNZOutputType = std::uint16_t;
+#endif
+
 static constexpr int lsb_index64[64] = {
   0,  47, 1,  56, 48, 27, 2,  60, 57, 49, 41, 37, 28, 16, 3,  61, 54, 58, 35, 52, 50, 42,
   21, 44, 38, 32, 29, 23, 17, 11, 4,  62, 46, 55, 26, 59, 40, 36, 15, 53, 34, 51, 20, 43,
@@ -51,7 +58,7 @@ constexpr int constexpr_lsb(uint64_t bb) {
 
 alignas(CacheLineSize) static constexpr struct OffsetIndices {
 
-    std::uint16_t offset_indices[256][8];
+    NNZOutputType offset_indices[256][8];
 
     constexpr OffsetIndices() :
         offset_indices() {
@@ -83,7 +90,7 @@ alignas(CacheLineSize) static constexpr struct OffsetIndices {
 // std::uint8_t array.
 template<const IndexType InputDimensions>
 void find_nnz(const std::uint8_t* RESTRICT input,
-              std::uint16_t* RESTRICT      out,
+              NNZOutputType* RESTRICT      out,
               IndexType&                   count_out) {
 
     #if defined(USE_AVX512ICL)
@@ -133,6 +140,27 @@ void find_nnz(const std::uint8_t* RESTRICT input,
         _mm512_mask_cvtepi32_storeu_epi16(out + count, 0xFFFF, nnzV);
         count += popcount(nnzMask);
         base = _mm512_add_epi32(base, increment);
+    }
+    count_out = count;
+
+    #elif defined(USE_NEON)
+
+    static constexpr std::uint16_t nnz_mask[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+    constexpr IndexType NumChunks = InputDimensions / 8;
+    const auto inputVector = reinterpret_cast<const uint32x4_t *>(input);
+
+    IndexType count = 0;
+    uint64_t base = 0ULL;
+    const uint64_t increment = 0x0808080808080808ULL;
+    for (IndexType i = 0; i < NumChunks; ++i) {
+        const uint32x4_t input0 = inputVector[i * 2];
+        const uint32x4_t input1 = inputVector[i * 2 + 1];
+        const uint16x8_t nnz = vcombine_u16(vqmovn_u32(vtstq_u32(input0, input0)), vqmovn_u32(vtstq_u32(input1, input1)));
+        const uint16_t lookup = vaddvq_u16(vandq_u16(nnz, vld1q_u16(nnz_mask)));
+        const uint64_t offsets = *reinterpret_cast<const uint64_t*>(Lookup.offset_indices[lookup]);
+        *reinterpret_cast<uint64_t*>(out + count) = offsets + base;
+        count += popcount(lookup);
+        base += increment;
     }
     count_out = count;
 
@@ -293,7 +321,7 @@ class AffineTransformSparseInput {
     #else
           NumAccums;
     #endif
-        std::uint16_t nnz[NumChunks];
+        NNZOutputType nnz[NumChunks];
         IndexType     count;
 
         // Find indices of nonzero 32-bit blocks
