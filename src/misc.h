@@ -266,11 +266,17 @@ class MultiArray {
     using reverse_iterator       = typename ArrayType::reverse_iterator;
     using const_reverse_iterator = typename ArrayType::const_reverse_iterator;
 
-    constexpr auto&       at(size_type index) noexcept { return data_.at(index); }
-    constexpr const auto& at(size_type index) const noexcept { return data_.at(index); }
+    constexpr auto&       at(size_type index) { return data_.at(index); }
+    constexpr const auto& at(size_type index) const { return data_.at(index); }
 
-    constexpr auto&       operator[](size_type index) noexcept { return data_[index]; }
-    constexpr const auto& operator[](size_type index) const noexcept { return data_[index]; }
+    constexpr auto& operator[](size_type index) noexcept {
+        assert(index < Size);
+        return data_[index];
+    }
+    constexpr const auto& operator[](size_type index) const noexcept {
+        assert(index < Size);
+        return data_[index];
+    }
 
     constexpr auto&       front() noexcept { return data_.front(); }
     constexpr const auto& front() const noexcept { return data_.front(); }
