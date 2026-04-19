@@ -135,11 +135,17 @@ jobs:
       - name: Check arch selection under SDE
         run: ./scripts/check_universal.sh ./stockfish-ubuntu-x86-64-universal "$SDE_DIR/sde" "$benchref"
 
+      - name: Remove non src files
+        run: git -C src clean -fx
+
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@v4
         with:
           name: ubuntu x86-64-universal
-          path: stockfish-ubuntu-x86-64-universal
+          path: |
+             .
+             !.git
+             !.output
 
   UniversalWindows:
     name: Windows x86-64 Universal
@@ -186,8 +192,14 @@ jobs:
       - name: Check arch selection under SDE
         run: ./scripts/check_universal.sh ./stockfish-windows-x86-64-universal.exe "$SDE_DIR/sde" "$benchref"
 
+      - name: Remove non src files
+        run: git -C src clean -fx
+
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@v4
         with:
           name: windows x86-64-universal
-          path: stockfish-windows-x86-64-universal.exe
+          path: |
+             .
+             !.git
+             !.output
