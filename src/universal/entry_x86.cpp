@@ -23,6 +23,7 @@ DEFINE_BUILD(x86_64_avxvnni)
 DEFINE_BUILD(x86_64_avx512)
 DEFINE_BUILD(x86_64_vnni512)
 DEFINE_BUILD(x86_64_avx512icl)
+DEFINE_BUILD(x86_64_apx)
 
 // Zen, Zen+ and Zen 2 (AMD family 17h) have microcoded pdep/pext
 static bool has_slow_bmi2() {
@@ -39,6 +40,7 @@ static bool has_slow_bmi2() {
 
 constexpr uint64_t XCR0_SSE_AVX_MASK = 0x06;
 constexpr uint64_t XCR0_AVX512_MASK  = 0xE6;
+constexpr uint64_t XCR0_APX_MASK     = 1ULL << 19;
 
 int main(int argc, char* argv[]) {
     unsigned _;
@@ -107,5 +109,13 @@ int main(int argc, char* argv[]) {
         return entry_x86_64_vnni512(argc, argv);
     }
 
-    return entry_x86_64_avx512icl(argc, argv);
+    leaf_supported = __get_cpuid_count(7, 1, &eax, &ebx, &ecx, &edx);
+    if (!leaf_supported || !(edx & (1U << 21 /* apxf */))
+        || (xcr0 & XCR0_APX_MASK) != XCR0_APX_MASK)
+    {
+        // no APX, or OS doesn't restore extended GPR state
+        return entry_x86_64_avx512icl(argc, argv);
+    }
+
+    return entry_x86_64_apx(argc, argv);
 }
