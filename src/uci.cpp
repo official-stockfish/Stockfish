@@ -542,7 +542,7 @@ std::string UCIEngine::format_score(const Score& s) {
                },
                [](Score::Tablebase tb) -> std::string {
                    return std::string("cp ")
-                        + std::to_string((tb.win ? TB_CP - tb.plies : -TB_CP - tb.plies));
+                        + std::to_string((tb.win ? TB_CP : -TB_CP) - tb.plies);
                },
                [](Score::InternalUnits units) -> std::string {
                    return std::string("cp ") + std::to_string(units.value);
