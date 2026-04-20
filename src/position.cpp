@@ -996,11 +996,11 @@ void Position::do_move(Move                      m,
 
         else if (m.type_of() == PROMOTION)
         {
-            Piece     promotion     = make_piece(us, m.promotion_type());
-            PieceType promotionType = type_of(promotion);
+            PieceType pt        = m.promotion_type();
+            Piece     promotion = make_piece(us, pt);
 
             assert(relative_rank(us, to) == RANK_8);
-            assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
+            assert(pt >= KNIGHT && pt <= QUEEN);
 
             dp.add_pc = promotion;
             dp.add_sq = to;
@@ -1013,7 +1013,7 @@ void Position::do_move(Move                      m,
                              ^ Zobrist::psq[pc][8 + pieceCount[pc]];
             st->nonPawnKey[us] ^= Zobrist::psq[promotion][to];
 
-            if (promotionType <= BISHOP)
+            if (pt <= BISHOP)
                 st->minorPieceKey ^= Zobrist::psq[promotion][to];
 
             // Update material
