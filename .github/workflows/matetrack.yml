@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout SF repo 
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: Stockfish
@@ -20,7 +20,7 @@ jobs:
         run: make -j profile-build
 
       - name: Checkout matetrack repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: vondele/matetrack
           path: matetrack
@@ -33,7 +33,7 @@ jobs:
 
       - name: cache syzygy
         id: cache-syzygy
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
            path: |
               matetrack/3-4-5-wdl/

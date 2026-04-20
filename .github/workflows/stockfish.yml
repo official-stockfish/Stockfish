@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -68,7 +68,7 @@ jobs:
       # to this pre-release.
       - name: Create Prerelease
         if: github.ref_name == 'master' && env.CHANGES == '0' && env.OFFICIAL_RELEASE == 'false'
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
@@ -80,7 +80,7 @@ jobs:
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
       universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - id: set-matrix
