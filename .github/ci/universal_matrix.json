@@ -4,7 +4,7 @@
       "name": "Ubuntu 22.04 GCC Universal",
       "os": "ubuntu-22.04",
       "simple_name": "ubuntu",
-      "archive_ext": "tar"
+      "archive_ext": "tar.gz"
     },
     {
       "name": "Windows 2022 Mingw-w64 GCC Universal",
