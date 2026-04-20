@@ -3,7 +3,7 @@
     {
       "name": "Ubuntu 22.04 GCC Universal",
       "os": "ubuntu-22.04",
-      "simple_name": "ubuntu",
+      "simple_name": "linux",
       "archive_ext": "tar.gz"
     },
     {

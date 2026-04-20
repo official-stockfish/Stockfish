@@ -123,7 +123,7 @@ jobs:
         run: strip src/stockfish
 
       - name: Rename binary
-        run: mv src/stockfish stockfish-ubuntu-x86-64-universal
+        run: mv src/stockfish stockfish-linux-x86-64-universal
 
       - name: Extract the bench number from the commit history
         run: |
@@ -133,7 +133,7 @@ jobs:
           [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
 
       - name: Check arch selection under SDE
-        run: ./scripts/check_universal.sh ./stockfish-ubuntu-x86-64-universal "$SDE_DIR/sde" "$benchref"
+        run: ./scripts/check_universal.sh ./stockfish-linux-x86-64-universal "$SDE_DIR/sde" "$benchref"
 
       - name: Remove non src files
         run: |
@@ -143,7 +143,7 @@ jobs:
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ubuntu x86-64-universal
+          name: linux x86-64-universal
           path: |
              .
              !.git
