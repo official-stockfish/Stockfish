@@ -74,6 +74,8 @@ SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 	nnue/features/half_ka_v2_hm.cpp nnue/features/full_threats.cpp \
 	engine.cpp score.cpp memory.cpp
 
+OTHER_SRCS = universal/entry_x86.cpp universal/nnue_embed.cpp
+
 HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h history.h \
 		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/features/full_threats.h \
 		nnue/layers/affine_transform.h nnue/layers/affine_transform_sparse_input.h \
@@ -1095,7 +1097,7 @@ net:
 	@$(SHELL) ../scripts/net.sh
 
 format:
-	$(CLANG-FORMAT) -i $(SRCS) $(HEADERS) -style=file
+	$(CLANG-FORMAT) -i $(SRCS) $(OTHER_SRCS) $(HEADERS) -style=file
 
 ### ==========================================================================
 ### Section 5. Private Targets
@@ -1258,7 +1260,7 @@ UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
 NET_SENTINEL         := $(TEMP_DIR)/.net-done
 
 # Top-level tracked items in src/ (directories and files)
-TRACKED_TOP := $(shell git -C $(CURDIR) ls-files 2>/dev/null | awk -F/ '{print $$1}' | sort -u)
+TRACKED_TOP := $(shell echo "$(SRCS) $(HEADERS) Makefile incbin" | xargs -n1 | awk -F/ '{print $$1}' | sort -u)
 
 # Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
 # uses the first copy of inline duplicates)
