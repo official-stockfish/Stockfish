@@ -546,7 +546,7 @@ struct SystemWideSharedConstant {
         // hash name and make sure it is not longer than SF_MAX_SEM_NAME_LEN
         if (shm_name.size() > SF_MAX_SEM_NAME_LEN)
         {
-            shm_name = shm_name.substr(0, SF_MAX_SEM_NAME_LEN - 1);
+            shm_name.resize(SF_MAX_SEM_NAME_LEN);
         }
 #endif
 
