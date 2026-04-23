@@ -37,6 +37,13 @@ icl:x86-64-avx512icl
 adl:x86-64-avxvnni
 "
 
+BINARY_SIZE=$(wc -c < "$STOCKFISH_EXE")
+MAX_SIZE=$((150 * 1024 * 1024))
+if [ "$BINARY_SIZE" -gt "$MAX_SIZE" ]; then
+    printf 'check_universal.sh: binary size %d bytes exceeds 150 MB limit\n' "$BINARY_SIZE" >&2
+    exit 1
+fi
+
 FAIL=0
 i=0
 for pair in $PAIRS; do
