@@ -40,9 +40,9 @@ namespace Stockfish::Eval::NNUE::Layers {
 #if (USE_SSSE3 | (USE_NEON >= 8))
 
 #if defined(USE_NEON)
-using NNZOutputType = std::uint8_t;
+    using NNZOutputType = std::uint8_t;
 #else
-using NNZOutputType = std::uint16_t;
+    using NNZOutputType = std::uint16_t;
 #endif
 
 static constexpr int lsb_index64[64] = {
@@ -145,7 +145,9 @@ void find_nnz(const std::uint8_t* RESTRICT input,
 
     #elif defined(USE_NEON)
 
-    static constexpr std::uint16_t nnz_mask[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+    static_assert(InputDimensions <= 256, "InputDimensions must be <= 256");
+
+    static constexpr std::uint16_t nnzMask[8] = {1, 2, 4, 8, 16, 32, 64, 128};
     constexpr IndexType NumChunks = InputDimensions / 8;
     const auto inputVector = reinterpret_cast<const uint32x4_t *>(input);
 
@@ -153,10 +155,11 @@ void find_nnz(const std::uint8_t* RESTRICT input,
     uint64_t base = 0ULL;
     const uint64_t increment = 0x0808080808080808ULL;
     for (IndexType i = 0; i < NumChunks; ++i) {
-        const uint32x4_t input0 = inputVector[i * 2];
-        const uint32x4_t input1 = inputVector[i * 2 + 1];
-        const uint16x8_t nnz = vcombine_u16(vqmovn_u32(vtstq_u32(input0, input0)), vqmovn_u32(vtstq_u32(input1, input1)));
-        const uint16_t lookup = vaddvq_u16(vandq_u16(nnz, vld1q_u16(nnz_mask)));
+        const uint32x4_t v0 = inputVector[i * 2];
+        const uint32x4_t v1 = inputVector[i * 2 + 1];
+        const uint16x8_t nnz =
+          vcombine_u16(vqmovn_u32(vtstq_u32(v0, v0)), vqmovn_u32(vtstq_u32(v1, v1)));
+        const uint16_t lookup = vaddvq_u16(vandq_u16(nnz, vld1q_u16(nnzMask)));
         const uint64_t offsets = *reinterpret_cast<const uint64_t*>(Lookup.offset_indices[lookup]);
         *reinterpret_cast<uint64_t*>(out + count) = offsets + base;
         count += popcount(lookup);
