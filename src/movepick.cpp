@@ -111,6 +111,9 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
     ExtMove *sortedEnd = begin, *p = begin + 1;
 
 #ifdef USE_AVX512ICL
+    if (begin == end)
+        return;
+
     MoveSorter sorter(*begin);
     for (; p < end; ++p)
     {
