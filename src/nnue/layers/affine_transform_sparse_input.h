@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 
 #include "../../bitboard.h"
@@ -160,8 +161,12 @@ void find_nnz(const std::uint8_t* RESTRICT input,
         const uint16x8_t nnz =
           vcombine_u16(vqmovn_u32(vtstq_u32(v0, v0)), vqmovn_u32(vtstq_u32(v1, v1)));
         const uint16_t lookup = vaddvq_u16(vandq_u16(nnz, vld1q_u16(nnzMask)));
-        const uint64_t offsets = *reinterpret_cast<const uint64_t*>(Lookup.offset_indices[lookup]);
-        *reinterpret_cast<uint64_t*>(out + count) = offsets + base;
+
+        uint64_t offsets;
+        std::memcpy(&offsets, Lookup.offset_indices[lookup], sizeof(offsets));
+        const uint64_t indices = offsets + base;
+        std::memcpy(out + count, &indices, sizeof(indices));
+
         count += popcount(lookup);
         base += increment;
     }
