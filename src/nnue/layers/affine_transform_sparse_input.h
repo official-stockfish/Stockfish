@@ -78,10 +78,9 @@ alignas(CacheLineSize) static constexpr struct OffsetIndices {
         #define RESTRICT
     #endif
 
-// Find indices of nonzero 32-bit values in a packed byte buffer.
-// The input pointer addresses a sequence of 32-bit blocks stored in a
-// std::uint8_t array.
-template<const IndexType InputDimensions>
+// Find indices of nonzero 32-bit blocks in a packed
+// std::uint8_t buffer. NumChunks is the number of blocks.
+template<const IndexType NumChunks>
 void find_nnz(const std::uint8_t* RESTRICT input,
               std::uint16_t* RESTRICT      out,
               IndexType&                   count_out) {
@@ -90,14 +89,14 @@ void find_nnz(const std::uint8_t* RESTRICT input,
 
     constexpr IndexType SimdWidthIn  = 64;  // 512 bits
     constexpr IndexType SimdWidthOut = 32;  // 512 bits / 16 bits
-    constexpr IndexType NumChunks    = InputDimensions / SimdWidthOut;
+    constexpr IndexType SimdChunks   = NumChunks / SimdWidthOut;
     const __m512i       increment    = _mm512_set1_epi16(SimdWidthOut);
     __m512i             base = _mm512_set_epi16(  // Same permute order as _mm512_packus_epi32()
       31, 30, 29, 28, 15, 14, 13, 12, 27, 26, 25, 24, 11, 10, 9, 8, 23, 22, 21, 20, 7, 6, 5, 4, 19,
       18, 17, 16, 3, 2, 1, 0);
 
     IndexType count = 0;
-    for (IndexType i = 0; i < NumChunks; ++i)
+    for (IndexType i = 0; i < SimdChunks; ++i)
     {
         const __m512i inputV0 = _mm512_load_si512(input + i * 2 * SimdWidthIn);
         const __m512i inputV1 = _mm512_load_si512(input + i * 2 * SimdWidthIn + SimdWidthIn);
@@ -117,13 +116,13 @@ void find_nnz(const std::uint8_t* RESTRICT input,
 
     #elif defined(USE_AVX512)
 
-    constexpr IndexType SimdWidth = 16;  // 512 bits / 32 bits
-    constexpr IndexType NumChunks = InputDimensions / SimdWidth;
-    const __m512i       increment = _mm512_set1_epi32(SimdWidth);
+    constexpr IndexType SimdWidth  = 16;  // 512 bits / 32 bits
+    constexpr IndexType SimdChunks = NumChunks / SimdWidth;
+    const __m512i       increment  = _mm512_set1_epi32(SimdWidth);
     __m512i base = _mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 
     IndexType count = 0;
-    for (IndexType i = 0; i < NumChunks; ++i)
+    for (IndexType i = 0; i < SimdChunks; ++i)
     {
         const __m512i inputV = _mm512_load_si512(input + i * SimdWidth * sizeof(std::uint32_t));
 
@@ -142,9 +141,9 @@ void find_nnz(const std::uint8_t* RESTRICT input,
 
     constexpr IndexType InputSimdWidth = sizeof(vec_uint_t) / sizeof(std::int32_t);
     // Outputs are processed 8 elements at a time, even if the SIMD width is narrower
-    constexpr IndexType ChunkSize      = 8;
-    constexpr IndexType NumChunks      = InputDimensions / ChunkSize;
-    constexpr IndexType InputsPerChunk = ChunkSize / InputSimdWidth;
+    constexpr IndexType SimdChunkSize  = 8;
+    constexpr IndexType SimdChunks     = NumChunks / SimdChunkSize;
+    constexpr IndexType InputsPerChunk = SimdChunkSize / InputSimdWidth;
 
     static_assert(InputsPerChunk > 0 && "SIMD width too wide");
 
@@ -152,7 +151,7 @@ void find_nnz(const std::uint8_t* RESTRICT input,
     IndexType      count       = 0;
     vec128_t       base        = vec128_zero;
     const vec128_t increment   = vec128_set_16(8);
-    for (IndexType i = 0; i < NumChunks; ++i)
+    for (IndexType i = 0; i < SimdChunks; ++i)
     {
         // bitmask of nonzero values in this chunk
         unsigned nnz = 0;
