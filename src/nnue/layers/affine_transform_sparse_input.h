@@ -31,6 +31,7 @@
 #include "../../memory.h"
 #include "../simd.h"
 #include "../nnue_common.h"
+#include "../nnue_architecture.h"
 
 /*
   This file contains the definition for a fully connected layer (aka affine transform) with block sparse input.
@@ -40,7 +41,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 #if (USE_SSSE3 | (USE_NEON >= 8))
 
-#if defined(USE_NEON)
+#if defined(USE_NEON) && defined(L1_SIZE) && L1_SIZE <= 1024
+    #define USE_NEON_NNZ 1
     using NNZOutputType = std::uint8_t;
 #else
     using NNZOutputType = std::uint16_t;
@@ -144,7 +146,7 @@ void find_nnz(const std::uint8_t* RESTRICT input,
     }
     count_out = count;
 
-    #elif defined(USE_NEON)
+    #elif defined(USE_NEON_NNZ)
 
     static_assert(InputDimensions <= 256, "InputDimensions must be <= 256");
 

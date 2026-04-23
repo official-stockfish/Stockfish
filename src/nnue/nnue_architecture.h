@@ -21,6 +21,8 @@
 #ifndef NNUE_ARCHITECTURE_H_INCLUDED
 #define NNUE_ARCHITECTURE_H_INCLUDED
 
+#define L1_SIZE 1024
+
 #include <cstdint>
 #include <cstring>
 #include <iosfwd>
@@ -40,7 +42,7 @@ using ThreatFeatureSet = Features::FullThreats;
 using PSQFeatureSet    = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensionsBig = 1024;
+constexpr IndexType TransformedFeatureDimensionsBig = L1_SIZE;
 constexpr int       L2Big                           = 31;
 constexpr int       L3Big                           = 32;
 
