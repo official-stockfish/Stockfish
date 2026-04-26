@@ -1032,7 +1032,7 @@ profile-build: net config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOBENCH) > PGOBENCH.out 2>&1
+	$(PGOBENCH) > PGOBENCH.out 2>&1 || (cat PGOBENCH.out && exit 1)
 	tail -n 4 PGOBENCH.out
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
@@ -1057,7 +1057,7 @@ universal-object-pgo: objclean profileclean universalclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOBENCH) > PGOBENCH.out 2>&1
+	$(PGOBENCH) > PGOBENCH.out 2>&1 || (cat PGOBENCH.out && exit 1)
 	tail -n 4 PGOBENCH.out
 	@echo ""
 	@echo "Step 3/4. Building optimized object files ..."
