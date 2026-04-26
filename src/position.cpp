@@ -860,12 +860,12 @@ void Position::do_move(Move                      m,
     Piece  pc       = piece_on(from);
     Piece  captured = m.type_of() == EN_PASSANT ? make_piece(them, PAWN) : piece_on(to);
 
-    dp.pc             = pc;
-    dp.from           = from;
-    dp.to             = to;
-    dp.add_sq         = SQ_NONE;
-    dts.us            = us;
-    dts.prevKsq       = square<KING>(us);
+    dp.pc       = pc;
+    dp.from     = from;
+    dp.to       = to;
+    dp.add_sq   = SQ_NONE;
+    dts.us      = us;
+    dts.prevKsq = square<KING>(us);
 
     assert(color_of(pc) == us);
     assert(captured == NO_PIECE || color_of(captured) == (m.type_of() != CASTLING ? them : us));
@@ -1150,8 +1150,12 @@ void Position::undo_move(Move m) {
     assert(pos_is_ok());
 }
 
-inline void add_dirty_threat(
-  DirtyThreats* const dts, bool putPiece, Piece pc, Piece threatened, Square s, Square threatenedSq) {
+inline void add_dirty_threat(DirtyThreats* const dts,
+                             bool                putPiece,
+                             Piece               pc,
+                             Piece               threatened,
+                             Square              s,
+                             Square              threatenedSq) {
     dts->list.push_back({pc, threatened, s, threatenedSq, putPiece});
 }
 
@@ -1192,7 +1196,7 @@ void write_multiple_dirties(const Position& p,
 
 template<bool ComputeRay>
 void Position::update_piece_threats(Piece                     pc,
-                                    bool putPiece,
+                                    bool                      putPiece,
                                     Square                    s,
                                     DirtyThreats* const       dts,
                                     [[maybe_unused]] Bitboard noRaysContaining) const {

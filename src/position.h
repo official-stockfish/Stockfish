@@ -197,7 +197,7 @@ class Position {
     // Other helpers
     template<bool ComputeRay = true>
     void update_piece_threats(Piece               pc,
-                              bool putPiece,
+                              bool                putPiece,
                               Square              s,
                               DirtyThreats* const dts,
                               Bitboard            noRaysContaining = -1ULL) const;
