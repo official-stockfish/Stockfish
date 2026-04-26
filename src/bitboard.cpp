@@ -35,13 +35,11 @@ Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 
 alignas(64) Magic Magics[SQUARE_NB][2];
 
-namespace {
-
-Bitboard RookTable[0x19000];   // To store rook attacks
-Bitboard BishopTable[0x1480];  // To store bishop attacks
-
-void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]);
-}
+#ifdef USE_PEXT
+using MagicMask = uint16_t;
+#else
+using MagicMask = Bitboard;
+#endif
 
 // Returns an ASCII representation of a bitboard suitable
 // to be printed to standard output. Useful for debugging.
@@ -64,45 +62,33 @@ std::string Bitboards::pretty(Bitboard b) {
     return s;
 }
 
-
-// Initializes various bitboard tables. It is called at
-// startup and relies on global objects to be already zero-initialized.
-void Bitboards::init() {
-
-    for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCnt16[i] = uint8_t(std::bitset<16>(i).count());
-
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-            SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
-
-    init_magics(ROOK, RookTable, Magics);
-    init_magics(BISHOP, BishopTable, Magics);
-
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+namespace {
+[[maybe_unused]] constexpr Bitboard constexpr_pext(Bitboard b, Bitboard m) {
+    Bitboard result = 0, bit = 0;
+    while (m)
     {
-        for (PieceType pt : {BISHOP, ROOK})
-            for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-            {
-                if (PseudoAttacks[pt][s1] & s2)
-                {
-                    LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
-                    BetweenBB[s1][s2] =
-                      (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
-                    RayPassBB[s1][s2] =
-                      attacks_bb(pt, s1, 0) & (attacks_bb(pt, s2, square_bb(s1)) | s2);
-                }
-                BetweenBB[s1][s2] |= s2;
-            }
+        Bitboard last = m & -m;
+        result |= bool(b & last) << bit++;
+        m ^= last;
     }
+    return result;
 }
 
-namespace {
-// Computes all rook and bishop attacks at startup. Magic
+// Computes all rook and bishop attacks at startup or optionally, compile time. Magic
 // bitboards are used to look up attacks of sliding pieces. As a reference see
 // https://www.chessprogramming.org/Magic_Bitboards. In particular, here we use
 // the so called "fancy" approach.
-void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
+#ifdef USE_COMPTIME_ATTACKS
+constexpr
+#endif
+  void
+  init_magics(PieceType             pt,
+              MagicMask             table[],
+              Magic                 magics[][2],
+              [[maybe_unused]] bool tableAlreadyInit) {
+#if !defined(USE_COMPTIME_ATTACKS)
+    tableAlreadyInit = false;
+#endif
 
 #ifndef USE_PEXT
     // Optimal PRNG seeds to pick the correct magics in the shortest time
@@ -111,9 +97,9 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
 
     Bitboard occupancy[4096];
     int      epoch[4096] = {}, cnt = 0;
+    Bitboard reference[4096] = {};
 #endif
-    Bitboard reference[4096];
-    int      size = 0;
+    int size = 0;
 
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
@@ -125,9 +111,12 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         // all the attacks for each possible subset of the mask and so is 2 power
         // the number of 1s of the mask. Hence we deduce the size of the shift to
         // apply to the 64 or 32 bits word to get the index.
-        Magic& m = magics[s][pt - BISHOP];
-        m.mask   = Bitboards::sliding_attack(pt, s, 0) & ~edges;
-#ifndef USE_PEXT
+        Magic&   m       = magics[s][pt - BISHOP];
+        Bitboard attacks = Bitboards::sliding_attack(pt, s, 0);
+        m.mask           = attacks & ~edges;
+#ifdef USE_PEXT
+        m.pseudoAttacks = attacks;
+#else
         m.shift = (Is64Bit ? 64 : 32) - popcount(m.mask);
 #endif
         // Set the offset for the attacks table of the square. We have individual
@@ -137,16 +126,22 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
 
         // Use Carry-Rippler trick to enumerate all subsets of masks[s] and
         // store the corresponding sliding attack bitboard in reference[].
-        Bitboard b = 0;
+        Bitboard                  b           = 0;
+        [[maybe_unused]] Bitboard prevSliding = -1;
         do
         {
-#ifndef USE_PEXT
+#ifdef USE_PEXT
+            if (!tableAlreadyInit)
+            {
+                Bitboard sliding = Bitboards::sliding_attack(pt, s, b);
+                m.attacks[size] =
+                  sliding != prevSliding ? constexpr_pext(sliding, attacks) : m.attacks[size - 1];
+                prevSliding = sliding;
+            }
+#else
             occupancy[size] = b;
-#endif
             reference[size] = Bitboards::sliding_attack(pt, s, b);
-
-            if (HasPext)
-                m.attacks[pext(b, m.mask)] = reference[size];
+#endif
 
             size++;
             b = (b - m.mask) & m.mask;
@@ -184,6 +179,57 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
 #endif
     }
 }
+
+#if defined(USE_COMPTIME_ATTACKS) && defined(USE_PEXT)
+constexpr auto RookTable = []() {
+    std::array<uint16_t, 0x19000> result{};
+    Magic                         magics[64][2] = {};
+    init_magics(ROOK, result.data(), magics, false);
+    return result;
+}();
+constexpr auto BishopTable = []() {
+    std::array<uint16_t, 0x1480> result{};
+    Magic                        magics[64][2] = {};
+    init_magics(BISHOP, result.data(), magics, false);
+    return result;
+}();
+#else
+std::array<MagicMask, 0x19000> RookTable;
+std::array<MagicMask, 0x1480>  BishopTable;
+#endif
+}
+
+
+// Initializes various bitboard tables. It is called at
+// startup and relies on global objects to be already zero-initialized.
+void Bitboards::init() {
+
+    for (unsigned i = 0; i < (1 << 16); ++i)
+        PopCnt16[i] = uint8_t(std::bitset<16>(i).count());
+
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+            SquareDistance[s1][s2] = std::max(distance<File>(s1, s2), distance<Rank>(s1, s2));
+
+    init_magics(ROOK, const_cast<MagicMask*>(RookTable.data()), Magics, true);
+    init_magics(BISHOP, const_cast<MagicMask*>(BishopTable.data()), Magics, true);
+
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+    {
+        for (PieceType pt : {BISHOP, ROOK})
+            for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+            {
+                if (PseudoAttacks[pt][s1] & s2)
+                {
+                    LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
+                    BetweenBB[s1][s2] =
+                      (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
+                    RayPassBB[s1][s2] =
+                      attacks_bb(pt, s1, 0) & (attacks_bb(pt, s2, square_bb(s1)) | s2);
+                }
+                BetweenBB[s1][s2] |= s2;
+            }
+    }
 }
 
 }  // namespace Stockfish
