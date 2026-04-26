@@ -88,9 +88,16 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+      # Skip per-arch x86 builds on Linux/Windows
       - id: set-matrix
         run: |
-          TASKS=$(echo $(cat .github/ci/matrix.json) )
+          TASKS=$(jq -c '
+            (.binaries | map(select(startswith("x86-64")))) as $x86 |
+            .exclude += (
+              ($x86 | map({binaries: ., config: {os: "ubuntu-22.04"}})) +
+              ($x86 | map({binaries: ., config: {os: "windows-2022"}}))
+            )
+          ' .github/ci/matrix.json)
           echo "MATRIX=$TASKS" >> $GITHUB_OUTPUT
       - id: set-arm-matrix
         run: |
