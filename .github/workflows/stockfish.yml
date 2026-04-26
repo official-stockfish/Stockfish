@@ -82,6 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      upload_matrix: ${{ steps.set-upload-matrix.outputs.upload_matrix }}
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
       universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
@@ -92,6 +93,17 @@ jobs:
         run: |
           TASKS=$(echo $(cat .github/ci/matrix.json) )
           echo "MATRIX=$TASKS" >> $GITHUB_OUTPUT
+      # Skip publishing per-arch x86 builds on Linux/Windows
+      - id: set-upload-matrix
+        run: |
+          UPLOAD_MATRIX=$(jq -c '
+            (.binaries | map(select(startswith("x86-64")))) as $x86 |
+            .exclude += (
+              ($x86 | map({binaries: ., config: {os: "ubuntu-22.04"}})) +
+              ($x86 | map({binaries: ., config: {os: "windows-2022"}}))
+            )
+          ' .github/ci/matrix.json)
+          echo "UPLOAD_MATRIX=$UPLOAD_MATRIX" >> $GITHUB_OUTPUT
       - id: set-arm-matrix
         run: |
           TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
@@ -134,7 +146,7 @@ jobs:
     needs: [Prerelease, Matrix, Compilation]
     uses: ./.github/workflows/upload_binaries.yml
     with:
-      matrix: ${{ needs.Matrix.outputs.matrix }}
+      matrix: ${{ needs.Matrix.outputs.upload_matrix }}
     permissions:
       contents: write # For deleting/creating a (pre)release
     secrets:
