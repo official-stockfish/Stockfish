@@ -19,13 +19,19 @@
 #include "memory.h"
 
 #include <cstdlib>
+#include <iostream>  // std::cerr
 
 #if __has_include("features.h")
     #include <features.h>
 #endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
+    #include <errno.h>
     #include <sys/mman.h>
+    // IWYU pragma: no_include <bits/mman-map-flags-generic.h>
+    #include <cstring>
+    #include <mutex>
+    #include <map>
 #endif
 
 #if defined(__APPLE__) || defined(__ANDROID__) || defined(__OpenBSD__) \
@@ -45,9 +51,7 @@
         #define NOMINMAX
     #endif
 
-    #include <ios>       // std::hex, std::dec
-    #include <iostream>  // std::cerr
-    #include <ostream>   // std::endl
+    #include <ios>  // std::hex, std::dec
     #include <windows.h>
 
 // The needed Windows API for processor groups could be missed from old Windows
@@ -110,7 +114,7 @@ static void* aligned_large_pages_alloc_windows([[maybe_unused]] size_t allocSize
       []() { return (void*) nullptr; });
 }
 
-void* aligned_large_pages_alloc(size_t allocSize) {
+void* aligned_large_pages_alloc_with_hint(size_t allocSize, bool) {
 
     // Try to allocate large pages
     void* mem = aligned_large_pages_alloc_windows(allocSize);
@@ -124,7 +128,35 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 
 #else
 
-void* aligned_large_pages_alloc(size_t allocSize) {
+    #if defined(__linux__) && defined(MAP_HUGE_SHIFT)
+        #define HAS_HUGE_PAGES
+
+static std::map<void*, size_t> huge_pages;
+static std::mutex              huge_pages_mtx;
+
+static void* try_huge_pages_alloc(size_t allocSize) {
+    size_t size = ((allocSize + HugePageSize - 1) / HugePageSize) * HugePageSize;
+    void*  mem  = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (30 << MAP_HUGE_SHIFT), -1, 0);
+
+    if (mem == MAP_FAILED)
+        return nullptr;
+
+    std::lock_guard lg(huge_pages_mtx);
+    huge_pages[mem] = size;
+    return mem;
+}
+    #endif  // defined(__linux__) && defined(MAP_HUGE_SHIFT)
+
+void* aligned_large_pages_alloc_with_hint(size_t allocSize, [[maybe_unused]] bool hugePageHint) {
+    #ifdef HAS_HUGE_PAGES
+    if (hugePageHint && allocSize >= HugePageSize)
+    {
+        void* mem = try_huge_pages_alloc(allocSize);
+        if (mem)
+            return mem;
+    }
+    #endif
 
     #if defined(__linux__)
     constexpr size_t alignment = 2 * 1024 * 1024;  // 2MB page size assumed
@@ -142,6 +174,10 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 }
 
 #endif
+
+void* aligned_large_pages_alloc(size_t size) {
+    return aligned_large_pages_alloc_with_hint(size, false);
+}
 
 bool has_large_pages() {
 
@@ -193,7 +229,26 @@ void aligned_large_pages_free(void* mem) {
 
 #else
 
-void aligned_large_pages_free(void* mem) { std_aligned_free(mem); }
+void aligned_large_pages_free(void* mem) {
+    if (!mem)
+        return;
+
+    #ifdef HAS_HUGE_PAGES
+    std::lock_guard lg(huge_pages_mtx);
+    if (auto it = huge_pages.find(mem); it != huge_pages.end())
+    {
+        if (munmap(mem, it->second) != 0)
+        {
+            std::cerr << "munmap failed: " << strerror(errno) << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        huge_pages.erase(it);
+        return;
+    }
+    #endif
+
+    std_aligned_free(mem);
+}
 
 #endif
 }  // namespace Stockfish

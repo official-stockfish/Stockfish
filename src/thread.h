@@ -149,7 +149,9 @@ class ThreadPool {
     void                   start_searching();
     void                   wait_for_search_finished() const;
 
+    std::vector<size_t> get_bound_thread_to_numa_node() const;
     std::vector<size_t> get_bound_thread_count_by_numa_node() const;
+    size_t              numa_nodes() const;
 
     void ensure_network_replicated();
 
