@@ -1043,6 +1043,14 @@ profile-build: net config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) profileclean
 endif
 
+ifeq ($(comp), clang)
+LTO_OBJ_SUFFIX := .lto.o
+SAVE_TEMPS := -Wl,--save-temps
+else
+LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
+SAVE_TEMPS := -save-temps
+endif
+
 universal-object-pgo: objclean profileclean universalclean
 	@echo ""
 	@echo "Step 1/4. Building instrumented executable ..."
@@ -1054,14 +1062,14 @@ universal-object-pgo: objclean profileclean universalclean
 	@echo ""
 	@echo "Step 3/4. Building optimized object files ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps $(NNUE_EMBED_OBJ)' $(profile_use)
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='$(SAVE_TEMPS) $(NNUE_EMBED_OBJ)' $(profile_use)
 	@echo ""
 	@echo "Step 4/4. Extracting LTO-optimized relocatable object ..."
-	cp $(basename $(EXE)).ltrans0.ltrans.o stockfish.o
+	cp "$(basename $(EXE))$(LTO_OBJ_SUFFIX)" stockfish.o
 
 universal-object-nopgo: objclean universalclean
-	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='-save-temps $(NNUE_EMBED_OBJ)' all
-	cp $(basename $(EXE)).ltrans0.ltrans.o stockfish.o
+	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) ENV_LDFLAGS='$(SAVE_TEMPS) $(NNUE_EMBED_OBJ)' all
+	cp "$(basename $(EXE))$(LTO_OBJ_SUFFIX)" stockfish.o
 
 strip:
 	$(STRIP) $(EXE)
@@ -1320,8 +1328,13 @@ $(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL
 	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
 	        ARCH=$* CXX=$(CXX) \
 	        NNUE_EMBED_OBJ=$(NNUE_EMBED_OBJ)
+# Drop COMDAT groups; clang LTO leaves them around internalized LOCAL
+# template instantiations which causes problems at the final link
+	objcopy -R .group $@
+# Rename .init_array (Linux) or .ctors (Windows) so we can manually invoke them
 	objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
 	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
+# Make the array inert
 	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
 
 $(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS)
