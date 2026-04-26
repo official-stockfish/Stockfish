@@ -11,6 +11,11 @@ on:
     branches:
       - master
       - tools
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   Prerelease:
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
