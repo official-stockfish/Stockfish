@@ -1226,8 +1226,8 @@ moves_loop:  // When in check, search starts here
 
         // Decrease reduction for PvNodes (*Scaler)
         if (ss->ttPv)
-            r -= 2819 + PvNode * 973 + (ttData.value > alpha) * 905
-               + (ttData.depth >= depth) * (935 + cutNode * 959);
+            r -= 2617 + PvNode * 912 + (ttData.value > alpha) * 934
+               + (ttData.depth >= depth) * (988 + cutNode * 889);
 
         r += 691;  // Base reduction offset to compensate for other tweaks
         r -= moveCount * 65;
@@ -1235,7 +1235,7 @@ moves_loop:  // When in check, search starts here
 
         // Increase reduction for cut nodes
         if (cutNode)
-            r += 3611 + 985 * !ttData.move;
+            r += 3274 + 1006 * !ttData.move;
 
         // Increase reduction if ttMove is a capture
         if (ttCapture)
@@ -1246,8 +1246,8 @@ moves_loop:  // When in check, search starts here
             r += 251 + 1124 * ((ss + 1)->cutoffCnt > 2) + 1042 * allNode;
 
         // For first picked move (ttMove) reduce reduction
-        if (move == ttData.move)
-            r -= 2239;
+        else if (move == ttData.move)
+            r = std::max(-10, r - 2016 + 150 * cutNode);
 
         if (capture)
             ss->statScore = 863 * int(PieceValue[pos.captured_piece()]) / 128
