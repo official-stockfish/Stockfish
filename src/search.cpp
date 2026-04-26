@@ -247,7 +247,7 @@ void Search::Worker::start_searching() {
 
     // Send PV info if it has changed since last output in iterative_deepening().
     if (!uciPvSent || bestThread != this)
-        main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth);
+        main_manager()->pv(*bestThread, threads, tt, bestThread->rootDepth);
 
     // In rare cases, pv() may change the ponder move through syzygy_extend_pv().
     std::string ponder;
@@ -322,9 +322,11 @@ bool Search::Worker::iterative_deepening() {
             mainHistory[c][i] = mainHistory[c][i] * 820 / 1024;
 
     // Iterative deepening loop until requested to stop or the target depth is reached
-    while (++rootDepth < MAX_PLY && !threads.stop
-           && !(limits.depth && mainThread && rootDepth > limits.depth))
+    while (rootDepth + 1 < MAX_PLY && !threads.stop
+           && !(limits.depth && mainThread && rootDepth >= limits.depth))
     {
+        rootDepth++;
+
         // Age out PV variability metric and signal the start of a new iteration.
         if (mainThread)
         {
