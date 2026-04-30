@@ -23,7 +23,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
-#include <iosfwd>
 #include <iostream>
 #include <sstream>
 
