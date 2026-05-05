@@ -1,0 +1,20 @@
+# Open Source Contribution: Stockfish Premium Web GUI
+
+## Overview
+This contribution introduces a high-fidelity, professional web-based Graphical User Interface (GUI) for the Stockfish chess engine. The goal is to provide a seamless, interactive, and modern experience for analyzing and playing games against Stockfish directly in the browser.
+
+## Key Enhancements
+*   **Modern UI Design**: Implemented a sleek, dark-themed interface inspired by state-of-the-art platforms like Chess.com, featuring custom board themes and Inter typography.
+*   **Interactive Drag-and-Drop**: Built a robust custom drag-and-drop system with real-time valid move highlighting and smooth animations.
+*   **Premove Functionality**: Developed a native premove system that allows users to queue moves during the engine's turn, complete with visual feedback (red highlighting) for enhanced blitz gameplay.
+*   **Real-time Evaluation Bar**: Integrated a synchronized evaluation bar that parses Stockfish's UCI output (centipawn/mate scores) to provide instant visual advantage assessment.
+*   **Captured Pieces Tracking**: Automated tracking system that calculates and displays captured material for both sides.
+*   **Stockfish Node.js Bridge**: Created a WebSocket-based server bridge that enables full UCI protocol communication between the web frontend and the native Stockfish binary.
+
+## Tech Stack
+*   **Frontend**: HTML5, Vanilla CSS3, JavaScript (ES6+).
+*   **Logic**: Chess.js for move validation and game state management.
+*   **Backend**: Node.js with `ws` (WebSockets) for engine process management and communication.
+
+---
+*Contributed by Aaditya Sah*
