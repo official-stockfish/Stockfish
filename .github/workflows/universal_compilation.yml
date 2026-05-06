@@ -20,10 +20,10 @@ jobs:
           version: 15
 
       - name: Download SDE package
-        uses: petarpetrovt/setup-sde@2a27a21f27212e473f3cc59a6dac97d8dffe8970 # v3.0
+        uses: petarpetrovt/setup-sde@d230e06df0ca06ced70000e4a7fa62afc9a2001e # v4.0
         with:
           environmentVariableName: SDE_DIR
-          sdeVersion: 9.33.0
+          sdeVersion: 9.58.0
 
       - name: Build universal binary
         run: make -j4 -C src ARCH=x86-64-universal profile-build RUN_PREFIX="$SDE_DIR/sde -future --"
@@ -77,10 +77,10 @@ jobs:
           install: mingw-w64-x86_64-gcc make git zip
 
       - name: Download SDE package
-        uses: petarpetrovt/setup-sde@2a27a21f27212e473f3cc59a6dac97d8dffe8970 # v3.0
+        uses: petarpetrovt/setup-sde@d230e06df0ca06ced70000e4a7fa62afc9a2001e # v4.0
         with:
           environmentVariableName: SDE_DIR
-          sdeVersion: 9.33.0
+          sdeVersion: 9.58.0
 
       - name: Build universal binary
         run: |
