@@ -74,12 +74,10 @@ jobs:
       # Get recent commits for release body
       - name: Get commits in this push
         id: recent_commits
-        if: github.ref_type != 'tag'
         run: |
           COMMITS=$(git log \
-            --format="- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" \
+            --format="- [\`%h\`](https://github.com/${{ github.repository }}/commit/%H) *%s*" \
             ${{ github.event.before }}..HEAD)
-
           echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -94,22 +92,22 @@ jobs:
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
           body: |
-            > **Info:** Linux and Windows x86-64 releases now distribute only
-            > the universal binary, which automatically selects the best
-            > supported instruction set for your CPU and makes the old
-            > architecture-specific builds unnecessary.
-
-            ## Recent Commits
-
-            ${{ steps.recent_commits.outputs.COMMITS }}
-
-            View all commits: https://github.com/${{ github.repository }}/commits/master
-
+            Precompiled binaries of the latest Stockfish development version, built automatically on every commit.
+            
+            > [!NOTE]
+            > For stable, thoroughly tested builds use the [official releases](https://github.com/official/stockfish/releases).
+            > Pre-releases may contain bugs.
+            
+            *Some platforms ship a **universal binary** that automatically selects the best
+            instruction set for your CPU - no manual selection needed.*
+            
             ---
-
-            > **Note:** For most users we recommend official releases.
-            > Pre-releases are intended for enthusiasts who want to help test
-            > the latest development version before official releases.
+            
+            ## Commits
+            
+            ${{ steps.recent_commits.outputs.COMMITS }}
+            
+            [View all commits →](https://github.com/${{ github.repository }}/commits/master)
   Matrix:
     name: Prepare matrices
     runs-on: ubuntu-latest
