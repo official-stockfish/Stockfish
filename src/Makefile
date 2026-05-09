@@ -1307,8 +1307,15 @@ arch-namespace  = Stockfish_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for Stockfish_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
 
+# lld-link, used by clang on Windows arm64, doesn't accept --defsym
+ifeq ($(target_windows)+$(COMP),yes+clang)
+    arch-defmain = -Wl,/alternatename:main=$(call arch-mangled,$(1))
+else
+    arch-defmain = -Wl,--defsym=main=$(call arch-mangled,$(1))
+endif
+
 arch-cxxflags   = --embed-dir=$(CURDIR) -DStockfish=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY \
-                  -Wl,--defsym=main=$(call arch-mangled,$(1)) -Wno-c++26-extensions
+                  $(call arch-defmain,$(1)) -Wno-c++26-extensions
 
 UOBJ_TGT ?= universal-object-pgo
 OBJCOPY  ?= objcopy

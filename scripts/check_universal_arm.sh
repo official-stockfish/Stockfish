@@ -17,7 +17,7 @@ EXPECTED_BENCH=$2
 
 PAIRS="
 cortex-a53:armv8
-cortex-a76:armv8-dotprod
+max,dotprod=on:armv8-dotprod
 "
 
 BINARY_SIZE=$(wc -c < "$STOCKFISH_EXE")
