@@ -116,3 +116,99 @@ jobs:
              .
              !.git
              !.output
+
+  UniversalLinuxARM64:
+    name: Linux arm64
+    runs-on: ubuntu-22.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install GCC 15
+        uses: egor-tensin/setup-gcc@a2861a8b8538f49cf2850980acccf6b05a1b2ae4 # v2.0
+        with:
+          version: 15
+
+      - name: Install qemu-user
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=armv8-universal profile-build
+
+      - name: Strip binary
+        run: strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-linux-arm64-universal
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check arch selection under qemu
+        run: ./scripts/check_universal_arm.sh ./stockfish-linux-arm64-universal "$benchref"
+
+      - name: Remove non src files
+        run: |
+          rm -fR src/temp_builds
+          git -C src clean -fx
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux arm64-universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalWindowsARM64:
+    name: Windows arm64
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup msys and install required packages
+        uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2.31.1
+        with:
+          msystem: clangarm64
+          install: mingw-w64-clang-aarch64-clang make git zip
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=armv8-universal profile-build COMP=clang COMPCXX=clang++
+
+      - name: Strip binary
+        run: strip src/stockfish.exe
+
+      - name: Rename binary
+        run: mv src/stockfish.exe stockfish-windows-arm64-universal.exe
+
+      - name: Remove non src files
+        run: |
+          rm -fR src/temp_builds
+          git -C src clean -fx
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows arm64-universal
+          path: |
+             .
+             !.git
+             !.output

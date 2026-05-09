@@ -1255,10 +1255,18 @@ UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-# GCC 15+ required for #embed
-GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
-ifneq ($(shell test "$(GCC_MAJOR)" -ge 15 2>/dev/null && echo ok),ok)
-$(error Universal build needs GCC 15+ for \#embed support; CXX=$(CXX) reports version '$(GCC_MAJOR)')
+# GCC 15+ or Clang 19+ required for #embed
+CXX_MAJOR    := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
+CXX_IS_CLANG := $(shell $(CXX) --version 2>/dev/null | head -1 | grep -ic clang)
+ifeq ($(CXX_IS_CLANG),0)
+    EMBED_MIN  := 15
+    EMBED_NAME := GCC
+else
+    EMBED_MIN  := 19
+    EMBED_NAME := Clang
+endif
+ifneq ($(shell test "$(CXX_MAJOR)" -ge "$(EMBED_MIN)" 2>/dev/null && echo ok),ok)
+$(error Universal build needs $(EMBED_NAME) $(EMBED_MIN)+ for \#embed support; CXX=$(CXX) reports version '$(CXX_MAJOR)')
 endif
 
 UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
