@@ -1045,8 +1045,13 @@ profile-build: net config-sanity objclean profileclean
 endif
 
 ifeq ($(comp), clang)
-LTO_OBJ_SUFFIX := .lto.o
-SAVE_TEMPS := -Wl,--save-temps
+    ifeq ($(target_windows),yes)
+        LTO_OBJ_SUFFIX := .lto.obj
+        SAVE_TEMPS     := -Wl,/lldsavetemps
+    else
+        LTO_OBJ_SUFFIX := .lto.o
+        SAVE_TEMPS     := -Wl,--save-temps
+    endif
 else
 LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
 SAVE_TEMPS := -save-temps
