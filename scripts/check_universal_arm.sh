@@ -42,6 +42,8 @@ for pair in $PAIRS; do
     if [ "$actual_compiler" != "$expected_compiler" ] || [ "$actual_bench" != "$EXPECTED_BENCH" ]; then
         printf '===== CPU %s output (expected %s/%s, got %s/%s) =====\n' \
             "$cpu" "$expected_compiler" "$EXPECTED_BENCH" "${actual_compiler:--}" "$actual_bench" >&2
+        printf 'Full "compiler" output: %s' "$compiler_out"
+        printf 'Full "bench" output: %s' "$bench_out"
         FAIL=1
     else
         printf 'CPU %s ok\n' "$cpu" >&2

@@ -1307,9 +1307,11 @@ arch-namespace  = Stockfish_$(call arch-suffix,$(1))
 # Itanium ABI mangled name for Stockfish_<suffix>::main(int, char**)
 arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c)$(call arch-namespace,$(1))4mainEiPPc
 
-# lld-link, used by clang on Windows arm64, doesn't accept --defsym
+# lld-link, used on Windows+clang, doesn't accept --defsym, so
+# we define main directly via a shim in main.cpp instead.
+# The universal entry point's main function will override it
 ifeq ($(target_windows)+$(COMP),yes+clang)
-    arch-defmain = -Wl,/alternatename:main=$(call arch-mangled,$(1))
+    arch-defmain = -DUNIVERSAL_NEEDS_MAIN_SHIM
 else
     arch-defmain = -Wl,--defsym=main=$(call arch-mangled,$(1))
 endif
