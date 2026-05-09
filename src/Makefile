@@ -1047,7 +1047,7 @@ endif
 ifeq ($(comp), clang)
     ifeq ($(target_windows),yes)
         LTO_OBJ_SUFFIX := .lto.obj
-        SAVE_TEMPS     := -Wl,/lldsavetemps
+        SAVE_TEMPS     := -Wl,-lldsavetemps
     else
         LTO_OBJ_SUFFIX := .lto.o
         SAVE_TEMPS     := -Wl,--save-temps
