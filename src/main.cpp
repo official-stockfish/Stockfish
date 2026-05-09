@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 #ifdef UNIVERSAL_BINARY
 }  // namespace Stockfish
 
-#ifdef UNIVERSAL_NEEDS_MAIN_SHIM
+    #ifdef UNIVERSAL_NEEDS_MAIN_SHIM
 int main(int argc, char* argv[]) { return Stockfish::main(argc, argv); }
-#endif
+    #endif
 #endif

@@ -74,7 +74,7 @@ SRCS = benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 	nnue/features/half_ka_v2_hm.cpp nnue/features/full_threats.cpp \
 	engine.cpp score.cpp memory.cpp
 
-OTHER_SRCS = universal/entry_x86.cpp universal/nnue_embed.cpp
+OTHER_SRCS = universal/entry_x86.cpp universal/entry_arm64.cpp universal/nnue_embed.cpp
 
 HEADERS = benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.h history.h \
 		nnue/nnue_misc.h nnue/features/half_ka_v2_hm.h nnue/features/full_threats.h \
