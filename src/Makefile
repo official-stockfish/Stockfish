@@ -155,7 +155,7 @@ else
    SUPPORTED_ARCH=false
 endif
 
-ifeq ($(ARCH), x86-64-universal)
+ifneq (,$(findstring universal,$(ARCH)))
    UNIVERSAL_BUILD=true
 else
    UNIVERSAL_BUILD=false
@@ -974,6 +974,7 @@ help:
 	echo "ppc-32                  > PPC 32-bit" && \
 	echo "armv7                   > ARMv7 32-bit" && \
 	echo "armv7-neon              > ARMv7 32-bit with popcnt and neon" && \
+	echo "armv8-universal         > ARMv8 64-bit with automatic runtime selection of the best architecture" && \
 	echo "armv8                   > ARMv8 64-bit with popcnt and neon" && \
 	echo "armv8-dotprod           > ARMv8 64-bit with popcnt, neon and dot product support" && \
 	echo "e2k                     > Elbrus 2000" && \
@@ -1247,14 +1248,12 @@ endif
 # Usage:
 #   make -j ARCH=x86-64-universal build          # non-PGO
 #   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
+#   make -j ARCH=armv8-universal build
 
 TEMP_DIR             := $(CURDIR)/temp_builds
 UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
-
-UNIVERSAL_ARCHES := x86-64 x86-64-sse41-popcnt x86-64-avx2 x86-64-bmi2 \
-                    x86-64-avxvnni x86-64-avx512 x86-64-vnni512 x86-64-avx512icl
 
 # GCC 15+ required for #embed
 GCC_MAJOR := $(shell $(CXX) -dumpversion 2>/dev/null | cut -d. -f1)
@@ -1264,16 +1263,28 @@ endif
 
 UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
 NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
-UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
 NET_SENTINEL         := $(TEMP_DIR)/.net-done
+
+ifeq ($(arch),x86_64)
+    UNIVERSAL_ARCHES := x86-64 x86-64-sse41-popcnt x86-64-avx2 x86-64-bmi2 \
+                        x86-64-avxvnni x86-64-avx512 x86-64-vnni512 x86-64-avx512icl
+    UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
+    UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_x86.cpp
+    BASELINE_ARCH := x86-64
+else
+    UNIVERSAL_ARCHES := armv8 armv8-dotprod
+    UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_arm64.o
+    UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_arm64.cpp
+    BASELINE_ARCH := armv8
+endif
 
 # Top-level tracked items in src/ (directories and files)
 TRACKED_TOP := $(sort $(foreach f,$(SRCS) $(HEADERS) Makefile incbin,$(firstword $(subst /, ,$(f)))))
 
-# Baseline x86-64 must come first in the final link (Windows --allow-multiple-definition
+# Baseline build must come first in the final link (Windows --allow-multiple-definition
 # uses the first copy of inline duplicates)
-ARCH_OBJS := $(TEMP_DIR)/x86-64/stockfish.o \
-             $(patsubst %,$(TEMP_DIR)/%/stockfish.o,$(filter-out x86-64,$(UNIVERSAL_ARCHES)))
+ARCH_OBJS := $(TEMP_DIR)/$(BASELINE_ARCH)/stockfish.o \
+             $(patsubst %,$(TEMP_DIR)/%/stockfish.o,$(filter-out $(BASELINE_ARCH),$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os -static-libstdc++ -static-libgcc -Wno-c++26-extensions
 ifeq ($(KERNEL),Linux)
@@ -1292,6 +1303,7 @@ arch-cxxflags   = --embed-dir=$(CURDIR) -DStockfish=$(call arch-namespace,$(1)) 
                   -Wl,--defsym=main=$(call arch-mangled,$(1)) -Wno-c++26-extensions
 
 UOBJ_TGT ?= universal-object-pgo
+OBJCOPY  ?= objcopy
 
 .PHONY: build profile-build universal-clean
 build:         UOBJ_TGT := universal-object-nopgo
@@ -1310,7 +1322,7 @@ $(NET_SENTINEL): | $(TEMP_DIR)
 $(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) | $(TEMP_DIR)
 	$(CXX) -O2 -Wno-c++26-extensions --embed-dir=$(CURDIR) -c $< -o $@
 
-$(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_SRC_DIR)/entry_x86.cpp | $(TEMP_DIR)
+$(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_ENTRY_SRC) | $(TEMP_DIR)
 	$(CXX) -O2 -c $< -o $@
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
@@ -1330,12 +1342,12 @@ $(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL
 	        NNUE_EMBED_OBJ=$(NNUE_EMBED_OBJ)
 # Drop COMDAT groups; clang LTO leaves them around internalized LOCAL
 # template instantiations which causes problems at the final link
-	objcopy -R .group $@
+	$(OBJCOPY) -R .group $@
 # Rename .init_array (Linux) or .ctors (Windows) so we can manually invoke them
-	objcopy --rename-section .init_array=$(call arch-suffix,$*)_init $@
-	objcopy --rename-section .ctors=$(call arch-suffix,$*)_init $@
+	$(OBJCOPY) --rename-section .init_array=$(call arch-suffix,$*)_init $@
+	$(OBJCOPY) --rename-section .ctors=$(call arch-suffix,$*)_init $@
 # Make the array inert
-	objcopy --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+	$(OBJCOPY) --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
 
 $(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS)
 	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS) $(UNIVERSAL_FINAL_FLAGS)
