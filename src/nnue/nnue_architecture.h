@@ -32,6 +32,7 @@
 #include "layers/clipped_relu.h"
 #include "layers/sqr_clipped_relu.h"
 #include "nnue_common.h"
+#include "nnz_helper.h"
 
 namespace Stockfish::Eval::NNUE {
 
@@ -94,7 +95,8 @@ struct NetworkArchitecture {
             && fc_2.write_parameters(stream);
     }
 
-    std::int32_t propagate(const TransformedFeatureType* transformedFeatures) const {
+    std::int32_t propagate(const TransformedFeatureType* transformedFeatures,
+                           const NNZInfo<L1>&            nnzInfo) const {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
             alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
@@ -109,7 +111,7 @@ struct NetworkArchitecture {
 
         Buffer buffer;
 
-        fc_0.propagate(transformedFeatures, buffer.fc_0_out);
+        fc_0.propagate(transformedFeatures, buffer.fc_0_out, nnzInfo);
         ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
         ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
         std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out,
