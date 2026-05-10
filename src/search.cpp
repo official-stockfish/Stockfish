@@ -1218,12 +1218,13 @@ moves_loop:  // When in check, search starts here
                 extension = -2;
         }
 
+        uint64_t nodeCount = rootNode ? uint64_t(nodes) : 0;
+
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
 
         // Add extension to new depth
         newDepth += extension;
-        uint64_t nodeCount = rootNode ? uint64_t(nodes) : 0;
 
         // Decrease reduction for PvNodes (*Scaler)
         if (ss->ttPv)
