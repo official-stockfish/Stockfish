@@ -361,6 +361,9 @@ bool Search::Worker::iterative_deepening() {
             // Reset UCI info selDepth for each depth and each PV line
             selDepth = 0;
 
+            // Set lastIterationPV to the current root move's pv
+            lastIterationPV = rootMoves[pvIdx].pv;
+
             // Reset aspiration window starting size
             delta     = 5 + threadIdx % 8 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 10588;
             Value avg = rootMoves[pvIdx].averageScore;
@@ -463,10 +466,8 @@ bool Search::Worker::iterative_deepening() {
 
         if (!threads.stop)
         {
-            if (lastIterationPV.empty() || rootMoves[0].pv[0] != lastIterationPV[0])
+            if (rootMoves[0].pv[0] != lastIterationPV[0])
                 lastBestMoveDepth = rootDepth;
-
-            lastIterationPV = rootMoves[0].pv;
         }
 
         // An exact mated-in/TB-loss score from an aborted search cannot be trusted: the
@@ -476,7 +477,7 @@ bool Search::Worker::iterative_deepening() {
                  && !rootMoves[0].score_is_bound())
         {
             // Bring the last best move to the front for best thread selection.
-            if (!lastIterationPV.empty())
+            if (rootDepth > 1)
             {
                 Utility::move_to_front(rootMoves, [&lastPV = std::as_const(lastIterationPV)](
                                                     const auto& rm) { return rm == lastPV[0]; });
