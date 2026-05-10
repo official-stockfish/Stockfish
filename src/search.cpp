@@ -187,6 +187,7 @@ void Search::Worker::ensure_network_replicated() {
 void Search::Worker::start_searching() {
 
     accumulatorStack.reset();
+    lastIterationFirstPV.clear();
     lastIterationPV.clear();
 
     // Non-main threads go directly to iterative_deepening()
@@ -341,6 +342,8 @@ bool Search::Worker::iterative_deepening() {
         for (RootMove& rm : rootMoves)
             rm.previousScore = rm.score;
 
+        lastIterationFirstPV = rootMoves[0].pv;
+
         size_t pvFirst = 0;
         pvLast         = 0;
 
@@ -362,6 +365,7 @@ bool Search::Worker::iterative_deepening() {
             selDepth = 0;
 
             // Set lastIterationPV to the current root move's pv
+            // for the followPv idea to work in MultiPV mode, too.
             lastIterationPV = rootMoves[pvIdx].pv;
 
             // Reset aspiration window starting size
@@ -466,7 +470,7 @@ bool Search::Worker::iterative_deepening() {
 
         if (!threads.stop)
         {
-            if (!pvIdx && rootMoves[0].pv[0] != lastIterationPV[0])
+            if (rootMoves[0].pv[0] != lastIterationFirstPV[0])
                 lastBestMoveDepth = rootDepth;
         }
 
@@ -479,9 +483,9 @@ bool Search::Worker::iterative_deepening() {
             // Bring the last best move to the front for best thread selection.
             if (rootDepth > 1)
             {
-                Utility::move_to_front(rootMoves, [&lastPV = std::as_const(lastIterationPV)](
+                Utility::move_to_front(rootMoves, [&lastPV = std::as_const(lastIterationFirstPV)](
                                                     const auto& rm) { return rm == lastPV[0]; });
-                rootMoves[0].pv    = lastIterationPV;
+                rootMoves[0].pv    = lastIterationFirstPV;
                 rootMoves[0].score = rootMoves[0].uciScore = rootMoves[0].previousScore;
 
                 if (mainThread)

@@ -385,6 +385,7 @@ class Worker {
     Depth     rootDepth;
     Value     rootDelta;
 
+    PVMoves lastIterationFirstPV;
     PVMoves lastIterationPV;
 
     size_t                    threadIdx, numaThreadIdx, numaTotal;
