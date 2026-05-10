@@ -21,7 +21,7 @@ jobs:
     name: Prerelease
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
-    needs: [Matrix]
+    needs: [Matrix, Compilation, WindowsARMCompilation, ARMCompilation, UniversalCompilation]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
@@ -95,7 +95,7 @@ jobs:
             Precompiled binaries of the latest Stockfish development version, built automatically on every commit.
             
             > [!NOTE]
-            > For stable, thoroughly tested builds use the [official releases](https://github.com/official/stockfish/releases).
+            > For stable, thoroughly tested builds use the [official releases](https://github.com/${{ github.repository }}/releases).
             > Pre-releases may contain bugs.
             
             *Some platforms ship a **universal binary** that automatically selects the best
@@ -186,7 +186,7 @@ jobs:
   Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     name: macOS uploads
-    needs: [Prerelease, Matrix, Compilation]
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.macos_matrix }}
@@ -197,7 +197,7 @@ jobs:
   WindowsARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     name: Windows ARM uploads
-    needs: [Prerelease, Matrix, WindowsARMCompilation]
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.windows_arm_matrix }}
@@ -208,7 +208,7 @@ jobs:
   ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     name: Android uploads
-    needs: [Prerelease, Matrix, ARMCompilation]
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
@@ -219,7 +219,7 @@ jobs:
   Universal_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     name: Universal binaries
-    needs: [Prerelease, Matrix, UniversalCompilation]
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.universal_matrix }}
