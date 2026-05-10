@@ -466,7 +466,7 @@ bool Search::Worker::iterative_deepening() {
 
         if (!threads.stop)
         {
-            if (rootMoves[0].pv[0] != lastIterationPV[0])
+            if (!pvIdx && rootMoves[0].pv[0] != lastIterationPV[0])
                 lastBestMoveDepth = rootDepth;
         }
 
