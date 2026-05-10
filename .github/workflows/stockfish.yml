@@ -95,7 +95,7 @@ jobs:
             Precompiled binaries of the latest Stockfish development version, built automatically on every commit.
             
             > [!NOTE]
-            > For stable, thoroughly tested builds use the [official releases](https://github.com/${{ github.repository }}/releases).
+            > For stable, thoroughly tested builds use the [official releases](https://github.com/official-stockfish/Stockfish/releases).
             > Pre-releases may contain bugs.
             
             *Some platforms ship a **universal binary** that automatically selects the best
