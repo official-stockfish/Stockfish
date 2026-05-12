@@ -101,14 +101,9 @@ void Network::load(const std::string& rootDirectory, std::string evalfilePath) {
         if (std::string(evalFile.current) != evalfilePath)
         {
             if (directory != "<internal>")
-            {
                 load_user_net(directory, evalfilePath);
-            }
-
-            if (directory == "<internal>" && evalfilePath == std::string(evalFile.defaultName))
-            {
+            else if (evalfilePath == std::string(evalFile.defaultName))
                 load_internal();
-            }
         }
     }
 }
