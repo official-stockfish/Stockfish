@@ -1084,6 +1084,12 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 1006;
 
+        if (!capture)
+            ss->statScore = 2 * mainHistory[us][move.raw()]
+                          + (*contHist[0])[movedPiece][move.to_sq()]
+                          + (*contHist[1])[movedPiece][move.to_sq()]
+                          + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
+
         // Step 14. Pruning at shallow depths.
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
@@ -1120,15 +1126,13 @@ moves_loop:  // When in check, search starts here
             else if (!ss->followPV || !PvNode)
             {
                 int dIndex  = std::min(int(depth), int(lmrDivisor.size())) - 1;
-                int history = (*contHist[0])[movedPiece][move.to_sq()]
-                            + (*contHist[1])[movedPiece][move.to_sq()]
-                            + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
+                int history = ss->statScore - 2 * mainHistory[us][move.raw()];
 
                 // Continuation history based pruning
                 if (history < -4313 * depth)
                     continue;
 
-                history += 64 * mainHistory[us][move.raw()] / 32;
+                history = ss->statScore;
 
                 // (*Scaler): Generally, lower divisors scale well
                 lmrDepth += history / lmrDivisor[dIndex];
@@ -1255,10 +1259,6 @@ moves_loop:  // When in check, search starts here
         if (capture)
             ss->statScore = 809 * int(PieceValue[pos.captured_piece()]) / 128
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
-        else
-            ss->statScore = 2 * mainHistory[us][move.raw()]
-                          + (*contHist[0])[movedPiece][move.to_sq()]
-                          + (*contHist[1])[movedPiece][move.to_sq()];
 
         // Decrease/increase reduction for moves with a good/bad history
         r -= ss->statScore * 445 / 4096;
