@@ -30,7 +30,11 @@ Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
 Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 
+#ifdef USE_DUAL_HYPERBOLA_QUINT
+alignas(64) DualMagic DualMagics[SQUARE_NB];
+#else
 alignas(64) Magic Magics[SQUARE_NB][2];
+#endif
 
 }
 
@@ -40,8 +44,7 @@ using MagicMask = uint16_t;
 using MagicMask = Bitboard;
 #endif
 
-#ifdef USE_HYPERBOLA_QUINT
-static Bitboard line_mask(Square sq, Direction d1, Direction d2) {
+[[maybe_unused]] static Bitboard line_mask(Square sq, Direction d1, Direction d2) {
     Bitboard mask = 0, dest;
     for (Direction d : {d1, d2})
     {
@@ -55,6 +58,7 @@ static Bitboard line_mask(Square sq, Direction d1, Direction d2) {
     return mask;
 }
 
+#ifdef USE_HYPERBOLA_QUINT
 static void init_magics(Magic magics[][2]) {
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
@@ -68,6 +72,48 @@ static void init_magics(Magic magics[][2]) {
 
         rook.r = bishop.r = square_bb(s) * 2;
         rook.rr = bishop.rr = square_bb(Square(63 - int(s))) * 2;
+    }
+}
+
+#elif defined(USE_DUAL_HYPERBOLA_QUINT)
+
+// Sliding attacks within a rank, indexed by the slider's file and the
+// 8-bit rank occupancy, yielding the 8-bit attack set on that rank
+constexpr auto RankAttacks = []() {
+    std::array<std::array<uint8_t, 256>, FILE_NB> table{};
+    for (int file = 0; file < 8; ++file)
+        for (int occ = 0; occ < 256; ++occ)
+        {
+            uint8_t attacks = 0;
+            for (int f = file + 1; f <= 7; ++f)
+            {
+                attacks |= uint8_t(1 << f);
+                if (occ & (1 << f))
+                    break;
+            }
+            for (int f = file - 1; f >= 0; --f)
+            {
+                attacks |= uint8_t(1 << f);
+                if (occ & (1 << f))
+                    break;
+            }
+            table[file][occ] = attacks;
+        }
+    return table;
+}();
+
+static void init_dual_magics(DualMagic magics[]) {
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+    {
+        DualMagic& m        = magics[s];
+        m.maskFile          = line_mask(s, NORTH, SOUTH);
+        m.maskDiag          = line_mask(s, NORTH_EAST, SOUTH_WEST);
+        m.maskNone          = 0;
+        m.maskAntidiag      = line_mask(s, NORTH_WEST, SOUTH_EAST);
+        m.r                 = square_bb(s) * 2;
+        m.rr                = square_bb(Square(63 - int(s))) * 2;
+        m.rankAttacksLookup = RankAttacks[int(file_of(s))].data();
+        m.shift             = 8 * int(rank_of(s));
     }
 }
 
@@ -181,7 +227,7 @@ constexpr auto BishopTable = []() {
     init_magics(BISHOP, result.data(), magics, false);
     return result;
 }();
-    #else
+    #elif !defined(USE_DUAL_HYPERBOLA_QUINT) && !defined(USE_HYPERBOLA_QUINT)
 std::array<MagicMask, 0x19000> RookTable;
 std::array<MagicMask, 0x1480>  BishopTable;
     #endif
@@ -193,6 +239,8 @@ void init() {
 
 #ifdef USE_HYPERBOLA_QUINT
     init_magics(Magics);
+#elif defined(USE_DUAL_HYPERBOLA_QUINT)
+    init_dual_magics(DualMagics);
 #else
     init_magics(ROOK, const_cast<MagicMask*>(RookTable.data()), Magics, true);
     init_magics(BISHOP, const_cast<MagicMask*>(BishopTable.data()), Magics, true);
@@ -216,10 +264,14 @@ void init() {
     }
 }
 
+#ifdef USE_DUAL_HYPERBOLA_QUINT
+const DualMagic& dual_magic(Square s) { return DualMagics[s]; }
+#else
 const Magic& magic(Square s, PieceType pt) {
     assert((pt == BISHOP || pt == ROOK) && is_ok(s));
     return Magics[s][pt - BISHOP];
 }
+#endif
 
 Bitboard line_bb(Square s1, Square s2) {
     assert(is_ok(s1) && is_ok(s2));

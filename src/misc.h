@@ -544,6 +544,14 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
     #define sf_unreachable()
 #endif
 
+#ifdef __GNUC__
+    #define RESTRICT __restrict__
+#elif defined(_MSC_VER)
+    #define RESTRICT __restrict
+#else
+    #define RESTRICT
+#endif
+
 }  // namespace Stockfish
 
 template<std::size_t N>
