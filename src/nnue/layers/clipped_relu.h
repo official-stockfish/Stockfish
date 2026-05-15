@@ -67,49 +67,9 @@ class ClippedReLU {
     // Forward propagation
     void propagate(const InputType* input, OutputType* output) const {
 
-#if defined(USE_AVX2)
-        if constexpr (InputDimensions % SimdWidth == 0)
-        {
-            constexpr IndexType NumChunks = InputDimensions / SimdWidth;
-            const __m256i       Offsets   = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
-            const auto          in        = reinterpret_cast<const __m256i*>(input);
-            const auto          out       = reinterpret_cast<__m256i*>(output);
-            for (IndexType i = 0; i < NumChunks; ++i)
-            {
-                const __m256i words0 =
-                  _mm256_srli_epi16(_mm256_packus_epi32(_mm256_load_si256(&in[i * 4 + 0]),
-                                                        _mm256_load_si256(&in[i * 4 + 1])),
-                                    WeightScaleBits);
-                const __m256i words1 =
-                  _mm256_srli_epi16(_mm256_packus_epi32(_mm256_load_si256(&in[i * 4 + 2]),
-                                                        _mm256_load_si256(&in[i * 4 + 3])),
-                                    WeightScaleBits);
-                _mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(
-                                              _mm256_packs_epi16(words0, words1), Offsets));
-            }
-        }
-        else
-        {
-            constexpr IndexType NumChunks = InputDimensions / (SimdWidth / 2);
-            const auto          in        = reinterpret_cast<const __m128i*>(input);
-            const auto          out       = reinterpret_cast<__m128i*>(output);
-            for (IndexType i = 0; i < NumChunks; ++i)
-            {
-                const __m128i words0 = _mm_srli_epi16(
-                  _mm_packus_epi32(_mm_load_si128(&in[i * 4 + 0]), _mm_load_si128(&in[i * 4 + 1])),
-                  WeightScaleBits);
-                const __m128i words1 = _mm_srli_epi16(
-                  _mm_packus_epi32(_mm_load_si128(&in[i * 4 + 2]), _mm_load_si128(&in[i * 4 + 3])),
-                  WeightScaleBits);
-                _mm_store_si128(&out[i], _mm_packs_epi16(words0, words1));
-            }
-        }
-        constexpr IndexType Start = InputDimensions % SimdWidth == 0
-                                    ? InputDimensions / SimdWidth * SimdWidth
-                                    : InputDimensions / (SimdWidth / 2) * (SimdWidth / 2);
 
-#elif defined(USE_SSE2)
-        constexpr IndexType NumChunks = InputDimensions / SimdWidth;
+#if defined(USE_SSE2)
+        constexpr IndexType NumChunks = InputDimensions / 16;
 
     #ifndef USE_SSE41
         const __m128i k0x80s = _mm_set1_epi8(-128);
@@ -138,7 +98,7 @@ class ClippedReLU {
             _mm_store_si128(&out[i], _mm_subs_epi8(_mm_adds_epi8(packedbytes, k0x80s), k0x80s));
     #endif
         }
-        constexpr IndexType Start = NumChunks * SimdWidth;
+        constexpr IndexType Start = NumChunks * 16;
 
 #elif defined(USE_NEON)
         constexpr IndexType    NumChunks = InputDimensions / (SimdWidth / 2);
