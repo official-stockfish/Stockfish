@@ -246,7 +246,7 @@ struct AccumulatorUpdateContext {
         perspective{persp},
         featureTransformer{ft},
         from{accF},
-        to{accT} { }
+        to{accT} {}
 
     template<UpdateOperation... ops,
              typename... Ts,

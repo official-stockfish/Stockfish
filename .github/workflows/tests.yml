@@ -56,6 +56,14 @@ jobs:
             base_image: "ppc64le/alpine:latest"
             platform: linux/ppc64le
             shell: bash
+          - name: Linux GCC loongarch64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_loongarch64_tests: true
+            base_image: "loongarch64/alpine:3.21"
+            platform: linux/loong64
+            shell: bash
           - name: macOS 15 Apple Clang
             os: macos-15-intel
             compiler: clang++
@@ -372,6 +380,29 @@ jobs:
         if: matrix.config.run_ppc64_tests
         run: |
           echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      # loongarch64 tests
+
+      - name: Test loongarch64 build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      - name: Test loongarch64-lsx build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64-lsx build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      - name: Test loongarch64-lasx build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64-lasx build" > script.sh
           docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
