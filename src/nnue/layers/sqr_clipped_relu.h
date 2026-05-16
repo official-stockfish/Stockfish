@@ -100,9 +100,7 @@ class SqrClippedReLU {
             const __m256i words1 = __lasx_xvssrani_h_w(in[i * 4 + 3], in[i * 4 + 2], 0);
             const __m256i sqr0   = __lasx_xvmuh_h(words0, words0);
             const __m256i sqr1   = __lasx_xvmuh_h(words1, words1);
-            const __m256i shift0 = __lasx_xvsrli_h(sqr0, 3);
-            const __m256i shift1 = __lasx_xvsrli_h(sqr1, 3);
-            const __m256i packed = __lasx_xvssrani_b_h(shift1, shift0, 0);
+            const __m256i packed = __lasx_xvssrlni_b_h(sqr1, sqr0, 3);
             const __m256i permed = __lasx_xvpermi_d(packed, 0xD8);
             __lasx_xvst(__lasx_xvshuf4i_w(permed, 0xD8), out + i, 0);
         }
@@ -118,9 +116,7 @@ class SqrClippedReLU {
             const __m128i words1 = __lsx_vssrani_h_w(in[i * 4 + 3], in[i * 4 + 2], 0);
             const __m128i sqr0   = __lsx_vmuh_h(words0, words0);
             const __m128i sqr1   = __lsx_vmuh_h(words1, words1);
-            const __m128i shift0 = __lsx_vsrli_h(sqr0, 3);
-            const __m128i shift1 = __lsx_vsrli_h(sqr1, 3);
-            out[i]               = __lsx_vssrani_b_h(shift1, shift0, 0);
+            out[i]               = __lsx_vssrlni_b_h(sqr1, sqr0, 3);
         }
         constexpr IndexType Start = NumChunks * 16;
 

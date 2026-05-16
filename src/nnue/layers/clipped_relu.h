@@ -161,12 +161,12 @@ class ClippedReLU {
         const auto          out       = reinterpret_cast<__m256i*>(output);
         for (IndexType i = 0; i < NumChunks; ++i)
         {
-            const __m256i words0 = __lasx_xvsrli_h(
-              __lasx_xvssrani_hu_w(in[i * 4 + 1], in[i * 4 + 0], 0), WeightScaleBits);
-            const __m256i words1 = __lasx_xvsrli_h(
-              __lasx_xvssrani_hu_w(in[i * 4 + 3], in[i * 4 + 2], 0), WeightScaleBits);
-            const __m256i packed = __lasx_xvssrani_b_h(words1, words0, 0);
-            const __m256i swaped = __lasx_xvpermi_d(packed, 0xD8);
+            const __m256i packed0 = SIMD::lasx_packus_32(in[i * 4 + 0], in[i * 4 + 1]);
+            const __m256i packed1 = SIMD::lasx_packus_32(in[i * 4 + 2], in[i * 4 + 3]);
+            const __m256i words0  = __lasx_xvsrli_h(packed0, WeightScaleBits);
+            const __m256i words1  = __lasx_xvsrli_h(packed1, WeightScaleBits);
+            const __m256i packed  = __lasx_xvssrani_b_h(words1, words0, 0);
+            const __m256i swaped  = __lasx_xvpermi_d(packed, 0xD8);
             __lasx_xvst(__lasx_xvshuf4i_w(swaped, 0xD8), out + i, 0);
         }
         constexpr IndexType Start = NumChunks * 32;
@@ -177,11 +177,11 @@ class ClippedReLU {
         const auto          out       = reinterpret_cast<__m128i*>(output);
         for (IndexType i = 0; i < NumChunks; ++i)
         {
-            const __m128i words0 = __lsx_vsrli_h(
-              __lsx_vssrani_hu_w(in[i * 4 + 1], in[i * 4 + 0], 0), WeightScaleBits);
-            const __m128i words1 = __lsx_vsrli_h(
-              __lsx_vssrani_hu_w(in[i * 4 + 3], in[i * 4 + 2], 0), WeightScaleBits);
-            out[i] = __lsx_vssrani_b_h(words1, words0, 0);
+            const __m128i packed0 = SIMD::lsx_packus_32(in[i * 4 + 0], in[i * 4 + 1]);
+            const __m128i packed1 = SIMD::lsx_packus_32(in[i * 4 + 2], in[i * 4 + 3]);
+            const __m128i words0  = __lsx_vsrli_h(packed0, WeightScaleBits);
+            const __m128i words1  = __lsx_vsrli_h(packed1, WeightScaleBits);
+            out[i]                = __lsx_vssrani_b_h(words1, words0, 0);
         }
         constexpr IndexType Start = NumChunks * 16;
 
