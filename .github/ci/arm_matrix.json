@@ -21,8 +21,14 @@
       "archive_ext": "tar"
     }
   ],
-  "binaries": ["armv8-dotprod", "armv8", "armv7", "armv7-neon"],
+  "binaries": ["armv8-universal", "armv8-dotprod", "armv8", "armv7", "armv7-neon"],
   "exclude": [
+    {
+      "binaries": "armv8-universal",
+      "config": {
+        "compiler": "armv7a-linux-androideabi29-clang++"
+      }
+    },
     {
       "binaries": "armv8-dotprod",
       "config": {
