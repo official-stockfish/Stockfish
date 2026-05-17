@@ -26,6 +26,7 @@
 #include <iosfwd>
 
 #include "../nnue_common.h"
+#include "../simd.h"
 
 namespace Stockfish::Eval::NNUE::Layers {
 
@@ -117,6 +118,25 @@ class SqrClippedReLU {
             const __m128i sqr0   = __lsx_vmuh_h(words0, words0);
             const __m128i sqr1   = __lsx_vmuh_h(words1, words1);
             out[i]               = __lsx_vssrlni_b_h(sqr1, sqr0, 3);
+        }
+        constexpr IndexType Start = NumChunks * 16;
+
+#elif defined(USE_NEON)
+        static_assert(WeightScaleBits == 6);
+        constexpr IndexType NumChunks = InputDimensions / 16;
+        const auto          in        = reinterpret_cast<const int32x4_t*>(input);
+        const auto          out       = reinterpret_cast<int8x16_t*>(output);
+        for (IndexType i = 0; i < NumChunks; ++i)
+        {
+            const int16x8_t words0 =
+              vcombine_s16(vqmovn_s32(in[i * 4 + 0]), vqmovn_s32(in[i * 4 + 1]));
+            const int16x8_t words1 =
+              vcombine_s16(vqmovn_s32(in[i * 4 + 2]), vqmovn_s32(in[i * 4 + 3]));
+
+            const int16x8_t r0 = vshrq_n_s16(vqdmulhq_s16(words0, words0), 4);
+            const int16x8_t r1 = vshrq_n_s16(vqdmulhq_s16(words1, words1), 4);
+
+            out[i] = vcombine_s8(vqmovn_s16(r0), vqmovn_s16(r1));
         }
         constexpr IndexType Start = NumChunks * 16;
 
