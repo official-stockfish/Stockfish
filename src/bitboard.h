@@ -34,7 +34,7 @@
 #ifdef __aarch64__
     #include <arm_acle.h>
     #define USE_HYPERBOLA_QUINT
-#elif defined(__loongarch64)
+#elif defined(__loongarch__) && __loongarch_grlen == 64
     #define USE_HYPERBOLA_QUINT
 #endif
 
