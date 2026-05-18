@@ -2,7 +2,15 @@
 
 #include "../evaluate.h"
 
-extern const unsigned char gEmbeddedNNUEData[] = {
-#embed EvalFileDefaultName
+extern const unsigned char gEmbeddedNNUEData[] =
+#ifdef __has_embed
+  {
+    #embed EvalFileDefaultName
 };
-extern const unsigned int gEmbeddedNNUESize = sizeof(gEmbeddedNNUEData);
+const unsigned int padding = 0;
+#else
+    #include "network_dump.inc"
+  ;
+const unsigned int padding = 1;  // trailing NUL byte
+#endif
+extern const unsigned int gEmbeddedNNUESize = sizeof(gEmbeddedNNUEData) - padding;

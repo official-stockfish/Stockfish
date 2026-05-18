@@ -82,7 +82,7 @@ jobs:
           mv ./stockfish$EXT ../stockfish-$NAME-$BINARY$EXT
 
       - name: Remove non src files
-        run: git clean -fx
+        run: git clean -fxd
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

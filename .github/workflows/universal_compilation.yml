@@ -45,7 +45,7 @@ jobs:
         run: ./scripts/check_universal.sh ./stockfish-linux-x86-64-universal "$SDE_DIR/sde" "$benchref"
 
       - name: Remove non-src files
-        run: git clean -fx -- src
+        run: git clean -fxd -- src
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -102,7 +102,7 @@ jobs:
         run: ./scripts/check_universal.sh ./stockfish-windows-x86-64-universal.exe "$SDE_DIR/sde" "$benchref"
 
       - name: Remove non-src files
-        run: git clean -fx -- src
+        run: git clean -fxd -- src
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -155,7 +155,7 @@ jobs:
         run: ./scripts/check_universal_arm.sh ./stockfish-linux-arm64-universal "$benchref"
 
       - name: Remove non-src files
-        run: git clean -fx -- src
+        run: git clean -fxd -- src
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -207,7 +207,7 @@ jobs:
         run: mv src/stockfish.exe stockfish-windows-arm64-universal.exe
 
       - name: Remove non-src files
-        run: git clean -fx -- src
+        run: git clean -fxd -- src
 
       - name: Upload artifact for (pre)-release
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
