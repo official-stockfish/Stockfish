@@ -51,16 +51,16 @@ INCBIN(EmbeddedNNUE, EvalFileDefaultName);
     // (INCBIN can't deduplicate.)
     #define WEAK_SYM __attribute__((weak))
 extern const unsigned char gEmbeddedNNUEData[] WEAK_SYM =
-#ifdef __has_embed
-{
-    #embed EvalFileDefaultName
+    #ifdef __has_embed
+  {
+        #embed EvalFileDefaultName
 };
 const int padding = 0;
-#else
-    #include "../universal/network_dump.inc"
-;
-const int padding = 1; // trailing NUL byte
-#endif
+    #else
+        #include "../universal/network_dump.inc"
+  ;
+const int padding = 1;  // trailing NUL byte
+    #endif
 extern const unsigned int gEmbeddedNNUESize WEAK_SYM = sizeof(gEmbeddedNNUEData) - padding;
 #else
 const unsigned char gEmbeddedNNUEData[1] = {0x0};
