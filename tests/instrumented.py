@@ -31,7 +31,7 @@ def get_prefix():
 
 def get_threads():
     if args.valgrind_thread or args.sanitizer_thread:
-        return 2
+        return 4
     return 1
 
 

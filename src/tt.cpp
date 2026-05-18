@@ -110,9 +110,13 @@ void TTEntry::save(
     // Secondary aging. Important for elementary mate finding.
     // (*Scaler) Secondary aging on entries relevant to singular extensions
     // generally scales poorly and requires VVLTC verification.
-    else if (depth8 + DEPTH_NONE >= 5 && is_decisive(value16)
+    else if (depth8 + DEPTH_NONE >= 5
              && Bound((genBound8 & BOUND_MASK) >> BOUND_SHIFT) != BOUND_EXACT)
-        depth8--;
+    {
+        auto v16 = value16;
+        if (std::abs(v16) < VALUE_INFINITE && is_decisive(v16))
+            depth8--;
+    }
 }
 
 
