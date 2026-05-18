@@ -597,6 +597,7 @@ ifeq ($(COMP),ndk)
 			STRIP=llvm-strip
 		endif
 	endif
+	OBJCOPY=llvm-objcopy
 	LDFLAGS += -static-libstdc++
 endif
 
@@ -1346,7 +1347,7 @@ else
   arch-defmain = -Wl,--defsym=main=$(call arch-mangled,$(1))
 endif
 
-EMBED_DIR_SUPPORTED := $(shell echo 'int main(){}' | $(CXX) --embed-dir=. -o /dev/null -c 2>/dev/null && echo 1 || echo 0)
+EMBED_DIR_SUPPORTED := $(shell echo 'int main(){}' | $(CXX) -x c++ --embed-dir=. -o /dev/null -c - 2>/dev/null && echo 1 || echo 0)
 ifeq ($(EMBED_DIR_SUPPORTED),1)
   EMBED_DIR = --embed-dir=$(CURDIR)
 endif
