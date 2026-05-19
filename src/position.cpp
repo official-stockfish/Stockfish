@@ -399,8 +399,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
         {
             st->epSquare = make_square(File(col - 'a'), Rank(row - '1'));
 
-            Bitboard pawns = Attacks::attacks_bb<PAWN>(st->epSquare, ~sideToMove)
-                           & pieces(sideToMove, PAWN);
+            Bitboard pawns =
+              Attacks::attacks_bb<PAWN>(st->epSquare, ~sideToMove) & pieces(sideToMove, PAWN);
             Bitboard target = (pieces(~sideToMove, PAWN) & (st->epSquare + pawn_push(~sideToMove)));
             Bitboard occ    = pieces() ^ target ^ st->epSquare;
 
@@ -465,8 +465,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
     Square kto = relative_square(c, cr & KING_SIDE ? SQ_G1 : SQ_C1);
     Square rto = relative_square(c, cr & KING_SIDE ? SQ_F1 : SQ_D1);
 
-    castlingPath[cr] = (Attacks::between_bb(rfrom, rto) | Attacks::between_bb(kfrom, kto))
-                     & ~(kfrom | rfrom);
+    castlingPath[cr] =
+      (Attacks::between_bb(rfrom, rto) | Attacks::between_bb(kfrom, kto)) & ~(kfrom | rfrom);
 }
 
 
@@ -742,7 +742,7 @@ bool Position::pseudo_legal(const Move m) const {
             return false;
 
         // Check if it's a valid capture, single push, or double push
-        const bool isCapture = bool(Attacks::attacks_bb<PAWN>(from, us) & pieces(~us) & to);
+        const bool isCapture    = bool(Attacks::attacks_bb<PAWN>(from, us) & pieces(~us) & to);
         const bool isSinglePush = (from + pawn_push(us) == to) && empty(to);
         const bool isDoublePush = (from + 2 * pawn_push(us) == to)
                                && (relative_rank(us, from) == RANK_2) && empty(to)
@@ -794,8 +794,7 @@ bool Position::gives_check(Move m) const {
 
     // Is there a discovered check?
     if (blockers_for_king(~sideToMove) & from)
-        return !(Attacks::line_bb(from, to) & pieces(~sideToMove, KING))
-            || m.type_of() == CASTLING;
+        return !(Attacks::line_bb(from, to) & pieces(~sideToMove, KING)) || m.type_of() == CASTLING;
 
     switch (m.type_of())
     {
@@ -804,7 +803,7 @@ bool Position::gives_check(Move m) const {
 
     case PROMOTION :
         return Attacks::attacks_bb(m.promotion_type(), to, pieces() ^ from)
-            & pieces(~sideToMove, KING);
+             & pieces(~sideToMove, KING);
 
     // En passant capture with check? We have already handled the case of direct
     // checks and ordinary discovered check, so the only case we need to handle
@@ -1227,7 +1226,8 @@ void Position::update_piece_threats(Piece               pc,
             const Bitboard discovered = ray & (rAttacks | bAttacks) & occupiedNoK;
 
             assert(!more_than_one(discovered));
-            if (discovered && (Attacks::ray_pass_bb(sliderSq, s) & noRaysContaining) != noRaysContaining)
+            if (discovered
+                && (Attacks::ray_pass_bb(sliderSq, s) & noRaysContaining) != noRaysContaining)
             {
                 const Square threatenedSq = lsb(discovered);
                 const Piece  threatenedPc = piece_on(threatenedSq);
@@ -1270,9 +1270,8 @@ void Position::update_piece_threats(Piece               pc,
     }
     else
     {
-        incoming_threats |=
-          (Attacks::attacks_bb<PAWN>(s, WHITE) & blackPawns)
-        | (Attacks::attacks_bb<PAWN>(s, BLACK) & whitePawns);
+        incoming_threats |= (Attacks::attacks_bb<PAWN>(s, WHITE) & blackPawns)
+                          | (Attacks::attacks_bb<PAWN>(s, BLACK) & whitePawns);
     }
 
 #ifdef USE_AVX512ICL
@@ -1654,8 +1653,8 @@ bool Position::pos_is_ok() const {
         Square ksq = square<KING>(sideToMove);
 
         Bitboard captured = (ep_square() + pawn_push(~sideToMove)) & pieces(~sideToMove, PAWN);
-        Bitboard pawns = Attacks::attacks_bb<PAWN>(ep_square(), ~sideToMove)
-                       & pieces(sideToMove, PAWN);
+        Bitboard pawns =
+          Attacks::attacks_bb<PAWN>(ep_square(), ~sideToMove) & pieces(sideToMove, PAWN);
         Bitboard potentialCheckers = pieces(~sideToMove) ^ captured;
 
         if (!captured || !pawns

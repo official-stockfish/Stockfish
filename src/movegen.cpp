@@ -294,7 +294,7 @@ Move* generate_all(const Position& pos, Move* moveList) {
         target = Type == EVASIONS     ? Attacks::between_bb(ksq, lsb(pos.checkers()))
                : Type == NON_EVASIONS ? ~pos.pieces(Us)
                : Type == CAPTURES     ? pos.pieces(~Us)
-                                       : ~pos.pieces();  // QUIETS
+                                      : ~pos.pieces();  // QUIETS
 
         moveList = generate_pawn_moves<Us, Type>(pos, moveList, target);
         moveList = generate_moves<Us, KNIGHT>(pos, moveList, target);

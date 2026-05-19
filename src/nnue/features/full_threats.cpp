@@ -136,9 +136,8 @@ constexpr auto init_threat_offsets() {
 
             else if (from >= SQ_A2 && from <= SQ_H7)
             {
-                Bitboard attacks =
-                  (pieceIdx < 8) ? Attacks::PawnPushOrAttacks[WHITE][from]
-                                 : Attacks::PawnPushOrAttacks[BLACK][from];
+                Bitboard attacks = (pieceIdx < 8) ? Attacks::PawnPushOrAttacks[WHITE][from]
+                                                  : Attacks::PawnPushOrAttacks[BLACK][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
         }
