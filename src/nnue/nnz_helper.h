@@ -79,8 +79,8 @@ struct NNZInfo {
             const __mmask32 nnzMask  = _mm512_test_epi16_mask(inputV01, inputV01);
 
             // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
-            __m512i nnz = _mm512_maskz_compress_epi16(nnzMask, indices);
-            _mm512_storeu_si512(info.nnz + count, nnz);
+            __m512i nnzIndices = _mm512_maskz_compress_epi16(nnzMask, indices);
+            _mm512_storeu_si512(info.nnz + count, nnzIndices);
 
             count += popcount(nnzMask);
             indices = _mm512_add_epi16(indices, increment);
