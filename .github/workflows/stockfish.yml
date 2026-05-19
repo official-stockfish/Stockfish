@@ -21,7 +21,7 @@ jobs:
     name: Prerelease
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
-    needs: [Matrix, Compilation, WindowsARMCompilation, ARMCompilation, UniversalCompilation]
+    needs: [Matrix, Compilation, ARMCompilation, UniversalCompilation]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
@@ -113,7 +113,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       macos_matrix: ${{ steps.set-macos-matrix.outputs.macos_matrix }}
-      windows_arm_matrix: ${{ steps.set-windows-arm-matrix.outputs.windows_arm_matrix }}
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
       universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
@@ -124,10 +123,6 @@ jobs:
         run: |
           MACOS_MATRIX=$(jq -c '.' .github/ci/macos_matrix.json)
           echo "MACOS_MATRIX=$MACOS_MATRIX" >> $GITHUB_OUTPUT
-      - id: set-windows-arm-matrix
-        run: |
-          WINDOWS_ARM_MATRIX=$(jq -c '.' .github/ci/windows_arm_matrix.json)
-          echo "WINDOWS_ARM_MATRIX=$WINDOWS_ARM_MATRIX" >> $GITHUB_OUTPUT
       - id: set-arm-matrix
         run: |
           ARM_MATRIX=$(jq -c '.' .github/ci/arm_matrix.json)
@@ -167,12 +162,6 @@ jobs:
     uses: ./.github/workflows/compilation.yml
     with:
       matrix: ${{ needs.Matrix.outputs.macos_matrix }}
-  WindowsARMCompilation:
-    name: Windows ARM builds
-    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
-    uses: ./.github/workflows/compilation.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.windows_arm_matrix }}
   ARMCompilation:
     name: Android builds
     needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
@@ -190,17 +179,6 @@ jobs:
     uses: ./.github/workflows/upload_binaries.yml
     with:
       matrix: ${{ needs.Matrix.outputs.macos_matrix }}
-    permissions:
-      contents: write # For deleting/creating a (pre)release
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
-  WindowsARM_Binaries:
-    if: github.repository == 'official-stockfish/Stockfish'
-    name: Windows ARM uploads
-    needs: [Prerelease, Matrix]
-    uses: ./.github/workflows/upload_binaries.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.windows_arm_matrix }}
     permissions:
       contents: write # For deleting/creating a (pre)release
     secrets:
