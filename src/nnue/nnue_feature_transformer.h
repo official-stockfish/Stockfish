@@ -204,11 +204,12 @@ class FeatureTransformer {
     }
 
     // Convert input features
-    std::int32_t transform(const Position&    pos,
-                           AccumulatorStack&  accumulatorStack,
-                           AccumulatorCaches& cache,
-                           OutputType*        output,
-                           int                bucket) const {
+    std::int32_t transform(const Position&            pos,
+                           AccumulatorStack&          accumulatorStack,
+                           AccumulatorCaches&         cache,
+                           OutputType*                output,
+                           int                        bucket,
+                           NNZInfo<OutputDimensions>& nnzInfo) const {
 
         using namespace SIMD;
         accumulatorStack.evaluate(pos, *this, cache);
@@ -231,6 +232,8 @@ class FeatureTransformer {
         for (IndexType p = 0; p < 2; ++p)
         {
             const IndexType offset = (HalfDimensions / 2) * p;
+
+            [[maybe_unused]] auto cursor = nnzInfo.make_cursor(p);
 
 #if defined(VECTOR)
 
@@ -310,22 +313,30 @@ class FeatureTransformer {
               reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
             const vec_t* tin1 = reinterpret_cast<const vec_t*>(
               &(threatAccumulation[perspectives[p]][HalfDimensions / 2]));
-            for (IndexType j = 0; j < NumOutputChunks; ++j)
+            for (IndexType j = 0; j < NumOutputChunks; j += 2)
             {
-                const vec_t acc0a = vec_add_16(in0[j * 2 + 0], tin0[j * 2 + 0]);
-                const vec_t acc0b = vec_add_16(in0[j * 2 + 1], tin0[j * 2 + 1]);
-                const vec_t acc1a = vec_add_16(in1[j * 2 + 0], tin1[j * 2 + 0]);
-                const vec_t acc1b = vec_add_16(in1[j * 2 + 1], tin1[j * 2 + 1]);
+                vec_t packed[2];
+                for (IndexType k = 0; k < 2; ++k)
+                {
+                    const IndexType i = (j + k) * 2;
 
-                const vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
-                const vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
-                const vec_t sum1a = vec_min_16(acc1a, One);
-                const vec_t sum1b = vec_min_16(acc1b, One);
+                    vec_t acc0a = vec_add_16(in0[i + 0], tin0[i + 0]);
+                    vec_t acc0b = vec_add_16(in0[i + 1], tin0[i + 1]);
+                    vec_t acc1a = vec_add_16(in1[i + 0], tin1[i + 0]);
+                    vec_t acc1b = vec_add_16(in1[i + 1], tin1[i + 1]);
 
-                const vec_t pa = vec_mulhi_16(sum0a, sum1a);
-                const vec_t pb = vec_mulhi_16(sum0b, sum1b);
+                    vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
+                    vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
+                    vec_t sum1a = vec_min_16(acc1a, One);
+                    vec_t sum1b = vec_min_16(acc1b, One);
 
-                out[j] = vec_packus_16(pa, pb);
+                    vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                    vec_t pb = vec_mulhi_16(sum0b, sum1b);
+
+                    packed[k] = out[j + k] = vec_packus_16(pa, pb);
+                }
+
+                cursor.record2(packed[0], packed[1]);
             }
 
 #else
