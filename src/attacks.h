@@ -19,6 +19,11 @@
 #ifndef ATTACKS_H_INCLUDED
 #define ATTACKS_H_INCLUDED
 
+#include <cassert>
+#include <array>
+#include <initializer_list>
+
+#include "types.h"
 #include "bitboard.h"
 
 #ifdef __aarch64__

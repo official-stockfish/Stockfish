@@ -26,8 +26,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
-#include <initializer_list>
-#include <array>
 
 #include "types.h"
 
