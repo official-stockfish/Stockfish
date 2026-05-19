@@ -312,8 +312,7 @@ inline __m256i lasx_cvtepi8_epi16(__m128i a) {
 inline int lasx_vec_nnz(__m256i a) {
     const __m256i cmp = __lasx_xvslt_w(__lasx_xvldi(0), a);
     const __m256i msk = __lasx_xvmskltz_w(cmp);
-    return ((int) __lasx_xvpickve2gr_w(msk, 0) & 0xF)
-         | (((int) __lasx_xvpickve2gr_w(msk, 4) & 0xF) << 4);
+    return ((int) __lasx_xvpickve2gr_w(msk, 0)) | (((int) __lasx_xvpickve2gr_w(msk, 4)) << 4);
 }
 
 #elif USE_LSX
@@ -360,7 +359,7 @@ inline __m128i lsx_packus_32(__m128i a, __m128i b) {
 inline int lsx_vec_nnz(__m128i a) {
     const __m128i cmp = __lsx_vslt_w(__lsx_vldi(0), a);
     const __m128i msk = __lsx_vmskltz_w(cmp);
-    return ((int) __lsx_vpickve2gr_w(msk, 0) & 0xF);
+    return ((int) __lsx_vpickve2gr_w(msk, 0));
 }
     #define vec_nnz(a) lsx_vec_nnz(a)
 

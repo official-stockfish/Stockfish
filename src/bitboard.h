@@ -34,6 +34,8 @@
 #ifdef __aarch64__
     #include <arm_acle.h>
     #define USE_HYPERBOLA_QUINT
+#elif defined(__loongarch__) && __loongarch_grlen == 64
+    #define USE_HYPERBOLA_QUINT
 #endif
 
 namespace Stockfish {
@@ -80,6 +82,17 @@ extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
 
 #ifdef USE_HYPERBOLA_QUINT
+
+inline Bitboard reverse_bb(Bitboard bb) {
+    #ifdef __aarch64__
+    return __rbitll(bb);
+    #else  // loongarch
+    Bitboard out;
+    asm("bitrev.d %0, %1" : "=r"(out) : "r"(bb));
+    return out;
+    #endif
+}
+
 // Hyperbola quintessence implementation for ARM, thanks to the availability of an
 // efficient bit reversal instruction.
 // See https://www.chessprogramming.org/Hyperbola_Quintessence
@@ -92,8 +105,8 @@ struct Magic {
     Bitboard hyperbola(Bitboard occupied, Bitboard mask) const {
         Bitboard o   = occupied & mask;
         Bitboard fwd = o - r;
-        Bitboard rev = __rbitll(o) - rr;
-        return (fwd ^ __rbitll(rev)) & mask;
+        Bitboard rev = reverse_bb(o) - rr;
+        return (fwd ^ reverse_bb(rev)) & mask;
     }
 
     Bitboard attacks_bb(Bitboard occupied) const {
