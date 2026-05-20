@@ -10,42 +10,6 @@
         "shell": "bash",
         "archive_ext": "tar"
       },
-      "binaries": "x86-64"
-    },
-    {
-      "config": {
-        "name": "macOS 15 Apple Clang",
-        "os": "macos-15-intel",
-        "simple_name": "macos",
-        "compiler": "clang++",
-        "comp": "clang",
-        "shell": "bash",
-        "archive_ext": "tar"
-      },
-      "binaries": "x86-64-sse41-popcnt"
-    },
-    {
-      "config": {
-        "name": "macOS 15 Apple Clang",
-        "os": "macos-15-intel",
-        "simple_name": "macos",
-        "compiler": "clang++",
-        "comp": "clang",
-        "shell": "bash",
-        "archive_ext": "tar"
-      },
-      "binaries": "x86-64-avx2"
-    },
-    {
-      "config": {
-        "name": "macOS 15 Apple Clang",
-        "os": "macos-15-intel",
-        "simple_name": "macos",
-        "compiler": "clang++",
-        "comp": "clang",
-        "shell": "bash",
-        "archive_ext": "tar"
-      },
       "binaries": "x86-64-bmi2"
     },
     {
