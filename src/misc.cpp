@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cctype>
 #include <cstring>
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -543,10 +544,14 @@ CommandLine::CommandLine(int _argc, char** _argv) :
 }
 
 
-usize str_to_size_t(const std::string& s) {
-    unsigned long long value = std::stoull(s);
-    if (value > std::numeric_limits<usize>::max())
-        std::exit(EXIT_FAILURE);
+std::optional<usize> str_to_size_t(const std::string& s) {
+    if (s.empty() || s[0] == '-')
+        return std::nullopt;
+    errno                           = 0;
+    char*                    endptr = nullptr;
+    const unsigned long long value  = std::strtoull(s.c_str(), &endptr, 10);
+    if (errno == ERANGE || *endptr != '\0' || value > std::numeric_limits<usize>::max())
+        return std::nullopt;
     return static_cast<usize>(value);
 }
 
