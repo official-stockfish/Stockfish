@@ -234,8 +234,11 @@ class FeatureTransformer {
             static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-            const vec_t Zero  = vec_zero();
-            const vec_t FtMax = vec_set_16(FtMaxVal);
+            #if !defined(USE_NEON)
+            const vec_t Zero = vec_zero();
+            const vec_t FtMax  = vec_set_16(FtMaxVal);
+            constexpr int shift = 7;
+            #endif
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -289,19 +292,6 @@ class FeatureTransformer {
             // 8 bits. Shifting it by 7 bits left will no longer occupy the
             // signed bit, so we are safe.
 
-            // Note that on NEON processors, we shift left by 6 instead
-            // because the instruction "vqdmulhq_s16" also doubles the
-            // return value after the multiplication, adding an extra shift
-            // to the left by 1, so we compensate by shifting less before
-            // the multiplication.
-
-            constexpr int shift =
-    #if defined(USE_SSE2) || defined(USE_LASX) || defined(USE_LSX)
-              7;
-    #else
-              6;
-    #endif
-
             const vec_t* tin0 =
               reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
             const vec_t* tin1 = reinterpret_cast<const vec_t*>(
@@ -318,6 +308,20 @@ class FeatureTransformer {
                     vec_t acc1a = vec_add_16(in1[i + 0], tin1[i + 0]);
                     vec_t acc1b = vec_add_16(in1[i + 1], tin1[i + 1]);
 
+                    #if defined(USE_NEON)
+
+                    // The NEON path relies on unsigned saturation for crelu
+                    static_assert(FtMaxVal == 255);
+
+                    uint16x8_t mul0 = vmull_u8(vqmovun_s16(acc0a), vqmovun_s16(acc1a));
+                    uint16x8_t mul1 = vmull_u8(vqmovun_s16(acc0b), vqmovun_s16(acc1b));
+
+                    uint8x16x2_t uzp = vuzpq_u8(vreinterpretq_u8_u16(mul0), vreinterpretq_u8_u16(mul1));
+                    uint8x16_t pab = vshrq_n_u8(uzp.val[1], 1);
+                    packed[k] = out[j + k] = reinterpret_cast<vec_t>(pab);
+
+                    #else
+
                     vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
                     vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);
                     vec_t sum1a = vec_min_16(acc1a, FtMax);
@@ -327,6 +331,8 @@ class FeatureTransformer {
                     vec_t pb = vec_mulhi_16(sum0b, sum1b);
 
                     packed[k] = out[j + k] = vec_packus_16(pa, pb);
+
+                    #endif
                 }
 
                 cursor.record2(packed[0], packed[1]);
