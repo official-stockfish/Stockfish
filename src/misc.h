@@ -134,7 +134,7 @@ void prefetch(const void* addr) {
 
 void start_logger(const std::string& fname);
 
-usize str_to_size_t(const std::string& s);
+std::optional<usize> str_to_size_t(const std::string& s);
 
 #if defined(__linux__)
 
