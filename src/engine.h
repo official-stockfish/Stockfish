@@ -28,6 +28,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "history.h"
@@ -58,7 +59,8 @@ class Engine {
 
     ~Engine() { wait_for_search_finished(); }
 
-    std::uint64_t perft(const std::string& fen, Depth depth, bool isChess960);
+    std::variant<std::uint64_t, PositionSetError>
+    perft(const std::string& fen, Depth depth, bool isChess960);
 
     // non blocking call to start searching
     void go(Search::LimitsType&);
@@ -73,7 +75,7 @@ class Engine {
 
     // modifiers
 
-    void set_numa_config_from_option(const std::string& o);
+    bool set_numa_config_from_option(const std::string& o);
     void resize_threads();
     void set_tt_size(size_t mb);
     void set_ponderhit(bool);
@@ -102,7 +104,7 @@ class Engine {
     int get_hashfull(int maxAge = 0) const;
 
     std::string                            fen() const;
-    void                                   flip();
+    std::optional<PositionSetError>        flip();
     std::string                            visualize() const;
     std::vector<std::pair<size_t, size_t>> get_bound_thread_count_by_numa_node() const;
     std::string                            get_numa_config_as_string() const;
