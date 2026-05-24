@@ -8,7 +8,7 @@
       "emu": "qemu-aarch64",
       "comp": "ndk",
       "shell": "bash",
-      "archive_ext": "tar"
+      "archive_ext": "tar.gz"
     },
     {
       "name": "Android NDK arm",
@@ -18,21 +18,18 @@
       "emu": "qemu-arm",
       "comp": "ndk",
       "shell": "bash",
-      "archive_ext": "tar"
+      "archive_ext": "tar.gz"
     }
   ],
-  "binaries": ["armv8-universal", "armv7", "armv7-neon"],
+  "binaries": [
+    "armv8-universal",
+    "armv7-neon"
+  ],
   "exclude": [
     {
       "binaries": "armv8-universal",
       "config": {
         "compiler": "armv7a-linux-androideabi29-clang++"
-      }
-    },
-    {
-      "binaries": "armv7",
-      "config": {
-        "compiler": "aarch64-linux-android29-clang++"
       }
     },
     {
