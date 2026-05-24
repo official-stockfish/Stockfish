@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "attacks.h"
 #include "bitboard.h"
 #include "types.h"
 
@@ -301,7 +302,7 @@ inline Bitboard Position::attacks_by(Color c) const {
         Bitboard threats   = 0;
         Bitboard attackers = pieces(c, Pt);
         while (attackers)
-            threats |= attacks_bb<Pt>(pop_lsb(attackers), pieces());
+            threats |= Attacks::attacks_bb<Pt>(pop_lsb(attackers), pieces());
         return threats;
     }
 }

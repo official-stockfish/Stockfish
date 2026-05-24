@@ -26,6 +26,7 @@
 #include <initializer_list>
 #include <utility>
 
+#include "../../attacks.h"
 #include "../../bitboard.h"
 #include "../../misc.h"
 #include "../../position.h"
@@ -51,7 +52,7 @@ constexpr auto make_piece_indices_type() {
 
     for (Square from = SQ_A1; from <= SQ_H8; ++from)
     {
-        Bitboard attacks = PseudoAttacks[PT][from];
+        Bitboard attacks = Attacks::PseudoAttacks[PT][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
         {
@@ -72,7 +73,7 @@ constexpr auto make_piece_indices_piece() {
 
     for (Square from = SQ_A1; from <= SQ_H8; ++from)
     {
-        Bitboard attacks = PawnPushOrAttacks[C][from];
+        Bitboard attacks = Attacks::PawnPushOrAttacks[C][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
         {
@@ -129,14 +130,14 @@ constexpr auto init_threat_offsets() {
 
             if (type_of(piece) != PAWN)
             {
-                Bitboard attacks = PseudoAttacks[type_of(piece)][from];
+                Bitboard attacks = Attacks::PseudoAttacks[type_of(piece)][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
 
             else if (from >= SQ_A2 && from <= SQ_H7)
             {
-                Bitboard attacks =
-                  (pieceIdx < 8) ? PawnPushOrAttacks[WHITE][from] : PawnPushOrAttacks[BLACK][from];
+                Bitboard attacks = (pieceIdx < 8) ? Attacks::PawnPushOrAttacks[WHITE][from]
+                                                  : Attacks::PawnPushOrAttacks[BLACK][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
         }
@@ -254,7 +255,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
             while (bb)
             {
                 Square   from    = pop_lsb(bb);
-                Bitboard attacks = attacks_bb(pt, from, occupied) & occupied;
+                Bitboard attacks = Attacks::attacks_bb(pt, from, occupied) & occupied;
                 while (attacks)
                 {
                     Square    to       = pop_lsb(attacks);

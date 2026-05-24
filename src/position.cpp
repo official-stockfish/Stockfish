@@ -43,6 +43,8 @@ using std::string;
 
 namespace Stockfish {
 
+using namespace Attacks;
+
 namespace Zobrist {
 
 Key psq[PIECE_NB][SQUARE_NB];
@@ -1216,11 +1218,11 @@ void Position::update_piece_threats(Piece               pc,
             Square sliderSq = pop_lsb(sliders);
             Piece  slider   = piece_on(sliderSq);
 
-            const Bitboard ray        = RayPassBB[sliderSq][s];
+            const Bitboard ray        = ray_pass_bb(sliderSq, s);
             const Bitboard discovered = ray & (rAttacks | bAttacks) & occupiedNoK;
 
             assert(!more_than_one(discovered));
-            if (discovered && (RayPassBB[sliderSq][s] & noRaysContaining) != noRaysContaining)
+            if (discovered && (ray_pass_bb(sliderSq, s) & noRaysContaining) != noRaysContaining)
             {
                 const Square threatenedSq = lsb(discovered);
                 const Piece  threatenedPc = piece_on(threatenedSq);

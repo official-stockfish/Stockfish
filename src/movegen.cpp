@@ -21,6 +21,7 @@
 #include <cassert>
 #include <initializer_list>
 
+#include "attacks.h"
 #include "bitboard.h"
 #include "position.h"
 
@@ -70,7 +71,7 @@ alignas(64) constexpr auto SliderMoves = []() {
     {
         for (Square s = SQ_A1; s <= SQ_H8; ++s)
         {
-            Bitboard bb = PseudoAttacks[pt][s];
+            Bitboard bb = Attacks::PseudoAttacks[pt][s];
             int      i  = 0;
             while (bb)
             {
@@ -89,7 +90,7 @@ alignas(64) constexpr auto KnightKingMoves = []() {
     {
         for (Square s = SQ_A1; s <= SQ_H8; ++s)
         {
-            Bitboard bb = PseudoAttacks[pt][s];
+            Bitboard bb = Attacks::PseudoAttacks[pt][s];
             int      i  = 0;
             while (bb)
             {
@@ -110,7 +111,7 @@ splat_precomputed_moves(Move* moveList, Square from, Bitboard occupied, Bitboard
     uint32_t mask;
     if constexpr (Pt == BISHOP || Pt == ROOK)
     {
-        const Magic& magic = Magics[from][Pt - BISHOP];
+        const Attacks::Magic& magic = Attacks::magic(from, Pt);
 
         mask = magic.attacks[magic.index(occupied)];
         mask &= pext(target, magic.pseudoAttacks);
@@ -122,7 +123,7 @@ splat_precomputed_moves(Move* moveList, Square from, Bitboard occupied, Bitboard
     }
     else
     {
-        mask = pext(target, PseudoAttacks[Pt][from]);
+        mask = pext(target, Attacks::PseudoAttacks[Pt][from]);
 
         __m128i moves = *reinterpret_cast<const __m128i*>(KnightKingMoves[Pt == KING][from].data());
         _mm_storeu_si128(reinterpret_cast<__m128i*>(moveList),
@@ -240,7 +241,7 @@ Move* generate_pawn_moves(const Position& pos, Move* moveList, Bitboard target) 
             if (Type == EVASIONS && (target & (pos.ep_square() + Up)))
                 return moveList;
 
-            b1 = pawnsNotOn7 & attacks_bb<PAWN>(pos.ep_square(), Them);
+            b1 = pawnsNotOn7 & Attacks::attacks_bb<PAWN>(pos.ep_square(), Them);
 
             assert(b1);
 
@@ -270,7 +271,7 @@ Move* generate_moves(const Position& pos, Move* moveList, Bitboard target) {
             continue;
         }
 #endif
-        Bitboard b = attacks_bb<Pt>(from, pos.pieces()) & target;
+        Bitboard b = Attacks::attacks_bb<Pt>(from, pos.pieces()) & target;
 
         moveList = splat_moves(moveList, from, b);
     }
@@ -290,7 +291,7 @@ Move* generate_all(const Position& pos, Move* moveList) {
     // Skip generating non-king moves when in double check
     if (Type != EVASIONS || !more_than_one(pos.checkers()))
     {
-        target = Type == EVASIONS     ? between_bb(ksq, lsb(pos.checkers()))
+        target = Type == EVASIONS     ? Attacks::between_bb(ksq, lsb(pos.checkers()))
                : Type == NON_EVASIONS ? ~pos.pieces(Us)
                : Type == CAPTURES     ? pos.pieces(~Us)
                                       : ~pos.pieces();  // QUIETS
@@ -307,7 +308,7 @@ Move* generate_all(const Position& pos, Move* moveList) {
 #ifdef USE_AVX512ICL
     moveList = splat_precomputed_moves<KING>(moveList, ksq, 0ULL, b);
 #else
-    moveList = splat_moves(moveList, ksq, attacks_bb<KING>(ksq) & b);
+    moveList = splat_moves(moveList, ksq, Attacks::attacks_bb<KING>(ksq) & b);
 #endif
 
     if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
