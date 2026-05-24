@@ -8,7 +8,7 @@
         "compiler": "clang++",
         "comp": "clang",
         "shell": "bash",
-        "archive_ext": "tar"
+        "archive_ext": "tar.gz"
       },
       "binaries": "x86-64-bmi2"
     },
@@ -20,7 +20,7 @@
         "compiler": "clang++",
         "comp": "clang",
         "shell": "bash",
-        "archive_ext": "tar"
+        "archive_ext": "tar.gz"
       },
       "binaries": "apple-silicon"
     }
