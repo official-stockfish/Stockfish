@@ -128,7 +128,7 @@ void* aligned_large_pages_alloc_with_hint(size_t allocSize, bool) {
 
 #else
 
-    #if defined(__linux__) && defined(MAP_HUGE_SHIFT)
+    #if defined(__linux__) && defined(MAP_HUGE_SHIFT) && defined(__x86_64__)
         #define HAS_HUGE_PAGES
 
 static std::map<void*, size_t> huge_pages;
@@ -146,7 +146,7 @@ static void* try_huge_pages_alloc(size_t allocSize) {
     huge_pages[mem] = size;
     return mem;
 }
-    #endif  // defined(__linux__) && defined(MAP_HUGE_SHIFT)
+    #endif  // defined(__linux__) && defined(MAP_HUGE_SHIFT) && defined(__x86_64__)
 
 void* aligned_large_pages_alloc_with_hint(size_t allocSize, [[maybe_unused]] bool hugePageHint) {
     #ifdef HAS_HUGE_PAGES
