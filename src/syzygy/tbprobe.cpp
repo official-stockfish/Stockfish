@@ -1763,6 +1763,13 @@ Config Tablebases::rank_root_moves(const OptionsMap&            options,
 
     if (config.cardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
+        // Use DTZ to rank the moves if checkmate is the only zeroing move
+        rankDTZ =
+          rankDTZ
+          || (!pos.pieces(PAWN)
+              && (popcount(pos.pieces()) == 3
+                  || (popcount(pos.pieces()) == 4 && !(pos.pieces(QUEEN) | pos.pieces(ROOK)))));
+
         // Rank moves using DTZ tables, bail out if time_abort flags zeitnot
         config.rootInTB =
           root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ, time_abort);
