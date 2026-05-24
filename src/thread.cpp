@@ -455,7 +455,7 @@ size_t ThreadPool::numa_nodes() const {
     std::unordered_set<size_t> seen;
     for (NumaIndex n : boundThreadToNumaNode)
         seen.insert(n);
-    return seen.size();
+    return std::max(seen.size(), size_t(1));
 }
 
 void ThreadPool::ensure_network_replicated() {
