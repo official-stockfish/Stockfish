@@ -138,10 +138,7 @@ void TTWriter::write(
     entry->save(k, v, pv, b, d, m, ev, curr_generation);
 }
 
-void TTWriter::penalize(int penalty) {
-    assert(entry->depth8 + DEPTH_NONE > penalty);
-    entry->depth8 -= penalty;
-}
+void TTWriter::penalize(int penalty) { entry->depth8 -= penalty; }
 
 
 // A TranspositionTable is an array of Cluster, of size clusterCount. Each cluster consists of ClusterSize number
