@@ -601,6 +601,8 @@ class SharedMemory: public detail::SharedMemoryBase {
         // If the THP population failed, try with fallocate
         if (!populated && posix_fallocate(fd_, 0, static_cast<off_t>(total_size_)) != 0)
         {
+            // Release any partially populated pages by a failed MADV_POPULATE_WRITE
+            ftruncate(fd_, 0);
             munmap(mapped_ptr_, total_size_);
             mapped_ptr_ = nullptr;
             return false;
