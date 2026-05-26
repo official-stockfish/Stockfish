@@ -1181,7 +1181,12 @@ class NumaConfig {
 
             if (!siblingsStr.has_value() || siblingsStr->empty())
             {
-                break;  // we have read all available CPUs
+                // cpu<next> may be offline; mark it seen and continue rather than
+                // aborting, since later CPUs may still be online.
+                seenCpus.insert(next);
+                if (seenCpus.size() >= SYSTEM_THREADS_NB)
+                    break;
+                continue;
             }
 
             L3Domain domain;
