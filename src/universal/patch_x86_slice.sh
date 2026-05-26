@@ -23,6 +23,7 @@ die() { echo "patch_x86_slice: $*" >&2; exit 1; }
 find_bytes() {
     file=$1; needle=$2; skip=${3:-0}; window=${4:-0}
     [ "$window" -gt 0 ] && win="-l $window" || win=""
+    # Disassemble as hex, strip \n and search for the pattern
     pos=$(xxd -s "$skip" $win -p "$file" | tr -d '\n' \
             | awk -v n="$needle" '{ p = index($0, n); if (p) { print p; exit } }')
     [ -n "$pos" ] || return 1

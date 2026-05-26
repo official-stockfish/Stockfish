@@ -217,3 +217,40 @@ jobs:
              .
              !.git
              !.output
+
+  UniversalMacOS:
+    name: macOS
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # macos-15 is Apple silicon; Rosetta 2 is needed to exercise the x86-64 slice
+      - name: Install Rosetta 2
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - name: Build universal binary
+        run: make -j4 -C src macos-lipo COMP=clang
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-macos-universal
+
+      - name: Verify binary runs natively and under Rosetta
+        run: ./scripts/check_universal_macos.sh ./stockfish-macos-universal
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos universal
+          path: |
+             .
+             !.git
+             !.output

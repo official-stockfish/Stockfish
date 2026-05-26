@@ -6,6 +6,7 @@
     // Example name is "_i_sse41_popcnt", baseline build is just "_i_"
     #include <stdio.h>
     #include <mach-o/getsect.h>
+    #include <sys/sysctl.h>
 
 extern "C" const struct mach_header_64 _mh_execute_header;
 
@@ -133,7 +134,24 @@ static int dispatch(const CpuFeatures& f, int argc, char* argv[]) {
     return entry_x86_64_avx512icl(argc, argv);
 }
 
+static void maybe_promote_thread_to_avx512() {
+#ifdef __APPLE__
+    // Intel Macs supporting AVX512 don't advertise it in xgetbv and only
+    // do so once at least one avx512 instruction has been executed.
+    // See https://github.com/apple/darwin-xnu/blob/0a798f6738bc1db01281fc08ae024145e84df927/osfmk/i386/fpu.c#L176
+
+    int    supported = 0;
+    size_t len       = sizeof(supported);
+    if (sysctlbyname("hw.optional.avx512f", &supported, &len, nullptr, 0) == 0 && supported)
+    {
+        asm volatile(".byte 0x62, 0xf1, 0x7d, 0x48, 0x6f, 0xc0");  // vmovdqa32 zmm0,zmm0
+    }
+#endif
+}
+
 int main(int argc, char* argv[]) {
+    maybe_promote_thread_to_avx512();
+
     __builtin_cpu_init();
     CpuFeatures features = query_cpu_features();
     return dispatch(features, argc, argv);
