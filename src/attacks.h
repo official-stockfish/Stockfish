@@ -58,18 +58,16 @@ inline Bitboard reverse_bb(Bitboard bb) {
 struct Magic {
     // For rooks: file attacks, rank attacks. For bishops: diagonal/antidiagonal
     Bitboard mask1, mask2;
-    // Precomputed 2 * square_bb(sq), 2 * reverse(square_bb(sq))
-    Bitboard r, rr;
 
-    Bitboard hyperbola(Bitboard occupied, Bitboard mask) const {
+    Bitboard hyperbola(Square s, Bitboard occupied, Bitboard mask) const {
         Bitboard o   = occupied & mask;
-        Bitboard fwd = o - r;
-        Bitboard rev = reverse_bb(o) - rr;
+        Bitboard fwd = o - square_bb(s);
+        Bitboard rev = reverse_bb(o) - square_bb(Square(63 - int(s)));
         return (fwd ^ reverse_bb(rev)) & mask;
     }
 
-    Bitboard attacks_bb(Bitboard occupied) const {
-        return hyperbola(occupied, mask1) | hyperbola(occupied, mask2);
+    Bitboard attacks_bb(Square s, Bitboard occupied) const {
+        return hyperbola(s, occupied, mask1) | hyperbola(s, occupied, mask2);
     }
 };
 
@@ -155,7 +153,7 @@ struct Magic {
     #endif
     }
 
-    Bitboard attacks_bb(Bitboard occupied) const {
+    Bitboard attacks_bb([[maybe_unused]] Square s, Bitboard occupied) const {
     #ifdef USE_PEXT
         return pdep(attacks[index(occupied)], pseudoAttacks);
     #else
@@ -299,7 +297,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
     {
     case BISHOP :
     case ROOK :
-        return magic(s, Pt).attacks_bb(occupied);
+        return magic(s, Pt).attacks_bb(s, occupied);
     case QUEEN :
         return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
     default :
