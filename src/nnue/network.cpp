@@ -46,23 +46,13 @@
 // Note that this does not work in Microsoft Visual Studio.
 #if !defined(UNIVERSAL_BINARY) && !defined(_MSC_VER) && !defined(NNUE_EMBEDDING_OFF)
 INCBIN(EmbeddedNNUE, EvalFileDefaultName);
+#elif defined(UNIVERSAL_BINARY_MACOS_X86_SLICE)
+// Determined at runtime, see universal/nnue_embed.cpp
+extern const unsigned char* const gEmbeddedNNUEData;
+extern const unsigned int         gEmbeddedNNUESize;
 #elif defined(UNIVERSAL_BINARY)
-    // When building for the universal binary, use C++26 #embed with weak symbols so that a
-    // separate, non-LTO nnue_embed.o (with strong symbols) can override them during the LTO link,
-    // (INCBIN can't deduplicate.)
-    #define WEAK_SYM __attribute__((weak))
-extern const unsigned char gEmbeddedNNUEData[] WEAK_SYM =
-    #ifdef __has_embed
-  {
-        #embed EvalFileDefaultName
-};
-const int padding = 0;
-    #else
-        #include "../universal/network_dump.inc"
-  ;
-const int padding = 1;  // trailing NUL byte
-    #endif
-extern const unsigned int gEmbeddedNNUESize WEAK_SYM = sizeof(gEmbeddedNNUEData) - padding;
+extern const unsigned char gEmbeddedNNUEData[];
+extern const unsigned int gEmbeddedNNUESize;
 #else
 const unsigned char gEmbeddedNNUEData[1] = {0x0};
 const unsigned int  gEmbeddedNNUESize    = 1;
