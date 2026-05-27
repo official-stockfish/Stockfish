@@ -52,7 +52,7 @@ extern const unsigned char* const gEmbeddedNNUEData;
 extern const unsigned int         gEmbeddedNNUESize;
 #elif defined(UNIVERSAL_BINARY)
 extern const unsigned char gEmbeddedNNUEData[];
-extern const unsigned int gEmbeddedNNUESize;
+extern const unsigned int  gEmbeddedNNUESize;
 #else
 const unsigned char gEmbeddedNNUEData[1] = {0x0};
 const unsigned int  gEmbeddedNNUESize    = 1;
@@ -246,6 +246,11 @@ void Network::load_internal() {
             setp(p, p + n);
         }
     };
+
+#ifdef UNIVERSAL_BINARY_MACOS_X86_SLICE
+    if (gEmbeddedNNUEData == nullptr)  // failed embedded load
+        return;
+#endif
 
     MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
                         size_t(gEmbeddedNNUESize));

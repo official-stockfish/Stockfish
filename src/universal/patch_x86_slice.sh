@@ -1,4 +1,21 @@
 #!/bin/sh
+
+# Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+# Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+#
+# Stockfish is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Stockfish is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 # This finds the gUniversalNNUEOffset/gUniversalNNUESize symbols in the x86 slice
 # and patches them to be an offset+size into the full executable.
 #
@@ -19,7 +36,6 @@ die() { echo "patch_x86_slice: $*" >&2; exit 1; }
 
 # Find hex pattern in file, return byte offset
 # Optional $3 = bytes to skip, $4 = max bytes to scan
-# TODO: can we use grep for this? BSD grep seems weird
 find_bytes() {
     file=$1; needle=$2; skip=${3:-0}; window=${4:-0}
     [ "$window" -gt 0 ] && win="-l $window" || win=""
