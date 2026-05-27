@@ -73,7 +73,7 @@ class SqrClippedReLU {
                       "SqrClippedReLU only support WeightScaleBitsLocal between 5 and 8");
         // After squaring we need to shift by WeightScaleBitsLocal * 2 + 7
         // MulHi strips the lower 16 bits (i.e. shift by 16) so we need to shift out the remaining.
-        constexpr int SimdShiftAmount = WeightScaleBitsLocal * 2 + 7 - 16;
+        [[maybe_unused]] constexpr int SimdShiftAmount = WeightScaleBitsLocal * 2 + 7 - 16;
 
 #if defined(USE_SSE2)
         constexpr IndexType NumChunks = InputDimensions / 16;
@@ -147,8 +147,6 @@ class SqrClippedReLU {
         constexpr IndexType Start = 0;
 #endif
 
-        (void)
-          SimdShiftAmount;  // Silence unused variable warning when no SIMD implementation is enable.
         for (IndexType i = Start; i < InputDimensions; ++i)
         {
             output[i] = static_cast<OutputType>(
