@@ -487,7 +487,7 @@ void start_logger(const std::string& fname) { Logger::start(fname); }
 #endif
 
 std::optional<size_t> str_to_size_t(const std::string& s) {
-    if (s.empty())
+    if (s.empty() || s[0] == '-')
         return std::nullopt;
     errno                           = 0;
     char*                    endptr = nullptr;

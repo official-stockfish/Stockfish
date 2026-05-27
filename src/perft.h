@@ -20,6 +20,7 @@
 #define PERFT_H_INCLUDED
 
 #include <cstdint>
+#include <variant>
 
 #include "movegen.h"
 #include "position.h"
