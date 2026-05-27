@@ -1,5 +1,5 @@
 #!/bin/sh
-# This finds the gUniversalNNUEOffset/gUniversalNNUEEnd symbols in the x86 slice
+# This finds the gUniversalNNUEOffset/gUniversalNNUESize symbols in the x86 slice
 # and patches them to be an offset+size into the full executable.
 #
 # Usage: patch_x86_slice.sh <fat_binary> <x86_64_thin_slice> <nnue_file>
