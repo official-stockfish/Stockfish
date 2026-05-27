@@ -1166,23 +1166,18 @@ class NumaConfig {
 #if defined(__linux__) && !defined(__ANDROID__)
 
         std::set<CpuIndex> seenCpus;
-        auto               nextUnseenCpu = [&seenCpus]() {
-            for (CpuIndex i = 0;; ++i)
-                if (!seenCpus.count(i))
-                    return i;
-        };
 
-        while (true)
+        for (const auto& [next, _] : systemConfig.nodeByCpu)
         {
-            CpuIndex next = nextUnseenCpu();
-            auto     siblingsStr =
+            if (seenCpus.count(next))
+                continue;
+
+            auto siblingsStr =
               read_file_to_string("/sys/devices/system/cpu/cpu" + std::to_string(next)
                                   + "/cache/index3/shared_cpu_list");
 
             if (!siblingsStr.has_value() || siblingsStr->empty())
-            {
-                break;  // we have read all available CPUs
-            }
+                continue;
 
             L3Domain domain;
             for (size_t c : indices_from_shortened_string(*siblingsStr))
