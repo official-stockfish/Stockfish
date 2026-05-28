@@ -52,7 +52,7 @@
 
 namespace Stockfish {
 
-int R2_0 = 100, R2_1 = 600, R2_3 = 200, R2_4 = 4000;
+int R2_0 = 150, R2_1 = 700, R2_3 = 230, R2_4 = 4000;
 TUNE(R2_0, R2_1, R2_3, R2_4)
 
 static constexpr std::array<int, 16> lmrDivisor = {3307, 2930, 2874, 2818, 3215, 3225, 3224, 2782,
@@ -169,7 +169,7 @@ Value shuffle_dampening(Position& pos, Value v) {
     // Phase 3: from 60 to 100 plies. r3 should be roughly 1024 to evaluate as draw.
     // In practice slightly lower values are superior
     constexpr int p3 = 100;
-    constexpr int r3 = 700;
+    constexpr int r3 = 800;
     int rule_50_count = pos.rule50_count();
     rule_50_count  = std::min(rule_50_count, 100);
     int c1 = std::clamp(rule_50_count, p1, p2) - p1;
