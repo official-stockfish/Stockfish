@@ -52,6 +52,9 @@
 
 namespace Stockfish {
 
+int R2_0 = 100, R2_1 = 600, R2_3 = 200, R2_4 = 4000;
+TUNE(R2_0, R2_1, R2_3, R2_4)
+
 static constexpr std::array<int, 16> lmrDivisor = {3307, 2930, 2874, 2818, 3215, 3225, 3224, 2782,
                                                    2858, 2919, 3088, 3275, 3180, 2868, 3006, 3599};
 
@@ -153,6 +156,28 @@ bool is_shuffling(Move move, Stack* const ss, const Position& pos) {
         return false;
     return move.from_sq() == (ss - 2)->currentMove.to_sq()
         && (ss - 2)->currentMove.from_sq() == (ss - 4)->currentMove.to_sq();
+}
+
+Value shuffle_dampening(Position& pos, Value v) {
+    // Damp down the evaluation when shuffling ensuring eval of 0 for draw.
+    int           material = PawnValue * pos.count<PAWN>() + pos.non_pawn_material();
+    constexpr int p1       = 2;  // Phase 1: first 2 plies no damp
+    constexpr int r1       = 0;
+    constexpr int p2       = 50;  // Phase 2: from 2 to 50 plies. More damp.
+    // Increase phase 2 damp when material is low.
+    int r2 = std::clamp(R2_1 + R2_3 * (R2_4 - material) / QueenValue, R2_0, R2_1);
+    // Phase 3: from 60 to 100 plies. r3 should be roughly 1024 to evaluate as draw.
+    // In practice slightly lower values are superior
+    constexpr int p3 = 100;
+    constexpr int r3 = 700;
+    int rule_50_count = pos.rule50_count();
+    rule_50_count  = std::min(rule_50_count, 100);
+    int c1 = std::clamp(rule_50_count, p1, p2) - p1;
+    int c2 = std::max(0, rule_50_count - p2);
+    int r  = r1 + (c1 * (r2 - r1)) / (p2 - p1) + (c2 * (r3 - r2)) / (p3 - p2);
+
+    v -= v * r / 1024;
+    return v;
 }
 
 }  // namespace
@@ -794,6 +819,7 @@ Value Search::Worker::search(
         ttWriter.write(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_UNSEARCHED, Move::none(),
                        unadjustedStaticEval, tt.generation());
     }
+    eval = shuffle_dampening(pos, eval);
 
     // Set up the improving flag, which is true if current static evaluation is
     // bigger than the previous static evaluation at our turn (if we were in
@@ -1647,6 +1673,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             ss->staticEval       = bestValue =
               to_corrected_static_eval(unadjustedStaticEval, correctionValue);
         }
+        bestValue = shuffle_dampening(pos, bestValue);
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
