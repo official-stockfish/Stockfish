@@ -50,7 +50,15 @@
 #include "uci.h"
 #include "ucioption.h"
 
+#include "tune.h"
+
 namespace Stockfish {
+
+int SD_P1 = 10, SD_P2 = 20, SD_P3 = 80, SD_P4 = 150;
+int SD_R1 = 300, SD_R2 = 1000, SD_R3 = 6000, SD_R4 = 9000;
+int SD_F0 = 150, SD_F1 = 150;
+
+TUNE(SD_P1, SD_P2, SD_P3, SD_P4, SD_R1, SD_R2, SD_R3, SD_R4, SD_F0, SD_F1)
 
 static constexpr std::array<int, 16> lmrDivisor = {3307, 2930, 2874, 2818, 3215, 3225, 3224, 2782,
                                                    2858, 2919, 3088, 3275, 3180, 2868, 3006, 3599};
@@ -156,8 +164,37 @@ bool is_shuffling(Move move, Stack* const ss, const Position& pos) {
 }
 
 Value shuffle_dampening(Position& pos, Value v) {
-    int rule_50_count = std::clamp(pos.rule50_count(), 0, 1000) * 82;
-    v -= v * rule_50_count / 16384;
+    int p1 = SD_P1;
+    int r1 = SD_R1;
+    int p2 = SD_P2;
+    int r2 = SD_R2;
+    int p3 = SD_P3;
+    int r3 = SD_R3;
+    int p4 = SD_P4;
+    int r4 = SD_R4;
+
+    int rule_50_count = pos.rule50_count();
+    rule_50_count = std::min(rule_50_count, p4);
+    int r = 0;
+
+    if (rule_50_count <= p1) {
+        r = (rule_50_count * r1) / p1;
+    }
+    else if (rule_50_count <= p2) {
+        r = r1 + ((rule_50_count - p1) * (r2 - r1)) / (p2 - p1);
+    }
+    else if (rule_50_count <= p3) {
+        r = r2 + ((rule_50_count - p2) * (r3 - r2)) / (p3 - p2);
+    }
+    else {
+        r = r3 + ((rule_50_count - p3) * (r4 - r3)) / (p4 - p3);
+    }
+    // More aggressive dampening in endgames
+    if (pos.pieces() <= 6)
+        r = r * SD_F0 / 128;
+    else if (pos.pieces() <= 4)
+        r = r * SD_F1 / 128;
+    v -= v * r / 16384;
     return v;
 }
 
