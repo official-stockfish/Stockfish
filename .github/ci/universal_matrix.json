@@ -37,6 +37,15 @@
         "archive_ext": "zip"
       },
       "binaries": "arm64-universal"
+    },
+    {
+      "config": {
+        "name": "macOS 15 Apple Clang Universal",
+        "os": "macos-15",
+        "simple_name": "macos",
+        "archive_ext": "tar.gz"
+      },
+      "binaries": "universal"
     }
   ]
 }
