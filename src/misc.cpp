@@ -22,6 +22,7 @@
 #include <atomic>
 #include <cassert>
 #include <cctype>
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -485,10 +486,14 @@ void start_logger(const std::string& fname) { Logger::start(fname); }
     #define GETCWD getcwd
 #endif
 
-size_t str_to_size_t(const std::string& s) {
-    unsigned long long value = std::stoull(s);
-    if (value > std::numeric_limits<size_t>::max())
-        std::exit(EXIT_FAILURE);
+std::optional<size_t> str_to_size_t(const std::string& s) {
+    if (s.empty() || s[0] == '-')
+        return std::nullopt;
+    errno                           = 0;
+    char*                    endptr = nullptr;
+    const unsigned long long value  = std::strtoull(s.c_str(), &endptr, 10);
+    if (errno == ERANGE || *endptr != '\0' || value > std::numeric_limits<size_t>::max())
+        return std::nullopt;
     return static_cast<size_t>(value);
 }
 

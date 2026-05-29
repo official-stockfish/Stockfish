@@ -74,7 +74,8 @@ Engine::Engine(std::optional<std::string> path) :
 
     options.add(  //
       "NumaPolicy", Option("auto", [this](const Option& o) {
-          set_numa_config_from_option(o);
+          if (!set_numa_config_from_option(o))
+              return "NumaPolicy: invalid value '" + std::string(o) + "', keeping previous config.";
           return numa_config_information_as_string() + "\n"
                + thread_allocation_information_as_string();
       }));
@@ -142,7 +143,8 @@ Engine::Engine(std::optional<std::string> path) :
     resize_threads();
 }
 
-std::uint64_t Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
+std::variant<std::uint64_t, PositionSetError>
+Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
     verify_network();
 
     return Benchmark::perft(fen, depth, isChess960);
@@ -212,7 +214,7 @@ std::optional<PositionSetError> Engine::set_position(const std::string&         
 
 // modifiers
 
-void Engine::set_numa_config_from_option(const std::string& o) {
+bool Engine::set_numa_config_from_option(const std::string& o) {
     if (o == "auto" || o == "system")
     {
         numaContext.set_numa_config(NumaConfig::from_system(DefaultNumaPolicy));
@@ -228,12 +230,16 @@ void Engine::set_numa_config_from_option(const std::string& o) {
     }
     else
     {
-        numaContext.set_numa_config(NumaConfig::from_string(o));
+        auto parsed = NumaConfig::from_string(o);
+        if (!parsed.has_value())
+            return false;
+        numaContext.set_numa_config(std::move(*parsed));
     }
 
     // Force reallocation of threads in case affinities need to change.
     resize_threads();
     threads.ensure_network_replicated();
+    return true;
 }
 
 void Engine::resize_threads() {
@@ -326,7 +332,7 @@ OptionsMap&       Engine::get_options() { return options; }
 
 std::string Engine::fen() const { return pos.fen(); }
 
-void Engine::flip() { pos.flip(); }
+std::optional<PositionSetError> Engine::flip() { return pos.flip(); }
 
 std::string Engine::visualize() const {
     std::stringstream ss;

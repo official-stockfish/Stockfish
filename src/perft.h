@@ -20,6 +20,7 @@
 #define PERFT_H_INCLUDED
 
 #include <cstdint>
+#include <variant>
 
 #include "movegen.h"
 #include "position.h"
@@ -55,10 +56,13 @@ uint64_t perft(Position& pos, Depth depth) {
     return nodes;
 }
 
-inline uint64_t perft(const std::string& fen, Depth depth, bool isChess960) {
+inline std::variant<uint64_t, PositionSetError>
+perft(const std::string& fen, Depth depth, bool isChess960) {
     StateInfo st;
     Position  p;
-    p.set(fen, isChess960, &st);
+
+    if (auto err = p.set(fen, isChess960, &st))
+        return {*err};
 
     return perft<true>(p, depth);
 }
