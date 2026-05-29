@@ -784,7 +784,8 @@ Value Search::Worker::search(
         if (!is_valid(unadjustedStaticEval))
             unadjustedStaticEval = evaluate(pos);
 
-        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, correctionValue);
+        Value dampened_eval = shuffle_dampening(pos, unadjustedStaticEval);
+        ss->staticEval = eval = to_corrected_static_eval(dampened_eval, correctionValue);
 
         // ttValue can be used as a better position evaluation
         if (is_valid(ttData.value)
@@ -794,13 +795,13 @@ Value Search::Worker::search(
     else
     {
         unadjustedStaticEval = evaluate(pos);
-        ss->staticEval = eval = to_corrected_static_eval(unadjustedStaticEval, correctionValue);
+        Value dampened_eval = shuffle_dampening(pos, unadjustedStaticEval);
+        ss->staticEval = eval = to_corrected_static_eval(dampened_eval, correctionValue);
 
         // Static evaluation is saved as it was before adjustment by correction history
         ttWriter.write(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_UNSEARCHED, Move::none(),
                        unadjustedStaticEval, tt.generation());
     }
-    eval = shuffle_dampening(pos, eval);
 
     // Set up the improving flag, which is true if current static evaluation is
     // bigger than the previous static evaluation at our turn (if we were in
@@ -1640,8 +1641,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             if (!is_valid(unadjustedStaticEval))
                 unadjustedStaticEval = evaluate(pos);
 
+            Value dampened_eval = shuffle_dampening(pos, unadjustedStaticEval);
+
             ss->staticEval = bestValue =
-              to_corrected_static_eval(unadjustedStaticEval, correctionValue);
+              to_corrected_static_eval(dampened_eval, correctionValue);
 
             // ttValue can be used as a better position evaluation
             if (is_valid(ttData.value) && !is_decisive(ttData.value)
@@ -1651,10 +1654,10 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         else
         {
             unadjustedStaticEval = evaluate(pos);
+            Value dampened_eval = shuffle_dampening(pos, unadjustedStaticEval);
             ss->staticEval       = bestValue =
-              to_corrected_static_eval(unadjustedStaticEval, correctionValue);
+              to_corrected_static_eval(dampened_eval, correctionValue);
         }
-        bestValue = shuffle_dampening(pos, bestValue);
 
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
