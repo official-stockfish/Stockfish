@@ -54,9 +54,9 @@
 
 namespace Stockfish {
 
-int SD_P1 = 10, SD_P2 = 20, SD_P3 = 80, SD_P4 = 150;
-int SD_R1 = 300, SD_R2 = 1000, SD_R3 = 6000, SD_R4 = 9000;
-int SD_F0 = 150, SD_F1 = 150;
+int SD_P1 = 10, SD_P2 = 20, SD_P3 = 82, SD_P4 = 158;
+int SD_R1 = 309, SD_R2 = 960, SD_R3 = 5755, SD_R4 = 9215;
+int SD_F0 = 160, SD_F1 = 152;
 
 TUNE(SD_P1, SD_P2, SD_P3, SD_P4, SD_R1, SD_R2, SD_R3, SD_R4, SD_F0, SD_F1)
 
