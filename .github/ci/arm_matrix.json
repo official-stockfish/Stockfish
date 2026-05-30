@@ -22,12 +22,12 @@
     }
   ],
   "binaries": [
-    "armv8-universal",
+    "arm64-universal",
     "armv7-neon"
   ],
   "exclude": [
     {
-      "binaries": "armv8-universal",
+      "binaries": "arm64-universal",
       "config": {
         "compiler": "armv7a-linux-androideabi29-clang++"
       }

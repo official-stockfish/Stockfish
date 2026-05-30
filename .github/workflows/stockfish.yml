@@ -21,7 +21,7 @@ jobs:
     name: Prerelease
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
-    needs: [Matrix, Compilation, ARMCompilation, UniversalCompilation]
+    needs: [Matrix, ARMCompilation, UniversalCompilation]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
@@ -112,17 +112,12 @@ jobs:
     name: Prepare matrices
     runs-on: ubuntu-latest
     outputs:
-      macos_matrix: ${{ steps.set-macos-matrix.outputs.macos_matrix }}
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
       universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - id: set-macos-matrix
-        run: |
-          MACOS_MATRIX=$(jq -c '.' .github/ci/macos_matrix.json)
-          echo "MACOS_MATRIX=$MACOS_MATRIX" >> $GITHUB_OUTPUT
       - id: set-arm-matrix
         run: |
           ARM_MATRIX=$(jq -c '.' .github/ci/arm_matrix.json)
@@ -156,12 +151,6 @@ jobs:
     if: ${{ always() }}
     uses: ./.github/workflows/avx2_compilers.yml
   # Release Jobs
-  Compilation:
-    name: macOS builds
-    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
-    uses: ./.github/workflows/compilation.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.macos_matrix }}
   ARMCompilation:
     name: Android builds
     needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
@@ -172,17 +161,6 @@ jobs:
     name: "Universal builds"
     needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
     uses: ./.github/workflows/universal_compilation.yml
-  Binaries:
-    if: github.repository == 'official-stockfish/Stockfish'
-    name: macOS uploads
-    needs: [Prerelease, Matrix]
-    uses: ./.github/workflows/upload_binaries.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.macos_matrix }}
-    permissions:
-      contents: write # For deleting/creating a (pre)release
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
   ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
     name: Android uploads
