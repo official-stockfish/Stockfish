@@ -138,17 +138,19 @@ match_sse3() {
 	match_any_flags sse3 pni
 }
 
-# AMD Zen1/2 exclusion logic (used for bmi2 tier).
+# AMD Excavator/Zen1/2 exclusion logic (used for bmi2 tier).
 # https://web.archive.org/web/20250821132355/https://en.wikichip.org/wiki/amd/cpuid
-is_znver_1_2() (
+# All of Bulldozer through Excavator are matched here, but pre-Excavator doesn't support bmi2 anyway
+has_slow_bmi2() (
 	[ -r "$cpuinfo_path" ] || exit 1
 	vendor_id=$(awk '/^vendor_id/{print $3; exit}' "$cpuinfo_path" 2>/dev/null)
 	cpu_family=$(awk '/^cpu family/{print $4; exit}' "$cpuinfo_path" 2>/dev/null)
-	[ "$vendor_id" = "AuthenticAMD" ] && [ "$cpu_family" = "23" ]
+	[ "$vendor_id" = "AuthenticAMD" ] \
+		&& { [ "$cpu_family" = "21" ] || [ "$cpu_family" = "23" ]; }
 )
 
-match_not_znver12_and_flags() {
-	is_znver_1_2 && return 1
+match_not_slow_bmi2_and_flags() {
+	has_slow_bmi2 && return 1
 	match_flags "$@"
 }
 
@@ -199,7 +201,7 @@ x86-64-avx512icl|match_flags|avx512f avx512cd avx512vl avx512dq avx512bw avx512i
 x86-64-vnni512|match_flags|avx512vnni avx512dq avx512f avx512bw avx512vl
 x86-64-avx512|match_flags|avx512f avx512bw
 x86-64-avxvnni|match_flags|avxvnni
-x86-64-bmi2|match_not_znver12_and_flags|bmi2
+x86-64-bmi2|match_not_slow_bmi2_and_flags|bmi2
 x86-64-avx2|match_flags|avx2
 x86-64-sse41-popcnt|match_flags|sse41 popcnt
 x86-64-ssse3|match_flags|ssse3
