@@ -223,7 +223,7 @@ ExtMove* MovePicker::score(const MoveList<Type>& ml) {
 
         if constexpr (Type == CAPTURES)
         {
-            int depthMultiplier = 6 + (depth > 4 * ONE_PLY);
+            int depthMultiplier = (depth > -10000 && depth < 10000) ? (6 + (depth > 4 * ONE_PLY)) : 7;
         
             m.value = (*captureHistory)[pc][to][type_of(capturedPiece)]
                     + depthMultiplier * int(PieceValue[capturedPiece]);
