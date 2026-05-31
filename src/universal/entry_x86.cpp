@@ -77,7 +77,7 @@ struct CpuFeatures {
     bool sse41;            // SSE4.1
     bool popcnt;           // POPCNT
     bool avx2;             // AVX2
-    bool bmi2;             // BMI2 (may be slow on AMD Zen/Zen+/Zen2)
+    bool bmi2;             // BMI2 (may be slow on AMD Excavator and Zen/Zen+/Zen2)
     bool avx512f;          // AVX-512 Foundation
     bool avx512vl;         // AVX-512 Vector Length extensions
     bool avx512bw;         // AVX-512 Byte and Word instructions
