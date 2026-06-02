@@ -132,6 +132,10 @@ struct NNZInfo {
             const uint16x8_t bits = vandq_u16(packed, vld1q_u16(Mask8));
 
             *out++ = vaddvq_u16(bits);
+        #elif defined(__wasm__)
+            __m128i packed = _mm_packus_epi32(neurons1, neurons2);
+            packed         = _mm_packs_epi16(packed, packed);
+            *out++         = ~_mm_movemask_epi8(_mm_cmpeq_epi8(packed, _mm_setzero_si128()));
         #else
             auto m1 = vec_nnz(neurons1);
             auto m2 = vec_nnz(neurons2);

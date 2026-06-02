@@ -233,11 +233,9 @@ class FeatureTransformer {
             static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
             constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-    #if !defined(USE_NEON)
-            const vec_t   Zero  = vec_zero();
-            const vec_t   FtMax = vec_set_16(FtMaxVal);
-            constexpr int shift = 7;
-    #endif
+            [[maybe_unused]] const vec_t   Zero  = vec_zero();
+            [[maybe_unused]] const vec_t   FtMax = vec_set_16(FtMaxVal);
+            [[maybe_unused]] constexpr int shift = 7;
 
             const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
             const vec_t* in1 =
@@ -323,6 +321,19 @@ class FeatureTransformer {
 
                     vec_t hi     = vec_mulhi_8(pa, pb);
                     vec_t result = vec_srli_8(hi, 1);
+    #elif defined(__wasm__)
+                    // _mm_mulhi_epi16 is lowered to 32-bit multiplies, so we take
+                    // a similar approach as the NEON path.
+                    vec_t mul0 = vec_packus_16(acc0a, acc0b);
+                    vec_t mul1 = vec_packus_16(acc1a, acc1b);
+
+                    vec_t low = wasm_u16x8_extmul_low_u8x16(mul0, mul1);
+                    vec_t hi  = wasm_u16x8_extmul_high_u8x16(mul0, mul1);
+
+                    // equivalent to vuzp2_u8
+                    vec_t merged = wasm_i8x16_shuffle(low, hi, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19,
+                                                      21, 23, 25, 27, 29, 31);
+                    vec_t result = wasm_u8x16_shr(merged, 1);
     #else
                     vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
                     vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);

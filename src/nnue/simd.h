@@ -168,7 +168,12 @@ inline __m128i _mm_cvtsi64_si128(i64 val) {
     #endif
 
     #ifdef USE_SSE41
-        #define vec_convert_8_16(a) _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<i64>(a)))
+        #ifdef __wasm__
+            #define vec_convert_8_16(a) wasm_i16x8_load8x8(reinterpret_cast<const void*>(&a))
+        #else
+            #define vec_convert_8_16(a) \
+                _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<int64_t>(a)))
+        #endif
     #else
 // Credit: Yoshie2000
 inline __m128i vec_convert_8_16(u64 x) {
@@ -495,10 +500,13 @@ fused(const typename VecWrapper::type& in, const T& operand, const Ts&... operan
 }
 
 [[maybe_unused]] static void m128_add_dpbusd_epi32(__m128i& acc, __m128i a, __m128i b) {
-
+    #if defined(__wasm_relaxed_simd__)
+    acc = wasm_i32x4_relaxed_dot_i8x16_i7x16_add(b, a, acc);
+    #else
     __m128i product0 = _mm_maddubs_epi16(a, b);
     product0         = _mm_madd_epi16(product0, _mm_set1_epi16(1));
     acc              = _mm_add_epi32(acc, product0);
+    #endif
 }
 
 #endif

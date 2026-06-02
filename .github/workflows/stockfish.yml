@@ -150,6 +150,10 @@ jobs:
     name: Compiler check
     if: ${{ always() }}
     uses: ./.github/workflows/avx2_compilers.yml
+  WASMCompilation:
+    name: WASM compilation
+    if: ${{ always() }}
+    uses: ./.github/workflows/wasm_compilation.yml
   # Release Jobs
   ARMCompilation:
     name: Android builds

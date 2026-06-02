@@ -561,6 +561,19 @@ Bitboard get_changed_pieces(const std::array<Piece, SQUARE_NB>& oldPieces,
     uint8x8_t sameBB  = vshrn_n_u16(vreinterpretq_u16_u8(merged), 4);
 
     return ~vget_lane_u64(vreinterpret_u64_u8(sameBB), 0);
+#elif defined(USE_SSE2)
+    Bitboard sameBB = 0;
+
+    for (int i = 0; i < 64; i += 16)
+    {
+        const __m128i old_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&oldPieces[i]));
+        const __m128i new_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&newPieces[i]));
+        const __m128i same  = _mm_cmpeq_epi8(old_v, new_v);
+
+        sameBB |= static_cast<Bitboard>(_mm_movemask_epi8(same)) << i;
+    }
+
+    return ~sameBB;
 #else
     Bitboard changed = 0;
 

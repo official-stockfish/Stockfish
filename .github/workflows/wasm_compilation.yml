@@ -1,0 +1,51 @@
+name: WASM Compilation
+
+on:
+  workflow_call:
+
+jobs:
+  wasm:
+    name: wasm (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [wasm32, wasm32-relaxed-simd]
+    defaults:
+      run:
+        working-directory: src
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install emsdk
+        working-directory: .
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install latest
+          ./emsdk activate latest
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Download the used network from the fishtest framework
+        run: make net
+
+      - name: Build ${{ matrix.arch }} build
+        run: |
+          source $GITHUB_WORKSPACE/emsdk/emsdk_env.sh
+          em++ --version
+          net=$(grep -oE 'nn-[0-9a-f]+\.nnue' evaluate.h | head -1)
+          make clean
+          COMPCXX=em++ make -j build ARCH=${{ matrix.arch }} EXTRALDFLAGS="--preload-file $net"
+
+      - name: Verify bench under node
+        run: EXE=./stockfish.js RUN_PREFIX=node ../tests/signature.sh $benchref
