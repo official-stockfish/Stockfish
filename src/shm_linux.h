@@ -154,11 +154,11 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
-    size_t             total_size_ = 0;
+    usize              total_size_ = 0;
     std::string        sentinel_base_;
     std::string        sentinel_path_;
 
-    static constexpr size_t calculate_total_size() noexcept {
+    static constexpr usize calculate_total_size() noexcept {
         return sizeof(T) + sizeof(detail::ShmHeader);
     }
 
@@ -631,7 +631,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         struct stat st;
         fstat(fd_, &st);
-        if (static_cast<size_t>(st.st_size) < total_size_)
+        if (static_cast<usize>(st.st_size) < total_size_)
         {
             invalid_header = true;
             return false;

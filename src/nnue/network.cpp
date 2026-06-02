@@ -188,7 +188,7 @@ void Network::verify(std::string                                  evalfilePath,
 
     if (f)
     {
-        size_t size = sizeof(featureTransformer) + sizeof(NetworkArchitecture) * LayerStacks;
+        usize size = sizeof(featureTransformer) + sizeof(NetworkArchitecture) * LayerStacks;
         f("NNUE evaluation using " + evalfilePath + " (" + std::to_string(size / (1024 * 1024))
           + "MiB, (" + std::to_string(featureTransformer.InputDimensions) + ", "
           + std::to_string(network[0].TransformedFeatureDimensions) + ", "
@@ -241,7 +241,7 @@ void Network::load_internal() {
     // C++ way to prepare a buffer for a memory stream
     class MemoryBuffer: public std::basic_streambuf<char> {
        public:
-        MemoryBuffer(char* p, size_t n) {
+        MemoryBuffer(char* p, usize n) {
             setg(p, p, p + n);
             setp(p, p + n);
         }
@@ -253,7 +253,7 @@ void Network::load_internal() {
 #endif
 
     MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
-                        size_t(gEmbeddedNNUESize));
+                        usize(gEmbeddedNNUESize));
 
     std::istream stream(&buffer);
     auto         description = load(stream);
@@ -287,11 +287,11 @@ std::optional<std::string> Network::load(std::istream& stream) {
 }
 
 
-std::size_t Network::get_content_hash() const {
+usize Network::get_content_hash() const {
     if (!initialized)
         return 0;
 
-    std::size_t h = 0;
+    usize h = 0;
     hash_combine(h, featureTransformer);
     for (auto&& layerstack : network)
         hash_combine(h, layerstack);
@@ -332,7 +332,7 @@ bool Network::read_parameters(std::istream& stream, std::string& netDescription)
         return false;
     if (!Detail::read_parameters(stream, featureTransformer))
         return false;
-    for (std::size_t i = 0; i < LayerStacks; ++i)
+    for (usize i = 0; i < LayerStacks; ++i)
     {
         if (!Detail::read_parameters(stream, network[i]))
             return false;
@@ -346,7 +346,7 @@ bool Network::write_parameters(std::ostream& stream, const std::string& netDescr
         return false;
     if (!Detail::write_parameters(stream, featureTransformer))
         return false;
-    for (std::size_t i = 0; i < LayerStacks; ++i)
+    for (usize i = 0; i < LayerStacks; ++i)
     {
         if (!Detail::write_parameters(stream, network[i]))
             return false;

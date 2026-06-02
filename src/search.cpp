@@ -130,7 +130,7 @@ void update_correction_history(const Position& pos,
 }
 
 // Add a small random component to draw evaluations to avoid 3-fold blindness
-Value value_draw(size_t nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
+Value value_draw(usize nodes) { return VALUE_DRAW - 1 + Value(nodes & 0x2); }
 Value value_to_tt(Value v, int ply);
 Value value_from_tt(Value v, int ply, int r50c);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
@@ -160,9 +160,9 @@ bool is_shuffling(Move move, Stack* const ss, const Position& pos) {
 
 Search::Worker::Worker(SharedState&                    sharedState,
                        std::unique_ptr<ISearchManager> sm,
-                       size_t                          threadId,
-                       size_t                          numaThreadId,
-                       size_t                          numaTotalThreads,
+                       usize                           threadId,
+                       usize                           numaThreadId,
+                       usize                           numaTotalThreads,
                        NumaReplicatedAccessToken       token) :
     // Unpack the SharedState struct into member variables
     sharedHistory(sharedState.sharedHistories.at(token.get_numa_index())),
@@ -306,13 +306,13 @@ bool Search::Worker::iterative_deepening() {
             mainThread->iterValue.fill(mainThread->bestPreviousScore);
     }
 
-    size_t multiPV = size_t(options["MultiPV"]);
+    usize multiPV = usize(options["MultiPV"]);
     Skill skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
     // When playing with strength handicap enable MultiPV search that we will
     // use behind-the-scenes to retrieve a set of possible moves.
     if (skill.enabled())
-        multiPV = std::max(multiPV, size_t(4));
+        multiPV = std::max(multiPV, usize(4));
 
     multiPV = std::min(multiPV, rootMoves.size());
 
@@ -343,7 +343,7 @@ bool Search::Worker::iterative_deepening() {
         for (RootMove& rm : rootMoves)
             rm.previousScore = rm.score;
 
-        size_t pvFirst = 0;
+        usize pvFirst = 0;
         pvLast         = 0;
 
         if (!threads.increaseDepth)
@@ -650,7 +650,7 @@ void Search::Worker::clear() {
                 for (auto& h : to)
                     h.fill(-552);
 
-    for (size_t i = 1; i < reductions.size(); ++i)
+    for (usize i = 1; i < reductions.size(); ++i)
         reductions[i] = int(2834 / 128.0 * std::log(i));
 
     refreshTable.clear(network[numaAccessToken]);
@@ -710,7 +710,7 @@ Value Search::Worker::search(
     maxValue      = VALUE_INFINITE;
 
     ss->followPV = rootNode
-                || ((ss - 1)->followPV && static_cast<size_t>(ss->ply - 1) < lastIterationPV.size()
+                || ((ss - 1)->followPV && static_cast<usize>(ss->ply - 1) < lastIterationPV.size()
                     && (ss - 1)->currentMove == lastIterationPV[ss->ply - 1]);
 
     // Check for the available remaining time
@@ -1967,7 +1967,7 @@ void update_quiet_histories(
 
 // When playing with strength handicap, choose the best move among a set of
 // RootMoves using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
-Move Skill::pick_best(const RootMoves& rootMoves, size_t multiPV) {
+Move Skill::pick_best(const RootMoves& rootMoves, usize multiPV) {
     static PRNG rng(now());  // PRNG sequence should be non-deterministic
 
     // RootMoves are already sorted by score in descending order
@@ -1979,7 +1979,7 @@ Move Skill::pick_best(const RootMoves& rootMoves, size_t multiPV) {
     // Choose best move. For each move score we add two terms, both dependent on
     // weakness. One is deterministic and bigger for weaker levels, and one is
     // random. Then we choose the move with the resulting highest score.
-    for (size_t i = 0; i < multiPV; ++i)
+    for (usize i = 0; i < multiPV; ++i)
     {
         // This is our magic formula
         int push = int(weakness * int(topScore - rootMoves[i].score)
@@ -2056,7 +2056,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
     int ply = 1;
 
     // Step 1, walk the PV to the last position in TB with correct decisive score
-    while (size_t(ply) < rootMove.pv.size())
+    while (usize(ply) < rootMove.pv.size())
     {
         Move& pvMove = rootMove.pv[ply];
 
@@ -2152,7 +2152,7 @@ void syzygy_extend_pv(const OptionsMap&         options,
         v = VALUE_DRAW;
 
     // Undo the PV moves
-    for (size_t i = rootMove.pv.size(); i > 0; --i)
+    for (usize i = rootMove.pv.size(); i > 0; --i)
         pos.undo_move(rootMove.pv[i - 1]);
 
     // Inform if we couldn't get a full extension in time
@@ -2170,10 +2170,10 @@ void SearchManager::pv(Search::Worker&           worker,
     const auto nodes     = threads.nodes_searched();
     auto&      rootMoves = worker.rootMoves;
     auto&      pos       = worker.rootPos;
-    size_t     multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
+    usize      multiPV   = std::min(usize(worker.options["MultiPV"]), rootMoves.size());
     u64        tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
-    for (size_t i = 0; i < multiPV; ++i)
+    for (usize i = 0; i < multiPV; ++i)
     {
         bool usePreviousScore = rootMoves[i].score == -VALUE_INFINITE;
 

@@ -87,14 +87,14 @@ struct MoveSorter {
         sortedMoves  = _mm512_mask_expand_epi32(move, expand, sortedMoves);
     }
 
-    void write_sorted(ExtMove* moves, std::ptrdiff_t count) const {
+    void write_sorted(ExtMove* moves, isize count) const {
         static_assert(sizeof(ExtMove) == 8);
         assert(count <= MAX_ELEMENTS);
 
         // Because values and moves are stored separately, we need to reassemble the ExtMoves
         auto write = [&](int offset, const __m512i indices) {
             const __m512i extMoves = _mm512_permutex2var_epi32(sortedMoves, indices, sortedValues);
-            const std::ptrdiff_t storeCount = count - offset;
+            const isize storeCount = count - offset;
 
             if (storeCount > 0)
                 _mm512_mask_storeu_epi64(moves + offset, (1 << storeCount) - 1, extMoves);

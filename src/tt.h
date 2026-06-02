@@ -82,7 +82,7 @@ class TranspositionTable {
    public:
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
-    void resize(size_t mbSize, ThreadPool& threads);  // Set TT size in MiB
+    void resize(usize mbSize, ThreadPool& threads);  // Set TT size in MiB
     void clear(ThreadPool& threads);                  // Re-initialize memory, multithreaded
 
     void
@@ -102,7 +102,7 @@ class TranspositionTable {
    private:
     friend struct TTEntry;
 
-    size_t   clusterCount;
+    usize    clusterCount;
     Cluster* table = nullptr;
 
     u8 generation8 = 0;

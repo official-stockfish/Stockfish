@@ -294,17 +294,17 @@ constexpr int MaxDebugSlots = 32;
 
 namespace {
 
-template<size_t N>
+template<usize N>
 struct DebugInfo {
     std::array<std::atomic<i64>, N> data = {0};
 
-    [[nodiscard]] constexpr std::atomic<i64>& operator[](size_t index) {
+    [[nodiscard]] constexpr std::atomic<i64>& operator[](usize index) {
         assert(index < N);
         return data[index];
     }
 
     constexpr DebugInfo& operator=(const DebugInfo& other) {
-        for (size_t i = 0; i < N; i++)
+        for (usize i = 0; i < N; i++)
             data[i].store(other.data[i].load());
         return *this;
     }
@@ -435,13 +435,13 @@ void sync_cout_start() { std::cout << IO_LOCK; }
 void sync_cout_end() { std::cout << IO_UNLOCK; }
 
 // Hash function based on public domain MurmurHash64A, by Austin Appleby.
-u64 hash_bytes(const char* data, size_t size) {
+u64 hash_bytes(const char* data, usize size) {
     const u64 m = 0xc6a4a7935bd1e995ull;
     const int r = 47;
 
     u64 h = size * m;
 
-    const char* end = data + (size & ~(size_t) 7);
+    const char* end = data + (size & ~(usize) 7);
 
     for (const char* p = data; p != end; p += 8)
     {
@@ -485,11 +485,11 @@ void start_logger(const std::string& fname) { Logger::start(fname); }
     #define GETCWD getcwd
 #endif
 
-size_t str_to_size_t(const std::string& s) {
+usize str_to_size_t(const std::string& s) {
     unsigned long long value = std::stoull(s);
-    if (value > std::numeric_limits<size_t>::max())
+    if (value > std::numeric_limits<usize>::max())
         std::exit(EXIT_FAILURE);
-    return static_cast<size_t>(value);
+    return static_cast<usize>(value);
 }
 
 std::optional<std::string> read_file_to_string(const std::string& path) {
@@ -528,7 +528,7 @@ std::string CommandLine::get_binary_directory(std::string argv0) {
 
     // Extract the binary directory path from argv0
     auto   binaryDirectory = argv0;
-    size_t pos             = binaryDirectory.find_last_of("\\/");
+    usize pos              = binaryDirectory.find_last_of("\\/");
     if (pos == std::string::npos)
         binaryDirectory = "." + pathSeparator;
     else

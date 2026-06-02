@@ -326,14 +326,14 @@ struct PairsData {
     u8     maxSymLen;          // Maximum length in bits of the Huffman symbols
     u8     minSymLen;          // Minimum length in bits of the Huffman symbols
     u32    blocksNum;          // Number of blocks in the TB file
-    size_t sizeofBlock;        // Block size in bytes
-    size_t span;               // About every span values there is a SparseIndex[] entry
+    usize  sizeofBlock;        // Block size in bytes
+    usize  span;               // About every span values there is a SparseIndex[] entry
     Sym*   lowestSym;          // lowestSym[l] is the symbol of length l with the lowest value
     LR*    btree;              // btree[sym] stores the left and right symbols that expand sym
     u16*   blockLength;        // Number of stored positions (minus one) for each block: 1..65536
     u32    blockLengthSize;    // Size of blockLength[] table: padded so it's bigger than blocksNum
     SparseEntry* sparseIndex;  // Partial indices into blockLength[]
-    size_t       sparseIndexSize;  // Size of SparseIndex[] table
+    usize       sparseIndexSize;  // Size of SparseIndex[] table
     u8*          data;             // Start of Huffman compressed data
     std::vector<u64>
       base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
@@ -463,8 +463,8 @@ class TBTables {
 
     std::deque<TBTable<WDL>> wdlTable;
     std::deque<TBTable<DTZ>> dtzTable;
-    size_t                   foundDTZFiles = 0;
-    size_t                   foundWDLFiles = 0;
+    usize                    foundDTZFiles = 0;
+    usize                    foundWDLFiles = 0;
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
         u32   homeBucket = u32(key) & (Size - 1);
@@ -1068,7 +1068,7 @@ u8* set_sizes(PairsData* d, u8* data) {
 
     d->sizeofBlock     = 1ULL << *data++;
     d->span            = 1ULL << *data++;
-    d->sparseIndexSize = size_t((tbSize + d->span - 1) / d->span);  // Round up
+    d->sparseIndexSize = usize((tbSize + d->span - 1) / d->span);  // Round up
     auto padding       = number<u8, LittleEndian>(data++);
     d->blocksNum       = number<u32, LittleEndian>(data);
     data += sizeof(u32);
@@ -1308,7 +1308,7 @@ WDLScore search(Position& pos, ProbeState* result) {
     StateInfo st;
 
     auto   moveList   = MoveList<LEGAL>(pos);
-    size_t totalCount = moveList.size(), moveCount = 0;
+    usize totalCount = moveList.size(), moveCount = 0;
 
     for (const Move move : moveList)
     {

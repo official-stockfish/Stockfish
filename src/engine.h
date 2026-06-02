@@ -75,7 +75,7 @@ class Engine {
 
     void set_numa_config_from_option(const std::string& o);
     void resize_threads();
-    void set_tt_size(size_t mb);
+    void set_tt_size(usize mb);
     void set_ponderhit(bool);
     void search_clear();
 
@@ -104,7 +104,7 @@ class Engine {
     std::string                            fen() const;
     void                                   flip();
     std::string                            visualize() const;
-    std::vector<std::pair<size_t, size_t>> get_bound_thread_count_by_numa_node() const;
+    std::vector<std::pair<usize, usize>> get_bound_thread_count_by_numa_node() const;
     std::string                            get_numa_config_as_string() const;
     std::string                            numa_config_information_as_string() const;
     std::string                            thread_allocation_information_as_string() const;

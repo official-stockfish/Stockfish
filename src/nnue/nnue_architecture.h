@@ -138,8 +138,8 @@ struct NetworkArchitecture {
         return outputValue;
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, fc_0.get_content_hash());
         hash_combine(h, ac_sqr_0.get_content_hash());
         hash_combine(h, ac_0.get_content_hash());
@@ -155,7 +155,7 @@ struct NetworkArchitecture {
 
 template<>
 struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::NetworkArchitecture& arch) const noexcept {
+    Stockfish::usize operator()(const Stockfish::Eval::NNUE::NetworkArchitecture& arch) const noexcept {
         return arch.get_content_hash();
     }
 };

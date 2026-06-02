@@ -56,6 +56,9 @@ using i32 = std::int32_t;
 using i16 = std::int16_t;
 using i8  = std::int8_t;
 
+using usize = std::size_t;
+using isize = std::ptrdiff_t;
+
 #if defined(__GNUC__) && defined(IS_64BIT)
 __extension__ using u128 = unsigned __int128;
 __extension__ using i128 = signed __int128;
@@ -129,7 +132,7 @@ void prefetch(const void* addr) {
 
 void start_logger(const std::string& fname);
 
-size_t str_to_size_t(const std::string& s);
+usize str_to_size_t(const std::string& s);
 
 #if defined(__linux__)
 
@@ -170,10 +173,10 @@ inline std::vector<std::string_view> split(std::string_view s, std::string_view 
     if (s.empty())
         return res;
 
-    size_t begin = 0;
+    usize begin = 0;
     for (;;)
     {
-        const size_t end = s.find(delimiter, begin);
+        const usize end = s.find(delimiter, begin);
         if (end == std::string::npos)
             break;
 
@@ -210,7 +213,7 @@ template<typename T, std::size_t MaxSize>
 class ValueList {
 
    public:
-    std::size_t size() const { return size_; }
+    usize size() const { return size_; }
     int         ssize() const { return int(size_); }
     void        push_back(const T& value) {
         assert(size_ < MaxSize);
@@ -226,7 +229,7 @@ class ValueList {
     const T* end() const { return values_ + size_; }
     const T& operator[](int index) const { return values_[index]; }
 
-    T* make_space(size_t count) {
+    T* make_space(usize count) {
         T* result = &values_[size_];
         size_ += count;
         assert(size_ <= MaxSize);
@@ -235,7 +238,7 @@ class ValueList {
 
    private:
     T           values_[MaxSize];
-    std::size_t size_ = 0;
+    usize size_ = 0;
 };
 
 
@@ -399,20 +402,20 @@ inline constexpr T2 interpolate(T1 x, T1 x0, T1 x1, T2 y0, T2 y1) {
     return T2(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
 }
 
-u64 hash_bytes(const char*, size_t);
+u64 hash_bytes(const char*, usize);
 
 template<typename T>
-inline std::size_t get_raw_data_hash(const T& value) {
+inline usize get_raw_data_hash(const T& value) {
     // We must have no padding bytes because we're reinterpreting as char
     static_assert(std::has_unique_object_representations<T>());
 
-    return static_cast<std::size_t>(
+    return static_cast<usize>(
       hash_bytes(reinterpret_cast<const char*>(&value), sizeof(value)));
 }
 
 template<typename T>
-inline void hash_combine(std::size_t& seed, const T& v) {
-    std::size_t x;
+inline void hash_combine(usize& seed, const T& v) {
+    usize x;
     // For primitive types we avoid using the default hasher, which may be
     // nondeterministic across program invocations
     if constexpr (std::is_integral<T>())
@@ -433,7 +436,7 @@ class FixedString {
     }
 
     FixedString(const char* str) {
-        size_t len = std::strlen(str);
+        usize len = std::strlen(str);
         if (len > Capacity)
             std::terminate();
         std::memcpy(data_, str, len);
@@ -449,18 +452,18 @@ class FixedString {
         data_[length_] = '\0';
     }
 
-    std::size_t size() const { return length_; }
-    std::size_t capacity() const { return Capacity; }
+    usize size() const { return length_; }
+    usize capacity() const { return Capacity; }
 
     const char* c_str() const { return data_; }
     const char* data() const { return data_; }
 
-    char& operator[](std::size_t i) { return data_[i]; }
+    char& operator[](usize i) { return data_[i]; }
 
-    const char& operator[](std::size_t i) const { return data_[i]; }
+    const char& operator[](usize i) const { return data_[i]; }
 
     FixedString& operator+=(const char* str) {
-        size_t len = std::strlen(str);
+        usize len = std::strlen(str);
         if (length_ + len > Capacity)
             std::terminate();
         std::memcpy(data_ + length_, str, len);
@@ -492,7 +495,7 @@ class FixedString {
 
    private:
     char        data_[Capacity + 1];  // +1 for null terminator
-    std::size_t length_;
+    usize length_;
 };
 
 struct CommandLine {
@@ -570,7 +573,7 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 
 template<std::size_t N>
 struct std::hash<Stockfish::FixedString<N>> {
-    std::size_t operator()(const Stockfish::FixedString<N>& fstr) const noexcept {
+    Stockfish::usize operator()(const Stockfish::FixedString<N>& fstr) const noexcept {
         return Stockfish::hash_bytes(fstr.data(), fstr.size());
     }
 };

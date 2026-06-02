@@ -100,31 +100,31 @@ using AtomicStats = MultiArray<StatsEntry<T, D, true>, Sizes...>;
 // the per-thread allocation count of T.
 template<typename T, int SizeMultiplier>
 struct DynStats {
-    explicit DynStats(size_t s) {
+    explicit DynStats(usize s) {
         size = s * SizeMultiplier;
         data = make_unique_large_page<T[]>(size);
     }
     // Sets all values in the range to 0
-    void clear_range(int value, size_t threadIdx, size_t numaTotal) {
-        size_t start = u64(threadIdx) * size / numaTotal;
+    void clear_range(int value, usize threadIdx, usize numaTotal) {
+        usize start = u64(threadIdx) * size / numaTotal;
         assert(start < size);
-        size_t end = threadIdx + 1 == numaTotal ? size : u64(threadIdx + 1) * size / numaTotal;
+        usize end = threadIdx + 1 == numaTotal ? size : u64(threadIdx + 1) * size / numaTotal;
 
         while (start < end)
             data[start++].fill(value);
     }
-    size_t get_size() const { return size; }
-    T&     operator[](size_t index) {
+    usize get_size() const { return size; }
+    T&    operator[](usize index) {
         assert(index < size);
         return data.get()[index];
     }
-    const T& operator[](size_t index) const {
+    const T& operator[](usize index) const {
         assert(index < size);
         return data.get()[index];
     }
 
    private:
-    size_t            size;
+    usize             size;
     LargePagePtr<T[]> data;
 };
 
@@ -207,7 +207,7 @@ using TTMoveHistory = StatsEntry<i16, 8192>;
 // on a given NUMA node. The passed size must be a power of two to make
 // the indexing more efficient.
 struct SharedHistories {
-    SharedHistories(size_t threadCount) :
+    SharedHistories(usize threadCount) :
         correctionHistory(threadCount),
         pawnHistory(threadCount) {
         assert((threadCount & (threadCount - 1)) == 0 && threadCount != 0);
@@ -215,7 +215,7 @@ struct SharedHistories {
         pawnHistSizeMinus1 = pawnHistory.get_size() - 1;
     }
 
-    size_t get_size() const { return sizeMinus1 + 1; }
+    usize get_size() const { return sizeMinus1 + 1; }
 
     auto& pawn_entry(const Position& pos) {
         return pawnHistory[pos.pawn_key() & pawnHistSizeMinus1];
@@ -252,7 +252,7 @@ struct SharedHistories {
 
 
    private:
-    size_t sizeMinus1, pawnHistSizeMinus1;
+    usize sizeMinus1, pawnHistSizeMinus1;
 };
 
 }  // namespace Stockfish

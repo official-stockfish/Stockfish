@@ -108,8 +108,8 @@ class AffineTransformSparseInput {
         return !stream.fail();
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_hash_value(0));
@@ -190,9 +190,9 @@ class AffineTransformSparseInput {
         #if defined(USE_VNNI)
         while (start < end - 2)
         {
-            const std::ptrdiff_t i0  = *start++;
-            const std::ptrdiff_t i1  = *start++;
-            const std::ptrdiff_t i2  = *start++;
+            const isize         i0  = *start++;
+            const isize         i1  = *start++;
+            const isize         i2  = *start++;
             const invec_t        in0 = vec_set_32(load_as<i32>(input + i0 * sizeof(i32)));
             const invec_t        in1 = vec_set_32(load_as<i32>(input + i1 * sizeof(i32)));
             const invec_t        in2 = vec_set_32(load_as<i32>(input + i2 * sizeof(i32)));
@@ -216,7 +216,7 @@ class AffineTransformSparseInput {
 
         while (start < end)
         {
-            const std::ptrdiff_t i  = *start++;
+            const isize         i  = *start++;
             const invec_t        in = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
             const auto           col =
               reinterpret_cast<const invec_t*>(&weights_cp[i * OutputDimensions * ChunkSize]);
@@ -229,7 +229,7 @@ class AffineTransformSparseInput {
         for (IndexType k = 0; k < InputDimensions / 256; ++k)
         {
             u64       bits = load_as<u64>(nnzInfo.bitset + k * 8);
-            ptrdiff_t base = k * 64;
+            isize base = k * 64;
 
             auto* base_addr    = input + base * sizeof(i32);
             auto* weights_base = &weights_cp[base * OutputDimensions * ChunkSize];
@@ -250,7 +250,7 @@ class AffineTransformSparseInput {
 
             while (bits)
             {
-                ptrdiff_t   i          = pop_lsb(bits);
+                isize       i          = pop_lsb(bits);
                 const auto* input_addr = base_addr + i * sizeof(i32);
                 auto        col =
                   reinterpret_cast<const invec_t*>(&weights_base[i * OutputDimensions * ChunkSize]);

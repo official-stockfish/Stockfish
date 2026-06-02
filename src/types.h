@@ -477,7 +477,7 @@ class Move {
     constexpr u16 raw() const { return data; }
 
     struct MoveHash {
-        std::size_t operator()(const Move& m) const { return make_key(m.data); }
+        usize operator()(const Move& m) const { return make_key(m.data); }
     };
 
     static constexpr int FromSqShift = 6;

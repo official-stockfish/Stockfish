@@ -75,9 +75,9 @@ class Thread {
    public:
     Thread(Search::SharedState&,
            std::unique_ptr<Search::ISearchManager>,
-           size_t,
-           size_t,
-           size_t,
+           usize,
+           usize,
+           usize,
            OptionalThreadToNumaNodeBinder);
     virtual ~Thread();
 
@@ -94,7 +94,7 @@ class Thread {
     // appropriate specificity regarding search, from the point of view of an
     // outside user, so renaming of this function is left for whenever that happens.
     void   wait_for_search_finished();
-    size_t id() const { return idx; }
+    usize id() const { return idx; }
 
     LargePagePtr<Search::Worker> worker;
     std::function<void()>        jobFunc;
@@ -102,7 +102,7 @@ class Thread {
    private:
     std::mutex                mutex;
     std::condition_variable   cv;
-    size_t                    idx, idxInNuma, totalNuma, nthreads;
+    usize                     idx, idxInNuma, totalNuma, nthreads;
     bool                      exit = false, searching = true;  // Set before starting std::thread
     NativeThread              stdThread;
     NumaReplicatedAccessToken numaAccessToken;
@@ -133,9 +133,9 @@ class ThreadPool {
     ThreadPool& operator=(ThreadPool&&)      = delete;
 
     void   start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType);
-    void   run_on_thread(size_t threadId, std::function<void()> f);
-    void   wait_on_thread(size_t threadId);
-    size_t num_threads() const;
+    void   run_on_thread(usize threadId, std::function<void()> f);
+    void   wait_on_thread(usize threadId);
+    usize  num_threads() const;
     void   clear();
     void   set(const NumaConfig& numaConfig,
                Search::SharedState,
@@ -149,9 +149,9 @@ class ThreadPool {
     void                   start_searching();
     void                   wait_for_search_finished() const;
 
-    std::vector<size_t> get_bound_thread_to_numa_node() const;
-    std::vector<size_t> get_bound_thread_count_by_numa_node() const;
-    size_t              numa_nodes() const;
+    std::vector<usize> get_bound_thread_to_numa_node() const;
+    std::vector<usize> get_bound_thread_count_by_numa_node() const;
+    usize              numa_nodes() const;
 
     void ensure_network_replicated();
 

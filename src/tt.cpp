@@ -165,11 +165,11 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 // Sets the size of the transposition table,
 // measured in megabytes. Transposition table consists
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
-void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
+void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
     aligned_large_pages_free(table);
 
     clusterCount   = mbSize * 1024 * 1024 / sizeof(Cluster);
-    size_t ttBytes = clusterCount * sizeof(Cluster);
+    usize ttBytes = clusterCount * sizeof(Cluster);
 
     // Request 1GB pages if we'd get at least eight per NUMA node, to avoid
     // memory oversubscription
@@ -191,35 +191,35 @@ void TranspositionTable::resize(size_t mbSize, ThreadPool& threads) {
 // in a multi-threaded way.
 void TranspositionTable::clear(ThreadPool& threads) {
     generation8              = 0;
-    const size_t threadCount = threads.num_threads();
+    const usize threadCount = threads.num_threads();
 
-    std::vector<size_t> threadToNuma = threads.get_bound_thread_to_numa_node();
+    std::vector<usize> threadToNuma = threads.get_bound_thread_to_numa_node();
 
-    std::vector<size_t> order(threadCount);
+    std::vector<usize> order(threadCount);
     std::iota(order.begin(), order.end(), 0);
 
     // To promote good NUMA distribution (esp. with huge pages), we permute threads so that
     // all threads in a NUMA node clear a contiguous region of the TT.
     if (threadToNuma.size() == threadCount)
     {
-        std::stable_sort(order.begin(), order.end(), [&threadToNuma](size_t t1, size_t t2) {
+        std::stable_sort(order.begin(), order.end(), [&threadToNuma](usize t1, usize t2) {
             return threadToNuma.at(t1) < threadToNuma.at(t2);
         });
     }
 
-    for (size_t i = 0; i < threadCount; ++i)
+    for (usize i = 0; i < threadCount; ++i)
     {
         threads.run_on_thread(order[i], [this, i, threadCount]() {
             // Each thread will zero its part of the hash table
-            const size_t stride = clusterCount / threadCount;
-            const size_t start  = stride * i;
-            const size_t len    = i + 1 != threadCount ? stride : clusterCount - start;
+            const usize stride = clusterCount / threadCount;
+            const usize start  = stride * i;
+            const usize len    = i + 1 != threadCount ? stride : clusterCount - start;
 
             std::memset(&table[start], 0, len * sizeof(Cluster));
         });
     }
 
-    for (size_t i = 0; i < threadCount; ++i)
+    for (usize i = 0; i < threadCount; ++i)
         threads.wait_on_thread(i);
 }
 

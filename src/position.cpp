@@ -252,7 +252,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             if (file >= FILE_NB)
                 return PositionSetError("Invalid FEN. Invalid file reached.");
 
-            const size_t idx = PieceToChar.find(token);
+            const usize idx = PieceToChar.find(token);
             if (idx == string::npos)
                 return PositionSetError(std::string("Invalid FEN. Invalid piece: ")
                                         + std::string(1, token));

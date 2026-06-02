@@ -181,8 +181,8 @@ class AffineTransform {
         return !stream.fail();
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_hash_value(0));

@@ -106,7 +106,7 @@ struct AccumulatorState: public Accumulator {
 
 class AccumulatorStack {
    public:
-    static constexpr std::size_t MaxSize = MAX_PLY + 1;
+    static constexpr usize MaxSize = MAX_PLY + 1;
 
     template<typename T>
     [[nodiscard]] const AccumulatorState<T>& latest() const noexcept;
@@ -138,23 +138,23 @@ class AccumulatorStack {
                        [[maybe_unused]] AccumulatorCaches& cache) noexcept;
 
     template<typename FeatureSet>
-    [[nodiscard]] std::size_t find_last_usable_accumulator(Color perspective) const noexcept;
+    [[nodiscard]] usize find_last_usable_accumulator(Color perspective) const noexcept;
 
     template<typename FeatureSet>
     void forward_update_incremental(Color                     perspective,
                                     const Position&           pos,
                                     const FeatureTransformer& featureTransformer,
-                                    const std::size_t         begin) noexcept;
+                                    const usize               begin) noexcept;
 
     template<typename FeatureSet>
     void backward_update_incremental(Color                     perspective,
                                      const Position&           pos,
                                      const FeatureTransformer& featureTransformer,
-                                     const std::size_t         end) noexcept;
+                                     const usize               end) noexcept;
 
     std::array<AccumulatorState<PSQFeatureSet>, MaxSize>    psq_accumulators;
     std::array<AccumulatorState<ThreatFeatureSet>, MaxSize> threat_accumulators;
-    std::size_t                                             size = 1;
+    usize                                                   size = 1;
 };
 
 }  // namespace Stockfish::Eval::NNUE

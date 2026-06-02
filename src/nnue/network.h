@@ -62,7 +62,7 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    std::size_t get_content_hash() const;
+    usize get_content_hash() const;
 
     NetworkOutput evaluate(const Position&    pos,
                            AccumulatorStack&  accumulatorStack,
@@ -111,7 +111,7 @@ class Network {
 
 template<>
 struct std::hash<Stockfish::Eval::NNUE::Network> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::Network& network) const noexcept {
+    Stockfish::usize operator()(const Stockfish::Eval::NNUE::Network& network) const noexcept {
         return network.get_content_hash();
     }
 };

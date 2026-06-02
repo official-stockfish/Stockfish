@@ -60,18 +60,18 @@ namespace Search {
 
 struct PVMoves {
     Move        moves[MAX_PLY + 1];
-    std::size_t length = 0;
+    usize length = 0;
 
     Move*       begin() { return moves; }
     const Move* begin() const { return moves; }
     Move*       end() { return moves + length; }
     const Move* end() const { return moves + length; }
 
-    Move&       operator[](std::size_t index) { return moves[index]; }
-    const Move& operator[](std::size_t index) const { return moves[index]; }
+    Move&       operator[](usize index) { return moves[index]; }
+    const Move& operator[](usize index) const { return moves[index]; }
 
     bool        empty() const { return length == 0; }
-    std::size_t size() const { return length; }
+    usize size() const { return length; }
 
     void clear() { length = 0; }
 
@@ -80,7 +80,7 @@ struct PVMoves {
         moves[length++] = move;
     }
 
-    void resize(std::size_t newSize) {
+    void resize(usize newSize) {
         assert(newSize <= length);
         length = newSize;
     }
@@ -212,13 +212,13 @@ struct InfoShort {
 
 struct InfoFull: InfoShort {
     int              selDepth;
-    size_t           multiPV;
+    usize            multiPV;
     std::string_view wdl;
     std::string_view bound;
-    size_t           timeMs;
-    size_t           nodes;
-    size_t           nps;
-    size_t           tbHits;
+    usize            timeMs;
+    usize            nodes;
+    usize            nps;
+    usize            tbHits;
     std::string_view pv;
     int              hashfull;
 };
@@ -226,7 +226,7 @@ struct InfoFull: InfoShort {
 struct InfoIteration {
     int              depth;
     std::string_view currmove;
-    size_t           currmovenumber;
+    usize            currmovenumber;
 };
 
 // Skill structure is used to implement strength limit. If we have a UCI_Elo,
@@ -251,7 +251,7 @@ struct Skill {
     }
     bool enabled() const { return level < 20.0; }
     bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
-    Move pick_best(const RootMoves&, size_t multiPV);
+    Move pick_best(const RootMoves&, usize multiPV);
 
     double level;
     Move   best = Move::none();
@@ -295,7 +295,7 @@ class SearchManager: public ISearchManager {
     Value                bestPreviousAverageScore;
     bool                 stopOnPonderhit;
 
-    size_t id;
+    usize id;
 
     const UpdateContext& updates;
 };
@@ -312,9 +312,9 @@ class Worker {
    public:
     Worker(SharedState&,
            std::unique_ptr<ISearchManager>,
-           size_t,
-           size_t,
-           size_t,
+           usize,
+           usize,
+           usize,
            NumaReplicatedAccessToken);
 
     // Called at instantiation to initialize reductions tables.
@@ -373,7 +373,7 @@ class Worker {
 
     LimitsType limits;
 
-    size_t           pvIdx, pvLast;
+    usize            pvIdx, pvLast;
     std::atomic<u64> nodes, tbHits, bestMoveChanges;
     int              selDepth, nmpMinPly;
 
@@ -387,7 +387,7 @@ class Worker {
 
     PVMoves lastIterationPV;
 
-    size_t                    threadIdx, numaThreadIdx, numaTotal;
+    usize                     threadIdx, numaThreadIdx, numaTotal;
     NumaReplicatedAccessToken numaAccessToken;
 
     // Reductions lookup table initialized at startup
