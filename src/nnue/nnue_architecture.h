@@ -42,7 +42,7 @@ using PSQFeatureSet    = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
 constexpr IndexType L1 = 1024;
-constexpr int       L2 = 31;
+constexpr int       L2 = 32;
 constexpr int       L3 = 32;
 
 constexpr IndexType PSQTBuckets = 8;
@@ -59,12 +59,12 @@ struct NetworkArchitecture {
     static constexpr int       FC_0_OUTPUTS                 = L2;
     static constexpr int       FC_1_OUTPUTS                 = L3;
 
-    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
-    Layers::SqrClippedReLU<FC_0_OUTPUTS + 1, WeightScaleBits + 1>                      ac_sqr_0;
-    Layers::ClippedReLU<FC_0_OUTPUTS + 1, WeightScaleBits + 1>                         ac_0;
-    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                            fc_1;
-    Layers::ClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                                 ac_1;
-    Layers::AffineTransform<FC_1_OUTPUTS, 1>                                           fc_2;
+    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS> fc_0;
+    Layers::SqrClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                      ac_sqr_0;
+    Layers::ClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                         ac_0;
+    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                        fc_1;
+    Layers::ClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                             ac_1;
+    Layers::AffineTransform<FC_1_OUTPUTS, 1>                                       fc_2;
 
     // Hash value embedded in the evaluation file
     static constexpr std::uint32_t get_hash_value() {
@@ -122,11 +122,20 @@ struct NetworkArchitecture {
         ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
         fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
 
-        // max value for fwdOut is (L1 + L3) * HiddenMaxVal * WeightMaxVal
-        // for int8 activations and weights this is (L1 + L3) * 16129 making
-        // fwdOut safe from overflow until (L1 + L3) > 133,144
-        // first layer and last layer use WeightScaleBits + 1
-        std::int32_t fwdOut = buffer.fc_2_out[0] + buffer.fc_0_out[FC_0_OUTPUTS];
+        // max value for fwdOut is 4 * (L1 + L2 + L3) * HiddenMaxVal * WeightMaxVal
+        // for int8 activations and weights this is 4 * L1 * 16129 making
+        // fwdOut safe from overflow until L1 + L2 + L3 > 133,144 / 4 = 33k
+        // skip connections are trained with factor 2 to increase contribution.
+        // first layer and last layer use `WeightScaleBits + 1`.
+        // second layer uses `WeightScaleBits` -- thus the factor is 4.
+        static_assert(FC_0_OUTPUTS >= 2 && FC_0_OUTPUTS >= 2);
+        std::int32_t fwdOut = buffer.fc_2_out[0];
+        std::int32_t skip_0 =
+          2 * buffer.fc_0_out[FC_0_OUTPUTS - 2] + 2 * buffer.fc_0_out[FC_0_OUTPUTS - 1];
+        std::int32_t skip_1 =
+          4 * buffer.fc_1_out[FC_1_OUTPUTS - 2] + 4 * buffer.fc_1_out[FC_1_OUTPUTS - 1];
+        fwdOut += skip_0 + skip_1;
+
         // fwdOut is such that 1.0 is equal to HiddenOneVal*(1<<WeightScaleBits)*2 in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale
         // to make overflow impossible we cast to int64_t
