@@ -143,8 +143,8 @@ class ThreadPool {
 
     Search::SearchManager* main_manager();
     Thread*                main_thread() const { return threads.front().get(); }
-    uint64_t               nodes_searched() const;
-    uint64_t               tb_hits() const;
+    u64                    nodes_searched() const;
+    u64                    tb_hits() const;
     Thread*                get_best_thread() const;
     void                   start_searching();
     void                   wait_for_search_finished() const;
@@ -169,9 +169,9 @@ class ThreadPool {
     std::vector<std::unique_ptr<Thread>> threads;
     std::vector<NumaIndex>               boundThreadToNumaNode;
 
-    uint64_t accumulate(std::atomic<uint64_t> Search::Worker::* member) const {
+    u64 accumulate(std::atomic<u64> Search::Worker::* member) const {
 
-        uint64_t sum = 0;
+        u64 sum = 0;
         for (auto&& th : threads)
             sum += (th->worker.get()->*member).load(std::memory_order_relaxed);
         return sum;

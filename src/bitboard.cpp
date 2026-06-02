@@ -22,8 +22,8 @@
 
 namespace Stockfish {
 
-uint8_t PopCnt16[1 << 16];
-uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+u8 PopCnt16[1 << 16];
+u8 SquareDistance[SQUARE_NB][SQUARE_NB];
 
 // Returns an ASCII representation of a bitboard suitable
 // to be printed to standard output. Useful for debugging.
@@ -51,7 +51,7 @@ std::string Bitboards::pretty(Bitboard b) {
 void Bitboards::init() {
 
     for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCnt16[i] = uint8_t(std::bitset<16>(i).count());
+        PopCnt16[i] = u8(std::bitset<16>(i).count());
 
     for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
         for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)

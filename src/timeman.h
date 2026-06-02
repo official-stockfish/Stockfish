@@ -26,7 +26,7 @@
 namespace Stockfish {
 
 class OptionsMap;
-enum Color : uint8_t;
+enum Color : u8;
 
 namespace Search {
 struct LimitsType;
@@ -51,15 +51,15 @@ class TimeManagement {
     TimePoint elapsed_time() const { return now() - startTime; };
 
     void clear();
-    void advance_nodes_time(std::int64_t nodes);
+    void advance_nodes_time(i64 nodes);
 
    private:
     TimePoint startTime;
     TimePoint optimumTime;
     TimePoint maximumTime;
 
-    std::int64_t availableNodes = -1;     // When in 'nodes as time' mode
-    bool         useNodesTime   = false;  // True if we are in 'nodes as time' mode
+    i64  availableNodes = -1;     // When in 'nodes as time' mode
+    bool useNodesTime   = false;  // True if we are in 'nodes as time' mode
 };
 
 }  // namespace Stockfish

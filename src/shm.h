@@ -107,7 +107,7 @@ inline std::string getExecutablePathHash() {
     path_length = GetModuleFileNameA(NULL, executable_path, sizeof(executable_path));
 
 #elif defined(__APPLE__)
-    uint32_t size = sizeof(executable_path);
+    u32 size = sizeof(executable_path);
     if (_NSGetExecutablePath(executable_path, &size) == 0)
     {
         path_length = std::strlen(executable_path);

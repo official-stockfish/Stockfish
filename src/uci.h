@@ -33,7 +33,7 @@ namespace Stockfish {
 class Position;
 class Move;
 class Score;
-enum Square : uint8_t;
+enum Square : u8;
 using Value = int;
 
 constexpr auto StartFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -62,12 +62,12 @@ class UCIEngine {
 
     static void print_info_string(std::string_view str);
 
-    void          go(std::istringstream& is);
-    void          bench(std::istream& args);
-    void          benchmark(std::istream& args);
-    void          position(std::istringstream& is);
-    void          setoption(std::istringstream& is);
-    std::uint64_t perft(const Search::LimitsType&);
+    void go(std::istringstream& is);
+    void bench(std::istream& args);
+    void benchmark(std::istream& args);
+    void position(std::istringstream& is);
+    void setoption(std::istringstream& is);
+    u64  perft(const Search::LimitsType&);
 
     static void on_update_no_moves(const Engine::InfoShort& info);
     static void on_update_full(const Engine::InfoFull& info, bool showWDL);

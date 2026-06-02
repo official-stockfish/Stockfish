@@ -46,6 +46,21 @@
 
 namespace Stockfish {
 
+using u64 = std::uint64_t;
+using u32 = std::uint32_t;
+using u16 = std::uint16_t;
+using u8  = std::uint8_t;
+
+using i64 = std::int64_t;
+using i32 = std::int32_t;
+using i16 = std::int16_t;
+using i8  = std::int8_t;
+
+#if defined(__GNUC__) && defined(IS_64BIT)
+__extension__ using u128 = unsigned __int128;
+__extension__ using i128 = signed __int128;
+#endif
+
 std::string engine_version_info();
 std::string engine_info(bool to_uci = false);
 std::string compiler_info();
@@ -134,15 +149,15 @@ struct PipeDeleter {
 std::optional<std::string> read_file_to_string(const std::string& path);
 
 void dbg_hit_on(bool cond, int slot = 0);
-void dbg_mean_of(int64_t value, int slot = 0);
-void dbg_stdev_of(int64_t value, int slot = 0);
-void dbg_extremes_of(int64_t value, int slot = 0);
-void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
+void dbg_mean_of(i64 value, int slot = 0);
+void dbg_stdev_of(i64 value, int slot = 0);
+void dbg_extremes_of(i64 value, int slot = 0);
+void dbg_correl_of(i64 value1, i64 value2, int slot = 0);
 void dbg_print();
 void dbg_clear();
 
 using TimePoint = std::chrono::milliseconds::rep;  // A value in milliseconds
-static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
+static_assert(sizeof(TimePoint) == sizeof(i64), "TimePoint should be 64 bits");
 inline TimePoint now() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
              std::chrono::steady_clock::now().time_since_epoch())
@@ -187,8 +202,8 @@ void sync_cout_start();
 void sync_cout_end();
 
 // True if and only if the binary is compiled on a little-endian machine
-static inline const std::uint16_t Le             = 1;
-static inline const bool          IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
+static inline const u16  Le             = 1;
+static inline const bool IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
 
 
 template<typename T, std::size_t MaxSize>
@@ -338,16 +353,16 @@ class MultiArray {
 
 class PRNG {
 
-    uint64_t s;
+    u64 s;
 
-    uint64_t rand64() {
+    u64 rand64() {
 
         s ^= s >> 12, s ^= s << 25, s ^= s >> 27;
         return s * 2685821657736338717LL;
     }
 
    public:
-    PRNG(uint64_t seed) :
+    PRNG(u64 seed) :
         s(seed) {
         assert(seed);
     }
@@ -365,16 +380,15 @@ class PRNG {
     }
 };
 
-inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
+inline u64 mul_hi64(u64 a, u64 b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
-    __extension__ using uint128 = unsigned __int128;
-    return (uint128(a) * uint128(b)) >> 64;
+    return (u128(a) * u128(b)) >> 64;
 #else
-    uint64_t aL = uint32_t(a), aH = a >> 32;
-    uint64_t bL = uint32_t(b), bH = b >> 32;
-    uint64_t c1 = (aL * bL) >> 32;
-    uint64_t c2 = aH * bL + c1;
-    uint64_t c3 = aL * bH + uint32_t(c2);
+    u64 aL = u32(a), aH = a >> 32;
+    u64 bL = u32(b), bH = b >> 32;
+    u64 c1 = (aL * bL) >> 32;
+    u64 c2 = aH * bL + c1;
+    u64 c3 = aL * bH + u32(c2);
     return aH * bH + (c2 >> 32) + (c3 >> 32);
 #endif
 }
@@ -385,7 +399,7 @@ inline constexpr T2 interpolate(T1 x, T1 x0, T1 x1, T2 y0, T2 y1) {
     return T2(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
 }
 
-uint64_t hash_bytes(const char*, size_t);
+u64 hash_bytes(const char*, size_t);
 
 template<typename T>
 inline std::size_t get_raw_data_hash(const T& value) {
@@ -408,7 +422,7 @@ inline void hash_combine(std::size_t& seed, const T& v) {
     seed ^= x + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-inline std::uint64_t hash_string(const std::string& sv) { return hash_bytes(sv.data(), sv.size()); }
+inline u64 hash_string(const std::string& sv) { return hash_bytes(sv.data(), sv.size()); }
 
 template<std::size_t Capacity>
 class FixedString {

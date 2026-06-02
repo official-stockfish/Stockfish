@@ -142,7 +142,7 @@ Engine::Engine(std::optional<std::string> path) :
     resize_threads();
 }
 
-std::uint64_t Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
+u64 Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
     verify_network();
 
     return Benchmark::perft(fen, depth, isChess960);

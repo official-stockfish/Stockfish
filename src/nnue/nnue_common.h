@@ -55,14 +55,14 @@
 
 namespace Stockfish::Eval::NNUE {
 
-using BiasType         = std::int16_t;
-using ThreatWeightType = std::int8_t;
-using WeightType       = std::int16_t;
-using PSQTWeightType   = std::int32_t;
-using IndexType        = std::uint32_t;
+using BiasType         = i16;
+using ThreatWeightType = i8;
+using WeightType       = i16;
+using PSQTWeightType   = i32;
+using IndexType        = u32;
 
 // Version of the evaluation file
-constexpr std::uint32_t Version = 0x6A448AFAu;
+constexpr u32 Version = 0x6A448AFAu;
 
 // Constant used in evaluation value calculation
 constexpr int OutputScale     = 16;
@@ -98,7 +98,7 @@ constexpr std::size_t SimdWidth = 16;
 constexpr std::size_t MaxSimdWidth = 32;
 
 // Type of input feature after conversion
-using TransformedFeatureType = std::uint8_t;
+using TransformedFeatureType = u8;
 
 // Round n up to be a multiple of base
 template<typename IntType>
@@ -118,7 +118,7 @@ inline IntType read_little_endian(std::istream& stream) {
         stream.read(reinterpret_cast<char*>(&result), sizeof(IntType));
     else
     {
-        std::uint8_t                  u[sizeof(IntType)];
+        u8                            u[sizeof(IntType)];
         std::make_unsigned_t<IntType> v = 0;
 
         stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
@@ -143,7 +143,7 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         stream.write(reinterpret_cast<const char*>(&value), sizeof(IntType));
     else
     {
-        std::uint8_t                  u[sizeof(IntType)];
+        u8                            u[sizeof(IntType)];
         std::make_unsigned_t<IntType> v = value;
 
         std::size_t i = 0;
@@ -152,11 +152,11 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         {
             for (; i + 1 < sizeof(IntType); ++i)
             {
-                u[i] = std::uint8_t(v);
+                u[i] = u8(v);
                 v >>= 8;
             }
         }
-        u[i] = std::uint8_t(v);
+        u[i] = u8(v);
 
         stream.write(reinterpret_cast<char*>(u), sizeof(IntType));
     }
@@ -192,9 +192,9 @@ inline void write_little_endian(std::ostream& stream, const IntType* values, std
 template<typename BufType, typename IntType, std::size_t Count>
 inline void read_leb_128_detail(std::istream&               stream,
                                 std::array<IntType, Count>& out,
-                                std::uint32_t&              bytes_left,
+                                u32&                        bytes_left,
                                 BufType&                    buf,
-                                std::uint32_t&              buf_pos) {
+                                u32&                        buf_pos) {
 
     static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
     static_assert(sizeof(IntType) <= 4, "Not implemented for types larger than 32 bit");
@@ -210,7 +210,7 @@ inline void read_leb_128_detail(std::istream&               stream,
             buf_pos = 0;
         }
 
-        std::uint8_t byte = buf[buf_pos++];
+        u8 byte = buf[buf_pos++];
         --bytes_left;
         result |= (byte & 0x7f) << (shift % 32);
         shift += 7;
@@ -231,9 +231,9 @@ inline void read_leb_128(std::istream& stream, Arrays&... outs) {
     stream.read(leb128MagicString, Leb128MagicStringSize);
     assert(strncmp(Leb128MagicString, leb128MagicString, Leb128MagicStringSize) == 0);
 
-    auto                           bytes_left = read_little_endian<std::uint32_t>(stream);
-    std::array<std::uint8_t, 8192> buf;
-    std::uint32_t                  buf_pos = std::uint32_t(buf.size());
+    auto                 bytes_left = read_little_endian<u32>(stream);
+    std::array<u8, 8192> buf;
+    u32                  buf_pos = u32(buf.size());
 
     (read_leb_128_detail(stream, outs, bytes_left, buf, buf_pos), ...);
 
@@ -253,11 +253,11 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
 
     static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
 
-    std::uint32_t byte_count = 0;
+    u32 byte_count = 0;
     for (std::size_t i = 0; i < Count; ++i)
     {
-        IntType      value = values[i];
-        std::uint8_t byte;
+        IntType value = values[i];
+        u8      byte;
         do
         {
             byte = value & 0x7f;
@@ -268,9 +268,9 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
 
     write_little_endian(stream, byte_count);
 
-    const std::uint32_t BUF_SIZE = 4096;
-    std::uint8_t        buf[BUF_SIZE];
-    std::uint32_t       buf_pos = 0;
+    const u32 BUF_SIZE = 4096;
+    u8        buf[BUF_SIZE];
+    u32       buf_pos = 0;
 
     auto flush = [&]() {
         if (buf_pos > 0)
@@ -280,7 +280,7 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
         }
     };
 
-    auto write = [&](std::uint8_t b) {
+    auto write = [&](u8 b) {
         buf[buf_pos++] = b;
         if (buf_pos == BUF_SIZE)
             flush();
@@ -291,7 +291,7 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
         IntType value = values[i];
         while (true)
         {
-            std::uint8_t byte = value & 0x7f;
+            u8 byte = value & 0x7f;
             value >>= 7;
             if ((byte & 0x40) == 0 ? value == 0 : value == -1)
             {

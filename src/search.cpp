@@ -67,7 +67,7 @@ using namespace Search;
 
 namespace {
 
-constexpr uint64_t NODES_LIMIT_OUTPUT = 10'000'000;
+constexpr u64 NODES_LIMIT_OUTPUT = 10'000'000;
 
 constexpr int SEARCHEDLIST_CAPACITY = 32;
 using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
@@ -530,8 +530,7 @@ bool Search::Worker::iterative_deepening() {
         // Do we have time for the next iteration? Can we stop searching now?
         if (limits.use_time_management() && !threads.stop && !mainThread->stopOnPonderhit)
         {
-            uint64_t nodesEffort =
-              rootMoves[0].effort * 100000 / std::max(uint64_t(1), uint64_t(nodes));
+            u64 nodesEffort = rootMoves[0].effort * 100000 / std::max(u64(1), u64(nodes));
 
             double fallingEval = (11.87 + 2.21 * (mainThread->bestPreviousAverageScore - bestValue)
                                   + 1.0 * (mainThread->iterValue[iterIdx] - bestValue))
@@ -548,8 +547,7 @@ bool Search::Worker::iterative_deepening() {
             double bestMoveInstability = 1.096 + 2.29 * totBestMoveChanges / threads.size();
 
             double highBestMoveEffort = std::clamp(
-              interpolate(int64_t(nodesEffort), int64_t(79219), int64_t(101822), 0.924, 0.71), 0.71,
-              0.924);
+              interpolate(i64(nodesEffort), i64(79219), i64(101822), 0.924, 0.71), 0.71, 0.924);
 
             double totalTime = mainThread->tm.optimum() * fallingEval * reduction
                              * bestMoveInstability * highBestMoveEffort;
@@ -1241,7 +1239,7 @@ moves_loop:  // When in check, search starts here
                 extension = -2;
         }
 
-        uint64_t nodeCount = rootNode ? uint64_t(nodes) : 0;
+        u64 nodeCount = rootNode ? u64(nodes) : 0;
 
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
@@ -2173,7 +2171,7 @@ void SearchManager::pv(Search::Worker&           worker,
     auto&      rootMoves = worker.rootMoves;
     auto&      pos       = worker.rootPos;
     size_t     multiPV   = std::min(size_t(worker.options["MultiPV"]), rootMoves.size());
-    uint64_t   tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
+    u64        tbHits    = threads.tb_hits() + (worker.tbConfig.rootInTB ? rootMoves.size() : 0);
 
     for (size_t i = 0; i < multiPV; ++i)
     {

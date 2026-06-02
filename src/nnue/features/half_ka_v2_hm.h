@@ -67,7 +67,7 @@ class HalfKAv2_hm {
     static constexpr const char* Name = "HalfKAv2_hm(Friend)";
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue = 0x7f234cb8u;
+    static constexpr u32 HashValue = 0x7f234cb8u;
 
     // Number of feature dimensions
     static constexpr IndexType Dimensions =

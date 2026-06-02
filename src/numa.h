@@ -273,7 +273,7 @@ inline WindowsAffinity get_process_affinity() {
 
             const size_t procGroupIndex = groupAffinity[0];
 
-            const uint64_t mask = static_cast<uint64_t>(proc);
+            const u64 mask = static_cast<u64>(proc);
             for (size_t j = 0; j < WIN_PROCESSOR_GROUP_SIZE; ++j)
             {
                 if (mask & (KAFFINITY(1) << j))
@@ -312,8 +312,8 @@ inline WindowsAffinity get_process_affinity() {
                     // choice could influence the resulting affinity.
                     // We assume the processor IDs within the group are
                     // filled sequentially from 0.
-                    uint64_t procCombined = std::numeric_limits<uint64_t>::max();
-                    uint64_t sysCombined  = std::numeric_limits<uint64_t>::max();
+                    u64 procCombined = std::numeric_limits<u64>::max();
+                    u64 sysCombined  = std::numeric_limits<u64>::max();
 
                     for (int i = 0; i < std::min(numActiveProcessors, 2); ++i)
                     {
@@ -341,8 +341,8 @@ inline WindowsAffinity get_process_affinity() {
                             return;
                         }
 
-                        procCombined &= static_cast<uint64_t>(proc2);
-                        sysCombined &= static_cast<uint64_t>(sys2);
+                        procCombined &= static_cast<u64>(proc2);
+                        sysCombined &= static_cast<u64>(sys2);
                     }
 
                     if (procCombined != sysCombined)

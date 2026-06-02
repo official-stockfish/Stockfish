@@ -32,27 +32,27 @@ struct NNZInfo {
 #if defined(USE_AVX512)
     unsigned count = 0;
     // indices of non-zero chunks
-    uint16_t nnz[Dimensions / 4];
+    u16 nnz[Dimensions / 4];
 
     #ifdef USE_AVX512ICL
     alignas(64) static constexpr auto Indices = []() {
-        std::array<std::array<uint16_t, 32>, 2> indices{};
+        std::array<std::array<u16, 32>, 2> indices{};
         for (int i = 0; i < 2; ++i)
         {
             indices[i] = {0, 1, 2,  3,  16, 17, 18, 19, 4,  5,  6,  7,  20, 21, 22, 23,
                           8, 9, 10, 11, 24, 25, 26, 27, 12, 13, 14, 15, 28, 29, 30, 31};
-            for (uint16_t& m : indices[i])
+            for (u16& m : indices[i])
                 m += i * Dimensions / 8;
         }
         return indices;
     }();
     #else
     alignas(64) static constexpr auto Indices = []() {
-        std::array<std::array<uint32_t, 16>, 2> indices{};
+        std::array<std::array<u32, 16>, 2> indices{};
         for (int i = 0; i < 2; ++i)
         {
             indices[i] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-            for (uint32_t& m : indices[i])
+            for (u32& m : indices[i])
                 m += i * Dimensions / 8;
         }
         return indices;
@@ -105,10 +105,10 @@ struct NNZInfo {
     NNZCursor make_cursor(bool perspective) { return {*this, perspective, count}; }
 #else
     // Each 8-bit chunk
-    uint8_t bitset[(Dimensions + 31) / 32];
+    u8 bitset[(Dimensions + 31) / 32];
 
     struct NNZCursor {
-        uint8_t* out;
+        u8* out;
 
         NNZCursor(NNZInfo& info, bool perspective) {
             out = info.bitset + perspective * Dimensions / 64;
@@ -119,7 +119,7 @@ struct NNZInfo {
             using namespace SIMD;
 
         #ifdef USE_NEON
-            alignas(16) static constexpr uint16_t Mask8[8] = {1, 16, 2, 32, 4, 64, 8, 128};
+            alignas(16) static constexpr u16 Mask8[8] = {1, 16, 2, 32, 4, 64, 8, 128};
 
             uint32x4_t n1 = vreinterpretq_u32_s16(neurons1);
             uint32x4_t n2 = vreinterpretq_u32_s16(neurons2);

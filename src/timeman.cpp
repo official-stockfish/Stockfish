@@ -35,9 +35,9 @@ void TimeManagement::clear() {
     availableNodes = -1;  // When in 'nodes as time' mode
 }
 
-void TimeManagement::advance_nodes_time(std::int64_t nodes) {
+void TimeManagement::advance_nodes_time(i64 nodes) {
     assert(useNodesTime);
-    availableNodes = std::max(int64_t(0), availableNodes - nodes);
+    availableNodes = std::max(i64(0), availableNodes - nodes);
 }
 
 // Called at the beginning of the search and calculates
@@ -83,7 +83,7 @@ void TimeManagement::init(Search::LimitsType& limits,
 
     // These numbers are used where multiplications, divisions,
     // or comparisons with constants are involved.
-    const int64_t   scaleFactor = useNodesTime ? npmsec : 1;
+    const i64       scaleFactor = useNodesTime ? npmsec : 1;
     const TimePoint scaledTime  = limits.time[us] / scaleFactor;
 
     // Maximum move horizon

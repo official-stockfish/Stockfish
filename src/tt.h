@@ -67,7 +67,7 @@ struct TTData {
 // for chess reasons, we may decide the new data is less important than the old.
 struct TTWriter {
    public:
-    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 generation8);
     void penalize(int penalty);  // decrement stored depth by the penalty
 
    private:
@@ -87,7 +87,7 @@ class TranspositionTable {
 
     void
     new_search();  // This must be called at the beginning of each root search to track entry aging
-    uint8_t generation() const;  // The current age, used when writing new data to the TT
+    u8 generation() const;  // The current age, used when writing new data to the TT
     // Approximate what fraction of entries (permille) have been written to during this root search
     int hashfull(int maxAge = 0) const;
 
@@ -105,7 +105,7 @@ class TranspositionTable {
     size_t   clusterCount;
     Cluster* table = nullptr;
 
-    uint8_t generation8 = 0;
+    u8 generation8 = 0;
 };
 
 }  // namespace Stockfish

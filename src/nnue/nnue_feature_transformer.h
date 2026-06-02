@@ -117,8 +117,8 @@ class FeatureTransformer {
 
     static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
 
-    static constexpr std::uint32_t combine_hash(std::initializer_list<std::uint32_t> hashes) {
-        std::uint32_t hash = 0;
+    static constexpr u32 combine_hash(std::initializer_list<u32> hashes) {
+        u32 hash = 0;
         for (const auto component_hash : hashes)
         {
             hash = (hash << 1) | (hash >> 31);
@@ -128,7 +128,7 @@ class FeatureTransformer {
     }
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr u32 get_hash_value() {
         return combine_hash({ThreatFeatureSet::HashValue, PSQFeatureSet::HashValue})
              ^ (OutputDimensions * 2);
     }
@@ -197,12 +197,12 @@ class FeatureTransformer {
     }
 
     // Convert input features
-    std::int32_t transform(const Position&            pos,
-                           AccumulatorStack&          accumulatorStack,
-                           AccumulatorCaches&         cache,
-                           OutputType*                output,
-                           int                        bucket,
-                           NNZInfo<OutputDimensions>& nnzInfo) const {
+    i32 transform(const Position&            pos,
+                  AccumulatorStack&          accumulatorStack,
+                  AccumulatorCaches&         cache,
+                  OutputType*                output,
+                  int                        bucket,
+                  NNZInfo<OutputDimensions>& nnzInfo) const {
 
         using namespace SIMD;
         accumulatorStack.evaluate(pos, *this, cache);

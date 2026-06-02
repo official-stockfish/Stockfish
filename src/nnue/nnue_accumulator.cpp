@@ -205,7 +205,7 @@ void AccumulatorStack::backward_update_incremental(Color perspective,
 
     const Square ksq = pos.square<KING>(perspective);
 
-    for (std::int64_t next = std::int64_t(size) - 2; next >= std::int64_t(end); next--)
+    for (i64 next = i64(size) - 2; next >= i64(end); next--)
         update_accumulator_incremental<false>(perspective, featureTransformer, ksq,
                                               mut_accumulators<FeatureSet>()[next],
                                               accumulators<FeatureSet>()[next + 1]);
@@ -511,8 +511,8 @@ Bitboard get_changed_pieces(const std::array<Piece, SQUARE_NB>& oldPieces,
     {
         const __m256i old_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&oldPieces[i]));
         const __m256i new_v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&newPieces[i]));
-        const __m256i cmpEqual        = _mm256_cmpeq_epi8(old_v, new_v);
-        const std::uint32_t equalMask = _mm256_movemask_epi8(cmpEqual);
+        const __m256i cmpEqual  = _mm256_cmpeq_epi8(old_v, new_v);
+        const u32     equalMask = _mm256_movemask_epi8(cmpEqual);
         sameBB |= static_cast<Bitboard>(equalMask) << i;
     }
     return ~sameBB;
@@ -551,8 +551,8 @@ Bitboard get_changed_pieces(const std::array<Piece, SQUARE_NB>& oldPieces,
 
     return changed;
 #elif defined(USE_NEON)
-    uint8x16x4_t old_v = vld4q_u8(reinterpret_cast<const uint8_t*>(oldPieces.data()));
-    uint8x16x4_t new_v = vld4q_u8(reinterpret_cast<const uint8_t*>(newPieces.data()));
+    uint8x16x4_t old_v = vld4q_u8(reinterpret_cast<const u8*>(oldPieces.data()));
+    uint8x16x4_t new_v = vld4q_u8(reinterpret_cast<const u8*>(newPieces.data()));
     auto         cmp   = [=](const int i) { return vceqq_u8(old_v.val[i], new_v.val[i]); };
 
     uint8x16_t cmp0_1 = vsriq_n_u8(cmp(1), cmp(0), 1);

@@ -141,10 +141,10 @@ void Thread::idle_loop() {
 
 Search::SearchManager* ThreadPool::main_manager() { return main_thread()->worker->main_manager(); }
 
-uint64_t ThreadPool::nodes_searched() const { return accumulate(&Search::Worker::nodes); }
-uint64_t ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits); }
+u64 ThreadPool::nodes_searched() const { return accumulate(&Search::Worker::nodes); }
+u64 ThreadPool::tb_hits() const { return accumulate(&Search::Worker::tbHits); }
 
-static size_t next_power_of_two(uint64_t count) { return count > 1 ? (2ULL << msb(count - 1)) : 1; }
+static size_t next_power_of_two(u64 count) { return count > 1 ? (2ULL << msb(count - 1)) : 1; }
 
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
@@ -201,7 +201,7 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
         for (auto pair : counts)
         {
             NumaIndex numaIndex = pair.first;
-            uint64_t  count     = pair.second;
+            u64       count     = pair.second;
             auto      f         = [&]() {
                 sharedState.sharedHistories.try_emplace(numaIndex, next_power_of_two(count));
             };
@@ -352,7 +352,7 @@ Thread* ThreadPool::get_best_thread() const {
     Thread* bestThread = threads.front().get();
     Value   minScore   = VALUE_NONE;
 
-    std::unordered_map<Move, int64_t, Move::MoveHash> votes(
+    std::unordered_map<Move, i64, Move::MoveHash> votes(
       2 * std::min(size(), bestThread->worker->rootMoves.size()));
 
     // Find the minimum score of all threads

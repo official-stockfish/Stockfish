@@ -83,8 +83,8 @@ class Network {
     bool                       save(std::ostream&, const std::string&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
-    bool read_header(std::istream&, std::uint32_t*, std::string*) const;
-    bool write_header(std::ostream&, std::uint32_t, const std::string&) const;
+    bool read_header(std::istream&, u32*, std::string*) const;
+    bool write_header(std::ostream&, u32, const std::string&) const;
 
     bool read_parameters(std::istream&, std::string&);
     bool write_parameters(std::ostream&, const std::string&) const;
@@ -100,7 +100,7 @@ class Network {
     bool initialized = false;
 
     // Hash value of evaluation function structure
-    static constexpr std::uint32_t hash =
+    static constexpr u32 hash =
       FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
 
     friend struct AccumulatorCaches;

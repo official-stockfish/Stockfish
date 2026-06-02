@@ -58,7 +58,7 @@ class Engine {
 
     ~Engine() { wait_for_search_finished(); }
 
-    std::uint64_t perft(const std::string& fen, Depth depth, bool isChess960);
+    u64 perft(const std::string& fen, Depth depth, bool isChess960);
 
     // non blocking call to start searching
     void go(Search::LimitsType&);

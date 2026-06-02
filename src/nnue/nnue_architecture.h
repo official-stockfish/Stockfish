@@ -67,9 +67,9 @@ struct NetworkArchitecture {
     Layers::AffineTransform<FC_1_OUTPUTS, 1>                                           fc_2;
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr u32 get_hash_value() {
         // input slice hash
-        std::uint32_t hashValue = 0xEC42E90Du;
+        u32 hashValue = 0xEC42E90Du;
         hashValue ^= TransformedFeatureDimensions * 2;
 
         hashValue = decltype(fc_0)::get_hash_value(hashValue);
@@ -97,8 +97,8 @@ struct NetworkArchitecture {
             && fc_2.write_parameters(stream);
     }
 
-    std::int32_t propagate(const TransformedFeatureType* transformedFeatures,
-                           const NNZInfo<L1>&            nnzInfo) const {
+    i32 propagate(const TransformedFeatureType* transformedFeatures,
+                  const NNZInfo<L1>&            nnzInfo) const {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
             alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
@@ -126,16 +126,15 @@ struct NetworkArchitecture {
         // for int8 activations and weights this is (L1 + L3) * 16129 making
         // fwdOut safe from overflow until (L1 + L3) > 133,144
         // first layer and last layer use WeightScaleBits + 1
-        std::int32_t fwdOut = buffer.fc_2_out[0] + buffer.fc_0_out[FC_0_OUTPUTS];
+        i32 fwdOut = buffer.fc_2_out[0] + buffer.fc_0_out[FC_0_OUTPUTS];
         // fwdOut is such that 1.0 is equal to HiddenOneVal*(1<<WeightScaleBits)*2 in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale
-        // to make overflow impossible we cast to int64_t
-        constexpr std::int64_t multiplier  = 600 * OutputScale;
-        constexpr std::int64_t denominator = static_cast<std::int64_t>(HiddenOneVal)
-                                           * static_cast<std::int64_t>(1U << WeightScaleBits) * 2;
+        // to make overflow impossible we cast to i64
+        constexpr i64 multiplier = 600 * OutputScale;
+        constexpr i64 denominator =
+          static_cast<i64>(HiddenOneVal) * static_cast<i64>(1U << WeightScaleBits) * 2;
 
-        std::int32_t outputValue =
-          static_cast<std::int32_t>((static_cast<std::int64_t>(fwdOut) * multiplier) / denominator);
+        i32 outputValue = static_cast<i32>((static_cast<i64>(fwdOut) * multiplier) / denominator);
         return outputValue;
     }
 

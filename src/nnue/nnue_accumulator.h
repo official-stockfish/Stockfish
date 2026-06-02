@@ -43,9 +43,9 @@ class FeatureTransformer;
 
 // Class that holds the result of affine transformation of input features
 struct alignas(CacheLineSize) Accumulator {
-    std::array<std::array<std::int16_t, L1>, COLOR_NB>          accumulation;
-    std::array<std::array<std::int32_t, PSQTBuckets>, COLOR_NB> psqtAccumulation;
-    std::array<bool, COLOR_NB>                                  computed = {};
+    std::array<std::array<i16, L1>, COLOR_NB>          accumulation;
+    std::array<std::array<i32, PSQTBuckets>, COLOR_NB> psqtAccumulation;
+    std::array<bool, COLOR_NB>                         computed = {};
 };
 
 

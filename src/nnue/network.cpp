@@ -67,8 +67,8 @@ namespace Detail {
 template<typename T>
 bool read_parameters(std::istream& stream, T& reference) {
 
-    std::uint32_t header;
-    header = read_little_endian<std::uint32_t>(stream);
+    u32 header;
+    header = read_little_endian<u32>(stream);
     if (!stream || header != T::get_hash_value())
         return false;
     return reference.read_parameters(stream);
@@ -78,7 +78,7 @@ bool read_parameters(std::istream& stream, T& reference) {
 template<typename T>
 bool write_parameters(std::ostream& stream, const T& reference) {
 
-    write_little_endian<std::uint32_t>(stream, T::get_hash_value());
+    write_little_endian<u32>(stream, T::get_hash_value());
     return reference.write_parameters(stream);
 }
 
@@ -142,7 +142,7 @@ NetworkOutput Network::evaluate(const Position&    pos,
                                 AccumulatorStack&  accumulatorStack,
                                 AccumulatorCaches& cache) const {
 
-    constexpr uint64_t alignment = CacheLineSize;
+    constexpr u64 alignment = CacheLineSize;
 
     alignas(alignment) TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
 
@@ -202,7 +202,7 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
                                       AccumulatorStack&  accumulatorStack,
                                       AccumulatorCaches& cache) const {
 
-    constexpr uint64_t alignment = CacheLineSize;
+    constexpr u64 alignment = CacheLineSize;
 
     alignas(alignment) TransformedFeatureType transformedFeatures[FeatureTransformer::BufferSize];
 
@@ -300,12 +300,12 @@ std::size_t Network::get_content_hash() const {
 }
 
 // Read network header
-bool Network::read_header(std::istream& stream, std::uint32_t* hashValue, std::string* desc) const {
-    std::uint32_t version, size;
+bool Network::read_header(std::istream& stream, u32* hashValue, std::string* desc) const {
+    u32 version, size;
 
-    version    = read_little_endian<std::uint32_t>(stream);
-    *hashValue = read_little_endian<std::uint32_t>(stream);
-    size       = read_little_endian<std::uint32_t>(stream);
+    version    = read_little_endian<u32>(stream);
+    *hashValue = read_little_endian<u32>(stream);
+    size       = read_little_endian<u32>(stream);
     if (!stream || version != Version)
         return false;
     desc->resize(size);
@@ -315,19 +315,17 @@ bool Network::read_header(std::istream& stream, std::uint32_t* hashValue, std::s
 
 
 // Write network header
-bool Network::write_header(std::ostream&      stream,
-                           std::uint32_t      hashValue,
-                           const std::string& desc) const {
-    write_little_endian<std::uint32_t>(stream, Version);
-    write_little_endian<std::uint32_t>(stream, hashValue);
-    write_little_endian<std::uint32_t>(stream, std::uint32_t(desc.size()));
+bool Network::write_header(std::ostream& stream, u32 hashValue, const std::string& desc) const {
+    write_little_endian<u32>(stream, Version);
+    write_little_endian<u32>(stream, hashValue);
+    write_little_endian<u32>(stream, u32(desc.size()));
     stream.write(&desc[0], desc.size());
     return !stream.fail();
 }
 
 
 bool Network::read_parameters(std::istream& stream, std::string& netDescription) {
-    std::uint32_t hashValue;
+    u32 hashValue;
     if (!read_header(stream, &hashValue, &netDescription))
         return false;
     if (hashValue != Network::hash)

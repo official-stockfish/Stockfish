@@ -296,9 +296,9 @@ namespace {
 
 template<size_t N>
 struct DebugInfo {
-    std::array<std::atomic<int64_t>, N> data = {0};
+    std::array<std::atomic<i64>, N> data = {0};
 
-    [[nodiscard]] constexpr std::atomic<int64_t>& operator[](size_t index) {
+    [[nodiscard]] constexpr std::atomic<i64>& operator[](size_t index) {
         assert(index < N);
         return data[index];
     }
@@ -312,8 +312,8 @@ struct DebugInfo {
 
 struct DebugExtremes: public DebugInfo<3> {
     DebugExtremes() {
-        data[1] = std::numeric_limits<int64_t>::min();
-        data[2] = std::numeric_limits<int64_t>::max();
+        data[1] = std::numeric_limits<i64>::min();
+        data[2] = std::numeric_limits<i64>::max();
     }
 };
 
@@ -332,32 +332,32 @@ void dbg_hit_on(bool cond, int slot) {
         ++hit.at(slot)[1];
 }
 
-void dbg_mean_of(int64_t value, int slot) {
+void dbg_mean_of(i64 value, int slot) {
 
     ++mean.at(slot)[0];
     mean.at(slot)[1] += value;
 }
 
-void dbg_stdev_of(int64_t value, int slot) {
+void dbg_stdev_of(i64 value, int slot) {
 
     ++stdev.at(slot)[0];
     stdev.at(slot)[1] += value;
     stdev.at(slot)[2] += value * value;
 }
 
-void dbg_extremes_of(int64_t value, int slot) {
+void dbg_extremes_of(i64 value, int slot) {
     ++extremes.at(slot)[0];
 
-    int64_t current_max = extremes.at(slot)[1].load();
+    i64 current_max = extremes.at(slot)[1].load();
     while (current_max < value && !extremes.at(slot)[1].compare_exchange_weak(current_max, value))
     {}
 
-    int64_t current_min = extremes.at(slot)[2].load();
+    i64 current_min = extremes.at(slot)[2].load();
     while (current_min > value && !extremes.at(slot)[2].compare_exchange_weak(current_min, value))
     {}
 }
 
-void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
+void dbg_correl_of(i64 value1, i64 value2, int slot) {
 
     ++correl.at(slot)[0];
     correl.at(slot)[1] += value1;
@@ -369,9 +369,9 @@ void dbg_correl_of(int64_t value1, int64_t value2, int slot) {
 
 void dbg_print() {
 
-    int64_t n;
-    auto    E   = [&n](int64_t x) { return double(x) / n; };
-    auto    sqr = [](double x) { return x * x; };
+    i64  n;
+    auto E   = [&n](i64 x) { return double(x) / n; };
+    auto sqr = [](double x) { return x * x; };
 
     for (int i = 0; i < MaxDebugSlots; ++i)
         if ((n = hit[i][0]))
@@ -435,17 +435,17 @@ void sync_cout_start() { std::cout << IO_LOCK; }
 void sync_cout_end() { std::cout << IO_UNLOCK; }
 
 // Hash function based on public domain MurmurHash64A, by Austin Appleby.
-uint64_t hash_bytes(const char* data, size_t size) {
-    const uint64_t m = 0xc6a4a7935bd1e995ull;
-    const int      r = 47;
+u64 hash_bytes(const char* data, size_t size) {
+    const u64 m = 0xc6a4a7935bd1e995ull;
+    const int r = 47;
 
-    uint64_t h = size * m;
+    u64 h = size * m;
 
     const char* end = data + (size & ~(size_t) 7);
 
     for (const char* p = data; p != end; p += 8)
     {
-        uint64_t k;
+        u64 k;
         std::memcpy(&k, p, sizeof(k));
 
         k *= m;
@@ -458,9 +458,9 @@ uint64_t hash_bytes(const char* data, size_t size) {
 
     if (size & 7)
     {
-        uint64_t k = 0;
+        u64 k = 0;
         for (int i = (size & 7) - 1; i >= 0; i--)
-            k = (k << 8) | (uint64_t) end[i];
+            k = (k << 8) | u64(end[i]);
 
         h ^= k;
         h *= m;
