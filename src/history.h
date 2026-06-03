@@ -89,10 +89,10 @@ enum StatsType {
     Captures
 };
 
-template<typename T, int D, std::size_t... Sizes>
+template<typename T, int D, usize... Sizes>
 using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
 
-template<typename T, int D, std::size_t... Sizes>
+template<typename T, int D, usize... Sizes>
 using AtomicStats = MultiArray<StatsEntry<T, D, true>, Sizes...>;
 
 // DynStats is a dynamically sized array of Stats, used for thread-shared histories

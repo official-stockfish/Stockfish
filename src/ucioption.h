@@ -19,12 +19,13 @@
 #ifndef UCIOPTION_H_INCLUDED
 #define UCIOPTION_H_INCLUDED
 
-#include <cstddef>
 #include <functional>
 #include <iosfwd>
 #include <map>
 #include <optional>
 #include <string>
+
+#include "misc.h"
 
 namespace Stockfish {
 // Define a custom comparator, because the UCI options should be case-insensitive
@@ -64,7 +65,7 @@ class Option {
 
     std::string       defaultValue, currentValue, type;
     int               min, max;
-    size_t            idx;
+    usize             idx;
     OnChange          on_change;
     const OptionsMap* parent = nullptr;
 };
@@ -87,7 +88,7 @@ class OptionsMap {
 
     void add(const std::string&, const Option& option);
 
-    std::size_t count(const std::string&) const;
+    usize count(const std::string&) const;
 
    private:
     friend class Engine;

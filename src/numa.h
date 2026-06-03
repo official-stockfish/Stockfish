@@ -54,10 +54,6 @@
         #define _WIN32_WINNT 0x0601  // Force to include needed API prototypes
     #endif
 
-// On Windows each processor group can have up to 64 processors.
-// https://learn.microsoft.com/en-us/windows/win32/procthread/processor-groups
-static constexpr usize WIN_PROCESSOR_GROUP_SIZE = 64;
-
     #if !defined(NOMINMAX)
         #define NOMINMAX
     #endif
@@ -97,6 +93,10 @@ inline CpuIndex get_hardware_concurrency() {
 inline const CpuIndex SYSTEM_THREADS_NB = std::max<CpuIndex>(1, get_hardware_concurrency());
 
 #if defined(_WIN64)
+
+// On Windows each processor group can have up to 64 processors.
+// https://learn.microsoft.com/en-us/windows/win32/procthread/processor-groups
+static constexpr usize WIN_PROCESSOR_GROUP_SIZE = 64;
 
 struct WindowsAffinity {
     std::optional<std::set<CpuIndex>> oldApi;

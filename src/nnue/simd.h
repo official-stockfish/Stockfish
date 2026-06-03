@@ -589,8 +589,8 @@ class SIMDTiling {
 
     template<typename SIMDRegisterType, typename LaneType, int NumLanes, int MaxRegisters>
     static constexpr int BestRegisterCount() {
-        constexpr std::size_t RegisterSize = sizeof(SIMDRegisterType);
-        constexpr std::size_t LaneSize     = sizeof(LaneType);
+        constexpr usize RegisterSize = sizeof(SIMDRegisterType);
+        constexpr usize LaneSize     = sizeof(LaneType);
 
         static_assert(RegisterSize >= LaneSize);
         static_assert(MaxRegisters <= NumRegistersSIMD);

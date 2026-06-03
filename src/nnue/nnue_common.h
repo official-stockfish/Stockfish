@@ -73,29 +73,29 @@ constexpr int HiddenOneVal    = 128;
 constexpr int HiddenMaxVal    = 127;
 
 // Size of cache line (in bytes)
-constexpr std::size_t CacheLineSize = 64;
+constexpr usize CacheLineSize = 64;
 
-constexpr const char        Leb128MagicString[]   = "COMPRESSED_LEB128";
-constexpr const std::size_t Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
+constexpr const char  Leb128MagicString[]   = "COMPRESSED_LEB128";
+constexpr const usize Leb128MagicStringSize = sizeof(Leb128MagicString) - 1;
 
 // SIMD width (in bytes)
 #if defined(USE_AVX2)
-constexpr std::size_t SimdWidth = 32;
+constexpr usize SimdWidth = 32;
 
 #elif defined(USE_LASX)
-constexpr std::size_t SimdWidth = 32;
+constexpr usize SimdWidth = 32;
 
 #elif defined(USE_SSE2)
-constexpr std::size_t SimdWidth = 16;
+constexpr usize SimdWidth = 16;
 
 #elif defined(USE_NEON)
-constexpr std::size_t SimdWidth = 16;
+constexpr usize SimdWidth = 16;
 
 #elif defined(USE_LSX)
-constexpr std::size_t SimdWidth = 16;
+constexpr usize SimdWidth = 16;
 #endif
 
-constexpr std::size_t MaxSimdWidth = 32;
+constexpr usize MaxSimdWidth = 32;
 
 // Type of input feature after conversion
 using TransformedFeatureType = u8;
@@ -122,7 +122,7 @@ inline IntType read_little_endian(std::istream& stream) {
         std::make_unsigned_t<IntType> v = 0;
 
         stream.read(reinterpret_cast<char*>(u), sizeof(IntType));
-        for (std::size_t i = 0; i < sizeof(IntType); ++i)
+        for (usize i = 0; i < sizeof(IntType); ++i)
             v = (v << 8) | u[sizeof(IntType) - i - 1];
 
         std::memcpy(&result, &v, sizeof(IntType));
@@ -146,7 +146,7 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
         u8                            u[sizeof(IntType)];
         std::make_unsigned_t<IntType> v = value;
 
-        std::size_t i = 0;
+        usize i = 0;
         // if constexpr to silence the warning about shift by 8
         if constexpr (sizeof(IntType) > 1)
         {
@@ -166,11 +166,11 @@ inline void write_little_endian(std::ostream& stream, IntType value) {
 // Read integers in bulk from a little-endian stream.
 // This reads N integers from stream s and puts them in array out.
 template<typename IntType>
-inline void read_little_endian(std::istream& stream, IntType* out, std::size_t count) {
+inline void read_little_endian(std::istream& stream, IntType* out, usize count) {
     if (IsLittleEndian)
         stream.read(reinterpret_cast<char*>(out), sizeof(IntType) * count);
     else
-        for (std::size_t i = 0; i < count; ++i)
+        for (usize i = 0; i < count; ++i)
             out[i] = read_little_endian<IntType>(stream);
 }
 
@@ -178,18 +178,18 @@ inline void read_little_endian(std::istream& stream, IntType* out, std::size_t c
 // Write integers in bulk to a little-endian stream.
 // This takes N integers from array values and writes them on stream s.
 template<typename IntType>
-inline void write_little_endian(std::ostream& stream, const IntType* values, std::size_t count) {
+inline void write_little_endian(std::ostream& stream, const IntType* values, usize count) {
     if (IsLittleEndian)
         stream.write(reinterpret_cast<const char*>(values), sizeof(IntType) * count);
     else
-        for (std::size_t i = 0; i < count; ++i)
+        for (usize i = 0; i < count; ++i)
             write_little_endian<IntType>(stream, values[i]);
 }
 
 // Read N signed integers from the stream s, putting them in the array out.
 // The stream is assumed to be compressed using the signed LEB128 format.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
-template<typename BufType, typename IntType, std::size_t Count>
+template<typename BufType, typename IntType, usize Count>
 inline void read_leb_128_detail(std::istream&               stream,
                                 std::array<IntType, Count>& out,
                                 u32&                        bytes_left,
@@ -200,13 +200,13 @@ inline void read_leb_128_detail(std::istream&               stream,
     static_assert(sizeof(IntType) <= 4, "Not implemented for types larger than 32 bit");
 
     IntType result = 0;
-    size_t  shift = 0, i = 0;
+    usize   shift = 0, i = 0;
     while (i < Count)
     {
         if (buf_pos == buf.size())
         {
             stream.read(reinterpret_cast<char*>(buf.data()),
-                        std::min(std::size_t(bytes_left), buf.size()));
+                        std::min(usize(bytes_left), buf.size()));
             buf_pos = 0;
         }
 
@@ -245,7 +245,7 @@ inline void read_leb_128(std::istream& stream, Arrays&... outs) {
 // This takes N integers from array values, compresses them with
 // the LEB128 algorithm and writes the result on the stream s.
 // See https://en.wikipedia.org/wiki/LEB128 for a description of the compression scheme.
-template<typename IntType, std::size_t Count>
+template<typename IntType, usize Count>
 inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>& values) {
 
     // Write our LEB128 magic string
@@ -254,7 +254,7 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
     static_assert(std::is_signed_v<IntType>, "Not implemented for unsigned types");
 
     u32 byte_count = 0;
-    for (std::size_t i = 0; i < Count; ++i)
+    for (usize i = 0; i < Count; ++i)
     {
         IntType value = values[i];
         u8      byte;
@@ -286,7 +286,7 @@ inline void write_leb_128(std::ostream& stream, const std::array<IntType, Count>
             flush();
     };
 
-    for (std::size_t i = 0; i < Count; ++i)
+    for (usize i = 0; i < Count; ++i)
     {
         IntType value = values[i];
         while (true)

@@ -210,7 +210,7 @@ static inline const u16  Le             = 1;
 static inline const bool IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
 
 
-template<typename T, std::size_t MaxSize>
+template<typename T, usize MaxSize>
 class ValueList {
 
    public:
@@ -243,17 +243,17 @@ class ValueList {
 };
 
 
-template<typename T, std::size_t Size, std::size_t... Sizes>
+template<typename T, usize Size, usize... Sizes>
 class MultiArray;
 
 namespace Detail {
 
-template<typename T, std::size_t Size, std::size_t... Sizes>
+template<typename T, usize Size, usize... Sizes>
 struct MultiArrayHelper {
     using ChildType = MultiArray<T, Sizes...>;
 };
 
-template<typename T, std::size_t Size>
+template<typename T, usize Size>
 struct MultiArrayHelper<T, Size> {
     using ChildType = T;
 };
@@ -266,7 +266,7 @@ constexpr bool is_strictly_assignable_v =
 
 // MultiArray is a generic N-dimensional array.
 // The template parameters (Size and Sizes) encode the dimensions of the array.
-template<typename T, std::size_t Size, std::size_t... Sizes>
+template<typename T, usize Size, usize... Sizes>
 class MultiArray {
     using ChildType = typename Detail::MultiArrayHelper<T, Size, Sizes...>::ChildType;
     using ArrayType = std::array<ChildType, Size>;
@@ -427,7 +427,7 @@ inline void hash_combine(usize& seed, const T& v) {
 
 inline u64 hash_string(const std::string& sv) { return hash_bytes(sv.data(), sv.size()); }
 
-template<std::size_t Capacity>
+template<usize Capacity>
 class FixedString {
    public:
     FixedString() :
@@ -571,7 +571,7 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 
 }  // namespace Stockfish
 
-template<std::size_t N>
+template<Stockfish::usize N>
 struct std::hash<Stockfish::FixedString<N>> {
     Stockfish::usize operator()(const Stockfish::FixedString<N>& fstr) const noexcept {
         return Stockfish::hash_bytes(fstr.data(), fstr.size());
