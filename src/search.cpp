@@ -24,7 +24,6 @@
 #include <cassert>
 #include <chrono>
 #include <cmath>
-#include <cstdint>
 #include <cstdlib>
 #include <initializer_list>
 #include <iostream>
@@ -344,7 +343,7 @@ bool Search::Worker::iterative_deepening() {
             rm.previousScore = rm.score;
 
         usize pvFirst = 0;
-        pvLast         = 0;
+        pvLast        = 0;
 
         if (!threads.increaseDepth)
             searchAgainCounter++;

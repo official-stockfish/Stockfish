@@ -527,8 +527,8 @@ std::string CommandLine::get_binary_directory(std::string argv0) {
     auto workingDirectory = CommandLine::get_working_directory();
 
     // Extract the binary directory path from argv0
-    auto   binaryDirectory = argv0;
-    usize pos              = binaryDirectory.find_last_of("\\/");
+    auto  binaryDirectory = argv0;
+    usize pos             = binaryDirectory.find_last_of("\\/");
     if (pos == std::string::npos)
         binaryDirectory = "." + pathSeparator;
     else

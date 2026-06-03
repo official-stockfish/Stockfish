@@ -18,7 +18,6 @@
 #ifndef NNUE_FEATURES_FULL_THREATS_INCLUDED
 #define NNUE_FEATURES_FULL_THREATS_INCLUDED
 
-#include <cstdint>
 
 #include "../../misc.h"
 #include "../../types.h"

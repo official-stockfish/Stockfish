@@ -21,8 +21,6 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -93,7 +91,7 @@ class Thread {
     // require further work to make them properly generic while maintaining
     // appropriate specificity regarding search, from the point of view of an
     // outside user, so renaming of this function is left for whenever that happens.
-    void   wait_for_search_finished();
+    void  wait_for_search_finished();
     usize id() const { return idx; }
 
     LargePagePtr<Search::Worker> worker;
@@ -132,14 +130,14 @@ class ThreadPool {
     ThreadPool& operator=(const ThreadPool&) = delete;
     ThreadPool& operator=(ThreadPool&&)      = delete;
 
-    void   start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType);
-    void   run_on_thread(usize threadId, std::function<void()> f);
-    void   wait_on_thread(usize threadId);
-    usize  num_threads() const;
-    void   clear();
-    void   set(const NumaConfig& numaConfig,
-               Search::SharedState,
-               const Search::SearchManager::UpdateContext&);
+    void  start_thinking(const OptionsMap&, Position&, StateListPtr&, Search::LimitsType);
+    void  run_on_thread(usize threadId, std::function<void()> f);
+    void  wait_on_thread(usize threadId);
+    usize num_threads() const;
+    void  clear();
+    void  set(const NumaConfig& numaConfig,
+              Search::SharedState,
+              const Search::SearchManager::UpdateContext&);
 
     Search::SearchManager* main_manager();
     Thread*                main_thread() const { return threads.front().get(); }

@@ -337,10 +337,10 @@ std::string Engine::visualize() const {
 int Engine::get_hashfull(int maxAge) const { return tt.hashfull(maxAge); }
 
 std::vector<std::pair<usize, usize>> Engine::get_bound_thread_count_by_numa_node() const {
-    auto                                  counts = threads.get_bound_thread_count_by_numa_node();
-    const NumaConfig&                     cfg    = numaContext.get_numa_config();
+    auto                                 counts = threads.get_bound_thread_count_by_numa_node();
+    const NumaConfig&                    cfg    = numaContext.get_numa_config();
     std::vector<std::pair<usize, usize>> ratios;
-    NumaIndex                             n = 0;
+    NumaIndex                            n = 0;
     for (; n < counts.size(); ++n)
         ratios.emplace_back(counts[n], cfg.num_cpus_in_numa_node(n));
     if (!counts.empty())

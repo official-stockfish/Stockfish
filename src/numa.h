@@ -37,6 +37,7 @@
 #include <vector>
 #include <cstring>
 
+#include "misc.h"
 #include "shm.h"
 
 // We support linux very well, but we explicitly do NOT support Android,
@@ -920,7 +921,7 @@ class NumaConfig {
             std::memset(&affinity, 0, sizeof(GROUP_AFFINITY));
             // We use an ordered set to be sure to get the smallest cpu number here.
             const usize forcedProcGroupIndex = *(nodes[n].begin()) / WIN_PROCESSOR_GROUP_SIZE;
-            affinity.Group                    = static_cast<WORD>(forcedProcGroupIndex);
+            affinity.Group                   = static_cast<WORD>(forcedProcGroupIndex);
             for (CpuIndex c : nodes[n])
             {
                 const usize procGroupIndex     = c / WIN_PROCESSOR_GROUP_SIZE;

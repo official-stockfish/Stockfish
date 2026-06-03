@@ -100,8 +100,8 @@ namespace Stockfish {
 // amount of bytes of the path; in particular it can a hash of an empty string.
 
 inline std::string getExecutablePathHash() {
-    char        executable_path[4096] = {0};
-    usize       path_length           = 0;
+    char  executable_path[4096] = {0};
+    usize path_length           = 0;
 
 #if defined(_WIN32)
     path_length = GetModuleFileNameA(NULL, executable_path, sizeof(executable_path));
@@ -123,7 +123,7 @@ inline std::string getExecutablePathHash() {
 
 #elif defined(__FreeBSD__)
     usize size   = sizeof(executable_path);
-    int    mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
+    int   mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     if (sysctl(mib, 4, executable_path, &size, NULL, 0) == 0)
     {
         path_length = std::strlen(executable_path);
@@ -172,9 +172,9 @@ inline std::string GetLastErrorAsString(DWORD error) {
     //Ask Win32 to give us the string version of that message ID.
     //The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
     usize size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
-                                   | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                 (LPSTR) &messageBuffer, 0, NULL);
+                                  | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                                (LPSTR) &messageBuffer, 0, NULL);
 
     //Copy the error message into a std::string.
     std::string message(messageBuffer, size);

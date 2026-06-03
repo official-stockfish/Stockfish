@@ -322,18 +322,18 @@ std::string TBFile::Paths;
 // There are 8, 4, or 2 PairsData records for each TBTable, according to the type
 // of table and if positions have pawns or not. It is populated at first access.
 struct PairsData {
-    u8     flags;              // Table flags, see enum TBFlag
-    u8     maxSymLen;          // Maximum length in bits of the Huffman symbols
-    u8     minSymLen;          // Minimum length in bits of the Huffman symbols
-    u32    blocksNum;          // Number of blocks in the TB file
-    usize  sizeofBlock;        // Block size in bytes
-    usize  span;               // About every span values there is a SparseIndex[] entry
-    Sym*   lowestSym;          // lowestSym[l] is the symbol of length l with the lowest value
-    LR*    btree;              // btree[sym] stores the left and right symbols that expand sym
-    u16*   blockLength;        // Number of stored positions (minus one) for each block: 1..65536
-    u32    blockLengthSize;    // Size of blockLength[] table: padded so it's bigger than blocksNum
+    u8    flags;               // Table flags, see enum TBFlag
+    u8    maxSymLen;           // Maximum length in bits of the Huffman symbols
+    u8    minSymLen;           // Minimum length in bits of the Huffman symbols
+    u32   blocksNum;           // Number of blocks in the TB file
+    usize sizeofBlock;         // Block size in bytes
+    usize span;                // About every span values there is a SparseIndex[] entry
+    Sym*  lowestSym;           // lowestSym[l] is the symbol of length l with the lowest value
+    LR*   btree;               // btree[sym] stores the left and right symbols that expand sym
+    u16*  blockLength;         // Number of stored positions (minus one) for each block: 1..65536
+    u32   blockLengthSize;     // Size of blockLength[] table: padded so it's bigger than blocksNum
     SparseEntry* sparseIndex;  // Partial indices into blockLength[]
-    usize       sparseIndexSize;  // Size of SparseIndex[] table
+    usize        sparseIndexSize;  // Size of SparseIndex[] table
     u8*          data;             // Start of Huffman compressed data
     std::vector<u64>
       base64;  // base64[l - min_sym_len] is the 64bit-padded lowest symbol of length l
@@ -1307,7 +1307,7 @@ WDLScore search(Position& pos, ProbeState* result) {
     WDLScore  value, bestValue = WDLLoss;
     StateInfo st;
 
-    auto   moveList   = MoveList<LEGAL>(pos);
+    auto  moveList   = MoveList<LEGAL>(pos);
     usize totalCount = moveList.size(), moveCount = 0;
 
     for (const Move move : moveList)

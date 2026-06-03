@@ -19,8 +19,6 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
-#include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -30,6 +28,7 @@
 #include <tuple>
 
 #include "../types.h"
+#include "../misc.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"

@@ -23,6 +23,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>  // IWYU pragma: keep
@@ -214,8 +215,8 @@ class ValueList {
 
    public:
     usize size() const { return size_; }
-    int         ssize() const { return int(size_); }
-    void        push_back(const T& value) {
+    int   ssize() const { return int(size_); }
+    void  push_back(const T& value) {
         assert(size_ < MaxSize);
         values_[size_++] = value;
     }
@@ -237,7 +238,7 @@ class ValueList {
     }
 
    private:
-    T           values_[MaxSize];
+    T     values_[MaxSize];
     usize size_ = 0;
 };
 
@@ -409,8 +410,7 @@ inline usize get_raw_data_hash(const T& value) {
     // We must have no padding bytes because we're reinterpreting as char
     static_assert(std::has_unique_object_representations<T>());
 
-    return static_cast<usize>(
-      hash_bytes(reinterpret_cast<const char*>(&value), sizeof(value)));
+    return static_cast<usize>(hash_bytes(reinterpret_cast<const char*>(&value), sizeof(value)));
 }
 
 template<typename T>
@@ -494,7 +494,7 @@ class FixedString {
     }
 
    private:
-    char        data_[Capacity + 1];  // +1 for null terminator
+    char  data_[Capacity + 1];  // +1 for null terminator
     usize length_;
 };
 

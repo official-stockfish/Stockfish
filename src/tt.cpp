@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -168,7 +167,7 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
     aligned_large_pages_free(table);
 
-    clusterCount   = mbSize * 1024 * 1024 / sizeof(Cluster);
+    clusterCount  = mbSize * 1024 * 1024 / sizeof(Cluster);
     usize ttBytes = clusterCount * sizeof(Cluster);
 
     // Request 1GB pages if we'd get at least eight per NUMA node, to avoid
@@ -190,7 +189,7 @@ void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
 // Initializes the entire transposition table to zero,
 // in a multi-threaded way.
 void TranspositionTable::clear(ThreadPool& threads) {
-    generation8              = 0;
+    generation8             = 0;
     const usize threadCount = threads.num_threads();
 
     std::vector<usize> threadToNuma = threads.get_bound_thread_to_numa_node();

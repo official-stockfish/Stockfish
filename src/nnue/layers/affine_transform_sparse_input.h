@@ -190,13 +190,13 @@ class AffineTransformSparseInput {
         #if defined(USE_VNNI)
         while (start < end - 2)
         {
-            const isize         i0  = *start++;
-            const isize         i1  = *start++;
-            const isize         i2  = *start++;
-            const invec_t        in0 = vec_set_32(load_as<i32>(input + i0 * sizeof(i32)));
-            const invec_t        in1 = vec_set_32(load_as<i32>(input + i1 * sizeof(i32)));
-            const invec_t        in2 = vec_set_32(load_as<i32>(input + i2 * sizeof(i32)));
-            const auto           col0 =
+            const isize   i0  = *start++;
+            const isize   i1  = *start++;
+            const isize   i2  = *start++;
+            const invec_t in0 = vec_set_32(load_as<i32>(input + i0 * sizeof(i32)));
+            const invec_t in1 = vec_set_32(load_as<i32>(input + i1 * sizeof(i32)));
+            const invec_t in2 = vec_set_32(load_as<i32>(input + i2 * sizeof(i32)));
+            const auto    col0 =
               reinterpret_cast<const invec_t*>(&weights_cp[i0 * OutputDimensions * ChunkSize]);
             const auto col1 =
               reinterpret_cast<const invec_t*>(&weights_cp[i1 * OutputDimensions * ChunkSize]);
@@ -216,9 +216,9 @@ class AffineTransformSparseInput {
 
         while (start < end)
         {
-            const isize         i  = *start++;
-            const invec_t        in = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
-            const auto           col =
+            const isize   i  = *start++;
+            const invec_t in = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
+            const auto    col =
               reinterpret_cast<const invec_t*>(&weights_cp[i * OutputDimensions * ChunkSize]);
             for (IndexType k = 0; k < NumAccums; ++k)
                 vec_add_dpbusd_32(acc[k], in, col[k]);
@@ -228,7 +228,7 @@ class AffineTransformSparseInput {
 
         for (IndexType k = 0; k < InputDimensions / 256; ++k)
         {
-            u64       bits = load_as<u64>(nnzInfo.bitset + k * 8);
+            u64   bits = load_as<u64>(nnzInfo.bitset + k * 8);
             isize base = k * 64;
 
             auto* base_addr    = input + base * sizeof(i32);

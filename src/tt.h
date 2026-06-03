@@ -19,8 +19,6 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
-#include <cstddef>
-#include <cstdint>
 #include <tuple>
 
 #include "memory.h"
@@ -83,7 +81,7 @@ class TranspositionTable {
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
     void resize(usize mbSize, ThreadPool& threads);  // Set TT size in MiB
-    void clear(ThreadPool& threads);                  // Re-initialize memory, multithreaded
+    void clear(ThreadPool& threads);                 // Re-initialize memory, multithreaded
 
     void
     new_search();  // This must be called at the beginning of each root search to track entry aging

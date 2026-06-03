@@ -155,7 +155,8 @@ struct NetworkArchitecture {
 
 template<>
 struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture> {
-    Stockfish::usize operator()(const Stockfish::Eval::NNUE::NetworkArchitecture& arch) const noexcept {
+    Stockfish::usize
+    operator()(const Stockfish::Eval::NNUE::NetworkArchitecture& arch) const noexcept {
         return arch.get_content_hash();
     }
 };

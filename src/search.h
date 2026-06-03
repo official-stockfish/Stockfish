@@ -23,7 +23,6 @@
 #include <array>
 #include <atomic>
 #include <cassert>
-#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -59,7 +58,7 @@ class OptionsMap;
 namespace Search {
 
 struct PVMoves {
-    Move        moves[MAX_PLY + 1];
+    Move  moves[MAX_PLY + 1];
     usize length = 0;
 
     Move*       begin() { return moves; }
@@ -70,7 +69,7 @@ struct PVMoves {
     Move&       operator[](usize index) { return moves[index]; }
     const Move& operator[](usize index) const { return moves[index]; }
 
-    bool        empty() const { return length == 0; }
+    bool  empty() const { return length == 0; }
     usize size() const { return length; }
 
     void clear() { length = 0; }

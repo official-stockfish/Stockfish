@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <cstdint>
 #include <cstdlib>
 #include <iterator>
 #include <optional>

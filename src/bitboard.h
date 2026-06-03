@@ -23,11 +23,11 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cstdint>
 #include <cstdlib>
 #include <string>
 
 #include "types.h"
+#include "misc.h"
 
 namespace Stockfish {
 
