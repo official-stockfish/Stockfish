@@ -28,6 +28,7 @@
 #include <sstream>
 
 #include "../position.h"
+#include "../misc.h"
 #include "../types.h"
 #include "../uci.h"
 #include "network.h"

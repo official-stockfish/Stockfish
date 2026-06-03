@@ -27,6 +27,7 @@
 #include <utility>
 
 #include "../types.h"
+#include "../misc.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 

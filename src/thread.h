@@ -26,6 +26,7 @@
 #include <mutex>
 #include <vector>
 
+#include "misc.h"
 #include "memory.h"
 #include "numa.h"
 #include "position.h"
