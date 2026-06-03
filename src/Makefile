@@ -155,7 +155,7 @@ else
    SUPPORTED_ARCH=false
 endif
 
-ifneq (,$(findstring universal,$(ARCH)))
+ifneq (,$(filter $(ARCH),x86-64-universal arm64-universal))
    UNIVERSAL_BUILD=true
 else
    UNIVERSAL_BUILD=false
