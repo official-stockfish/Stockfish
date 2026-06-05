@@ -1360,26 +1360,25 @@ void Position::do_null_move(StateInfo& newSt) {
     assert(!checkers());
     assert(&newSt != st);
 
-    std::memcpy(&newSt, st, sizeof(StateInfo));
+    std::memcpy(&newSt, st, offsetof(StateInfo, key));
 
     newSt.previous = st;
-    st             = &newSt;
+    newSt.key = st->key ^ Zobrist::side;
 
     if (st->epSquare != SQ_NONE)
-    {
-        st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
-        st->epSquare = SQ_NONE;
-    }
+        newSt.key ^= Zobrist::enpassant[file_of(st->epSquare)];
 
-    st->key ^= Zobrist::side;
+    st = &newSt;
 
+    st->epSquare      = SQ_NONE;
+    st->checkersBB    = 0;
+    st->capturedPiece = NO_PIECE;
     st->pliesFromNull = 0;
+    st->repetition    = 0;
 
     sideToMove = ~sideToMove;
 
     set_check_info();
-
-    st->repetition = 0;
 
     assert(pos_is_ok());
 }
