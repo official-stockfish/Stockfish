@@ -80,22 +80,7 @@ constexpr auto RankAttacks = []() {
     std::array<std::array<uint8_t, 256>, FILE_NB> table{};
     for (int file = 0; file < 8; ++file)
         for (int occ = 0; occ < 256; ++occ)
-        {
-            uint8_t attacks = 0;
-            for (int f = file + 1; f <= 7; ++f)
-            {
-                attacks |= uint8_t(1 << f);
-                if (occ & (1 << f))
-                    break;
-            }
-            for (int f = file - 1; f >= 0; --f)
-            {
-                attacks |= uint8_t(1 << f);
-                if (occ & (1 << f))
-                    break;
-            }
-            table[file][occ] = attacks;
-        }
+            table[file][occ] = uint8_t(sliding_attack(ROOK, Square(file), occ));
     return table;
 }();
 
