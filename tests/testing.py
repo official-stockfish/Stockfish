@@ -123,7 +123,7 @@ class OrderedClassMembers(type):
 
 
 class TimeoutException(Exception):
-    def __init__(self, message: str, timeout: int):
+    def __init__(self, message: str, timeout: float):
         super().__init__(message)
         self.message = message
         self.timeout = timeout
@@ -325,12 +325,15 @@ class Stockfish:
         self.reader_thread.start()
 
     def _read_process_output(self):
-        for line in self.process.stdout:
-            line = line.strip()
-            self.output.append(line)
-            self.output_queue.put(line)
-
-        self.output_queue.put(None)
+        try:
+            for line in self.process.stdout:
+                line = line.strip()
+                self.output.append(line)
+                self.output_queue.put(line)
+        except (OSError, ValueError):
+            pass
+        finally:
+            self.output_queue.put(None)
 
     def setoption(self, name: str, value: str):
         self.send_command(f"setoption name {name} value {value}")
