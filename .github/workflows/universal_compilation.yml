@@ -136,7 +136,7 @@ jobs:
           sudo apt-get install -y qemu-user
 
       - name: Build universal binary
-        run: make -j4 -C src ARCH=armv8-universal profile-build
+        run: make -j4 -C src ARCH=arm64-universal profile-build
 
       - name: Strip binary
         run: strip src/stockfish
@@ -185,7 +185,7 @@ jobs:
           install: mingw-w64-clang-aarch64-clang make git zip
 
       - name: Build universal binary
-        run: make -j4 -C src ARCH=armv8-universal profile-build COMP=clang COMPCXX=clang++
+        run: make -j4 -C src ARCH=arm64-universal profile-build COMP=clang COMPCXX=clang++
 
       - name: Strip binary
         run: strip src/stockfish.exe
