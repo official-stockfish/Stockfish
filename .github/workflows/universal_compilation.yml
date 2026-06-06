@@ -20,7 +20,7 @@ jobs:
           version: 15
 
       - name: Download SDE package
-        uses: petarpetrovt/setup-sde@d230e06df0ca06ced70000e4a7fa62afc9a2001e # v4.0
+        uses: petarpetrovt/setup-sde@31aa4a8e85e109bef00f1d838613fcc6ec421271 # v5.0
         with:
           environmentVariableName: SDE_DIR
           sdeVersion: 9.58.0
@@ -75,7 +75,7 @@ jobs:
           install: mingw-w64-x86_64-gcc make git zip
 
       - name: Download SDE package
-        uses: petarpetrovt/setup-sde@d230e06df0ca06ced70000e4a7fa62afc9a2001e # v4.0
+        uses: petarpetrovt/setup-sde@31aa4a8e85e109bef00f1d838613fcc6ec421271 # v5.0
         with:
           environmentVariableName: SDE_DIR
           sdeVersion: 9.58.0
