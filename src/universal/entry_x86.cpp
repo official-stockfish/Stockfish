@@ -67,16 +67,17 @@ DEFINE_BUILD(x86_64_avx512)
 DEFINE_BUILD(x86_64_vnni512)
 DEFINE_BUILD(x86_64_avx512icl)
 
-// AMD Zen/Zen+/Zen2 (family 17h) implement pdep/pext via microcode.
+// AMD Excavator (family 15h) and Zen/Zen+/Zen2 (family 17h) implement pdep/pext via microcode.
 static bool has_slow_bmi2() {
-    return __builtin_cpu_is("amd") && (__builtin_cpu_is("znver1") || __builtin_cpu_is("znver2"));
+    return __builtin_cpu_is("amd")
+        && (__builtin_cpu_is("bdver4") || __builtin_cpu_is("znver1") || __builtin_cpu_is("znver2"));
 }
 
 struct CpuFeatures {
     bool sse41;            // SSE4.1
     bool popcnt;           // POPCNT
     bool avx2;             // AVX2
-    bool bmi2;             // BMI2 (may be slow on AMD Zen/Zen+/Zen2)
+    bool bmi2;             // BMI2 (may be slow on AMD Excavator and Zen/Zen+/Zen2)
     bool avx512f;          // AVX-512 Foundation
     bool avx512vl;         // AVX-512 Vector Length extensions
     bool avx512bw;         // AVX-512 Byte and Word instructions
