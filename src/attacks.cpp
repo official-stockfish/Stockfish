@@ -69,9 +69,6 @@ static void init_magics(Magic magics[][2]) {
         Magic& bishop = magics[s][BISHOP - BISHOP];
         bishop.mask1  = line_mask(s, NORTH_EAST, SOUTH_WEST);
         bishop.mask2  = line_mask(s, NORTH_WEST, SOUTH_EAST);
-
-        rook.r = bishop.r = square_bb(s) * 2;
-        rook.rr = bishop.rr = square_bb(Square(63 - int(s))) * 2;
     }
 }
 
