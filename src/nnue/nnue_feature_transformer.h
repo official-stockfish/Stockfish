@@ -308,21 +308,23 @@ class FeatureTransformer {
                     vec_t acc1a = vec_add_16(in1[i + 0], tin1[i + 0]);
                     vec_t acc1b = vec_add_16(in1[i + 1], tin1[i + 1]);
 
-    #if defined(USE_NEON)
-
-                    // The NEON path relies on unsigned saturation for crelu
                     static_assert(FtMaxVal == 255);
 
+    #if defined(USE_NEON)
                     uint16x8_t mul0 = vmull_u8(vqmovun_s16(acc0a), vqmovun_s16(acc1a));
                     uint16x8_t mul1 = vmull_u8(vqmovun_s16(acc0b), vqmovun_s16(acc1b));
 
                     uint8x16x2_t uzp =
                       vuzpq_u8(vreinterpretq_u8_u16(mul0), vreinterpretq_u8_u16(mul1));
-                    uint8x16_t pab = vshrq_n_u8(uzp.val[1], 1);
-                    packed[k] = out[j + k] = reinterpret_cast<vec_t>(pab);
+                    uint8x16_t pab    = vshrq_n_u8(uzp.val[1], 1);
+                    vec_t      result = reinterpret_cast<vec_t>(pab);
+    #elif defined(USE_LSX) || defined(USE_LASX)
+                    vec_t pa = vec_packus_16(acc0a, acc0b);
+                    vec_t pb = vec_packus_16(acc1a, acc1b);
 
+                    vec_t hi     = vec_mulhi_8(pa, pb);
+                    vec_t result = vec_srli_8(hi, 1);
     #else
-
                     vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
                     vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);
                     vec_t sum1a = vec_min_16(acc1a, FtMax);
@@ -331,9 +333,10 @@ class FeatureTransformer {
                     vec_t pa = vec_mulhi_16(sum0a, sum1a);
                     vec_t pb = vec_mulhi_16(sum0b, sum1b);
 
-                    packed[k] = out[j + k] = vec_packus_16(pa, pb);
-
+                    vec_t result = vec_packus_16(pa, pb);
     #endif
+
+                    packed[k] = out[j + k] = result;
                 }
 
                 cursor.record2(packed[0], packed[1]);
