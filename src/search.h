@@ -128,6 +128,9 @@ struct RootMove {
     explicit RootMove(Move m) { pv.push_back(m); }
     bool extract_ponder_from_tt(const TranspositionTable& tt, Position& pos);
     bool score_is_bound() const { return scoreLowerbound || scoreUpperbound; }
+    bool score_is_exact_loss() const {
+        return score != -VALUE_INFINITE && is_loss(score) && !score_is_bound();
+    }
     void unset_bound_flags() { scoreLowerbound = scoreUpperbound = false; }
     bool operator==(const Move& m) const { return pv[0] == m; }
     // Sort in descending order
@@ -146,7 +149,7 @@ struct RootMove {
     int     selDepth         = 0;
     int     tbRank           = 0;
     Value   tbScore;
-    PVMoves pv;
+    PVMoves pv, previousPV;
 };
 
 using RootMoves = std::vector<RootMove>;
@@ -384,7 +387,7 @@ class Worker {
     Depth     rootDepth;
     Value     rootDelta;
 
-    PVMoves lastIterationPV;
+    PVMoves lastIterationIdxPV;
 
     usize                     threadIdx, numaThreadIdx, numaTotal;
     NumaReplicatedAccessToken numaAccessToken;
