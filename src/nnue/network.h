@@ -19,8 +19,6 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
-#include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -30,6 +28,7 @@
 #include <tuple>
 
 #include "../types.h"
+#include "../misc.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
@@ -62,7 +61,7 @@ class Network {
     void load(const std::string& rootDirectory, std::string evalfilePath);
     bool save(const std::optional<std::string>& filename) const;
 
-    std::size_t get_content_hash() const;
+    usize get_content_hash() const;
 
     NetworkOutput evaluate(const Position&    pos,
                            AccumulatorStack&  accumulatorStack,
@@ -83,8 +82,8 @@ class Network {
     bool                       save(std::ostream&, const std::string&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
-    bool read_header(std::istream&, std::uint32_t*, std::string*) const;
-    bool write_header(std::ostream&, std::uint32_t, const std::string&) const;
+    bool read_header(std::istream&, u32*, std::string*) const;
+    bool write_header(std::ostream&, u32, const std::string&) const;
 
     bool read_parameters(std::istream&, std::string&);
     bool write_parameters(std::ostream&, const std::string&) const;
@@ -100,7 +99,7 @@ class Network {
     bool initialized = false;
 
     // Hash value of evaluation function structure
-    static constexpr std::uint32_t hash =
+    static constexpr u32 hash =
       FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
 
     friend struct AccumulatorCaches;
@@ -111,7 +110,7 @@ class Network {
 
 template<>
 struct std::hash<Stockfish::Eval::NNUE::Network> {
-    std::size_t operator()(const Stockfish::Eval::NNUE::Network& network) const noexcept {
+    Stockfish::usize operator()(const Stockfish::Eval::NNUE::Network& network) const noexcept {
         return network.get_content_hash();
     }
 };

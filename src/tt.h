@@ -19,10 +19,9 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
-#include <cstddef>
-#include <cstdint>
 #include <tuple>
 
+#include "misc.h"
 #include "memory.h"
 #include "types.h"
 
@@ -67,7 +66,7 @@ struct TTData {
 // for chess reasons, we may decide the new data is less important than the old.
 struct TTWriter {
    public:
-    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 generation8);
     void penalize(int penalty);  // decrement stored depth by the penalty
 
    private:
@@ -82,12 +81,12 @@ class TranspositionTable {
    public:
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
-    void resize(size_t mbSize, ThreadPool& threads);  // Set TT size in MiB
-    void clear(ThreadPool& threads);                  // Re-initialize memory, multithreaded
+    void resize(usize mbSize, ThreadPool& threads);  // Set TT size in MiB
+    void clear(ThreadPool& threads);                 // Re-initialize memory, multithreaded
 
     void
     new_search();  // This must be called at the beginning of each root search to track entry aging
-    uint8_t generation() const;  // The current age, used when writing new data to the TT
+    u8 generation() const;  // The current age, used when writing new data to the TT
     // Approximate what fraction of entries (permille) have been written to during this root search
     int hashfull(int maxAge = 0) const;
 
@@ -102,10 +101,10 @@ class TranspositionTable {
    private:
     friend struct TTEntry;
 
-    size_t   clusterCount;
+    usize    clusterCount;
     Cluster* table = nullptr;
 
-    uint8_t generation8 = 0;
+    u8 generation8 = 0;
 };
 
 }  // namespace Stockfish

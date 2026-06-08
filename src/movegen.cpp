@@ -108,7 +108,7 @@ splat_precomputed_moves(Move* moveList, Square from, Bitboard occupied, Bitboard
     static_assert(Pt != QUEEN && Pt != PAWN, "Unsupported piece type");
 
     // The nth bit in the mask corresponds to the nth square in the piece's pseudo-attacks
-    uint32_t mask;
+    u32 mask;
     if constexpr (Pt == BISHOP || Pt == ROOK)
     {
         const Attacks::Magic& magic = Attacks::magic(from, Pt);

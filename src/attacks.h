@@ -81,7 +81,7 @@ struct DualMagic {
     // Precomputed 2 * square_bb(sq), 2 * reverse(square_bb(sq))
     Bitboard r, rr;
 
-    const uint8_t* RESTRICT rankAttacksLookup;
+    const u8* RESTRICT rankAttacksLookup;
     // 8 * rank_of(sq)
     int shift;
 
@@ -130,8 +130,8 @@ const DualMagic& dual_magic(Square s);
 struct Magic {
     Bitboard mask;
     #ifdef USE_PEXT
-    uint16_t* attacks;
-    Bitboard  pseudoAttacks;
+    u16*     attacks;
+    Bitboard pseudoAttacks;
     #else
     Bitboard* attacks;
     Bitboard  magic;

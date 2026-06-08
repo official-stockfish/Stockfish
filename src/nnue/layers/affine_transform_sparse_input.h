@@ -44,8 +44,8 @@ template<IndexType InDims, IndexType OutDims>
 class AffineTransformSparseInput {
    public:
     // Input/output type
-    using InputType  = std::uint8_t;
-    using OutputType = std::int32_t;
+    using InputType  = u8;
+    using OutputType = i32;
 
     // Number of input/output dimensions
     static constexpr IndexType InputDimensions  = InDims;
@@ -68,8 +68,8 @@ class AffineTransformSparseInput {
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
-        std::uint32_t hashValue = 0xCC03DAE4u;
+    static constexpr u32 get_hash_value(u32 prevHash) {
+        u32 hashValue = 0xCC03DAE4u;
         hashValue += OutputDimensions;
         hashValue ^= prevHash >> 1;
         hashValue ^= prevHash << 31;
@@ -108,8 +108,8 @@ class AffineTransformSparseInput {
         return !stream.fail();
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_hash_value(0));
@@ -179,7 +179,7 @@ class AffineTransformSparseInput {
             acc[k] = biasvec[k];
 
         // convince GCC to not do weird pointer arithmetic in the following loops
-        const std::int8_t* weights_cp = weights;
+        const i8* weights_cp = weights;
 
     #if defined(USE_AVX512)
         const auto* start = nnzInfo.nnz;
@@ -190,16 +190,13 @@ class AffineTransformSparseInput {
         #if defined(USE_VNNI)
         while (start < end - 2)
         {
-            const std::ptrdiff_t i0 = *start++;
-            const std::ptrdiff_t i1 = *start++;
-            const std::ptrdiff_t i2 = *start++;
-            const invec_t        in0 =
-              vec_set_32(load_as<std::int32_t>(input + i0 * sizeof(std::int32_t)));
-            const invec_t in1 =
-              vec_set_32(load_as<std::int32_t>(input + i1 * sizeof(std::int32_t)));
-            const invec_t in2 =
-              vec_set_32(load_as<std::int32_t>(input + i2 * sizeof(std::int32_t)));
-            const auto col0 =
+            const isize   i0  = *start++;
+            const isize   i1  = *start++;
+            const isize   i2  = *start++;
+            const invec_t in0 = vec_set_32(load_as<i32>(input + i0 * sizeof(i32)));
+            const invec_t in1 = vec_set_32(load_as<i32>(input + i1 * sizeof(i32)));
+            const invec_t in2 = vec_set_32(load_as<i32>(input + i2 * sizeof(i32)));
+            const auto    col0 =
               reinterpret_cast<const invec_t*>(&weights_cp[i0 * OutputDimensions * ChunkSize]);
             const auto col1 =
               reinterpret_cast<const invec_t*>(&weights_cp[i1 * OutputDimensions * ChunkSize]);
@@ -219,8 +216,8 @@ class AffineTransformSparseInput {
 
         while (start < end)
         {
-            const std::ptrdiff_t i = *start++;
-            const invec_t in = vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
+            const isize   i  = *start++;
+            const invec_t in = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
             const auto    col =
               reinterpret_cast<const invec_t*>(&weights_cp[i * OutputDimensions * ChunkSize]);
             for (IndexType k = 0; k < NumAccums; ++k)
@@ -231,10 +228,10 @@ class AffineTransformSparseInput {
 
         for (IndexType k = 0; k < InputDimensions / 256; ++k)
         {
-            uint64_t  bits = load_as<uint64_t>(nnzInfo.bitset + k * 8);
-            ptrdiff_t base = k * 64;
+            u64   bits = load_as<u64>(nnzInfo.bitset + k * 8);
+            isize base = k * 64;
 
-            auto* base_addr    = input + base * sizeof(std::int32_t);
+            auto* base_addr    = input + base * sizeof(i32);
             auto* weights_base = &weights_cp[base * OutputDimensions * ChunkSize];
 
         #if defined(USE_NEON_DOTPROD) && defined(__GNUC__) && !defined(__clang__)
@@ -253,8 +250,8 @@ class AffineTransformSparseInput {
 
             while (bits)
             {
-                ptrdiff_t   i          = pop_lsb(bits);
-                const auto* input_addr = base_addr + i * sizeof(std::int32_t);
+                isize       i          = pop_lsb(bits);
+                const auto* input_addr = base_addr + i * sizeof(i32);
                 auto        col =
                   reinterpret_cast<const invec_t*>(&weights_base[i * OutputDimensions * ChunkSize]);
 
@@ -263,7 +260,7 @@ class AffineTransformSparseInput {
             #undef FIX_GCC15_MISOPTIMIZATION
         #endif
 
-                const invec_t in = vec_set_32(load_as<std::int32_t>(input_addr));
+                const invec_t in = vec_set_32(load_as<i32>(input_addr));
                 for (IndexType l = 0; l < NumAccums; ++l)
                     vec_add_dpbusd_32(acc[l], in, col[l]);
             }
@@ -287,7 +284,7 @@ class AffineTransformSparseInput {
 
    private:
     using BiasType   = OutputType;
-    using WeightType = std::int8_t;
+    using WeightType = i8;
 
     alignas(CacheLineSize) BiasType biases[OutputDimensions];
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];

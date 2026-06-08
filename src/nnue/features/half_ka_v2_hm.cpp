@@ -43,18 +43,18 @@ void HalfKAv2_hm::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
     const __m512i vecOldPieces = _mm512_loadu_si512(oldPieces.data());
     const __m512i vecNewPieces = _mm512_loadu_si512(newPieces.data());
 
-    alignas(64) static constexpr uint16_t psiTable[COLOR_NB][16] = {
+    alignas(64) static constexpr u16 psiTable[COLOR_NB][16] = {
       {PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
        PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE},
       {PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE,
        PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE}};
 
-    const uint16_t flip   = 56 * perspective;
-    const __m512i  orient = _mm512_set1_epi16((uint16_t) OrientTBL[ksq] ^ flip);
-    const __m512i  psi =
+    const u16     flip   = 56 * perspective;
+    const __m512i orient = _mm512_set1_epi16((u16) OrientTBL[ksq] ^ flip);
+    const __m512i psi =
       _mm512_castsi256_si512(_mm256_loadu_si256((const __m256i*) psiTable[perspective]));
     const __m512i psi_plus_bucket =
-      _mm512_add_epi16(psi, _mm512_set1_epi16((uint16_t) KingBuckets[int(ksq) ^ flip]));
+      _mm512_add_epi16(psi, _mm512_set1_epi16((u16) KingBuckets[int(ksq) ^ flip]));
 
     __m512i removed_squares = _mm512_maskz_compress_epi8(removedBB, AllSquares);
     __m512i added_squares   = _mm512_maskz_compress_epi8(addedBB, AllSquares);

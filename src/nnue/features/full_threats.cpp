@@ -48,7 +48,7 @@ template<PieceType PT>
 constexpr auto make_piece_indices_type() {
     static_assert(PT != PieceType::PAWN);
 
-    std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB> out{};
+    std::array<std::array<u8, SQUARE_NB>, SQUARE_NB> out{};
 
     for (Square from = SQ_A1; from <= SQ_H8; ++from)
     {
@@ -67,7 +67,7 @@ template<Piece P>
 constexpr auto make_piece_indices_piece() {
     static_assert(type_of(P) == PieceType::PAWN);
 
-    std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB> out{};
+    std::array<std::array<u8, SQUARE_NB>, SQUARE_NB> out{};
 
     constexpr Color C = color_of(P);
 
@@ -91,7 +91,7 @@ constexpr auto index_lut2_array() {
     constexpr auto QUEEN_ATTACKS  = make_piece_indices_type<PieceType::QUEEN>();
     constexpr auto KING_ATTACKS   = make_piece_indices_type<PieceType::KING>();
 
-    std::array<std::array<std::array<uint8_t, SQUARE_NB>, SQUARE_NB>, PIECE_NB> indices{};
+    std::array<std::array<std::array<u8, SQUARE_NB>, SQUARE_NB>, PIECE_NB> indices{};
 
     indices[W_PAWN] = make_piece_indices_piece<W_PAWN>();
     indices[B_PAWN] = make_piece_indices_piece<B_PAWN>();
@@ -155,7 +155,7 @@ constexpr auto helper_offsets = init_threat_offsets().first;
 constexpr auto offsets = init_threat_offsets().second;
 
 constexpr auto init_index_luts() {
-    std::array<std::array<std::array<uint32_t, 2>, PIECE_NB>, PIECE_NB> indices{};
+    std::array<std::array<std::array<u32, 2>, PIECE_NB>, PIECE_NB> indices{};
 
     for (Piece attacker : AllPieces)
     {
@@ -192,13 +192,13 @@ constexpr auto index_lut2 = index_lut2_array();
 // Index of a feature for a given king position and another piece on some square
 inline sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const std::int8_t orientation   = OrientTBL[ksq] ^ (56 * perspective);
-    unsigned          from_oriented = uint8_t(from) ^ orientation;
-    unsigned          to_oriented   = uint8_t(to) ^ orientation;
+    const i8 orientation   = OrientTBL[ksq] ^ (56 * perspective);
+    unsigned from_oriented = u8(from) ^ orientation;
+    unsigned to_oriented   = u8(to) ^ orientation;
 
-    std::int8_t swap              = 8 * perspective;
-    unsigned    attacker_oriented = attacker ^ swap;
-    unsigned    attacked_oriented = attacked ^ swap;
+    i8       swap              = 8 * perspective;
+    unsigned attacker_oriented = attacker ^ swap;
+    unsigned attacked_oriented = attacked ^ swap;
 
     return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
          + offsets[attacker_oriented][from_oriented]
@@ -329,7 +329,7 @@ void FullThreats::append_changed_indices(Color                   perspective,
 }
 
 bool FullThreats::requires_refresh(const DiffType& diff, Color perspective) {
-    return perspective == diff.us && (int8_t(diff.ksq) & 0b100) != (int8_t(diff.prevKsq) & 0b100);
+    return perspective == diff.us && (i8(diff.ksq) & 0b100) != (i8(diff.prevKsq) & 0b100);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

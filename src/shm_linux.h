@@ -54,11 +54,11 @@ namespace Stockfish::shm {
 namespace detail {
 
 struct ShmHeader {
-    static constexpr uint32_t SHM_MAGIC = 0xAD5F1A12;
-    pthread_mutex_t           mutex;
-    std::atomic<uint32_t>     ref_count{0};
-    std::atomic<bool>         initialized{false};
-    uint32_t                  magic = SHM_MAGIC;
+    static constexpr u32 SHM_MAGIC = 0xAD5F1A12;
+    pthread_mutex_t      mutex;
+    std::atomic<u32>     ref_count{0};
+    std::atomic<bool>    initialized{false};
+    u32                  magic = SHM_MAGIC;
 };
 
 class SharedMemoryBase {
@@ -154,11 +154,11 @@ class SharedMemory: public detail::SharedMemoryBase {
     void*              mapped_ptr_ = nullptr;
     T*                 data_ptr_   = nullptr;
     detail::ShmHeader* header_ptr_ = nullptr;
-    size_t             total_size_ = 0;
+    usize              total_size_ = 0;
     std::string        sentinel_base_;
     std::string        sentinel_path_;
 
-    static constexpr size_t calculate_total_size() noexcept {
+    static constexpr usize calculate_total_size() noexcept {
         return sizeof(T) + sizeof(detail::ShmHeader);
     }
 
@@ -370,7 +370,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     [[nodiscard]] const T& operator*() const noexcept { return *data_ptr_; }
 
-    [[nodiscard]] uint32_t ref_count() const noexcept {
+    [[nodiscard]] u32 ref_count() const noexcept {
         return header_ptr_ ? header_ptr_->ref_count.load(std::memory_order_acquire) : 0;
     }
 
@@ -435,7 +435,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (!header_ptr_)
             return;
 
-        uint32_t expected = header_ptr_->ref_count.load(std::memory_order_relaxed);
+        u32 expected = header_ptr_->ref_count.load(std::memory_order_relaxed);
         while (expected != 0
                && !header_ptr_->ref_count.compare_exchange_weak(
                  expected, expected - 1, std::memory_order_acq_rel, std::memory_order_relaxed))
@@ -631,7 +631,7 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         struct stat st;
         fstat(fd_, &st);
-        if (static_cast<size_t>(st.st_size) < total_size_)
+        if (static_cast<usize>(st.st_size) < total_size_)
         {
             invalid_header = true;
             return false;

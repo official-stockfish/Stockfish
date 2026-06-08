@@ -49,10 +49,8 @@ namespace Stockfish::Eval::NNUE::Layers {
 #ifndef ENABLE_SEQ_OPT
 
 template<IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
-static void affine_transform_non_ssse3(std::int32_t*       output,
-                                       const std::int8_t*  weights,
-                                       const std::int32_t* biases,
-                                       const std::uint8_t* input) {
+static void
+affine_transform_non_ssse3(i32* output, const i8* weights, const i32* biases, const u8* input) {
     #if defined(USE_SSE2) || defined(USE_NEON)
         #if defined(USE_SSE2)
     // At least a multiple of 16, with SSE2.
@@ -108,14 +106,14 @@ static void affine_transform_non_ssse3(std::int32_t*       output,
         #endif
     }
     #else
-    std::memcpy(output, biases, sizeof(std::int32_t) * OutputDimensions);
+    std::memcpy(output, biases, sizeof(i32) * OutputDimensions);
 
     // Traverse weights in transpose order to take advantage of input sparsity
     for (IndexType i = 0; i < InputDimensions; ++i)
         if (input[i])
         {
-            const std::int8_t* w  = &weights[i];
-            const int          in = input[i];
+            const i8* w  = &weights[i];
+            const int in = input[i];
             for (IndexType j = 0; j < OutputDimensions; ++j)
                 output[j] += w[j * PaddedInputDimensions] * in;
         }
@@ -128,8 +126,8 @@ template<IndexType InDims, IndexType OutDims>
 class AffineTransform {
    public:
     // Input/output type
-    using InputType  = std::uint8_t;
-    using OutputType = std::int32_t;
+    using InputType  = u8;
+    using OutputType = i32;
 
     // Number of input/output dimensions
     static constexpr IndexType InputDimensions  = InDims;
@@ -143,8 +141,8 @@ class AffineTransform {
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
-        std::uint32_t hashValue = 0xCC03DAE4u;
+    static constexpr u32 get_hash_value(u32 prevHash) {
+        u32 hashValue = 0xCC03DAE4u;
         hashValue += OutputDimensions;
         hashValue ^= prevHash >> 1;
         hashValue ^= prevHash << 31;
@@ -183,8 +181,8 @@ class AffineTransform {
         return !stream.fail();
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_hash_value(0));
@@ -254,11 +252,9 @@ class AffineTransform {
     #if defined(USE_VNNI)
             for (; i < NumChunks; i += 2)
             {
-                const vec_t in0 =
-                  vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
-                const vec_t in1 =
-                  vec_set_32(load_as<std::int32_t>(input + (i + 1) * sizeof(std::int32_t)));
-                const auto col0 =
+                const vec_t in0 = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
+                const vec_t in1 = vec_set_32(load_as<i32>(input + (i + 1) * sizeof(i32)));
+                const auto  col0 =
                   reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
                 const auto col1 =
                   reinterpret_cast<const vec_t*>(&weights[(i + 1) * OutputDimensions * 4]);
@@ -275,9 +271,8 @@ class AffineTransform {
     #endif
             for (; i < NumChunks; ++i)
             {
-                const vec_t in0 =
-                  vec_set_32(load_as<std::int32_t>(input + i * sizeof(std::int32_t)));
-                const auto col0 =
+                const vec_t in0 = vec_set_32(load_as<i32>(input + i * sizeof(i32)));
+                const auto  col0 =
                   reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
 
                 for (IndexType k = 0; k < NumRegs; ++k)
@@ -354,7 +349,7 @@ class AffineTransform {
 
    private:
     using BiasType   = OutputType;
-    using WeightType = std::int8_t;
+    using WeightType = i8;
 
     alignas(CacheLineSize) BiasType biases[OutputDimensions];
     alignas(CacheLineSize) WeightType weights[OutputDimensions * PaddedInputDimensions];

@@ -23,11 +23,11 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
-#include <cstdint>
 #include <cstdlib>
 #include <string>
 
 #include "types.h"
+#include "misc.h"
 
 namespace Stockfish {
 
@@ -65,8 +65,8 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern uint8_t PopCnt16[1 << 16];
-extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
+extern u8 PopCnt16[1 << 16];
+extern u8 SquareDistance[SQUARE_NB][SQUARE_NB];
 
 constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
@@ -169,7 +169,7 @@ inline int popcount(Bitboard b) {
 
 #ifndef USE_POPCNT
 
-    std::uint16_t indices[4];
+    u16 indices[4];
     std::memcpy(indices, &b, sizeof(b));
     return PopCnt16[indices[0]] + PopCnt16[indices[1]] + PopCnt16[indices[2]]
          + PopCnt16[indices[3]];
@@ -190,9 +190,9 @@ inline constexpr int lsb_index64[64] = {
   21, 44, 38, 32, 29, 23, 17, 11, 4,  62, 46, 55, 26, 59, 40, 36, 15, 53, 34, 51, 20, 43,
   31, 22, 10, 45, 25, 39, 14, 33, 19, 30, 9,  24, 13, 18, 8,  12, 7,  6,  5,  63};
 
-constexpr int constexpr_lsb(uint64_t bb) {
+constexpr int constexpr_lsb(u64 bb) {
     assert(bb != 0);
-    constexpr uint64_t debruijn64 = 0x03F79D71B4CB0A89ULL;
+    constexpr u64 debruijn64 = 0x03F79D71B4CB0A89ULL;
     return lsb_index64[((bb ^ (bb - 1)) * debruijn64) >> 58];
 }
 
@@ -216,12 +216,12 @@ inline Square lsb(Bitboard b) {
 
     if (b & 0xffffffff)
     {
-        _BitScanForward(&idx, int32_t(b));
+        _BitScanForward(&idx, i32(b));
         return Square(idx);
     }
     else
     {
-        _BitScanForward(&idx, int32_t(b >> 32));
+        _BitScanForward(&idx, i32(b >> 32));
         return Square(idx + 32);
     }
     #endif
@@ -251,12 +251,12 @@ inline Square msb(Bitboard b) {
 
     if (b >> 32)
     {
-        _BitScanReverse(&idx, int32_t(b >> 32));
+        _BitScanReverse(&idx, i32(b >> 32));
         return Square(idx + 32);
     }
     else
     {
-        _BitScanReverse(&idx, int32_t(b));
+        _BitScanReverse(&idx, i32(b));
         return Square(idx);
     }
     #endif

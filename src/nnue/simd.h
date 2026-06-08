@@ -135,7 +135,7 @@ using vec_uint_t = __m256i;
 
 #elif USE_SSE2
 using vec_t      = __m128i;
-using vec_i8_t   = std::uint64_t;  // for the correct size -- will be loaded into an xmm reg
+using vec_i8_t   = u64;  // for the correct size -- will be loaded into an xmm reg
 using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
 using vec_uint_t = __m128i;
@@ -162,17 +162,17 @@ using vec_uint_t = __m128i;
     #endif
 
     #ifdef __i386__
-inline __m128i _mm_cvtsi64_si128(int64_t val) {
+inline __m128i _mm_cvtsi64_si128(i64 val) {
     return _mm_loadl_epi64(reinterpret_cast<const __m128i*>(&val));
 }
     #endif
 
     #ifdef USE_SSE41
-        #define vec_convert_8_16(a) _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<int64_t>(a)))
+        #define vec_convert_8_16(a) _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<i64>(a)))
     #else
 // Credit: Yoshie2000
-inline __m128i vec_convert_8_16(uint64_t x) {
-    __m128i v8   = _mm_cvtsi64_si128(static_cast<int64_t>(x));
+inline __m128i vec_convert_8_16(u64 x) {
+    __m128i v8   = _mm_cvtsi64_si128(static_cast<i64>(x));
     __m128i sign = _mm_cmpgt_epi8(_mm_setzero_si128(), v8);
     return _mm_unpacklo_epi8(v8, sign);
 }
@@ -216,13 +216,13 @@ using vec_uint_t __attribute__((may_alias)) = uint32x4_t;
     #define vec_sub_psqt_32(a, b) vsubq_s32(a, b)
     #define vec_zero_psqt() psqt_vec_t{0}
 
-static constexpr std::uint32_t Mask[4] = {1, 2, 4, 8};
+static constexpr u32 Mask[4] = {1, 2, 4, 8};
     #define vec_nnz(a) \
         vaddvq_u32(vandq_u32(vtstq_u32((uint32x4_t) a, (uint32x4_t) a), vld1q_u32(Mask)))
     #define vec128_zero vdupq_n_u16(0)
     #define vec128_set_16(a) vdupq_n_u16(a)
-    #define vec128_load(a) vld1q_u16(reinterpret_cast<const std::uint16_t*>(a))
-    #define vec128_storeu(a, b) vst1q_u16(reinterpret_cast<std::uint16_t*>(a), b)
+    #define vec128_load(a) vld1q_u16(reinterpret_cast<const u16*>(a))
+    #define vec128_storeu(a, b) vst1q_u16(reinterpret_cast<u16*>(a), b)
     #define vec128_add(a, b) vaddq_u16(a, b)
 
     #define NumRegistersSIMD 16
@@ -302,8 +302,8 @@ inline __m256i lasx_cvtepi8_epi16(__m128i a) {
     __asm__("vext2xv.h.b %u0, %u1" : "=f"(out) : "f"(a));
     return out;
     #else
-    int64_t lo = (int64_t) __lsx_vpickve2gr_d(a, 0);
-    int64_t hi = (int64_t) __lsx_vpickve2gr_d(a, 1);
+    i64     lo = (i64) __lsx_vpickve2gr_d(a, 0);
+    i64     hi = (i64) __lsx_vpickve2gr_d(a, 1);
     __m256i v  = __lasx_xvldi(0);
     v          = __lasx_xvinsgr2vr_d(v, lo, 0);
     v          = __lasx_xvinsgr2vr_d(v, hi, 2);
@@ -319,7 +319,7 @@ inline int lasx_vec_nnz(__m256i a) {
 
 #elif USE_LSX
 using vec_t      = __m128i;
-using vec_i8_t   = std::uint64_t;
+using vec_i8_t   = u64;
 using vec128_t   = __m128i;
 using psqt_vec_t = __m128i;
 using vec_uint_t = __m128i;
@@ -365,7 +365,7 @@ inline int lsx_vec_nnz(__m128i a) {
 }
     #define vec_nnz(a) lsx_vec_nnz(a)
 
-inline __m128i vec_convert_8_16(std::uint64_t x) {
+inline __m128i vec_convert_8_16(u64 x) {
     __m128i v = __lsx_vldrepl_d(reinterpret_cast<const void*>(&x), 0);
     return __lsx_vsllwil_h_b(v, 0);
 }
@@ -589,8 +589,8 @@ class SIMDTiling {
 
     template<typename SIMDRegisterType, typename LaneType, int NumLanes, int MaxRegisters>
     static constexpr int BestRegisterCount() {
-        constexpr std::size_t RegisterSize = sizeof(SIMDRegisterType);
-        constexpr std::size_t LaneSize     = sizeof(LaneType);
+        constexpr usize RegisterSize = sizeof(SIMDRegisterType);
+        constexpr usize LaneSize     = sizeof(LaneType);
 
         static_assert(RegisterSize >= LaneSize);
         static_assert(MaxRegisters <= NumRegistersSIMD);

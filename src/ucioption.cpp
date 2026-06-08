@@ -68,7 +68,7 @@ const Option& OptionsMap::operator[](const std::string& name) const {
 void OptionsMap::add(const std::string& name, const Option& option) {
     if (!options_map.count(name))
     {
-        static size_t insert_order = 0;
+        static usize insert_order = 0;
 
         options_map[name] = option;
 
@@ -83,7 +83,7 @@ void OptionsMap::add(const std::string& name, const Option& option) {
 }
 
 
-std::size_t OptionsMap::count(const std::string& name) const { return options_map.count(name); }
+usize OptionsMap::count(const std::string& name) const { return options_map.count(name); }
 
 Option::Option(const OptionsMap* map) :
     parent(map) {}
@@ -185,7 +185,7 @@ Option& Option::operator=(const std::string& v) {
 }
 
 std::ostream& operator<<(std::ostream& os, const OptionsMap& om) {
-    for (size_t idx = 0; idx < om.options_map.size(); ++idx)
+    for (usize idx = 0; idx < om.options_map.size(); ++idx)
         for (const auto& it : om.options_map)
             if (it.second.idx == idx)
             {

@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
-#include <cstdint>
 #include <cstdlib>
 #include <iterator>
 #include <optional>
@@ -226,8 +225,8 @@ void UCIEngine::go(std::istringstream& is) {
 
 void UCIEngine::bench(std::istream& args) {
     std::string token;
-    uint64_t    num, nodes = 0, cnt = 1;
-    uint64_t    nodesSearched = 0;
+    u64         num, nodes = 0, cnt = 1;
+    u64         nodesSearched = 0;
     const auto& options       = engine.get_options();
 
     engine.set_on_update_full([&](const auto& i) {
@@ -298,8 +297,8 @@ void UCIEngine::benchmark(std::istream& args) {
     static constexpr int NUM_WARMUP_POSITIONS = 3;
 
     std::string token;
-    uint64_t    nodes = 0, cnt = 1;
-    uint64_t    nodesSearched = 0;
+    u64         nodes = 0, cnt = 1;
+    u64         nodesSearched = 0;
 
     engine.set_on_update_full([&](const Engine::InfoFull& i) { nodesSearched = i.nodes; });
 
@@ -456,7 +455,7 @@ void UCIEngine::setoption(std::istringstream& is) {
     engine.get_options().setoption(is);
 }
 
-std::uint64_t UCIEngine::perft(const Search::LimitsType& limits) {
+u64 UCIEngine::perft(const Search::LimitsType& limits) {
     auto nodes = engine.perft(engine.fen(), limits.perft, engine.get_options()["UCI_Chess960"]);
     sync_cout << "\nNodes searched: " << nodes << "\n" << sync_endl;
     return nodes;

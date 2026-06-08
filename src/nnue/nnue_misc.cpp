@@ -28,6 +28,7 @@
 #include <sstream>
 
 #include "../position.h"
+#include "../misc.h"
 #include "../types.h"
 #include "../uci.h"
 #include "network.h"
@@ -71,7 +72,7 @@ trace(Position& pos, const Eval::NNUE::Network& network, Eval::NNUE::Accumulator
        << "|            |   (PSQT)   |  (Layers)  |            |\n"
        << "+------------+------------+------------+------------+\n";
 
-    for (std::size_t bucket = 0; bucket < LayerStacks; ++bucket)
+    for (usize bucket = 0; bucket < LayerStacks; ++bucket)
     {
         ss << "|  " << bucket << "        "  //
            << " |  ";

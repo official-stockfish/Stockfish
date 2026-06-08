@@ -21,8 +21,6 @@
 #ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 #define NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 
-#include <cstdint>
-
 #include "../../misc.h"
 #include "../../types.h"
 #include "../nnue_common.h"
@@ -67,7 +65,7 @@ class HalfKAv2_hm {
     static constexpr const char* Name = "HalfKAv2_hm(Friend)";
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue = 0x7f234cb8u;
+    static constexpr u32 HashValue = 0x7f234cb8u;
 
     // Number of feature dimensions
     static constexpr IndexType Dimensions =

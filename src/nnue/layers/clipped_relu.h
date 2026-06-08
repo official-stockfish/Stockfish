@@ -34,8 +34,8 @@ template<IndexType InDims, int WeightScaleBitsLocal = WeightScaleBits>
 class ClippedReLU {
    public:
     // Input/output type
-    using InputType  = std::int32_t;
-    using OutputType = std::uint8_t;
+    using InputType  = i32;
+    using OutputType = u8;
 
     // Number of input/output dimensions
     static constexpr IndexType InputDimensions  = InDims;
@@ -46,8 +46,8 @@ class ClippedReLU {
     using OutputBuffer = OutputType[PaddedOutputDimensions];
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value(std::uint32_t prevHash) {
-        std::uint32_t hashValue = 0x538D24C7u;
+    static constexpr u32 get_hash_value(u32 prevHash) {
+        u32 hashValue = 0x538D24C7u;
         hashValue += prevHash;
         // TODO: consider including WeightScaleBitsLocal in the hash value.
         // For now omitted on purpose because not written by trainer (yet)
@@ -60,8 +60,8 @@ class ClippedReLU {
     // Write network parameters
     bool write_parameters(std::ostream&) const { return true; }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, get_hash_value(0));
         return h;
     }
