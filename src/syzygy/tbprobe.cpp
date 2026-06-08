@@ -324,9 +324,8 @@ class TBFile: public std::ifstream {
                       << ", error = " << GetLastError() << std::endl;
             exit(EXIT_FAILURE);
         }
-        u8* data = (u8*) *baseAddress;
     #endif
-        uint8_t* data = (uint8_t*) *baseAddress;
+        u8* data = (u8*) *baseAddress;
 
         constexpr u8 Magics[][4] = {{0xD7, 0x66, 0x0C, 0xA5}, {0x71, 0xE8, 0x23, 0x5D}};
 
