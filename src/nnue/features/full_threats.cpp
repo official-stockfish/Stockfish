@@ -275,8 +275,6 @@ void FullThreats::append_changed_indices(Color                   perspective,
                                          const DiffType&         diff,
                                          IndexList&              removed,
                                          IndexList&              added,
-                                         FusedUpdateData*        fusedData,
-                                         bool                    first,
                                          const ThreatWeightType* prefetchBase,
                                          IndexType               prefetchStride) {
 
@@ -287,36 +285,6 @@ void FullThreats::append_changed_indices(Color                   perspective,
         auto from     = dirty.pc_sq();
         auto to       = dirty.threatened_sq();
         auto add      = dirty.add();
-
-        if (fusedData)
-        {
-            if (from == fusedData->dp2removed)
-            {
-                if (add)
-                {
-                    if (first)
-                    {
-                        fusedData->dp2removedOriginBoard |= to;
-                        continue;
-                    }
-                }
-                else if (fusedData->dp2removedOriginBoard & to)
-                    continue;
-            }
-            else if (to != SQ_NONE && to == fusedData->dp2removed)
-            {
-                if (add)
-                {
-                    if (first)
-                    {
-                        fusedData->dp2removedTargetBoard |= from;
-                        continue;
-                    }
-                }
-                else if (fusedData->dp2removedTargetBoard & from)
-                    continue;
-            }
-        }
 
         auto&           insert = add ? added : removed;
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);

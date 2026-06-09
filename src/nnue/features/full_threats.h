@@ -66,13 +66,6 @@ class FullThreats {
     };
     // clang-format on
 
-    struct FusedUpdateData {
-        Bitboard dp2removedOriginBoard = 0;
-        Bitboard dp2removedTargetBoard = 0;
-
-        Square dp2removed;
-    };
-
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 128;
     using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
@@ -90,8 +83,6 @@ class FullThreats {
                                        const DiffType&         diff,
                                        IndexList&              removed,
                                        IndexList&              added,
-                                       FusedUpdateData*        fd             = nullptr,
-                                       bool                    first          = false,
                                        const ThreatWeightType* prefetchBase   = nullptr,
                                        IndexType               prefetchStride = 0);
 
