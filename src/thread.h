@@ -26,8 +26,8 @@
 #include <mutex>
 #include <vector>
 
-#include "misc.h"
 #include "memory.h"
+#include "misc.h"
 #include "numa.h"
 #include "position.h"
 #include "search.h"
@@ -168,7 +168,7 @@ class ThreadPool {
     std::vector<std::unique_ptr<Thread>> threads;
     std::vector<NumaIndex>               boundThreadToNumaNode;
 
-    u64 accumulate(std::atomic<u64> Search::Worker::* member) const {
+    u64 accumulate(RelaxedAtomic<u64> Search::Worker::* member) const {
 
         u64 sum = 0;
         for (auto&& th : threads)
