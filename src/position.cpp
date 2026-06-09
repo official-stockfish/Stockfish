@@ -1222,7 +1222,7 @@ void Position::update_piece_threats(Piece               pc,
             const Bitboard discovered = ray & (rAttacks | bAttacks) & occupiedNoK;
 
             assert(!more_than_one(discovered));
-            if (discovered && (ray_pass_bb(sliderSq, s) & noRaysContaining) != noRaysContaining)
+            if (discovered && (ray & noRaysContaining) != noRaysContaining)
             {
                 const Square threatenedSq = lsb(discovered);
                 const Piece  threatenedPc = piece_on(threatenedSq);
