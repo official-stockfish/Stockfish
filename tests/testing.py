@@ -43,28 +43,6 @@ class Valgrind:
         return ["valgrind", "--error-exitcode=42", "--fair-sched=try"]
 
 
-class TSAN:
-    @staticmethod
-    def set_tsan_option():
-        with open(f"tsan.supp", "w") as f:
-            f.write(
-                """
-race:Stockfish::TTEntry::read
-race:Stockfish::TTEntry::save
-race:Stockfish::TTWriter::penalize
-race:Stockfish::TranspositionTable::probe
-race:Stockfish::TranspositionTable::hashfull
-"""
-            )
-
-        os.environ["TSAN_OPTIONS"] = "suppressions=./tsan.supp"
-
-    @staticmethod
-    def unset_tsan_option():
-        os.environ.pop("TSAN_OPTIONS", None)
-        os.remove(f"tsan.supp")
-
-
 class EPD:
     @staticmethod
     def create_bench_epd():
