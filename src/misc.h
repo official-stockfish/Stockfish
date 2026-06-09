@@ -384,12 +384,12 @@ class PRNG {
     }
 };
 
-inline u64 mul_hi64(u64 a, u64 b) {
-#if defined(__GNUC__) && defined(IS_64BIT)
+inline usize mul_hi64(u64 a, usize b) {
+#if defined(__GNUC__) && defined(IS_64BIT) && !defined(__wasm__)
     return (u128(a) * u128(b)) >> 64;
 #else
     u64 aL = u32(a), aH = a >> 32;
-    u64 bL = u32(b), bH = b >> 32;
+    u64 bL = u32(b), bH = u64(b) >> 32;
     u64 c1 = (aL * bL) >> 32;
     u64 c2 = aH * bL + c1;
     u64 c3 = aL * bH + u32(c2);

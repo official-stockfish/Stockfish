@@ -52,11 +52,17 @@ static_assert((CORRHIST_BASE_SIZE & (CORRHIST_BASE_SIZE - 1)) == 0,
 // the entry. The first template parameter T is the base type of the array,
 // and the second template parameter D limits the range of updates in [-D, D]
 // when we update values with the << operator
-template<typename T, int D, bool Atomic = false>
+template<typename T, int D, bool Shared = false>
 struct StatsEntry {
     static_assert(std::is_arithmetic_v<T>, "Not an arithmetic type");
 
    private:
+    static constexpr bool Atomic =
+#ifdef __wasm__
+      false;  // don't use atomics on WASM as they are always seq_cst
+#else
+      Shared;
+#endif
     std::conditional_t<Atomic, std::atomic<T>, T> entry;
 
    public:
