@@ -24,7 +24,7 @@ jobs:
         with:
           repository: vondele/matetrack
           path: matetrack
-          ref: b2c8c9599cd7173f537b28bba88f31690a6d6f62
+          ref: 9d77be284e8cba37e2f8a59e54cd2bcbf4e3ee4d
           persist-credentials: false
 
       - name: matetrack install deps
@@ -68,10 +68,7 @@ jobs:
       - name: Run matetrack th4 go-mate
         working-directory: matetrack
         run: |
-          head -n 21 matetrack.epd > gomates.epd
-          head -n 44 matedtrack.epd >> gomates.epd
-          head -n 18 mates2000.epd >> gomates.epd
-          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile gomates.epd --mate 0 --threads 4 | tee matecheck4gm.out
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 2 --mate 0 --threads 4 | tee matecheck4gm.out
           ! grep "issues were detected" matecheck4gm.out > /dev/null
           total=$(grep "Total FENs:" matecheck4gm.out | awk '{print $3}')
           bmates=$(grep "Best mates:" matecheck4gm.out | awk '{print $3}')
@@ -83,13 +80,13 @@ jobs:
       - name: Run matetrack th1 multiPV
         working-directory: matetrack
         run: |
-          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 --multiPV 4 | tee matecheck1mpv.out
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 10 --nodes 5000 --multiPV 20 --checkMultiPVs | tee matecheck1mpv.out
           ! grep "issues were detected" matecheck1mpv.out > /dev/null
 
       - name: Run matetrack th4 multiPV
         working-directory: matetrack
         run: |
-          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 --threads 4 --multiPV 4 | tee matecheck4mpv.out
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 10 --nodes 5000 --threads 4 --multiPV 20 --checkMultiPVs | tee matecheck4mpv.out
           ! grep "issues were detected" matecheck4mpv.out > /dev/null
 
       - name: Run matetrack th1 with --syzygy50MoveRule false
