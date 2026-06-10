@@ -41,7 +41,8 @@ struct alignas(CacheLineSize) Accumulator;
 
 class FeatureTransformer;
 
-// Class that holds the result of affine transformation of input features
+// Class that holds the result of affine transformation of input features,
+// combined HalfKA + Threats
 struct alignas(CacheLineSize) Accumulator {
     std::array<std::array<i16, L1>, COLOR_NB>          accumulation;
     std::array<std::array<i32, PSQTBuckets>, COLOR_NB> psqtAccumulation;
@@ -89,27 +90,16 @@ struct AccumulatorCaches {
 };
 
 
-template<typename FeatureSet>
 struct AccumulatorState: public Accumulator {
-    typename FeatureSet::DiffType diff;
-
-    void reset(const typename FeatureSet::DiffType& dp) noexcept {
-        diff = dp;
-        computed.fill(false);
-    }
-
-    typename FeatureSet::DiffType& reset() noexcept {
-        computed.fill(false);
-        return diff;
-    }
+    DirtyPiece   dirtyPiece;
+    DirtyThreats dirtyThreats;
 };
 
 class AccumulatorStack {
    public:
     static constexpr usize MaxSize = MAX_PLY + 1;
 
-    template<typename T>
-    [[nodiscard]] const AccumulatorState<T>& latest() const noexcept;
+    [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
     void                                  reset() noexcept;
     std::pair<DirtyPiece&, DirtyThreats&> push() noexcept;
@@ -121,40 +111,28 @@ class AccumulatorStack {
                   [[maybe_unused]] AccumulatorCaches& cache) noexcept;
 
    private:
-    template<typename T>
-    [[nodiscard]] AccumulatorState<T>& mut_latest() noexcept;
+    [[nodiscard]] AccumulatorState& mut_latest() noexcept;
 
-    template<typename T>
-    [[nodiscard]] const std::array<AccumulatorState<T>, MaxSize>& accumulators() const noexcept;
-
-    template<typename T>
-    [[nodiscard]] std::array<AccumulatorState<T>, MaxSize>& mut_accumulators() noexcept;
-
-    template<typename FeatureSet>
     void evaluate_side(Color                     perspective,
                        const Position&           pos,
                        const FeatureTransformer& featureTransformer,
                        // Silence spurious warning on GCC 10
                        [[maybe_unused]] AccumulatorCaches& cache) noexcept;
 
-    template<typename FeatureSet>
     [[nodiscard]] usize find_last_usable_accumulator(Color perspective) const noexcept;
 
-    template<typename FeatureSet>
     void forward_update_incremental(Color                     perspective,
                                     const Position&           pos,
                                     const FeatureTransformer& featureTransformer,
                                     const usize               begin) noexcept;
 
-    template<typename FeatureSet>
     void backward_update_incremental(Color                     perspective,
                                      const Position&           pos,
                                      const FeatureTransformer& featureTransformer,
                                      const usize               end) noexcept;
 
-    std::array<AccumulatorState<PSQFeatureSet>, MaxSize>    psq_accumulators;
-    std::array<AccumulatorState<ThreatFeatureSet>, MaxSize> threat_accumulators;
-    usize                                                   size = 1;
+    std::array<AccumulatorState, MaxSize> accumulators;
+    usize                                 size = 1;
 };
 
 }  // namespace Stockfish::Eval::NNUE
