@@ -989,8 +989,8 @@ void Position::do_move(Move                      m,
             // Update hash keys
             // Zobrist::psq[pc][to] is zero, so we don't need to clear it
             k ^= Zobrist::psq[promotion][to];
-            st->materialKey ^= Zobrist::psq[promotion][8 + pieceCount[promotion] - 1]
-                             ^ Zobrist::psq[pc][8 + pieceCount[pc]];
+            st->materialKey ^= Zobrist::psq[promotion][8 + pieceCount[promotion]]
+                             ^ Zobrist::psq[pc][8 + pieceCount[pc] - 1];
             st->nonPawnKey[us] ^= Zobrist::psq[promotion][to];
 
             if (pt <= BISHOP)
@@ -1625,7 +1625,7 @@ bool Position::material_key_is_ok() const { return compute_material_key() == st-
 // This is meant to be helpful when debugging.
 bool Position::pos_is_ok() const {
 
-    constexpr bool Fast = true;  // Quick (default) or full check?
+    constexpr bool Fast = false;  // fast or full check?
 
     if ((sideToMove != WHITE && sideToMove != BLACK) || piece_on(square<KING>(WHITE)) != W_KING
         || piece_on(square<KING>(BLACK)) != B_KING
