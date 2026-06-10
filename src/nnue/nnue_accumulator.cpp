@@ -19,7 +19,7 @@
 #include "nnue_accumulator.h"
 
 #include <cassert>
-#include <type_traits>
+#include <new>
 
 #include "../bitboard.h"
 #include "../misc.h"
