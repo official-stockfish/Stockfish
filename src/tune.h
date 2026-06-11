@@ -19,7 +19,6 @@
 #ifndef TUNE_H_INCLUDED
 #define TUNE_H_INCLUDED
 
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>  // IWYU pragma: keep
@@ -40,10 +39,10 @@ inline Range default_range(int v) { return v > 0 ? Range(0, 2 * v) : Range(2 * v
 
 struct SetRange {
     explicit SetRange(RangeFun f) :
-        fun(f) {}
+        fun(f) { }
     SetRange(int min, int max) :
         fun(nullptr),
-        range(min, max) {}
+        range(min, max) { }
     Range operator()(int v) const { return fun ? fun(v) : range; }
 
     RangeFun* fun;
@@ -110,7 +109,7 @@ class Tune {
         Entry(const std::string& n, T& v, const SetRange& r) :
             name(n),
             value(v),
-            range(r) {}
+            range(r) { }
         void operator=(const Entry&) = delete;  // Because 'value' is a reference
         void init_option() override;
         void read_option() override;

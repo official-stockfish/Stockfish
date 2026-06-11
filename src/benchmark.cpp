@@ -18,6 +18,7 @@
 
 #include "benchmark.h"
 #include "numa.h"
+#include "misc.h"
 
 #include <cstdlib>
 #include <fstream>

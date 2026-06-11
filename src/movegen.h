@@ -20,8 +20,8 @@
 #define MOVEGEN_H_INCLUDED
 
 #include <algorithm>  // IWYU pragma: keep
-#include <cstddef>
 
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -58,7 +58,7 @@ template<GenType T>
 struct MoveList {
 
     explicit MoveList(const Position& pos) :
-        last(generate<T>(pos, moveList)) {}
+        last(generate<T>(pos, moveList)) { }
     const Move* begin() const { return moveList; }
     const Move* end() const { return last; }
     usize       size() const { return last - moveList; }

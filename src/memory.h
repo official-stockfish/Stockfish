@@ -28,6 +28,7 @@
 #include <cstring>
 
 #include "types.h"
+#include "misc.h"
 
 #if defined(_WIN64)
 
