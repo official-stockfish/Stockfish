@@ -1371,6 +1371,8 @@ void Position::do_null_move(StateInfo& newSt) {
 
     st->pliesFromNull = 0;
 
+    st->capturedPiece = NO_PIECE;
+
     sideToMove = ~sideToMove;
 
     set_check_info();
