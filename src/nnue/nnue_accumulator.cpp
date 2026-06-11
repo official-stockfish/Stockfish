@@ -358,13 +358,13 @@ void update_accumulator_incremental(Color                     perspective,
     if constexpr (Forward)
     {
         ThreatFeatureSet::append_changed_indices(perspective, ksq, dirtyThreats, thrRemoved,
-                                                 thrAdded, nullptr, false, pfBase, pfStride);
+                                                 thrAdded, pfBase, pfStride);
         PSQFeatureSet::append_changed_indices(perspective, ksq, dirtyPiece, psqRemoved, psqAdded);
     }
     else
     {
         ThreatFeatureSet::append_changed_indices(perspective, ksq, dirtyThreats, thrAdded,
-                                                 thrRemoved, nullptr, false, pfBase, pfStride);
+                                                 thrRemoved, pfBase, pfStride);
         PSQFeatureSet::append_changed_indices(perspective, ksq, dirtyPiece, psqAdded, psqRemoved);
     }
 
