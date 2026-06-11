@@ -1315,6 +1315,21 @@ void Position::update_piece_threats(Piece               pc,
 #endif
 }
 
+Key Position::key_after(Move m) const {
+    Square from     = m.from_sq();
+    Square to       = m.to_sq();
+    Piece  pc       = piece_on(from);
+    Piece  captured = piece_on(to);
+    Key    k        = st->key ^ Zobrist::side;
+
+    k ^= Zobrist::psq[captured][to] ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+
+    if (captured || type_of(pc) == PAWN)
+        return k;
+
+    return st->rule50 + 1 < 14 ? k : k ^ make_key((st->rule50 + 1 - 14) / 8);
+}
+
 // Helper used to do/undo a castling move. This is a bit
 // tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
