@@ -391,7 +391,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     // Ignore if square is invalid or not on side to move relative rank 6.
     bool          enpassant = false, legalEP = false;
     unsigned char col = '-', row;
-    ss >> col;
+    if (!(ss >> col))
+        return PositionSetError("Invalid FEN. Expected en-passant square.");
     if (col != '-')
     {
         if (!(ss >> row))
