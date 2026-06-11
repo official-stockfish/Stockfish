@@ -146,7 +146,7 @@ struct NNZInfo {
             }
             else
             {
-                size_t bytes = sizeof(neurons1) / 32;
+                usize bytes = sizeof(neurons1) / 32;
                 memcpy(out, &m1, bytes);
                 out += bytes;
                 memcpy(out, &m2, bytes);
