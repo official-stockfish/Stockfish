@@ -130,7 +130,7 @@ inline std::string getExecutablePathHash() {
     }
 
 #elif defined(__NetBSD__) || defined(__DragonFly__)
-    isize len = readlink("/proc/curproc/exe", executable_path, sizeof(executable_path) - 1);
+    ssize_t len = readlink("/proc/curproc/exe", executable_path, sizeof(executable_path) - 1);
     if (len >= 0)
     {
         executable_path[len] = '\0';
@@ -138,7 +138,7 @@ inline std::string getExecutablePathHash() {
     }
 
 #elif defined(__linux__)
-    isize len = readlink("/proc/self/exe", executable_path, sizeof(executable_path) - 1);
+    ssize_t len = readlink("/proc/self/exe", executable_path, sizeof(executable_path) - 1);
     if (len >= 0)
     {
         executable_path[len] = '\0';
