@@ -56,7 +56,7 @@ static const unsigned char* map_embedded_nnue() {
     const Stockfish::u64 pad      = gUniversalNNUEOffset - base;
 
     void* p =
-      mmap(nullptr, size_t(gUniversalNNUESize + pad), PROT_READ, MAP_PRIVATE, fd, off_t(base));
+      mmap(nullptr, usize(gUniversalNNUESize + pad), PROT_READ, MAP_PRIVATE, fd, off_t(base));
     close(fd);
     if (p == MAP_FAILED)
         return nullptr;

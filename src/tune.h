@@ -26,6 +26,8 @@
 #include <utility>
 #include <vector>
 
+#include "misc.h"
+
 namespace Stockfish {
 
 class OptionsMap;
@@ -132,9 +134,9 @@ class Tune {
     }
 
     // Template specialization for arrays: recursively handle multi-dimensional arrays
-    template<typename T, size_t N, typename... Args>
+    template<typename T, usize N, typename... Args>
     int add(const SetRange& range, std::string&& names, T (&value)[N], Args&&... args) {
-        for (size_t i = 0; i < N; i++)
+        for (usize i = 0; i < N; i++)
             add(range, next(names, i == N - 1) + "[" + std::to_string(i) + "]", value[i]);
         return add(range, std::move(names), args...);
     }

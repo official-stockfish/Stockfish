@@ -26,7 +26,7 @@
 
 namespace Stockfish::Eval::NNUE {
 
-template<size_t Dimensions>
+template<usize Dimensions>
 struct NNZInfo {
 
 #if defined(USE_AVX512)

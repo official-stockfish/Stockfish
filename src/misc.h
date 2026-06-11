@@ -349,7 +349,7 @@ template<typename T>
 class RelaxedAtomic {
     static constexpr bool UseAtomic =
 #ifdef USE_SLOPPY_ATOMICS
-      !std::atomic<T>::is_always_lock_free || sizeof(T) > sizeof(size_t);
+      !std::atomic<T>::is_always_lock_free || sizeof(T) > sizeof(usize);
 #else
       true;
 #endif
