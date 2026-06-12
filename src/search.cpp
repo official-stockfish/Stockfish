@@ -268,13 +268,13 @@ bool Search::Worker::iterative_deepening() {
 
     PVMoves pv;
 
-    Move  lastBestMove      = Move::none();
-    Depth lastBestMoveDepth = 0;
+    PVMoves lastBestMovePV;
+    Depth   lastBestMoveDepth = 0;
+    Value   lastBestMoveScore = -VALUE_INFINITE;
 
     Value  alpha, beta;
-    Value  bestValue          = -VALUE_INFINITE;
-    Value  lastIterationScore = -VALUE_INFINITE;
-    Color  us                 = rootPos.side_to_move();
+    Value  bestValue     = -VALUE_INFINITE;
+    Color  us            = rootPos.side_to_move();
     double timeReduction = 1, totBestMoveChanges = 0;
     int    delta, iterIdx                        = 0;
 
@@ -339,10 +339,11 @@ bool Search::Worker::iterative_deepening() {
 
         // Save the last iteration's scores before the first PV line is searched and
         // all the move scores except the (new) PV are set to -VALUE_INFINITE.
-        for (RootMove& rm : rootMoves)
+        for (usize i = 0; i < rootMoves.size(); ++i)
         {
-            rm.previousScore = rm.score;
-            rm.previousPV    = rm.pv;
+            rootMoves[i].previousScore      = rootMoves[i].score;
+            rootMoves[i].previousPV         = rootMoves[i].pv;
+            rootMoves[i].previousScoreExact = i < multiPV;
         }
 
         usize pvFirst = 0;
@@ -436,44 +437,52 @@ bool Search::Worker::iterative_deepening() {
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
 
-            // In multiPV analysis we do not let aborted searches spoil mated-in/
-            // TB loss scores from a completed search in an earlier PV line.
-            // Hence we guard against an aborted pvIdx line overtaking pvIdx - 1
-            // when pvIdx - 1 is a proven loss.
-            // Moreover, we do not trust an exact loss score from an aborted search.
-            if (threads.stop && pvIdx
-                && ((is_loss(rootMoves[pvIdx - 1].score) && rootMoves[pvIdx] < rootMoves[pvIdx - 1])
-                    || rootMoves[pvIdx].score_is_exact_loss()))
+            if (threads.stop && pvIdx)
             {
-                // If the previous score is worse than pvIdx - 1, we can safely use it.
-                // If it is equal, we make sure it cannot overtake pvIdx - 1.
-                if (rootMoves[pvIdx].previousScore != -VALUE_INFINITE
-                    && rootMoves[pvIdx].previousScore <= rootMoves[pvIdx - 1].score)
+                // In multiPV analysis we do not let aborted searches spoil mated-in/
+                // TB loss scores from a completed search in an earlier PV line.
+                // Hence we guard against an aborted pvIdx line overtaking pvIdx - 1
+                // when pvIdx - 1 is a proven loss.
+                // Moreover, we do not trust an exact loss score from an aborted search.
+                if ((is_loss(rootMoves[pvIdx - 1].score) && rootMoves[pvIdx] < rootMoves[pvIdx - 1])
+                    || rootMoves[pvIdx].score_is_exact_loss())
                 {
-                    rootMoves[pvIdx].score = rootMoves[pvIdx].uciScore =
-                      rootMoves[pvIdx].previousScore;
-                    rootMoves[pvIdx].previousScore = -VALUE_INFINITE;
-                    rootMoves[pvIdx].pv            = rootMoves[pvIdx].previousPV;
-                    rootMoves[pvIdx].unset_bound_flags();
-                }
-
-                // Otherwise, if we can, we cap the score to the best possible, and mark
-                // the score as a bound (also a valid excuse for the incomplete PV.)
-                else
-                {
-                    if (is_loss(rootMoves[pvIdx - 1].score))
+                    // If previousScore is exact and worse than pvIdx - 1, we can safely use it.
+                    // If it is equal, we make sure it cannot overtake pvIdx - 1.
+                    if (rootMoves[pvIdx].previousScore != -VALUE_INFINITE
+                        && rootMoves[pvIdx].previousScoreExact
+                        && rootMoves[pvIdx].previousScore <= rootMoves[pvIdx - 1].score)
                     {
                         rootMoves[pvIdx].score = rootMoves[pvIdx].uciScore =
-                          rootMoves[pvIdx - 1].score;
+                          rootMoves[pvIdx].previousScore;
                         rootMoves[pvIdx].previousScore = -VALUE_INFINITE;
-                        rootMoves[pvIdx].pv.resize(1);
-                        rootMoves[pvIdx].scoreUpperbound = true;
+                        rootMoves[pvIdx].pv            = rootMoves[pvIdx].previousPV;
+                        rootMoves[pvIdx].unset_bound_flags();
                     }
-                    else
-                        rootMoves[pvIdx].scoreUpperbound = false;
 
-                    rootMoves[pvIdx].scoreLowerbound = !rootMoves[pvIdx].scoreUpperbound;
+                    // Otherwise, if we can, we cap the score to the best possible, and mark
+                    // the score as a bound (also a valid excuse for the incomplete PV.)
+                    else
+                    {
+                        if (is_loss(rootMoves[pvIdx - 1].score))
+                        {
+                            rootMoves[pvIdx].score = rootMoves[pvIdx].uciScore =
+                              rootMoves[pvIdx - 1].score;
+                            rootMoves[pvIdx].previousScore = -VALUE_INFINITE;
+                            rootMoves[pvIdx].pv.resize(1);
+                            rootMoves[pvIdx].scoreUpperbound = true;
+                        }
+                        else
+                            rootMoves[pvIdx].scoreUpperbound = false;
+
+                        rootMoves[pvIdx].scoreLowerbound = !rootMoves[pvIdx].scoreUpperbound;
+                    }
                 }
+
+                // Finally, we mark all loss scores from partially searched moves as a bound.
+                for (usize i = pvIdx + 1; i < multiPV; ++i)
+                    if (rootMoves[i].score_is_exact_loss())
+                        rootMoves[i].scoreLowerbound = true;
             }
 
             // Sort the PV lines searched so far and update the GUI
@@ -489,21 +498,21 @@ bool Search::Worker::iterative_deepening() {
                 break;
         }
 
-        const bool forgottenMate = lastIterationScore != -VALUE_INFINITE
-                                && is_mate_or_mated(lastIterationScore)
-                                && (std::abs(rootMoves[0].score) < std::abs(lastIterationScore)
+        const bool forgottenMate = lastBestMoveScore != -VALUE_INFINITE
+                                && is_mate_or_mated(lastBestMoveScore)
+                                && (std::abs(rootMoves[0].score) < std::abs(lastBestMoveScore)
                                     || rootMoves[0].score_is_bound());
 
         if (!threads.stop)
         {
-            if (lastBestMove != rootMoves[0].pv[0])
+            if (lastBestMovePV.empty() || lastBestMovePV[0] != rootMoves[0].pv[0])
                 lastBestMoveDepth = rootDepth;
 
             // Do not replace (shorter) mate scores from a previous iteration.
             if (!forgottenMate)
             {
-                lastBestMove       = rootMoves[0].pv[0];
-                lastIterationScore = rootMoves[0].score;
+                lastBestMovePV    = rootMoves[0].pv;
+                lastBestMoveScore = rootMoves[0].score;
             }
         }
 
@@ -517,12 +526,12 @@ bool Search::Worker::iterative_deepening() {
         if (abortedLossSearch || (rootMoves[0].score != -VALUE_INFINITE && forgottenMate))
         {
             // Bring the last best move to the front for best thread selection.
-            if (lastBestMove != Move::none())
+            if (!lastBestMovePV.empty())
             {
-                Utility::move_to_front(
-                  rootMoves, [lastBestMove](const auto& rm) { return rm == lastBestMove; });
-                rootMoves[0].score = rootMoves[0].uciScore = rootMoves[0].previousScore;
-                rootMoves[0].pv                            = rootMoves[0].previousPV;
+                Utility::move_to_front(rootMoves, [&lastPV = std::as_const(lastBestMovePV)](
+                                                    const auto& rm) { return rm == lastPV[0]; });
+                rootMoves[0].score = rootMoves[0].uciScore = lastBestMoveScore;
+                rootMoves[0].pv                            = lastBestMovePV;
                 rootMoves[0].unset_bound_flags();
 
                 if (mainThread)
