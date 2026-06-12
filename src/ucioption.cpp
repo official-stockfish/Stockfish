@@ -20,10 +20,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <system_error>
 #include <utility>
 
 #include "misc.h"
@@ -152,9 +154,24 @@ Option& Option::operator=(const std::string& v) {
 
     assert(!type.empty());
 
+    if (type == "spin")
+    {
+        int         value = 0;
+        const char* begin = v.data();
+        const char* end   = begin + v.size();
+
+        // Match std::stoi() in accepting an explicit plus sign.
+        if (begin != end && *begin == '+')
+            ++begin;
+
+        auto [ptr, ec] = std::from_chars(begin, end, value);
+
+        if (ec != std::errc() || ptr != end || value < min || value > max)
+            return *this;
+    }
+
     if ((type != "button" && type != "string" && v.empty())
-        || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (std::stoi(v) < min || std::stoi(v) > max)))
+        || (type == "check" && v != "true" && v != "false"))
         return *this;
 
     if (type == "combo")
