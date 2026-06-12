@@ -20,10 +20,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <system_error>
 #include <utility>
 
 #include "misc.h"
@@ -86,7 +88,7 @@ void OptionsMap::add(const std::string& name, const Option& option) {
 usize OptionsMap::count(const std::string& name) const { return options_map.count(name); }
 
 Option::Option(const OptionsMap* map) :
-    parent(map) {}
+    parent(map) { }
 
 Option::Option(const char* v, OnChange f) :
     type("string"),
@@ -108,7 +110,7 @@ Option::Option(OnChange f) :
     type("button"),
     min(0),
     max(0),
-    on_change(std::move(f)) {}
+    on_change(std::move(f)) { }
 
 Option::Option(int v, int minv, int maxv, OnChange f) :
     type("spin"),
@@ -152,9 +154,24 @@ Option& Option::operator=(const std::string& v) {
 
     assert(!type.empty());
 
+    if (type == "spin")
+    {
+        int         value = 0;
+        const char* begin = v.data();
+        const char* end   = begin + v.size();
+
+        // Match std::stoi() in accepting an explicit plus sign.
+        if (begin != end && *begin == '+')
+            ++begin;
+
+        auto [ptr, ec] = std::from_chars(begin, end, value);
+
+        if (ec != std::errc() || ptr != end || value < min || value > max)
+            return *this;
+    }
+
     if ((type != "button" && type != "string" && v.empty())
-        || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (std::stoi(v) < min || std::stoi(v) > max)))
+        || (type == "check" && v != "true" && v != "false"))
         return *this;
 
     if (type == "combo")
