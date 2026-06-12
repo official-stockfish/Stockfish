@@ -53,9 +53,9 @@ jobs:
 
       # matecheck/python chess is not good at handling crashing engines. Do a basic check first.
       - name: Test engine functionality
-        working-directory: matetrack
+        working-directory: Stockfish/src
         run: |
-          printf "setoption name Threads value 2\nsetoption name SyzygyPath value 3-4-5-wdl/:3-4-5-dtz/\nbench 16 1 100000 classic280.epd nodes\n" | /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish
+           python3 ../tests/instrumented.py --none ./stockfish
 
       - name: Run matetrack th1
         working-directory: matetrack
