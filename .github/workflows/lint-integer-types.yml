@@ -1,0 +1,31 @@
+name: Lint integer types
+on:
+  pull_request:
+    branches:
+      - master
+      - tools
+    paths:
+      - "**.cpp"
+      - "**.h"
+      - "scripts/lint_integer_types.py"
+      - ".github/workflows/lint-integer-types.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  Lint-Integer-Types:
+    name: No new fixed-width integer types
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check for fixed-width types
+        run: |
+          python3 scripts/lint_integer_types.py \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}"
