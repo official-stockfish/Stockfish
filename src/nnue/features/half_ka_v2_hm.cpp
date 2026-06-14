@@ -20,10 +20,12 @@
 
 #include "half_ka_v2_hm.h"
 
-#include "../../bitboard.h"
-#include "../../position.h"
 #include "../../types.h"
 #include "../nnue_common.h"
+
+#if defined(USE_AVX512ICL)
+    #include "../../bitboard.h"
+#endif
 
 namespace Stockfish::Eval::NNUE::Features {
 
@@ -89,18 +91,6 @@ IndexType HalfKAv2_hm::make_index(Color perspective, Square s, Piece pc, Square 
     const IndexType flip = 56 * perspective;
     return (IndexType(s) ^ OrientTBL[ksq] ^ flip) + PieceSquareIndex[perspective][pc]
          + KingBuckets[int(ksq) ^ flip];
-}
-
-// Get a list of indices for active features
-
-void HalfKAv2_hm::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
-    Square   ksq = pos.square<KING>(perspective);
-    Bitboard bb  = pos.pieces();
-    while (bb)
-    {
-        Square s = pop_lsb(bb);
-        active.push_back(make_index(perspective, s, pos.piece_on(s), ksq));
-    }
 }
 
 // Get a list of indices for recently changed features
