@@ -7,6 +7,9 @@ jobs:
   Matetrack:
     name: Matetrack
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout SF repo 
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -24,7 +27,7 @@ jobs:
         with:
           repository: vondele/matetrack
           path: matetrack
-          ref: 9d77be284e8cba37e2f8a59e54cd2bcbf4e3ee4d
+          ref: 1e7f6c6fff8e2f23923880a94fae596281346395
           persist-credentials: false
 
       - name: matetrack install deps
@@ -46,6 +49,13 @@ jobs:
         run: |
           wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-wdl/
           wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-dtz/
+
+
+      # matecheck/python chess is not good at handling crashing engines. Do a basic check first.
+      - name: Test engine functionality
+        working-directory: Stockfish/src
+        run: |
+           python3 ../tests/instrumented.py --none ./stockfish
 
       - name: Run matetrack th1
         working-directory: matetrack
