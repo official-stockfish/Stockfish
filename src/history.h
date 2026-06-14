@@ -132,7 +132,7 @@ using LowPlyHistory = Stats<i16, 7183, LOW_PLY_HISTORY_SIZE, UINT_16_HISTORY_SIZ
 using CapturePieceToHistory = Stats<i16, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-using PieceToHistory = Stats<i16, 30000, PIECE_NB, SQUARE_NB>;
+using PieceToHistory = AtomicStats<i16, 30000, PIECE_NB, SQUARE_NB>;
 
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
@@ -238,6 +238,7 @@ struct SharedHistories {
     }
 
     UnifiedCorrectionHistory correctionHistory;
+    ContinuationHistory      continuationHistory[2][2];
     PawnHistory              pawnHistory;
 
 
