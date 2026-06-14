@@ -63,6 +63,8 @@ namespace Stockfish::Eval::NNUE {
 
 namespace Detail {
 
+constexpr u32 MaxDescriptionSize = 1024 * 1024;
+
 // Read evaluation function parameters
 template<typename T>
 bool read_parameters(std::istream& stream, T& reference) {
@@ -306,20 +308,29 @@ bool Network::read_header(std::istream& stream, u32* hashValue, std::string* des
     version    = read_little_endian<u32>(stream);
     *hashValue = read_little_endian<u32>(stream);
     size       = read_little_endian<u32>(stream);
-    if (!stream || version != Version)
+    if (!stream || version != Version || size > Detail::MaxDescriptionSize)
         return false;
+
     desc->resize(size);
-    stream.read(&(*desc)[0], size);
+
+    if (size)
+        stream.read(desc->data(), size);
     return !stream.fail();
 }
 
 
 // Write network header
 bool Network::write_header(std::ostream& stream, u32 hashValue, const std::string& desc) const {
+    if (desc.size() > Detail::MaxDescriptionSize)
+        return false;
+
     write_little_endian<u32>(stream, Version);
     write_little_endian<u32>(stream, hashValue);
     write_little_endian<u32>(stream, u32(desc.size()));
-    stream.write(&desc[0], desc.size());
+
+    if (!desc.empty())
+        stream.write(desc.data(), desc.size());
+
     return !stream.fail();
 }
 
