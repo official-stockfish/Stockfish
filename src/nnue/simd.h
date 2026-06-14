@@ -171,8 +171,7 @@ inline __m128i _mm_cvtsi64_si128(i64 val) {
         #ifdef __wasm__
             #define vec_convert_8_16(a) wasm_i16x8_load8x8(reinterpret_cast<const void*>(&a))
         #else
-            #define vec_convert_8_16(a) \
-                _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<int64_t>(a)))
+            #define vec_convert_8_16(a) _mm_cvtepi8_epi16(_mm_cvtsi64_si128(static_cast<i64>(a)))
         #endif
     #else
 // Credit: Yoshie2000

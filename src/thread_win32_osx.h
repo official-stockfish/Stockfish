@@ -37,7 +37,7 @@ namespace Stockfish {
 class NativeThread {
     pthread_t thread;
 
-    static constexpr size_t TH_STACK_SIZE = 8 * 1024 * 1024;
+    static constexpr usize TH_STACK_SIZE = 8 * 1024 * 1024;
 
    public:
     template<class Function, class... Args>
