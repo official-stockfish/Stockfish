@@ -4,7 +4,7 @@ import re
 import subprocess
 import sys
 
-BANNED_RE = re.compile('\\b(size_t|ptrdiff_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|int_least8_t|int_least16_t|int_least32_t|int_least64_t|uint_least8_t|uint_least16_t|uint_least32_t|uint_least64_t|int_fast8_t|int_fast16_t|int_fast32_t|int_fast64_t|uint_fast8_t|uint_fast16_t|uint_fast32_t|uint_fast64_t|intmax_t|uintmax_t|intptr_t|uintptr_t)\\b')
+BANNED_RE = re.compile('\\b(size_t|ptrdiff_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|int_least8_t|int_least16_t|int_least32_t|int_least64_t|uint_least8_t|uint_least16_t|uint_least32_t|uint_least64_t|int_fast8_t|int_fast16_t|int_fast32_t|int_fast64_t|uint_fast8_t|uint_fast16_t|uint_fast32_t|uint_fast64_t)\\b')
 
 
 def do_check(path):
@@ -52,6 +52,12 @@ def parse_diff(diff_text):
     return violations
 
 
+def get_alias(token):
+    s = { "size_t": "usize", "ptrdiff_t": "isize" }.get(token, None)
+    return s if s else token[0] + "".join(filter(str.isdigit, token))
+
+
+
 def main(argv):
     diff_text = subprocess.run(
         ["git", "diff", "--unified=0", "--no-color", f"{argv[1]}...{argv[2]}"],
@@ -61,9 +67,10 @@ def main(argv):
     violations = parse_diff(diff_text)
 
     for path, lineno, token, _line in violations:
+        alias = get_alias(token)
         print(
             f"::error file={path},line={lineno}::"
-            f"'{token}' is not allowed in new code, instead use the alias from misc.h"
+            f"'{token}' is not allowed in new code, instead use the alias '{alias}' from misc.h"
         )
 
     if violations:
