@@ -634,8 +634,6 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
 
 void Search::Worker::do_move(
   Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
-    // Speculative TT prefetch as early as the move is known: the probe at the
-    // child node follows only a few hundred cycles behind.
     prefetch(tt.first_entry(pos.key_after(move)));
 
     bool capture = pos.capture_stage(move);
