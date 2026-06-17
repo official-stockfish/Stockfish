@@ -323,7 +323,7 @@ bool Search::Worker::iterative_deepening() {
 
     for (Color c : {WHITE, BLACK})
         for (int i = 0; i < UINT_16_HISTORY_SIZE; i++)
-            mainHistory[c][i] = (mainHistory[c][i] + 5) * 789 / 1024;
+            mainHistory[c][i] = mainHistory[c][i] * 789 / 1024;
 
     // Iterative deepening loop until requested to stop or the target depth is reached
     while (rootDepth + 1 < MAX_PLY && !threads.stop
@@ -1306,7 +1306,7 @@ moves_loop:  // When in check, search starts here
 
         // For first picked move (ttMove) reduce reduction
         else if (move == ttData.move)
-            r = std::max(-10, r - 2016 + 150 * cutNode);
+            r = std::max(0, r - 2016);
 
         if (capture)
             ss->statScore = 809 * int(PieceValue[pos.captured_piece()]) / 128
