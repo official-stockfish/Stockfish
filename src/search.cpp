@@ -634,7 +634,9 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
 
 void Search::Worker::do_move(
   Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
-    prefetch(tt.first_entry(pos.key_after(move)));
+    // prefetch_key does not model castling, en passant or promotion keys
+    // exactly; for rare moves the prefetch lands on an unused line.
+    prefetch(tt.first_entry(pos.prefetch_key(move)));
 
     bool capture = pos.capture_stage(move);
     ++nodes;

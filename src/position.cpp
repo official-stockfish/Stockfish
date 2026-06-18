@@ -1315,7 +1315,7 @@ void Position::update_piece_threats(Piece               pc,
 #endif
 }
 
-Key Position::key_after(Move m) const {
+Key Position::prefetch_key(Move m) const {
     Square from     = m.from_sq();
     Square to       = m.to_sq();
     Piece  pc       = piece_on(from);
