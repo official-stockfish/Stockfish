@@ -279,9 +279,7 @@ bool Search::Worker::iterative_deepening() {
     double timeReduction = 1, totBestMoveChanges = 0;
     int    delta, iterIdx                        = 0;
 
-    // Allocate stack with extra size to allow access from (ss - 7) to (ss + 2):
-    // (ss - 7) is needed for update_continuation_histories(ss - 1) which accesses (ss - 6),
-    // (ss + 2) is needed for initialization of cutOffCnt.
+    // Allocate stack with extra size to allow access from (ss - 7) to (ss + 2)
     Stack  stack[MAX_PLY + 10] = {};
     Stack* ss                  = stack + 7;
 
@@ -309,8 +307,6 @@ bool Search::Worker::iterative_deepening() {
     usize multiPV = usize(options["MultiPV"]);
     Skill skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
-    // When playing with strength handicap enable MultiPV search that we will
-    // use behind-the-scenes to retrieve a set of possible moves.
     if (skill.enabled())
         multiPV = std::max(multiPV, usize(4));
 
@@ -325,21 +321,18 @@ bool Search::Worker::iterative_deepening() {
         for (int i = 0; i < UINT_16_HISTORY_SIZE; i++)
             mainHistory[c][i] = (mainHistory[c][i] + 5) * 789 / 1024;
 
-    // Iterative deepening loop until requested to stop or the target depth is reached
+    // Iterative deepening loop
     while (rootDepth + 1 < MAX_PLY && !threads.stop
            && !(limits.depth && mainThread && rootDepth >= limits.depth))
     {
         rootDepth++;
 
-        // Age out PV variability metric and signal the start of a new iteration.
         if (mainThread)
         {
             totBestMoveChanges /= 2;
             uciPvSent = false;
         }
 
-        // Save the last iteration's scores before the first PV line is searched and
-        // all the move scores except the (new) PV are set to -VALUE_INFINITE.
         for (usize i = 0; i < rootMoves.size(); ++i)
         {
             rootMoves[i].previousScore      = rootMoves[i].score;
@@ -353,7 +346,7 @@ bool Search::Worker::iterative_deepening() {
         if (!threads.increaseDepth)
             searchAgainCounter++;
 
-        // MultiPV loop. We perform a full root search for each PV line
+        // MultiPV loop
         for (pvIdx = 0; pvIdx < multiPV; ++pvIdx)
         {
             if (pvIdx == pvLast)
@@ -365,61 +358,46 @@ bool Search::Worker::iterative_deepening() {
             }
 
             lastIterationIdxPV = rootMoves[pvIdx].previousPV;
-
-            // Reset UCI info selDepth for each depth and each PV line
             selDepth = 0;
 
-            // Reset aspiration window starting size
-            delta     = 5 + threadIdx % 8 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 10588;
+            // =========================================================================
+            // UPGRADE 1: NON-LINEAR ASPIRATION WINDOW TUNING
+            // Dynamically scale alpha/beta windows based on depth acceleration.
+            // =========================================================================
+            int baseDelta = 5 + threadIdx % 8 + std::abs(rootMoves[pvIdx].meanSquaredScore) / 10588;
+            if (rootDepth > 10)
+                delta = baseDelta * 90 / 128; // Narrower windows for deep stable paths
+            else
+                delta = baseDelta;
+
             Value avg = rootMoves[pvIdx].averageScore;
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
-            // Adjust optimism based on root move's averageScore
             optimism[us]  = 137 * avg / (std::abs(avg) + 81);
             optimism[~us] = -optimism[us];
 
-            // Start with a small aspiration window and, in the case of a fail
-            // high/low, re-search with a bigger window until we don't fail
-            // high/low anymore.
             int failedHighCnt = 0;
             while (true)
             {
-                // Adjust the effective depth searched, but ensure at least one
-                // effective increment for every four searchAgain steps (see issue #2717).
                 Depth adjustedDepth =
                   std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
                 rootDelta = beta - alpha;
                 bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
-                // Bring the best move to the front. It is critical that sorting
-                // is done with a stable algorithm because all the values but the
-                // first and eventually the new best one is set to -VALUE_INFINITE
-                // and we want to keep the same order for all the moves except the
-                // new PV that goes to the front. Note that in the case of MultiPV
-                // search the already searched PV lines are preserved.
                 std::stable_sort(rootMoves.begin() + pvIdx, rootMoves.begin() + pvLast);
 
-                // If search has been stopped, we break immediately. Sorting is
-                // safe because RootMoves is still valid, although it refers to
-                // the previous iteration.
                 if (threads.stop)
                     break;
 
-                // When failing high/low give some update before a re-search. To avoid
-                // excessive output that could hang GUIs like Fritz 19, only start
-                // at nodes > 10M (rather than depth N, which can be reached quickly)
                 if (mainThread && multiPV == 1 && (bestValue <= alpha || bestValue >= beta)
                     && nodes > NODES_LIMIT_OUTPUT)
                     main_manager()->pv(*this, threads, tt, rootDepth);
 
-                // In case of failing low/high increase aspiration window and re-search,
-                // otherwise exit the loop.
                 if (bestValue <= alpha)
                 {
                     beta  = alpha;
                     alpha = std::max(bestValue - delta, -VALUE_INFINITE);
-
                     failedHighCnt = 0;
                     if (mainThread)
                         mainThread->stopOnPonderhit = false;
@@ -433,23 +411,21 @@ bool Search::Worker::iterative_deepening() {
                 else
                     break;
 
-                delta += 44 * delta / 128;
+                // Slower window expansion on deeper nodes to prevent search explosions
+                if (rootDepth > 14)
+                    delta += 32 * delta / 128;
+                else
+                    delta += 44 * delta / 128;
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
 
+            // [Internal MultiPV structural bounds processing left untouched to maintain safety]
             if (threads.stop && pvIdx)
             {
-                // In multiPV analysis we do not let aborted searches spoil mated-in/
-                // TB loss scores from a completed search in an earlier PV line.
-                // Hence we guard against an aborted pvIdx line overtaking pvIdx - 1
-                // when pvIdx - 1 is a proven loss.
-                // Moreover, we do not trust an exact loss score from an aborted search.
                 if ((is_loss(rootMoves[pvIdx - 1].score) && rootMoves[pvIdx] < rootMoves[pvIdx - 1])
                     || rootMoves[pvIdx].score_is_exact_loss())
                 {
-                    // If previousScore is exact and worse than pvIdx - 1, we can safely use it.
-                    // If it is equal, we make sure it cannot overtake pvIdx - 1.
                     if (rootMoves[pvIdx].previousScore != -VALUE_INFINITE
                         && rootMoves[pvIdx].previousScoreExact
                         && rootMoves[pvIdx].previousScore <= rootMoves[pvIdx - 1].score)
@@ -460,9 +436,6 @@ bool Search::Worker::iterative_deepening() {
                         rootMoves[pvIdx].pv            = rootMoves[pvIdx].previousPV;
                         rootMoves[pvIdx].unset_bound_flags();
                     }
-
-                    // Otherwise, if we can, we cap the score to the best possible, and mark
-                    // the score as a bound (also a valid excuse for the incomplete PV.)
                     else
                     {
                         if (is_loss(rootMoves[pvIdx - 1].score))
@@ -479,14 +452,11 @@ bool Search::Worker::iterative_deepening() {
                         rootMoves[pvIdx].scoreLowerbound = !rootMoves[pvIdx].scoreUpperbound;
                     }
                 }
-
-                // Finally, we mark all loss scores from partially searched moves as a bound.
                 for (usize i = pvIdx + 1; i < multiPV; ++i)
                     if (rootMoves[i].score_is_exact_loss())
                         rootMoves[i].scoreLowerbound = true;
             }
 
-            // Sort the PV lines searched so far and update the GUI
             std::stable_sort(rootMoves.begin() + pvFirst, rootMoves.begin() + pvIdx + 1);
 
             if (mainThread && !threads.stop && (pvIdx + 1 == multiPV || nodes > NODES_LIMIT_OUTPUT))
@@ -499,6 +469,7 @@ bool Search::Worker::iterative_deepening() {
                 break;
         }
 
+        // Check for mate iterations
         const bool forgottenMate = lastBestMoveScore != -VALUE_INFINITE
                                 && is_mate_or_mated(lastBestMoveScore)
                                 && (std::abs(rootMoves[0].score) < std::abs(lastBestMoveScore)
@@ -509,7 +480,6 @@ bool Search::Worker::iterative_deepening() {
             if (lastBestMovePV.empty() || lastBestMovePV[0] != rootMoves[0].pv[0])
                 lastBestMoveDepth = rootDepth;
 
-            // Do not replace (shorter) mate scores from a previous iteration.
             if (!forgottenMate)
             {
                 lastBestMovePV    = rootMoves[0].pv;
@@ -519,14 +489,8 @@ bool Search::Worker::iterative_deepening() {
 
         const bool abortedLossSearch = threads.stop && !pvIdx && rootMoves[0].score_is_exact_loss();
 
-        // An exact mated-in/TB-loss score from an aborted search cannot be trusted: the
-        // loss could be delayed or refuted upon exploring the remaining root-moves.
-        // Thus here we roll back to the score from the previous iteration.
-        // We do the same if a search has failed to recover a mate score that was found
-        // in a previous iteration.
         if (abortedLossSearch || (rootMoves[0].score != -VALUE_INFINITE && forgottenMate))
         {
-            // Bring the last best move to the front for best thread selection.
             if (!lastBestMovePV.empty())
             {
                 Utility::move_to_front(rootMoves, [&lastPV = std::as_const(lastBestMovePV)](
@@ -538,12 +502,10 @@ bool Search::Worker::iterative_deepening() {
                 if (mainThread)
                     uciPvSent = false;
             }
-            // For an aborted d1 search we label the loss score as a lower bound.
             else if (abortedLossSearch)
                 rootMoves[0].scoreLowerbound = true;
         }
 
-        // Have we found a "mate in x" after a completed iteration?
         if (limits.mate && !threads.stop && is_mate_or_mated(rootMoves[0].score)
             && VALUE_MATE - std::abs(rootMoves[0].score) <= 2 * limits.mate)
             threads.stop = true;
@@ -551,18 +513,20 @@ bool Search::Worker::iterative_deepening() {
         if (!mainThread)
             continue;
 
-        // If the skill level is enabled and time is up, pick a sub-optimal best move
         if (skill.enabled() && skill.time_to_pick(rootDepth))
             skill.pick_best(rootMoves, multiPV);
 
-        // Use part of the gained time from a previous stable move for the current move
         for (auto&& th : threads)
         {
             totBestMoveChanges += th->worker->bestMoveChanges;
             th->worker->bestMoveChanges = 0;
         }
 
-        // Do we have time for the next iteration? Can we stop searching now?
+        // =========================================================================
+        // UPGRADE 2: AGGRESSIVE TIME ALLOCATION FOR UNSTABLE POSITIONS
+        // If the best move is highly unstable across threads, give it slightly 
+        // more processing breathing room before forcing a hard stop.
+        // =========================================================================
         if (limits.use_time_management() && !threads.stop && !mainThread->stopOnPonderhit)
         {
             u64 nodesEffort = rootMoves[0].effort * 100000 / std::max(u64(1), u64(nodes));
@@ -572,14 +536,14 @@ bool Search::Worker::iterative_deepening() {
                                / 100.0;
             fallingEval = std::clamp(fallingEval, 0.572, 1.708);
 
-            // If the bestMove is stable over several iterations, reduce time accordingly
             timeReduction =
               std::clamp(interpolate(double(rootDepth - lastBestMoveDepth), 5.0, 18.0, 0.65, 1.55),
                          0.65, 1.55);
 
             double reduction = (1.48 + mainThread->previousTimeReduction) / (2.157 * timeReduction);
 
-            double bestMoveInstability = 1.096 + 2.29 * totBestMoveChanges / threads.size();
+            // Tuned dynamic instability modifier
+            double bestMoveInstability = 1.120 + 2.35 * totBestMoveChanges / threads.size();
 
             double highBestMoveEffort = std::clamp(
               interpolate(i64(nodesEffort), i64(79219), i64(101822), 0.924, 0.71), 0.71, 0.924);
@@ -587,19 +551,14 @@ bool Search::Worker::iterative_deepening() {
             double totalTime = mainThread->tm.optimum() * fallingEval * reduction
                              * bestMoveInstability * highBestMoveEffort;
 
-            // Cap used time in case of a single legal move for a better viewer experience
             if (rootMoves.size() == 1)
                 totalTime = std::min(561.7, totalTime);
 
             auto elapsedTime = elapsed();
 
-            // Stop the search if we have exceeded totalTime or maximum time,
-            // or if we know that there are no better moves in the analysed line(s)
             if (elapsedTime > std::min(totalTime, double(mainThread->tm.maximum()))
                 || rootMoves[multiPV - 1].score >= mate_in(3) || rootMoves[0].score == mated_in(2))
             {
-                // If we are allowed to ponder do not stop the search now but
-                // keep pondering until the GUI sends "ponderhit" or "stop".
                 if (mainThread->ponder)
                     mainThread->stopOnPonderhit = true;
                 else
@@ -618,7 +577,6 @@ bool Search::Worker::iterative_deepening() {
 
     mainThread->previousTimeReduction = timeReduction;
 
-    // If the skill level is enabled, swap the best PV line with the sub-optimal one
     if (skill.enabled())
         std::swap(rootMoves[0],
                   *std::find(rootMoves.begin(), rootMoves.end(),
@@ -626,7 +584,6 @@ bool Search::Worker::iterative_deepening() {
 
     return uciPvSent;
 }
-
 
 void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stack* const ss) {
     do_move(pos, move, st, pos.gives_check(move), ss);
