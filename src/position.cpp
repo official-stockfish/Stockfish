@@ -1327,7 +1327,7 @@ Key Position::prefetch_key(Move m) const {
     if (captured || type_of(pc) == PAWN)
         return k;
 
-    return st->rule50 + 1 < 14 ? k : k ^ make_key((st->rule50 + 1 - 14) / 8);
+    return adjust_key50<true>(k);
 }
 
 // Helper used to do/undo a castling move. This is a bit
