@@ -638,6 +638,57 @@ class TestInvalidOptions(metaclass=OrderedClassMembers):
         self.stockfish.equals("readyok")
 
 
+class TestCommandsDuringSearch(metaclass=OrderedClassMembers):
+    def beforeAll(self):
+        self.stockfish = Stockfish()
+
+    def afterAll(self):
+        self.stockfish.quit()
+        assert self.stockfish.close() == 0
+
+    def afterEach(self):
+        assert postfix_check(self.stockfish.get_output()) == True
+        self.stockfish.clear_output()
+
+    # Some commands need to stop the search instead of deadlocking
+    def _interrupt_with(self, command):
+        self.stockfish.send_command("position startpos")
+        self.stockfish.send_command("go infinite")
+        self.stockfish.send_command(command)
+        self.stockfish.starts_with("bestmove")
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
+
+    def test_setoption(self):
+        self._interrupt_with("setoption name Threads value 2")
+
+    def test_ucinewgame(self):
+        self._interrupt_with("ucinewgame")
+
+    def test_second_go(self):
+        self._interrupt_with("go depth 5")
+
+    def test_position(self):
+        self._interrupt_with("position startpos moves e2e4")
+
+    def test_eval(self):
+        self._interrupt_with("eval")
+
+    def test_d(self):
+        self._interrupt_with("d")
+
+    def test_flip(self):
+        self._interrupt_with("flip")
+
+    def test_isready_does_not_stop_search(self):
+        self.stockfish.send_command("position startpos")
+        self.stockfish.send_command("go infinite")
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
+        self.stockfish.send_command("stop")
+        self.stockfish.starts_with("bestmove")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Stockfish with testing options")
     parser.add_argument("--valgrind", action="store_true", help="Run valgrind testing")
@@ -678,6 +729,7 @@ if __name__ == "__main__":
             TestEnPassantSanitization,
             TestInvalidFEN,
             TestInvalidOptions,
+            TestCommandsDuringSearch,
         ]
     )
 
