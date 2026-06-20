@@ -40,6 +40,10 @@
 
 #elif defined(USE_LSX)
     #include <lsxintrin.h>
+
+#elif defined(USE_RVV)
+    #include <riscv_vector.h>
+
 #endif
 
 #include "../types.h"
@@ -635,6 +639,35 @@ class SIMDTiling {
     static_assert(PSQTBuckets % PsqtTileHeight == 0, "PsqtTileHeight must divide PSQTBuckets");
 #endif
 };
+
+#if defined(USE_RVV)
+
+    #define RVV_DEFINE_DPBUSD(A, W, H) \
+        inline vint32##A##_t rvv_dpbusd_##A(vuint8##A##_t a, vint8##A##_t b, usize n) { \
+            vint16##W##_t  prod   = __riscv_vwmulsu_vv_i16##W(b, a, 4 * n); \
+            vuint32##W##_t prod32 = __riscv_vreinterpret_v_u16##W##_u32##W( \
+              __riscv_vreinterpret_v_i16##W##_u16##W(prod)); \
+            vint16##A##_t even = \
+              __riscv_vreinterpret_v_u16##A##_i16##A(__riscv_vnsrl_wx_u16##A(prod32, 0, 2 * n)); \
+            vint16##A##_t odd = \
+              __riscv_vreinterpret_v_u16##A##_i16##A(__riscv_vnsrl_wx_u16##A(prod32, 16, 2 * n)); \
+            vuint32##A##_t pairs = __riscv_vreinterpret_v_u16##A##_u32##A( \
+              __riscv_vreinterpret_v_i16##A##_u16##A(__riscv_vadd_vv_i16##A(even, odd, 2 * n))); \
+            vint16##H##_t lo = \
+              __riscv_vreinterpret_v_u16##H##_i16##H(__riscv_vnsrl_wx_u16##H(pairs, 0, n)); \
+            vint16##H##_t hi = \
+              __riscv_vreinterpret_v_u16##H##_i16##H(__riscv_vnsrl_wx_u16##H(pairs, 16, n)); \
+            return __riscv_vwadd_vv_i32##A(lo, hi, n); \
+        }
+
+RVV_DEFINE_DPBUSD(m1, m2, mf2)
+RVV_DEFINE_DPBUSD(m2, m4, m1)
+RVV_DEFINE_DPBUSD(m4, m8, m2)
+
+    #undef RVV_DEFINE_DPBUSD
+
+#endif
+
 }
 
 #endif

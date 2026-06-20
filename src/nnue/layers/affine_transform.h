@@ -105,6 +105,26 @@ affine_transform_non_ssse3(i32* output, const i8* weights, const i32* biases, co
 
         #endif
     }
+    #elif defined(USE_RVV)
+    for (IndexType i = 0; i < OutputDimensions; ++i)
+    {
+        const i8*  row  = &weights[i * PaddedInputDimensions];
+        vint32m1_t vsum = __riscv_vmv_v_x_i32m1(0, __riscv_vsetvlmax_e32m1());
+
+        for (usize j = 0; j < InputDimensions;)
+        {
+            usize vl = __riscv_vsetvl_e8m4(InputDimensions - j);
+
+            vint8m4_t  w    = __riscv_vle8_v_i8m4(&row[j], vl);
+            vuint8m4_t x    = __riscv_vle8_v_u8m4(&input[j], vl);
+            vint16m8_t prod = __riscv_vwmulsu_vv_i16m8(w, x, vl);
+
+            vsum = __riscv_vwredsum_vs_i16m8_i32m1(prod, vsum, vl);
+            j += vl;
+        }
+
+        output[i] = biases[i] + __riscv_vmv_x_s_i32m1_i32(vsum);
+    }
     #else
     std::memcpy(output, biases, sizeof(i32) * OutputDimensions);
 
