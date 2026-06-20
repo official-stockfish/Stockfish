@@ -22,6 +22,7 @@
 #include <atomic>
 #include <cassert>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -32,6 +33,7 @@
 #include <mutex>
 #include <sstream>
 #include <string_view>
+#include <system_error>
 
 #include "types.h"
 
@@ -52,7 +54,7 @@ struct Tie: public std::streambuf {  // MSVC requires split streambuf for cin an
 
     Tie(std::streambuf* b, std::streambuf* l) :
         buf(b),
-        logBuf(l) {}
+        logBuf(l) { }
 
     int sync() override { return logBuf->pubsync(), buf->pubsync(); }
     int overflow(int c) override { return log(buf->sputc(char(c)), "<< "); }
@@ -76,7 +78,7 @@ class Logger {
 
     Logger() :
         in(std::cin.rdbuf(), file.rdbuf()),
-        out(std::cout.rdbuf(), file.rdbuf()) {}
+        out(std::cout.rdbuf(), file.rdbuf()) { }
     ~Logger() { start(""); }
 
     std::ofstream file;
@@ -350,11 +352,11 @@ void dbg_extremes_of(i64 value, int slot) {
 
     i64 current_max = extremes.at(slot)[1].load();
     while (current_max < value && !extremes.at(slot)[1].compare_exchange_weak(current_max, value))
-    {}
+    { }
 
     i64 current_min = extremes.at(slot)[2].load();
     while (current_min > value && !extremes.at(slot)[2].compare_exchange_weak(current_min, value))
-    {}
+    { }
 }
 
 void dbg_correl_of(i64 value1, i64 value2, int slot) {
@@ -486,8 +488,9 @@ void start_logger(const std::string& fname) { Logger::start(fname); }
 #endif
 
 usize str_to_size_t(const std::string& s) {
-    unsigned long long value = std::stoull(s);
-    if (value > std::numeric_limits<usize>::max())
+    unsigned long long value  = 0;
+    const auto         result = std::from_chars(s.data(), s.data() + s.size(), value);
+    if (result.ec != std::errc{} || value > std::numeric_limits<usize>::max())
         std::exit(EXIT_FAILURE);
     return static_cast<usize>(value);
 }
