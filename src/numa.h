@@ -1050,9 +1050,11 @@ class NumaConfig {
             }
             else if (parts.size() == 2)
             {
+                constexpr usize MaxIndices = 1 << 20;  // prevent oom
+
                 auto cfirst = str_to_size_t(std::string(parts[0]));
                 auto clast  = str_to_size_t(std::string(parts[1]));
-                if (cfirst.has_value() && clast.has_value())
+                if (cfirst.has_value() && clast.has_value() && *clast - *cfirst < MaxIndices)
                 {
                     for (usize c = *cfirst; c <= *clast; ++c)
                     {
