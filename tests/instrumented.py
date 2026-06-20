@@ -689,6 +689,40 @@ class TestCommandsDuringSearch(metaclass=OrderedClassMembers):
         self.stockfish.starts_with("bestmove")
 
 
+class TestBenchFile(metaclass=OrderedClassMembers):
+    def beforeEach(self):
+        self.stockfish = None
+
+    def afterEach(self):
+        assert postfix_check(self.stockfish.get_output()) == True
+        self.stockfish.clear_output()
+
+    def _bench(self, name, content):
+        with open(name, "w") as f:
+            f.write(content)
+        self.stockfish = Stockfish(f"bench 16 1 4 {name} depth".split(" "), True)
+
+    def test_valid_file(self):
+        self._bench("good.epd", "4k3/8/4K3/8/8/8/8/8 w - - 0 1\n")
+        assert self.stockfish.process.returncode == 0
+        assert "Nodes searched" in self.stockfish.process.stderr
+
+    def test_empty_file(self):
+        self._bench("empty.epd", "")
+        assert self.stockfish.process.returncode == 0
+
+    def test_malformed_fen(self):
+        self._bench("bad.epd", "not a valid fen\n")
+        assert self.stockfish.process.returncode != 0
+        assert "CRITICAL ERROR" in self.stockfish.process.stdout
+
+    def test_missing_file(self):
+        self.stockfish = Stockfish(
+            "bench 16 1 4 does_not_exist.epd depth".split(" "), True
+        )
+        assert self.stockfish.process.returncode != 0
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Stockfish with testing options")
     parser.add_argument("--valgrind", action="store_true", help="Run valgrind testing")
@@ -730,6 +764,7 @@ if __name__ == "__main__":
             TestInvalidFEN,
             TestInvalidOptions,
             TestCommandsDuringSearch,
+            TestBenchFile,
         ]
     )
 
