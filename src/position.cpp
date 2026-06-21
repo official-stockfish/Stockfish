@@ -276,25 +276,18 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     if (count<KING>(WHITE) != 1 || count<KING>(BLACK) != 1)
         return PositionSetError("Unsupported position. Incorrect number of kings.");
 
-    const int wPawns = count<PAWN>(WHITE);
-    const int bPawns = count<PAWN>(BLACK);
-    if (wPawns > 8)
-        return PositionSetError("Unsupported position. WHITE has more than 8 pawns.");
-    if (bPawns > 8)
-        return PositionSetError("Unsupported position. BLACK has more than 8 pawns.");
+    for (Color c : {WHITE, BLACK})
+    {
+        if (count<PAWN>(c) > 8)
+            return PositionSetError(std::string("Unsupported position. ") + (c == WHITE ? "WHITE" : "BLACK") + " has more than 8 pawns.");
 
-    const int wAdditionalKnights = std::max((int) count<KNIGHT>(WHITE) - 2, 0);
-    const int bAdditionalKnights = std::max((int) count<KNIGHT>(BLACK) - 2, 0);
-    const int wAdditionalBishops = std::max((int) count<BISHOP>(WHITE) - 2, 0);
-    const int bAdditionalBishops = std::max((int) count<BISHOP>(BLACK) - 2, 0);
-    const int wAdditionalRooks   = std::max((int) count<ROOK>(WHITE) - 2, 0);
-    const int bAdditionalRooks   = std::max((int) count<ROOK>(BLACK) - 2, 0);
-    const int wAdditionalQueens  = std::max((int) count<QUEEN>(WHITE) - 1, 0);
-    const int bAdditionalQueens  = std::max((int) count<QUEEN>(BLACK) - 1, 0);
-    if (wAdditionalKnights + wAdditionalBishops + wAdditionalRooks + wAdditionalQueens > 8 - wPawns)
-        return PositionSetError("Unsupported position. Too many pieces for WHITE.");
-    if (bAdditionalKnights + bAdditionalBishops + bAdditionalRooks + bAdditionalQueens > 8 - bPawns)
-        return PositionSetError("Unsupported position. Too many pieces for BLACK.");
+        int additional = std::max(count<KNIGHT>(c) - 2, 0)
+                       + std::max(count<BISHOP>(c) - 2, 0)
+                       + std::max(count<ROOK>(c) - 2, 0)
+                       + std::max(count<QUEEN>(c) - 1, 0);
+        if (additional > 8 - count<PAWN>(c))
+            return PositionSetError(std::string("Unsupported position. Too many pieces for ") + (c == WHITE ? "WHITE." : "BLACK."));
+    }
 
     // 2. Active color
     if (!(ss >> token))
