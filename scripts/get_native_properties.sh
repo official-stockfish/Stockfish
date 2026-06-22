@@ -217,7 +217,7 @@ set_arch_riscv64() {
 	get_riscv_flags
 	true_arch=$(
 		select_arch_from_table <<'EOF'
-riscv64-rva23|match_flags|v zba zbb zbs zicbop zicond
+riscv64-rva23|match_flags|v zba zbb zbs zicond
 riscv64|match_true|
 EOF
 	)
