@@ -24,7 +24,6 @@
 #include <cstdlib>
 #include <iterator>
 #include <optional>
-#include <set>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -103,17 +102,6 @@ void UCIEngine::loop() {
 
         token.clear();  // Avoid a stale if getline() returns nothing or a blank line
         is >> token;
-
-        // These commands read or mutate state owned by running search, so stop
-        // search before processing them.
-        static const std::set<std::string_view> stopsSearch{
-          "go",   "position", "setoption", "ucinewgame",    "flip",
-          "eval", "d",        "bench",     BenchmarkCommand};
-        if (stopsSearch.count(token))
-        {
-            engine.stop();
-            engine.wait_for_search_finished();
-        }
 
         if (token == "quit" || token == "stop")
             engine.stop();
