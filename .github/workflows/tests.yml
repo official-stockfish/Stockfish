@@ -165,7 +165,13 @@ jobs:
 
       - name: Download required macOS packages
         if: runner.os == 'macOS'
-        run: brew install coreutils gcc@11
+        run: brew install coreutils
+
+      - name: Install GCC on macOS
+        if: runner.os == 'macOS' && matrix.config.comp == 'gcc'
+        run: |
+          brew install gcc@11 || true
+          g++-11 --version
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
