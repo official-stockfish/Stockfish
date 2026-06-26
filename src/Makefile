@@ -588,12 +588,15 @@ ifeq ($(COMP),clang)
 endif
 
 ifeq ($(KERNEL),Darwin)
-	mac_target_flags := -mmacosx-version-min=10.15
-	ifneq ($(arch),any)
-		mac_target_flags += -arch $(arch)
+	# Only add macOS-specific options during non-NDK compilation
+	ifneq ($(COMP),ndk)
+		mac_target_flags := -mmacosx-version-min=10.15
+		ifneq ($(arch),any)
+			mac_target_flags += -arch $(arch)
+		endif
+		CXXFLAGS += $(mac_target_flags)
+		LDFLAGS += $(mac_target_flags)
 	endif
-	CXXFLAGS += $(mac_target_flags)
-	LDFLAGS += $(mac_target_flags)
 	XCRUN = xcrun
 endif
 
@@ -729,14 +732,16 @@ ifeq ($(optimize),yes)
 		endif
 	endif
 
-	ifeq ($(KERNEL),Darwin)
-		ifeq ($(comp),$(filter $(comp),clang icx))
-			CXXFLAGS += -mdynamic-no-pic
-		endif
-
-		ifeq ($(comp),gcc)
-			ifneq ($(arch),arm64)
+	ifneq ($(COMP),ndk)
+		ifeq ($(KERNEL),Darwin)
+			ifeq ($(comp),$(filter $(comp),clang icx))
 				CXXFLAGS += -mdynamic-no-pic
+			endif
+
+			ifeq ($(comp),gcc)
+				ifneq ($(arch),arm64)
+					CXXFLAGS += -mdynamic-no-pic
+				endif
 			endif
 		endif
 	endif
