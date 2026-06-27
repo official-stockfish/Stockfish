@@ -30,6 +30,7 @@
 #include <exception>  // IWYU pragma: keep
 // IWYU pragma: no_include <__exception/terminate.h>
 #include <functional>
+#include <ios>
 #include <iosfwd>
 #include <optional>
 #include <cstring>
@@ -152,6 +153,27 @@ struct PipeDeleter {
 // Reads the file as bytes.
 // Returns std::nullopt if the file does not exist.
 std::optional<std::string> read_file_to_string(const std::string& path);
+
+#ifdef _WIN32
+// Converts a UTF-8 encoded string to a UTF-16 wide string. Needed on Windows
+// because the narrow std::fstream and WinAPI overloads interpret paths using
+// the active code page rather than UTF-8.
+std::wstring utf8_to_wide(const std::string& str);
+#endif
+
+// Opens a file stream from a UTF-8 encoded path. On Windows the narrow
+// std::fstream overloads interpret the path with the active code page instead
+// of UTF-8, which prevents opening files whose path contains non-ASCII
+// characters. To avoid this we convert the path to UTF-16 and use the wide
+// open() overload. On other platforms the UTF-8 byte string is used directly.
+template<typename Stream>
+void open_fstream(Stream& stream, const std::string& path, std::ios_base::openmode mode) {
+#ifdef _WIN32
+    stream.open(utf8_to_wide(path).c_str(), mode);
+#else
+    stream.open(path, mode);
+#endif
+}
 
 void dbg_hit_on(bool cond, int slot = 0);
 void dbg_mean_of(i64 value, int slot = 0);

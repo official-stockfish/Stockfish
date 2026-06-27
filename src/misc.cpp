@@ -18,6 +18,16 @@
 
 #include "misc.h"
 
+#ifdef _WIN32
+    #if !defined(WIN32_LEAN_AND_MEAN)
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #if !defined(NOMINMAX)
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+#endif
+
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -96,7 +106,7 @@ class Logger {
 
         if (!fname.empty())
         {
-            l.file.open(fname, std::ifstream::out);
+            open_fstream(l.file, fname, std::ios_base::out);
 
             if (!l.file.is_open())
             {
@@ -493,11 +503,24 @@ usize str_to_size_t(const std::string& s) {
 }
 
 std::optional<std::string> read_file_to_string(const std::string& path) {
-    std::ifstream f(path, std::ios_base::binary);
+    std::ifstream f;
+    open_fstream(f, path, std::ios_base::in | std::ios_base::binary);
     if (!f)
         return std::nullopt;
     return std::string(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
 }
+
+#ifdef _WIN32
+std::wstring utf8_to_wide(const std::string& str) {
+    if (str.empty())
+        return std::wstring();
+
+    const int size = MultiByteToWideChar(CP_UTF8, 0, str.data(), int(str.size()), nullptr, 0);
+    std::wstring wstr(size, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, str.data(), int(str.size()), wstr.data(), size);
+    return wstr;
+}
+#endif
 
 void remove_whitespace(std::string& s) {
     s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return std::isspace(c); }), s.end());

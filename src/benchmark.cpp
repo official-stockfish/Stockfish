@@ -412,7 +412,8 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
     else
     {
         std::string   fen;
-        std::ifstream file(fenFile);
+        std::ifstream file;
+        open_fstream(file, fenFile, std::ios_base::in);
 
         if (!file.is_open())
         {
