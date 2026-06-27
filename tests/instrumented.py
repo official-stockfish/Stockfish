@@ -397,10 +397,7 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command("go depth 5")
         self.stockfish.starts_with("bestmove")
 
-    def test_load_nnue_from_non_ascii_path(self):
-        # Regression test for issue #3424: on Windows the narrow file APIs
-        # interpret paths using the active code page, so exporting/loading a
-        # network through a path with non-ASCII characters used to fail.
+    def test_issue_3424_non_ascii_path(self):
         nnue_dir = os.path.join(os.path.abspath(os.getcwd()), "tëst_тест_目录")
         os.makedirs(nnue_dir, exist_ok=True)
         nnue_path = os.path.join(nnue_dir, "verify.nnue")
