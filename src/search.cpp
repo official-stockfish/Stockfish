@@ -706,7 +706,7 @@ Value Search::Worker::search(
     constexpr bool rootNode = nodeType == Root;
     const bool     allNode  = !(PvNode || cutNode);
 
-    // Dive into quiescence search when the depth reaches zero
+    // Step 0. Dive into quiescence search when the depth reaches zero
     if (depth <= 0)
         return qsearch<PvNode ? PV : NonPV>(pos, ss, alpha, beta);
 
@@ -764,7 +764,7 @@ Value Search::Worker::search(
 
     if (!rootNode)
     {
-        // Step 2. Check for aborted search and immediate draw
+        // Step 2. Check for aborted search or immediate draw
         if (threads.stop.load(std::memory_order_relaxed) || pos.is_draw(ss->ply)
             || ss->ply >= MAX_PLY)
             return (ss->ply >= MAX_PLY && !ss->inCheck) ? evaluate(pos) : value_draw(nodes);
@@ -772,9 +772,8 @@ Value Search::Worker::search(
         // Step 3. Mate distance pruning. Even if we mate at the next move our score
         // would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
         // a shorter mate was found upward in the tree then there is no need to search
-        // because we will never beat the current alpha. Same logic but with reversed
-        // signs apply also in the opposite condition of being mated instead of giving
-        // mate. In this case, return a fail-high score.
+        // because we will never beat the current alpha. Equal and opposite logic applies
+        // when being mated. In either case, return a fail-high score.
         alpha = std::max(mated_in(ss->ply), alpha);
         beta  = std::min(mate_in(ss->ply + 1), beta);
         if (alpha >= beta)
@@ -850,13 +849,13 @@ Value Search::Worker::search(
     if (priorReduction >= 2 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 173)
         depth--;
 
-    // At non-PV nodes we check for an early TT cutoff
+    // Step 6. At non-PV nodes we check for an early TT cutoff
     if (!PvNode && !excludedMove && ttData.depth > depth - (ttData.value <= beta)
         && is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
         && (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
         && (cutNode == (ttData.value >= beta) || depth > 4))
     {
-        // If ttMove is quiet, update move sorting heuristics on TT hit
+        // If the ttMove is quiet, update move sorting heuristics on TT hit
         if (ttData.move && ttData.value >= beta)
         {
             // Bonus for a quiet ttMove that fails high
@@ -890,15 +889,15 @@ Value Search::Worker::search(
             else
                 return ttData.value;
         }
-    }  // No cutoff, but why? Does the stored inexact value mismatch our aspiration window?
+    } // No cutoff, but why? Compare the aspiration window to the inexact bound
     else if (!PvNode && !excludedMove && ttData.depth > depth - (ttData.value <= beta)
              && is_valid(ttData.value) && ttData.bound != BOUND_EXACT
              && ttData.bound & (ttData.value >= beta ? BOUND_UPPER : BOUND_LOWER) && depth > 5)
-    {  // If a window-bound mismatch is the only reason cutoff failed, penalize the now-useless tte
+    {  // If such a mismatch is the only reason cutoff failed, the tte is now useless
         ttWriter.penalize(1);
     }
 
-    // Step 6. Tablebases probe
+    // Step 7. Tablebases probe
     if (!rootNode && !excludedMove && tbConfig.cardinality)
     {
         int piecesCount = pos.count<ALL_PIECES>();
@@ -965,13 +964,13 @@ Value Search::Worker::search(
     }
 
 
-    // Step 7. Razoring
+    // Step 8. Razoring
     // If eval is really low, skip search entirely and return the qsearch value.
     // For PvNodes, we must have a guard against mates being returned.
     if (!PvNode && eval < alpha - 465 - 300 * depth * depth)
         return qsearch<NonPV>(pos, ss, alpha, beta);
 
-    // Step 8. Futility pruning: child node
+    // Step 9. Futility pruning: child node
     // The depth condition is important for mate finding.
     if (!ss->ttPv && depth < 17 && eval >= beta && (!ttData.move || ttCapture) && !is_loss(beta)
         && !is_win(eval))
@@ -987,7 +986,7 @@ Value Search::Worker::search(
             return (716 * beta + 308 * eval) / 1024;
     }
 
-    // Step 9. Null move search with verification search
+    // Step 10. Null move search with verification search
     if (cutNode && ss->staticEval >= beta - 14 * depth - 45 * improving + 374 && !excludedMove
         && pos.non_pawn_material(us) && ss->ply >= nmpMinPly && !is_loss(beta))
     {
@@ -1024,13 +1023,13 @@ Value Search::Worker::search(
 
     improving |= ss->staticEval >= beta;
 
-    // Step 10. Internal iterative reductions
+    // Step 11. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
     // (*Scaler) Making IIR more aggressive scales poorly.
     if (!ss->followPV && !allNode && depth >= 6 && !ttData.move)
         depth--;
 
-    // Step 11. ProbCut
+    // Step 12. ProbCut
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 214 - 59 * improving;
@@ -1080,7 +1079,7 @@ Value Search::Worker::search(
 
 moves_loop:  // When in check, search starts here
 
-    // Step 12. A small Probcut idea
+    // Step 13. A small ProbCut idea
     probCutBeta = beta + 428;
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
@@ -1098,7 +1097,7 @@ moves_loop:  // When in check, search starts here
 
     int moveCount = 0;
 
-    // Step 13. Loop through all pseudo-legal moves until no moves remain
+    // Step 14. Loop through all pseudo-legal moves until no moves remain
     // or a beta cutoff occurs.
     while ((move = mp.next_move()) != Move::none())
     {
@@ -1144,7 +1143,7 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 1006;
 
-        // Step 14. Pruning at shallow depths.
+        // Step 15. Pruning at shallow depths.
         // Depth conditions are important for mate finding.
         if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
@@ -1215,14 +1214,20 @@ moves_loop:  // When in check, search starts here
             }
         }
 
-        // Step 15. Extensions
-        // Singular extension search. If all moves but one
-        // fail low on a search of (alpha-s, beta-s), and just one fails high on
-        // (alpha, beta), then that move is singular and should be extended. To
-        // verify this we do a reduced search on the position excluding the ttMove
-        // and if the result is lower than ttValue minus a margin, then we will
-        // extend the ttMove. Recursive singular search is avoided.
-
+        // Step 16. Singular Extensions
+        //
+        // We check for "only moves": if all moves but one fail low on a search of
+        // (alpha-s, beta-s) and just one fails high on (alpha, beta), then that move
+        // is singular. Singular moves are extended to better estimate the result of
+        // the (putatively) forced line.
+        //
+        // We do a reduced search which excludes the ttMove, and if it fails low, then
+        // we extend the ttMove. If it fails high, then the ttMove is non-singular and
+        // we may do some pruning or reduction.
+        //
+        // Recursive excluded search is avoided. The `excludedMove` mechanism
+        // was historically a hack and remains a bit fragile.
+        //
         // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
         // and lower extension margins scale well.
         if (!rootNode && move == ttData.move && !excludedMove && depth >= 6 + ss->ttPv
@@ -1281,11 +1286,13 @@ moves_loop:  // When in check, search starts here
 
         u64 nodeCount = rootNode ? u64(nodes) : 0;
 
-        // Step 16. Make the move
+        // Step 17. Make the move
         do_move(pos, move, st, givesCheck, ss);
 
         // Add extension to new depth
         newDepth += extension;
+
+        // Step 18. Compute and apply late moves reduction (LMR) (or possibly extension)
 
         // Decrease reduction for PvNodes (*Scaler)
         if (ss->ttPv)
@@ -1327,7 +1334,7 @@ moves_loop:  // When in check, search starts here
         if (allNode)
             r += r * 272 / (256 * depth + 285);
 
-        // Step 17. Late moves reduction / extension (LMR)
+        // Apply the computed LMR
         if (depth >= 2 && moveCount > 1)
         {
             // In general we want to cap the LMR depth search at newDepth, but when
@@ -1360,7 +1367,7 @@ moves_loop:  // When in check, search starts here
             }
         }
 
-        // Step 18. Full-depth search when LMR is skipped
+        // Step 19. Full-depth search when LMR is skipped
         else if (!PvNode || moveCount > 1)
         {
             // Increase reduction if ttMove is not present
@@ -1372,7 +1379,7 @@ moves_loop:  // When in check, search starts here
                                    newDepth - (r > 5039) - (r > 5223 && newDepth > 2), !cutNode);
         }
 
-        // For PV nodes only, do a full PV search on the first move or after a fail high,
+        // Step 20. For PV nodes only, do a full PV search on the first move or after a fail high,
         // otherwise let the parent node fail low with value <= alpha and try another move.
         if (PvNode && (moveCount == 1 || value > alpha))
         {
@@ -1389,15 +1396,15 @@ moves_loop:  // When in check, search starts here
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);
         }
 
-        // Step 19. Undo move
+        // Step 21. Undo move
         undo_move(pos, move);
 
         assert(value > -VALUE_INFINITE && value < VALUE_INFINITE);
 
-        // Step 20. Check for a new best move
-        // Finished searching the move. If a stop occurred, the return value of
-        // the search cannot be trusted, and we return immediately without updating
-        // best move, principal variation nor transposition table.
+        // Step 22. Check for a new best move
+        // If a stop occurred, the value of the search cannot be trusted, and we
+        // return immediately without updating the best move, principal variation
+        // or transposition table.
         if (threads.stop.load(std::memory_order_relaxed))
             return VALUE_ZERO;
 
@@ -1446,13 +1453,13 @@ moves_loop:  // When in check, search starts here
                     ++bestMoveChanges;
             }
             else
-                // All other moves but the PV, are set to the lowest value: this
+                // All other moves but the PV are set to the lowest value: this
                 // is not a problem when sorting because the sort is stable and the
-                // move position in the list is preserved - just the PV is pushed up.
+                // move position in the list is preserved -- just the PV is pushed up.
                 rm.score = -VALUE_INFINITE;
         }
 
-        // In case we have an alternative move equal in eval to the current bestmove,
+        // If we have an alternative move equal in value to the current bestmove, we (sometimes)
         // promote it to bestmove by pretending it just exceeds alpha (but not beta).
         int inc = (value == bestValue && ss->ply + 2 >= rootDepth && (int(nodes) & 14) == 0
                    && !is_win(std::abs(value) + 1));
@@ -1496,10 +1503,11 @@ moves_loop:  // When in check, search starts here
         }
     }
 
-    // Step 21. Check for mate and stalemate
+    // Step 23. Check for mate and stalemate
     // All legal moves have been searched and if there are no legal moves, it
     // must be a mate or a stalemate. If we are in a singular extension search then
     // return a fail low score.
+    // Otherwise, update histories and stats.
 
     assert(moveCount || !ss->inCheck || excludedMove || !MoveList<LEGAL>(pos).size());
 
@@ -1560,7 +1568,7 @@ moves_loop:  // When in check, search starts here
     if (bestValue <= alpha)
         ss->ttPv = ss->ttPv || (ss - 1)->ttPv;
 
-    // Write gathered information in transposition table. Note that the
+    // Step 24. Write gathered information in transposition table. Note that the
     // static evaluation is saved as it was before correction history.
     if (!excludedMove && !(rootNode && pvIdx))
         ttWriter.write(posKey, value_to_tt(bestValue, ss->ply), ss->ttPv,
@@ -1581,8 +1589,8 @@ moves_loop:  // When in check, search starts here
         update_correction_history(pos, ss, *this, 1114 * bonus / 1024);
     }
 
-    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
-
+    // Step 25. Return our final estimated value to the parent.
+    assert(-VALUE_INFINITE < bestValue && bestValue < VALUE_INFINITE);
     return bestValue;
 }
 
@@ -1816,14 +1824,14 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     if (!is_decisive(bestValue) && bestValue > beta)
         bestValue = (481 * bestValue + 543 * beta) / 1024;
 
-    // Save gathered info in transposition table. The static evaluation
+    // Step 10. Save gathered info in transposition table. The static evaluation
     // is saved as it was before adjustment by correction history.
     ttWriter.write(posKey, value_to_tt(bestValue, ss->ply), pvHit,
                    bestValue >= beta ? BOUND_LOWER : BOUND_UPPER, DEPTH_QS, bestMove,
                    unadjustedStaticEval, tt.generation());
 
-    assert(bestValue > -VALUE_INFINITE && bestValue < VALUE_INFINITE);
-
+    // Step 11. Return our final estimated value to the parent.
+    assert(-VALUE_INFINITE < bestValue && bestValue < VALUE_INFINITE);
     return bestValue;
 }
 
