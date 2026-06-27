@@ -515,7 +515,7 @@ std::wstring utf8_to_wide(const std::string& str) {
     if (str.empty())
         return std::wstring();
 
-    const int size = MultiByteToWideChar(CP_UTF8, 0, str.data(), int(str.size()), nullptr, 0);
+    const int    size = MultiByteToWideChar(CP_UTF8, 0, str.data(), int(str.size()), nullptr, 0);
     std::wstring wstr(size, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, str.data(), int(str.size()), wstr.data(), size);
     return wstr;
