@@ -397,6 +397,22 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command("go depth 5")
         self.stockfish.starts_with("bestmove")
 
+    def test_load_nnue_from_non_ascii_path(self):
+        # Regression test for issue #3424: on Windows the narrow file APIs
+        # interpret paths using the active code page, so exporting/loading a
+        # network through a path with non-ASCII characters used to fail.
+        nnue_dir = os.path.join(os.path.abspath(os.getcwd()), "tëst_тест_目录")
+        os.makedirs(nnue_dir, exist_ok=True)
+        nnue_path = os.path.join(nnue_dir, "verify.nnue")
+
+        export = Stockfish(["export_net", nnue_path], True)
+        assert export.process.returncode == 0
+
+        self.stockfish.send_command(f"setoption name EvalFile value {nnue_path}")
+        self.stockfish.send_command("position startpos")
+        self.stockfish.send_command("go depth 5")
+        self.stockfish.starts_with("bestmove")
+
     def test_multipv_setting(self):
         self.stockfish.send_command("setoption name MultiPV value 4")
         self.stockfish.send_command("position startpos")
