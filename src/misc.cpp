@@ -19,11 +19,9 @@
 #include "misc.h"
 
 #ifdef _WIN32
-    #if !defined(WIN32_LEAN_AND_MEAN)
-        #define WIN32_LEAN_AND_MEAN
-    #endif
-    #if !defined(NOMINMAX)
-        #define NOMINMAX
+    #define WIN32_LEAN_AND_MEAN
+    #ifndef NOMINMAX
+        #define NOMINMAX  // Disable macros min() and max()
     #endif
     #include <windows.h>
 #endif
