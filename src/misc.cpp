@@ -35,6 +35,10 @@
 
 #include "types.h"
 
+#if defined(_WIN32)
+    #include <windows.h>
+#endif
+
 namespace Stockfish {
 
 namespace {
@@ -96,7 +100,7 @@ class Logger {
 
         if (!fname.empty())
         {
-            l.file.open(fname, std::ifstream::out);
+            l.file.open(fixup_path(fname), std::ifstream::out);
 
             if (!l.file.is_open())
             {
@@ -492,8 +496,21 @@ usize str_to_size_t(const std::string& s) {
     return static_cast<usize>(value);
 }
 
+std::filesystem::path fixup_path(const std::string& path) {
+#ifdef _WIN32
+    int len  = static_cast<int>(path.size());
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), len, NULL, 0);
+
+    std::wstring wstr(static_cast<usize>(wlen), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), len, wstr.data(), wlen);
+    return {wstr};
+#else
+    return {path};
+#endif
+}
+
 std::optional<std::string> read_file_to_string(const std::string& path) {
-    std::ifstream f(path, std::ios_base::binary);
+    std::ifstream f(fixup_path(path), std::ios_base::binary);
     if (!f)
         return std::nullopt;
     return std::string(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());

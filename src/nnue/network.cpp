@@ -128,7 +128,7 @@ bool Network::save(const std::optional<std::string>& filename) const {
         actualFilename = evalFile.defaultName;
     }
 
-    std::ofstream stream(actualFilename, std::ios_base::binary);
+    std::ofstream stream(fixup_path(actualFilename), std::ios_base::binary);
     bool          saved = save(stream, evalFile.current, evalFile.netDescription);
 
     msg = saved ? "Network saved successfully to " + actualFilename : "Failed to export a net";
@@ -226,7 +226,7 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 
 
 void Network::load_user_net(const std::string& dir, const std::string& evalfilePath) {
-    std::ifstream stream(dir + evalfilePath, std::ios::binary);
+    std::ifstream stream(fixup_path(dir + evalfilePath), std::ios::binary);
     auto          description = load(stream);
 
     if (description.has_value())

@@ -251,7 +251,7 @@ class TBFile: public std::ifstream {
         while (std::getline(ss, path, SepChar))
         {
             fname = path + "/" + f;
-            std::ifstream::open(fname);
+            std::ifstream::open(fixup_path(fname));
             if (is_open())
                 return;
         }
@@ -291,7 +291,7 @@ class TBFile: public std::ifstream {
         }
     #else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
-        HANDLE fd = CreateFileA(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+        HANDLE fd = CreateFileW(fixup_path(fname).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                 OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
 
         if (fd == INVALID_HANDLE_VALUE)

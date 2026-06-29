@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <exception>  // IWYU pragma: keep
+#include <filesystem>
 // IWYU pragma: no_include <__exception/terminate.h>
 #include <functional>
 #include <iosfwd>
@@ -148,6 +149,9 @@ struct PipeDeleter {
 };
 
 #endif
+
+// Normalize non-ANSI paths on Windows
+std::filesystem::path fixup_path(const std::string& path);
 
 // Reads the file as bytes.
 // Returns std::nullopt if the file does not exist.

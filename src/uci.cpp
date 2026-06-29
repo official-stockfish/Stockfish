@@ -39,6 +39,10 @@
 #include "types.h"
 #include "ucioption.h"
 
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 namespace Stockfish {
 
 constexpr auto BenchmarkCommand = "speedtest";
@@ -85,6 +89,12 @@ void UCIEngine::init_search_update_listeners() {
 }
 
 void UCIEngine::loop() {
+#ifdef _WIN32
+    // Best-effort UTF-8 support
+    (void) SetConsoleCP(CP_UTF8);
+    (void) SetConsoleOutputCP(CP_UTF8);
+#endif
+
     std::string token, cmd;
 
     for (int i = 1; i < cli.argc; ++i)
