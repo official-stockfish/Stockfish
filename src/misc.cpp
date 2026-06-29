@@ -37,6 +37,7 @@
 
 #if defined(_WIN32)
     #include <windows.h>
+    #include <shellapi.h>
 #endif
 
 namespace Stockfish {
@@ -483,7 +484,6 @@ void start_logger(const std::string& fname) { Logger::start(fname); }
 
 #ifdef _WIN32
     #include <direct.h>
-    #define GETCWD _getcwd
 #else
     #include <unistd.h>
     #define GETCWD getcwd
@@ -496,13 +496,24 @@ usize str_to_size_t(const std::string& s) {
     return static_cast<usize>(value);
 }
 
+#ifdef _WIN32
+static std::string to_utf8(const std::wstring& wstr) {
+    int len   = static_cast<int>(wstr.size());
+    int u8len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), len, NULL, 0, NULL, NULL);
+
+    std::string u8str(static_cast<usize>(u8len), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), len, u8str.data(), u8len, NULL, NULL);
+    return u8str;
+}
+#endif
+
 std::filesystem::path fixup_path(const std::string& path) {
 #ifdef _WIN32
-    int len  = static_cast<int>(path.size());
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), len, NULL, 0);
+    int u8len = static_cast<int>(path.size());
+    int wlen  = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), u8len, NULL, 0);
 
     std::wstring wstr(static_cast<usize>(wlen), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), len, wstr.data(), wlen);
+    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), u8len, wstr.data(), wlen);
     return {wstr};
 #else
     return {path};
@@ -524,18 +535,38 @@ bool is_whitespace(std::string_view s) {
     return std::all_of(s.begin(), s.end(), [](char c) { return std::isspace(c); });
 }
 
+CommandLine::CommandLine(int _argc, char** _argv) :
+    argc(_argc),
+    argv(_argv) {
+#ifdef _WIN32
+    // Convert any non-ANSI characters passed on the command line to UTF-8
+    int wargc = 0;
+    if (LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc))
+    {
+        args.reserve(static_cast<usize>(wargc));
+        for (int i = 0; i < wargc; ++i)
+            args.push_back(to_utf8(wargv[i]));
+        LocalFree(wargv);
+
+        for (std::string& s : args)
+            argvValues.push_back(s.data());
+        argvValues.push_back(NULL);
+
+        argc = wargc;
+        argv = argvValues.data();
+    }
+#endif
+}
+
 std::string CommandLine::get_binary_directory(std::string argv0) {
     std::string pathSeparator;
 
 #ifdef _WIN32
     pathSeparator = "\\";
-    #ifdef _MSC_VER
-    // Under windows argv[0] may not have the extension. Also _get_pgmptr() had
-    // issues in some Windows 10 versions, so check returned values carefully.
-    char* pgmptr = nullptr;
-    if (!_get_pgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
-        argv0 = pgmptr;
-    #endif
+    std::wstring exePath(32768, L'\0');  // big enough
+    DWORD        len = GetModuleFileNameW(NULL, exePath.data(), static_cast<DWORD>(exePath.size()));
+    if (len != 0)
+        argv0 = to_utf8(exePath.substr(0, len));
 #else
     pathSeparator = "/";
 #endif
@@ -559,11 +590,18 @@ std::string CommandLine::get_binary_directory(std::string argv0) {
 }
 
 std::string CommandLine::get_working_directory() {
-    std::string workingDirectory = "";
-    char        buff[40000];
-    char*       cwd = GETCWD(buff, 40000);
+    std::string     workingDirectory = "";
+    constexpr usize CwdMax           = 40000;
+#ifdef _WIN32
+    wchar_t buff[CwdMax];
+    if (_wgetcwd(buff, CwdMax))
+        workingDirectory = to_utf8(buff);
+#else
+    char  buff[CwdMax];
+    char* cwd = GETCWD(buff, CwdMax);
     if (cwd)
         workingDirectory = cwd;
+#endif
 
     return workingDirectory;
 }

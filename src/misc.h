@@ -601,15 +601,20 @@ class FixedString {
 
 struct CommandLine {
    public:
-    CommandLine(int _argc, char** _argv) :
-        argc(_argc),
-        argv(_argv) {}
+    CommandLine(int _argc, char** _argv);
 
     static std::string get_binary_directory(std::string argv0);
     static std::string get_working_directory();
 
     int    argc;
     char** argv;
+
+   private:
+#ifdef _WIN32
+    // Backing store for argc/argv
+    std::vector<std::string> args;
+    std::vector<char*>       argvValues;
+#endif
 };
 
 namespace Utility {
