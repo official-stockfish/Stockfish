@@ -105,7 +105,7 @@ struct NNZInfo {
     NNZCursor make_cursor(bool perspective) { return {*this, perspective, count}; }
 #else
     // Each 8-bit chunk
-    u8 bitset[(Dimensions + 31) / 32];
+    alignas(8) u8 bitset[(Dimensions + 31) / 32];
 
     struct NNZCursor {
         u8* out;

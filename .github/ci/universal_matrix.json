@@ -30,6 +30,15 @@
     },
     {
       "config": {
+        "name": "Ubuntu 22.04 GCC Universal riscv64",
+        "os": "ubuntu-22.04",
+        "simple_name": "linux",
+        "archive_ext": "tar.gz"
+      },
+      "binaries": "riscv64-universal"
+    },
+    {
+      "config": {
         "name": "Windows 11 Clang Universal arm64",
         "os": "windows-11-arm",
         "simple_name": "windows",

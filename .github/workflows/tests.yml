@@ -39,15 +39,6 @@ jobs:
             comp: ndk
             run_armv7_tests: true
             shell: bash
-          # Currently segfaults in the CI unrelated to a Stockfish change.
-          # - name: Linux GCC riscv64
-          #   os: ubuntu-22.04
-          #   compiler: g++
-          #   comp: gcc
-          #   run_riscv64_tests: true
-          #   base_image: "riscv64/alpine:edge"
-          #   platform: linux/riscv64
-          #   shell: bash
           - name: Linux GCC ppc64
             os: ubuntu-22.04
             compiler: g++
@@ -369,15 +360,6 @@ jobs:
           export LDFLAGS="-static -Wno-unused-command-line-argument"
           make clean
           make -j4 ARCH=armv7-neon build
-          ../tests/signature.sh $benchref
-
-      # riscv64 tests
-
-      - name: Test riscv64 build
-        if: matrix.config.run_riscv64_tests
-        run: |
-          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 
       # ppc64 tests

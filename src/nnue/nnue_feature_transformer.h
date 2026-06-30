@@ -342,6 +342,40 @@ class FeatureTransformer {
                 cursor.record2(packed[0], packed[1]);
             }
 
+#elif defined(USE_RVV)
+
+            usize j = 0;
+
+            while (j < HalfDimensions / 2)
+            {
+                usize vl = __riscv_vsetvl_e16m8(HalfDimensions / 2 - j);
+
+                vint16m8_t acc0 = __riscv_vle16_v_i16m8(&accumulation[perspectives[p]][j], vl);
+                vint16m8_t acc1 =
+                  __riscv_vle16_v_i16m8(&accumulation[perspectives[p]][j + HalfDimensions / 2], vl);
+
+                acc0 = __riscv_vmax_vx_i16m8(acc0, 0, vl);
+                acc1 = __riscv_vmax_vx_i16m8(acc1, 0, vl);
+
+                vuint8m4_t pa = __riscv_vnclipu_wx_u8m4(__riscv_vreinterpret_v_i16m8_u16m8(acc0), 0,
+                                                        __RISCV_VXRM_RDN, vl);
+                vuint8m4_t pb = __riscv_vnclipu_wx_u8m4(__riscv_vreinterpret_v_i16m8_u16m8(acc1), 0,
+                                                        __RISCV_VXRM_RDN, vl);
+
+                vuint8m4_t hi     = __riscv_vmulhu_vv_u8m4(pa, pb, vl);
+                vuint8m4_t result = __riscv_vsrl_vx_u8m4(hi, 1, vl);
+
+                __riscv_vse8_v_u8m4(&output[offset + j], result, vl);
+                j += vl;
+
+                // Record NNZ
+                usize    vl32 = vl / 4;
+                vbool8_t nnzMask =
+                  __riscv_vmsne_vx_u32m4_b8(__riscv_vreinterpret_v_u8m4_u32m4(result), 0, vl32);
+                __riscv_vsm_v_b8(cursor.out, nnzMask, vl32);
+                cursor.out += vl32 / 8;
+            }
+
 #else
 
             for (IndexType j = 0; j < HalfDimensions / 2; ++j)

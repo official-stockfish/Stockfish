@@ -254,3 +254,65 @@ jobs:
              .
              !.git
              !.output
+
+  UniversalLinuxRISCV64:
+    name: Linux riscv64
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      QEMU_DEB: https://launchpad.net/ubuntu/+archive/primary/+files/qemu-user_9.2.1+ds-1ubuntu5_amd64.deb
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install clang and the riscv cross runtime
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc >/dev/null
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-20 lld-20 llvm-20 g++-riscv64-linux-gnu
+          echo "/usr/lib/llvm-20/bin" >> "$GITHUB_PATH"
+      - name: Install qemu
+        run: |
+          curl -sL -o /tmp/qemu.deb "$QEMU_DEB"
+          dpkg -x /tmp/qemu.deb /tmp/qemu
+          /tmp/qemu/usr/bin/qemu-riscv64 --version
+          echo "/tmp/qemu/usr/bin" >> "$GITHUB_PATH"
+      - name: Build universal binary
+        run: |
+          make -j4 -C src ARCH=riscv64-universal build \
+            COMP=clang COMPCXX=clang++ \
+            EXTRACXXFLAGS="--target=riscv64-linux-gnu" \
+            EXTRALDFLAGS="--target=riscv64-linux-gnu -fuse-ld=lld" \
+            OBJCOPY=llvm-objcopy
+      - name: Strip binary
+        run: llvm-strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-linux-riscv64-universal
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+      - name: Check arch selection under qemu
+        run: |
+          QEMU=qemu-riscv64 QEMU_LD_PREFIX=/usr/riscv64-linux-gnu \
+          ./scripts/check_universal_riscv.sh ./stockfish-linux-riscv64-universal "$benchref"
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux riscv64-universal
+          path: |
+             .
+             !.git
+             !.output

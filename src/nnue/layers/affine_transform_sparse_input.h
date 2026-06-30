@@ -59,7 +59,8 @@ class AffineTransformSparseInput {
     static constexpr IndexType PaddedOutputDimensions =
       ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
 
-#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8))
+#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8) \
+     || defined(USE_RVV))
     static constexpr IndexType ChunkSize = 4;
 #else
     static constexpr IndexType ChunkSize = 1;
@@ -82,7 +83,8 @@ class AffineTransformSparseInput {
     }
 
     static constexpr IndexType get_weight_index(IndexType i) {
-#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8))
+#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8) \
+     || defined(USE_RVV))
         return get_weight_index_scrambled(i);
 #else
         return i;
@@ -275,6 +277,51 @@ class AffineTransformSparseInput {
     #ifdef vec_add_32
         #undef vec_add_32
     #endif
+#elif defined(USE_RVV)
+        static_assert(InputDimensions % 256 == 0);
+
+        const i8* weights_cp = weights;
+
+    #define RVV_SPARSE_PROPAGATE(LMUL) \
+        do \
+        { \
+            const usize blk = __riscv_vsetvlmax_e32m##LMUL(); \
+            for (IndexType ob = 0; ob < OutputDimensions; ob += blk) \
+            { \
+                const usize       vl  = __riscv_vsetvl_e32m##LMUL(OutputDimensions - ob); \
+                vint32m##LMUL##_t acc = __riscv_vle32_v_i32m##LMUL(biases + ob, vl); \
+                for (IndexType k = 0; k < InputDimensions / 256; ++k) \
+                { \
+                    u64   bits         = load_as<u64>(nnzInfo.bitset + k * 8); \
+                    isize base         = k * 64; \
+                    auto* base_addr    = input + base * sizeof(i32); \
+                    auto* weights_base = &weights_cp[base * OutputDimensions * ChunkSize]; \
+                    while (bits) \
+                    { \
+                        isize             i = pop_lsb(bits); \
+                        vuint8m##LMUL##_t a = __riscv_vreinterpret_v_u32m##LMUL##_u8m##LMUL( \
+                          __riscv_vmv_v_x_u32m##LMUL(load_as<u32>(base_addr + i * sizeof(i32)), \
+                                                     vl)); \
+                        vint8m##LMUL##_t b = __riscv_vle8_v_i8m##LMUL( \
+                          &weights_base[i * OutputDimensions * ChunkSize + ob * ChunkSize], \
+                          vl * ChunkSize); \
+                        acc = \
+                          __riscv_vadd_vv_i32m##LMUL(acc, SIMD::rvv_dpbusd_m##LMUL(a, b, vl), vl); \
+                    } \
+                } \
+                __riscv_vse32_v_i32m##LMUL(output + ob, acc, vl); \
+            } \
+        } while (0)
+
+        // Select LMUL
+        if (__riscv_vsetvlmax_e32m1() >= OutputDimensions)
+            RVV_SPARSE_PROPAGATE(1);
+        else if (__riscv_vsetvlmax_e32m2() >= OutputDimensions)
+            RVV_SPARSE_PROPAGATE(2);
+        else
+            RVV_SPARSE_PROPAGATE(4);
+
+    #undef RVV_SPARSE_PROPAGATE
 #else
         // Use dense implementation for the other architectures.
         affine_transform_non_ssse3<InputDimensions, PaddedInputDimensions, OutputDimensions>(
