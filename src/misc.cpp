@@ -491,7 +491,8 @@ std::string utf8_from_wstring(std::wstring_view s) {
     if (s.empty())
         return {};
 
-    int size = WideCharToMultiByte(CP_UTF8, 0, s.data(), int(s.size()), nullptr, 0, nullptr, nullptr);
+    int size =
+      WideCharToMultiByte(CP_UTF8, 0, s.data(), int(s.size()), nullptr, 0, nullptr, nullptr);
     if (size <= 0)
         return {};
 

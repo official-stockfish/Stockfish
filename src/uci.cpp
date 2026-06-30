@@ -64,9 +64,8 @@ void UCIEngine::print_info_string(std::string_view str) {
 }
 
 UCIEngine::UCIEngine(CommandLine cli_) :
-    engine(cli_.argc > 0
-             ? std::optional<std::filesystem::path>(path_from_utf8(cli_.argv[0]))
-             : std::nullopt),
+    engine(cli_.argc > 0 ? std::optional<std::filesystem::path>(path_from_utf8(cli_.argv[0]))
+                         : std::nullopt),
     cli(std::move(cli_)) {
 
     engine.get_options().add_info_listener([](const std::optional<std::string>& str) {
@@ -155,7 +154,7 @@ void UCIEngine::loop() {
         else if (token == "export_net")
         {
             std::optional<std::filesystem::path> file;
-            std::string                           filename;
+            std::string                          filename;
 
             if (is >> filename)
                 file = path_from_utf8(filename);

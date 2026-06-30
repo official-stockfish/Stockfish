@@ -87,13 +87,10 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 }  // namespace Detail
 
-void Network::load(const fs::path& rootDirectory,
-                   fs::path        evalfilePath,
-                   EvalFile&                    evalFile) {
+void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFile& evalFile) {
 #if defined(DEFAULT_NNUE_DIRECTORY)
-    std::vector<fs::path> dirs = {
-      fs::path{}, rootDirectory,
-      fs::path(stringify(DEFAULT_NNUE_DIRECTORY))};
+    std::vector<fs::path> dirs = {fs::path{}, rootDirectory,
+                                  fs::path(stringify(DEFAULT_NNUE_DIRECTORY))};
 #else
     std::vector<fs::path> dirs = {fs::path{}, rootDirectory};
 #endif
@@ -116,14 +113,15 @@ void Network::load(const fs::path& rootDirectory,
 
 
 bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& filename) const {
-    if (!evalFile.current.has_value()) {
+    if (!evalFile.current.has_value())
+    {
         sync_cout << "Failed to export a net. "
                   << "No network file is currently loaded. Please load a network file first."
                   << sync_endl;
         return false;
     }
 
-    fs::path actualFilename;
+    fs::path    actualFilename;
     std::string msg;
 
     if (filename.has_value())
@@ -145,8 +143,8 @@ bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& file
     std::ofstream stream(actualFilename, std::ios_base::binary);
     bool          saved = save(stream, evalFile.netDescription);
 
-    msg = saved ? "Network saved successfully to " + actualFilename.string()
-                : "Failed to export a net";
+    msg =
+      saved ? "Network saved successfully to " + actualFilename.string() : "Failed to export a net";
 
     sync_cout << msg << sync_endl;
     return saved;
@@ -175,7 +173,7 @@ NetworkOutput Network::evaluate(const Position&    pos,
 
 void Network::verify(const std::function<void(std::string_view)>& f,
                      const EvalFile&                              evalFile,
-                     fs::path                        evalfilePath) const {
+                     fs::path                                     evalfilePath) const {
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
@@ -185,8 +183,8 @@ void Network::verify(const std::function<void(std::string_view)>& f,
         {
             std::string msg1 =
               "Network evaluation parameters compatible with the engine must be available.";
-            std::string msg2 = "The network file " + evalfilePath.string()
-                             + " was not loaded successfully.";
+            std::string msg2 =
+              "The network file " + evalfilePath.string() + " was not loaded successfully.";
             std::string msg3 = "The UCI option EvalFile might need to specify the full path, "
                                "including the directory name, to the network file.";
             std::string msg4 = "The default net can be downloaded from: "
@@ -243,9 +241,7 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 }
 
 
-void Network::load_external(const fs::path& dir,
-                            const fs::path& evalfilePath,
-                            EvalFile&                    evalFile) {
+void Network::load_external(const fs::path& dir, const fs::path& evalfilePath, EvalFile& evalFile) {
     std::ifstream stream(dir / evalfilePath, std::ios::binary);
     auto          description = load(stream);
 
@@ -289,8 +285,7 @@ void Network::load_internal(EvalFile& evalFile) {
 void Network::initialize() { initialized = true; }
 
 
-bool Network::save(std::ostream&      stream,
-                   const std::string& netDescription) const {
+bool Network::save(std::ostream& stream, const std::string& netDescription) const {
     return write_parameters(stream, netDescription);
 }
 
