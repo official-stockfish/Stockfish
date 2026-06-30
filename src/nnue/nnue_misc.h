@@ -21,10 +21,12 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
+#include "../evaluate.h"
 
 namespace Stockfish {
 
@@ -37,11 +39,11 @@ namespace Eval::NNUE {
 struct EvalFile {
     // Default net name, will use one of the EvalFileDefaultName* macros defined
     // in evaluate.h
-    FixedString<256> defaultName;
+    constexpr static std::string_view defaultName = EvalFileDefaultName;
     // Selected net name, either via uci option or default
-    FixedString<256> current;
+    std::string current;
     // Net description extracted from the net file
-    FixedString<256> netDescription;
+    std::string netDescription;
 };
 
 struct NnueEvalTrace {

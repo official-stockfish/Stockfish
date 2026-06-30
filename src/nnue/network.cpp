@@ -97,11 +97,11 @@ void Network::load(const std::string& rootDirectory, std::string evalfilePath, E
 
     for (const auto& directory : dirs)
     {
-        if (std::string(evalFile.current) != evalfilePath)
+        if (evalFile.current != evalfilePath)
         {
             if (directory != "<internal>")
                 load_external(directory, evalfilePath, evalFile);
-            else if (evalfilePath == std::string(evalFile.defaultName))
+            else if (evalfilePath == evalFile.defaultName)
                 load_internal(evalFile);
         }
     }
@@ -116,7 +116,7 @@ bool Network::save(const EvalFile& evalFile, const std::optional<std::string>& f
         actualFilename = filename.value();
     else
     {
-        if (std::string(evalFile.current) != std::string(evalFile.defaultName))
+        if (evalFile.current != evalFile.defaultName)
         {
             msg = "Failed to export a net. "
                   "A non-embedded net can only be saved if the filename is specified";
@@ -164,7 +164,7 @@ void Network::verify(const std::function<void(std::string_view)>& f,
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
-    if (std::string(evalFile.current) != evalfilePath)
+    if (evalFile.current != evalfilePath)
     {
         if (f)
         {
