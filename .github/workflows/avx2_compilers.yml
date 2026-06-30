@@ -22,7 +22,6 @@ jobs:
           - { name: gcc-15, comp: gcc, cxx: g++, image: "gcc:15" }
 
           # Using silkeh/clang for older versions
-          - { name: clang-10, comp: clang, cxx: clang++, image: "silkeh/clang:10", is_clang: true, ver: "10" }
           - { name: clang-11, comp: clang, cxx: clang++, image: "silkeh/clang:11", is_clang: true, ver: "11" }
           - { name: clang-12, comp: clang, cxx: clang++, image: "silkeh/clang:12", is_clang: true, ver: "12" }
           - { name: clang-13, comp: clang, cxx: clang++, image: "silkeh/clang:13", is_clang: true, ver: "13" }

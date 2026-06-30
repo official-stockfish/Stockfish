@@ -32,6 +32,7 @@
 #include <optional>
 #include <sstream>
 #include <string_view>
+#include <filesystem>
 #include <sys/stat.h>
 #include <type_traits>
 #include <utility>
@@ -227,7 +228,7 @@ static_assert(sizeof(LR) == 3, "LR tree entry must be 3 bytes");
 // time only existence of the file is checked.
 class TBFile: public std::ifstream {
 
-    std::string fname;
+    std::filesystem::path fname;
 
    public:
     // Look for and open the file among the Paths directories where the .rtbw
@@ -236,21 +237,13 @@ class TBFile: public std::ifstream {
     //
     // Example:
     // C:\tb\wdl345;C:\tb\wdl6;D:\tb\dtz345;D:\tb\dtz6
-    static std::string Paths;
+    static std::vector<std::filesystem::path> Paths;
 
     TBFile(const std::string& f) {
 
-    #ifndef _WIN32
-        constexpr char SepChar = ':';
-    #else
-        constexpr char SepChar = ';';
-    #endif
-        std::stringstream ss(Paths);
-        std::string       path;
-
-        while (std::getline(ss, path, SepChar))
+        for (const auto& path : Paths)
         {
-            fname = path + "/" + f;
+            fname = path / std::filesystem::path(f);
             std::ifstream::open(fname);
             if (is_open())
                 return;
@@ -273,7 +266,7 @@ class TBFile: public std::ifstream {
 
         if (statbuf.st_size % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
             exit(EXIT_FAILURE);
         }
 
@@ -286,12 +279,12 @@ class TBFile: public std::ifstream {
 
         if (*baseAddress == MAP_FAILED)
         {
-            std::cerr << "Could not mmap() " << fname << std::endl;
+            std::cerr << "Could not mmap() " << fname.string() << std::endl;
             exit(EXIT_FAILURE);
         }
     #else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
-        HANDLE fd = CreateFileA(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+        HANDLE fd = CreateFileW(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                 OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
 
         if (fd == INVALID_HANDLE_VALUE)
@@ -302,7 +295,7 @@ class TBFile: public std::ifstream {
 
         if (size_low % 64 != 16)
         {
-            std::cerr << "Corrupt tablebase file " << fname << std::endl;
+            std::cerr << "Corrupt tablebase file " << fname.string() << std::endl;
             exit(EXIT_FAILURE);
         }
 
@@ -320,7 +313,7 @@ class TBFile: public std::ifstream {
 
         if (!*baseAddress)
         {
-            std::cerr << "MapViewOfFile() failed, name = " << fname
+            std::cerr << "MapViewOfFile() failed, name = " << fname.string()
                       << ", error = " << GetLastError() << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -331,7 +324,7 @@ class TBFile: public std::ifstream {
 
         if (memcmp(data, Magics[type == WDL], 4))
         {
-            std::cerr << "Corrupted table in file " << fname << std::endl;
+            std::cerr << "Corrupted table in file " << fname.string() << std::endl;
             unmap(*baseAddress, *mapping);
             return *baseAddress = nullptr, nullptr;
         }
@@ -350,7 +343,7 @@ class TBFile: public std::ifstream {
     }
 };
 
-std::string TBFile::Paths;
+std::vector<std::filesystem::path> TBFile::Paths;
 
 // struct PairsData contains low-level indexing information to access TB data.
 // There are 8, 4, or 2 PairsData records for each TBTable, according to the type
@@ -1405,9 +1398,24 @@ void Tablebases::init(const std::string& paths) {
 
     TBTables.clear();
     MaxCardinality = 0;
-    TBFile::Paths  = paths;
+    TBFile::Paths.clear();
 
-    if (paths.empty())
+    if (!paths.empty())
+    {
+    #ifndef _WIN32
+        constexpr char SepChar = ':';
+    #else
+        constexpr char SepChar = ';';
+    #endif
+
+        std::stringstream ss(paths);
+        std::string       path;
+        while (std::getline(ss, path, SepChar))
+            if (!path.empty())
+                TBFile::Paths.emplace_back(path_from_utf8(path));
+    }
+
+    if (TBFile::Paths.empty())
         return;
 
     // MapB1H1H7[] encodes a square below a1-h8 diagonal to 0..27

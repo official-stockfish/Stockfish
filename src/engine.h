@@ -20,6 +20,7 @@
 #define ENGINE_H_INCLUDED
 
 #include <functional>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
@@ -31,6 +32,7 @@
 #include "misc.h"
 #include "history.h"
 #include "nnue/network.h"
+#include "nnue/nnue_misc.h"
 #include "numa.h"
 #include "position.h"
 #include "search.h"
@@ -47,7 +49,7 @@ class Engine {
     using InfoFull  = Search::InfoFull;
     using InfoIter  = Search::InfoIteration;
 
-    Engine(std::optional<std::string> path = std::nullopt);
+    Engine(std::optional<std::filesystem::path> path = std::nullopt);
 
     // Cannot be movable due to components holding backreferences to fields
     Engine(const Engine&)            = delete;
@@ -87,9 +89,9 @@ class Engine {
     // network related
 
     void                                 verify_network() const;
-    std::unique_ptr<Eval::NNUE::Network> get_default_network() const;
-    void                                 load_network(const std::string& file);
-    void save_network(std::pair<std::optional<std::string>, std::string> file);
+    std::unique_ptr<Eval::NNUE::Network> get_default_network();
+    void                                 load_network(const std::filesystem::path& file);
+    void save_network(const std::optional<std::filesystem::path>& file);
 
     // utility functions
 
@@ -110,7 +112,7 @@ class Engine {
     std::string                          thread_binding_information_as_string() const;
 
    private:
-    const std::string binaryDirectory;
+    const std::filesystem::path binaryDirectory;
 
     NumaReplicationContext numaContext;
 
@@ -120,6 +122,7 @@ class Engine {
     OptionsMap                                        options;
     ThreadPool                                        threads;
     TranspositionTable                                tt;
+    Eval::NNUE::EvalFile                              networkFile;
     LazyNumaReplicatedSystemWide<Eval::NNUE::Network> network;
 
     Search::SearchManager::UpdateContext  updateContext;
