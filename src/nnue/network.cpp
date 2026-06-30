@@ -24,6 +24,7 @@
 #include <optional>
 #include <type_traits>
 #include <vector>
+#include <filesystem>
 
 #define INCBIN_SILENCE_BITCODE_WARNING
 #include "../incbin/incbin.h"
@@ -58,8 +59,10 @@ const unsigned char gEmbeddedNNUEData[1] = {0x0};
 const unsigned int  gEmbeddedNNUESize    = 1;
 #endif
 
+
 namespace Stockfish::Eval::NNUE {
 
+namespace fs = std::filesystem;
 
 namespace Detail {
 
@@ -84,21 +87,21 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 }  // namespace Detail
 
-void Network::load(const std::filesystem::path& rootDirectory,
-                   std::filesystem::path        evalfilePath,
+void Network::load(const fs::path& rootDirectory,
+                   fs::path        evalfilePath,
                    EvalFile&                    evalFile) {
 #if defined(DEFAULT_NNUE_DIRECTORY)
-    std::vector<std::filesystem::path> dirs = {
-      std::filesystem::path{}, rootDirectory,
-      std::filesystem::path(stringify(DEFAULT_NNUE_DIRECTORY))};
+    std::vector<fs::path> dirs = {
+      fs::path{}, rootDirectory,
+      fs::path(stringify(DEFAULT_NNUE_DIRECTORY))};
 #else
-    std::vector<std::filesystem::path> dirs = {std::filesystem::path{}, rootDirectory};
+    std::vector<fs::path> dirs = {fs::path{}, rootDirectory};
 #endif
 
     if (evalfilePath.empty())
-        evalfilePath = std::filesystem::path(evalFile.defaultName);
+        evalfilePath = fs::path(evalFile.defaultName);
 
-    if (evalFile.current != evalfilePath && evalfilePath == std::filesystem::path(evalFile.defaultName))
+    if (evalFile.current != evalfilePath && evalfilePath == fs::path(evalFile.defaultName))
         load_internal(evalFile);
 
     for (const auto& directory : dirs)
@@ -112,15 +115,22 @@ void Network::load(const std::filesystem::path& rootDirectory,
 }
 
 
-bool Network::save(const EvalFile& evalFile, const std::optional<std::filesystem::path>& filename) const {
-    std::filesystem::path actualFilename;
+bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& filename) const {
+    if (!evalFile.current.has_value()) {
+        sync_cout << "Failed to export a net. "
+                  << "No network file is currently loaded. Please load a network file first."
+                  << sync_endl;
+        return false;
+    }
+
+    fs::path actualFilename;
     std::string msg;
 
     if (filename.has_value())
         actualFilename = filename.value();
     else
     {
-        if (evalFile.current != std::filesystem::path(evalFile.defaultName))
+        if (evalFile.current != fs::path(evalFile.defaultName))
         {
             msg = "Failed to export a net. "
                   "A non-embedded net can only be saved if the filename is specified";
@@ -129,11 +139,11 @@ bool Network::save(const EvalFile& evalFile, const std::optional<std::filesystem
             return false;
         }
 
-        actualFilename = std::filesystem::path(evalFile.defaultName);
+        actualFilename = fs::path(evalFile.defaultName);
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save(stream, evalFile.current, evalFile.netDescription);
+    bool          saved = save(stream, evalFile.netDescription);
 
     msg = saved ? "Network saved successfully to " + actualFilename.string()
                 : "Failed to export a net";
@@ -165,7 +175,7 @@ NetworkOutput Network::evaluate(const Position&    pos,
 
 void Network::verify(const std::function<void(std::string_view)>& f,
                      const EvalFile&                              evalFile,
-                     std::filesystem::path                        evalfilePath) const {
+                     fs::path                        evalfilePath) const {
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
@@ -233,8 +243,8 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 }
 
 
-void Network::load_external(const std::filesystem::path& dir,
-                            const std::filesystem::path& evalfilePath,
+void Network::load_external(const fs::path& dir,
+                            const fs::path& evalfilePath,
                             EvalFile&                    evalFile) {
     std::ifstream stream(dir / evalfilePath, std::ios::binary);
     auto          description = load(stream);
@@ -270,7 +280,7 @@ void Network::load_internal(EvalFile& evalFile) {
 
     if (description.has_value())
     {
-        evalFile.current        = std::filesystem::path(evalFile.defaultName);
+        evalFile.current        = fs::path(evalFile.defaultName);
         evalFile.netDescription = description.value();
     }
 }
@@ -280,11 +290,7 @@ void Network::initialize() { initialized = true; }
 
 
 bool Network::save(std::ostream&      stream,
-                   const std::filesystem::path& name,
                    const std::string& netDescription) const {
-    if (name.empty() || name == std::filesystem::path("None"))
-        return false;
-
     return write_parameters(stream, netDescription);
 }
 

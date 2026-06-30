@@ -63,7 +63,7 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
     numaContext(NumaConfig::from_system(DefaultNumaPolicy)),
     states(new std::deque<StateInfo>(1)),
     threads(),
-    networkFile{"None", ""},
+    networkFile{std::nullopt, ""},
     network(numaContext) {
 
     pos.set(StartFEN, false, &states->back());

@@ -84,7 +84,7 @@ class Network {
    private:
     void initialize();
 
-    bool                       save(std::ostream&, const std::filesystem::path&, const std::string&) const;
+    bool                       save(std::ostream&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
     bool read_header(std::istream&, u32*, std::string*) const;

@@ -42,7 +42,7 @@ struct EvalFile {
     // in evaluate.h
     constexpr static std::string_view defaultName = EvalFileDefaultName;
     // Selected net name, either via uci option or default
-    std::filesystem::path current;
+    std::optional<std::filesystem::path> current;
     // Net description extracted from the net file
     std::string netDescription;
 };
