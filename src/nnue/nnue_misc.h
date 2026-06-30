@@ -19,7 +19,6 @@
 #ifndef NNUE_MISC_H_INCLUDED
 #define NNUE_MISC_H_INCLUDED
 
-#include <memory>
 #include <string>
 #include <string_view>
 #include <optional>
