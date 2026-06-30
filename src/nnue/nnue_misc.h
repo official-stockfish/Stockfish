@@ -63,15 +63,4 @@ std::string trace(Position& pos, const Network& network, AccumulatorCaches& cach
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish
 
-template<>
-struct std::hash<Stockfish::Eval::NNUE::EvalFile> {
-    Stockfish::usize operator()(const Stockfish::Eval::NNUE::EvalFile& evalFile) const noexcept {
-        Stockfish::usize h = 0;
-        Stockfish::hash_combine(h, evalFile.defaultName);
-        Stockfish::hash_combine(h, evalFile.current);
-        Stockfish::hash_combine(h, evalFile.netDescription);
-        return h;
-    }
-};
-
 #endif  // #ifndef NNUE_MISC_H_INCLUDED
