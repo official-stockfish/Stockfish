@@ -296,7 +296,7 @@ std::unique_ptr<Eval::NNUE::Network> Engine::get_default_network() {
 
     auto network_ = std::make_unique<NN::Network>();
 
-    network_->load_internal(networkFile);
+    network_->load(binaryDirectory, std::filesystem::path{}, networkFile);
 
     return network_;
 }
