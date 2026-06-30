@@ -63,9 +63,11 @@ void UCIEngine::print_info_string(std::string_view str) {
     sync_cout_end();
 }
 
-UCIEngine::UCIEngine(int argc, char** argv) :
-    engine(argv[0]),
-    cli(argc, argv) {
+UCIEngine::UCIEngine(CommandLine cli_) :
+    engine(cli_.argc > 0 && cli_.argv != nullptr && cli_.argv[0] != nullptr
+             ? std::optional<std::filesystem::path>(path_from_utf8(cli_.argv[0]))
+             : std::nullopt),
+    cli(std::move(cli_)) {
 
     engine.get_options().add_info_listener([](const std::optional<std::string>& str) {
         if (str.has_value())
@@ -85,6 +87,7 @@ void UCIEngine::init_search_update_listeners() {
 }
 
 void UCIEngine::loop() {
+    set_console_utf8();
     std::string token, cmd;
 
     for (int i = 1; i < cli.argc; ++i)
@@ -151,10 +154,11 @@ void UCIEngine::loop() {
             sync_cout << compiler_info() << sync_endl;
         else if (token == "export_net")
         {
-            std::pair<std::optional<std::string>, std::string> file;
+            std::optional<std::filesystem::path> file;
+            std::string                           filename;
 
-            if (is >> file.second)
-                file.first = file.second;
+            if (is >> filename)
+                file = path_from_utf8(filename);
 
             engine.save_network(file);
         }

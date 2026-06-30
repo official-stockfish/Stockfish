@@ -20,6 +20,7 @@
 #define ENGINE_H_INCLUDED
 
 #include <functional>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
@@ -47,7 +48,7 @@ class Engine {
     using InfoFull  = Search::InfoFull;
     using InfoIter  = Search::InfoIteration;
 
-    Engine(std::optional<std::string> path = std::nullopt);
+    Engine(std::optional<std::filesystem::path> path = std::nullopt);
 
     // Cannot be movable due to components holding backreferences to fields
     Engine(const Engine&)            = delete;
@@ -88,8 +89,8 @@ class Engine {
 
     void                                 verify_network() const;
     std::unique_ptr<Eval::NNUE::Network> get_default_network();
-    void                                 load_network(const std::string& file);
-    void save_network(std::pair<std::optional<std::string>, std::string> file);
+    void                                 load_network(const std::filesystem::path& file);
+    void save_network(const std::optional<std::filesystem::path>& file);
 
     // utility functions
 
@@ -110,7 +111,7 @@ class Engine {
     std::string                          thread_binding_information_as_string() const;
 
    private:
-    const std::string binaryDirectory;
+    const std::filesystem::path binaryDirectory;
 
     NumaReplicationContext numaContext;
 

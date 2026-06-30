@@ -26,6 +26,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <filesystem>
 
 #include "../types.h"
 #include "../misc.h"
@@ -57,8 +58,10 @@ class Network {
     Network& operator=(const Network& other) = default;
     Network& operator=(Network&& other)      = default;
 
-    void load(const std::string& rootDirectory, std::string evalfilePath, EvalFile& evalFile);
-    bool save(const EvalFile& evalFile, const std::optional<std::string>& filename) const;
+    void load(const std::filesystem::path& rootDirectory,
+              std::filesystem::path        evalfilePath,
+              EvalFile&                    evalFile);
+    bool save(const EvalFile& evalFile, const std::optional<std::filesystem::path>& filename) const;
 
     usize get_content_hash() const;
 
@@ -69,19 +72,19 @@ class Network {
 
     void verify(const std::function<void(std::string_view)>& f,
                 const EvalFile&                              evalFile,
-                std::string                                  evalfilePath) const;
+                std::filesystem::path                        evalfilePath) const;
 
     NnueEvalTrace trace_evaluate(const Position&    pos,
                                  AccumulatorStack&  accumulatorStack,
                                  AccumulatorCaches& cache) const;
 
-    void load_external(const std::string&, const std::string&, EvalFile&);
+    void load_external(const std::filesystem::path&, const std::filesystem::path&, EvalFile&);
     void load_internal(EvalFile&);
 
    private:
     void initialize();
 
-    bool                       save(std::ostream&, const std::string&, const std::string&) const;
+    bool                       save(std::ostream&, const std::filesystem::path&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
     bool read_header(std::istream&, u32*, std::string*) const;
