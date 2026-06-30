@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <optional>
 #include <filesystem>
 
 #include "../misc.h"

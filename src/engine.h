@@ -32,6 +32,7 @@
 #include "misc.h"
 #include "history.h"
 #include "nnue/network.h"
+#include "nnue/nnue_misc.h"
 #include "numa.h"
 #include "position.h"
 #include "search.h"

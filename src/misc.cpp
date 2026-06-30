@@ -22,6 +22,7 @@
 #include <atomic>
 #include <cassert>
 #include <cctype>
+#include <cstring>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -31,6 +32,7 @@
 #include <iterator>
 #include <limits>
 #include <mutex>
+#include <memory>
 #include <sstream>
 #include <string_view>
 
@@ -580,8 +582,7 @@ std::filesystem::path CommandLine::get_binary_directory(std::filesystem::path ar
 }
 
 std::filesystem::path CommandLine::get_working_directory() {
-    std::error_code ec;
-    return std::filesystem::current_path(ec);
+    return std::filesystem::current_path();
 }
 
 void set_console_utf8() {

@@ -26,6 +26,7 @@
 #include <optional>
 #include <sstream>
 #include <string_view>
+#include <filesystem>
 #include <utility>
 #include <vector>
 
