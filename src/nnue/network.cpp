@@ -104,10 +104,7 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
     for (const auto& directory : dirs)
     {
         if (evalFile.current != evalfilePath)
-        {
-            if (!directory.empty())
-                load_external(directory, evalfilePath, evalFile);
-        }
+            load_external(directory, evalfilePath, evalFile);
     }
 }
 
