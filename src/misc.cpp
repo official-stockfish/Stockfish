@@ -543,14 +543,13 @@ CommandLine::CommandLine(int _argc, char** _argv) :
     int wargc = 0;
     if (LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &wargc))
     {
-        args.reserve(static_cast<usize>(wargc));
         for (int i = 0; i < wargc; ++i)
             args.push_back(to_utf8(wargv[i]));
         LocalFree(wargv);
 
         for (std::string& s : args)
             argvValues.push_back(s.data());
-        argvValues.push_back(NULL);
+        argvValues.push_back(nullptr);
 
         argc = wargc;
         argv = argvValues.data();
