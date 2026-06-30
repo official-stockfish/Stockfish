@@ -18,7 +18,6 @@
 
 #include <iostream>
 #include <memory>
-#include <utility>
 
 #include "attacks.h"
 #include "bitboard.h"

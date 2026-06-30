@@ -64,7 +64,7 @@ void UCIEngine::print_info_string(std::string_view str) {
 }
 
 UCIEngine::UCIEngine(CommandLine cli_) :
-    engine(cli_.argc > 0 && cli_.argv != nullptr && cli_.argv[0] != nullptr
+    engine(cli_.argc > 0
              ? std::optional<std::filesystem::path>(path_from_utf8(cli_.argv[0]))
              : std::nullopt),
     cli(std::move(cli_)) {

@@ -259,7 +259,8 @@ void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
 // network related
 
 void Engine::verify_network() const {
-    network->verify(onVerifyNetwork, networkFile, path_from_utf8(std::string(options["EvalFile"])));
+    const auto file = path_from_utf8(std::string(options["EvalFile"]));
+    network->verify(onVerifyNetwork, networkFile, file);
 
     auto statuses = network.get_status_and_errors();
     for (usize i = 0; i < statuses.size(); ++i)
