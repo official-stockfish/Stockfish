@@ -5,10 +5,10 @@ on:
       - master
       - tools
     paths:
-      - "**.cpp"
-      - "**.h"
-      - "scripts/lint_integer_types.py"
-      - ".github/workflows/lint-integer-types.yml"
+      - '**.cpp'
+      - '**.h'
+      - scripts/lint_integer_types.py
+      - .github/workflows/lint-integer-types.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
