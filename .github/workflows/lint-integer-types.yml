@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Check for fixed-width types
-        run: |
-          python3 scripts/lint_integer_types.py \
-            "${{ github.event.pull_request.base.sha }}" \
+        run: >
+          python3 scripts/lint_integer_types.py
+            "${{ github.event.pull_request.base.sha }}"
             "${{ github.event.pull_request.head.sha }}"
