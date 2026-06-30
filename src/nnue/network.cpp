@@ -84,7 +84,7 @@ bool write_parameters(std::ostream& stream, const T& reference) {
 
 }  // namespace Detail
 
-void Network::load(const std::string& rootDirectory, std::string evalfilePath) {
+void Network::load(const std::string& rootDirectory, std::string evalfilePath, EvalFile& evalFile) {
 #if defined(DEFAULT_NNUE_DIRECTORY)
     std::vector<std::string> dirs = {"<internal>", "", rootDirectory,
                                      stringify(DEFAULT_NNUE_DIRECTORY)};
@@ -100,15 +100,15 @@ void Network::load(const std::string& rootDirectory, std::string evalfilePath) {
         if (std::string(evalFile.current) != evalfilePath)
         {
             if (directory != "<internal>")
-                load_user_net(directory, evalfilePath);
+                load_external(directory, evalfilePath, evalFile);
             else if (evalfilePath == std::string(evalFile.defaultName))
-                load_internal();
+                load_internal(evalFile);
         }
     }
 }
 
 
-bool Network::save(const std::optional<std::string>& filename) const {
+bool Network::save(const EvalFile& evalFile, const std::optional<std::string>& filename) const {
     std::string actualFilename;
     std::string msg;
 
@@ -158,8 +158,9 @@ NetworkOutput Network::evaluate(const Position&    pos,
 }
 
 
-void Network::verify(std::string                                  evalfilePath,
-                     const std::function<void(std::string_view)>& f) const {
+void Network::verify(const std::function<void(std::string_view)>& f,
+                     const EvalFile&                              evalFile,
+                     std::string                                  evalfilePath) const {
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
 
@@ -213,9 +214,9 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
     for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
     {
         NNZInfo<L1> nnzInfo;
-        const auto  materialist = featureTransformer.transform(pos, accumulatorStack, cache,
-                                                               transformedFeatures, bucket, nnzInfo);
-        const auto  positional  = network[bucket].propagate(transformedFeatures, nnzInfo);
+        const auto materialist = featureTransformer.transform(pos, accumulatorStack, cache,
+                                                              transformedFeatures, bucket, nnzInfo);
+        const auto positional  = network[bucket].propagate(transformedFeatures, nnzInfo);
 
         t.psqt[bucket]       = static_cast<Value>(materialist / OutputScale);
         t.positional[bucket] = static_cast<Value>(positional / OutputScale);
@@ -225,7 +226,9 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 }
 
 
-void Network::load_user_net(const std::string& dir, const std::string& evalfilePath) {
+void Network::load_external(const std::string& dir,
+                            const std::string& evalfilePath,
+                            EvalFile&          evalFile) {
     std::ifstream stream(dir + evalfilePath, std::ios::binary);
     auto          description = load(stream);
 
@@ -237,7 +240,7 @@ void Network::load_user_net(const std::string& dir, const std::string& evalfileP
 }
 
 
-void Network::load_internal() {
+void Network::load_internal(EvalFile& evalFile) {
     // C++ way to prepare a buffer for a memory stream
     class MemoryBuffer: public std::basic_streambuf<char> {
        public:
@@ -295,7 +298,6 @@ usize Network::get_content_hash() const {
     hash_combine(h, featureTransformer);
     for (auto&& layerstack : network)
         hash_combine(h, layerstack);
-    hash_combine(h, evalFile);
     return h;
 }
 

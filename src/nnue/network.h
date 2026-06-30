@@ -49,8 +49,7 @@ using NetworkOutput = std::tuple<Value, Value>;
 // there is no way to run destructors.
 class Network {
    public:
-    Network(EvalFile file) :
-        evalFile(file) {}
+    Network() = default;
 
     Network(const Network& other) = default;
     Network(Network&& other)      = default;
@@ -58,8 +57,8 @@ class Network {
     Network& operator=(const Network& other) = default;
     Network& operator=(Network&& other)      = default;
 
-    void load(const std::string& rootDirectory, std::string evalfilePath);
-    bool save(const std::optional<std::string>& filename) const;
+    void load(const std::string& rootDirectory, std::string evalfilePath, EvalFile& evalFile);
+    bool save(const EvalFile& evalFile, const std::optional<std::string>& filename) const;
 
     usize get_content_hash() const;
 
@@ -68,15 +67,18 @@ class Network {
                            AccumulatorCaches& cache) const;
 
 
-    void verify(std::string evalfilePath, const std::function<void(std::string_view)>&) const;
+    void verify(const std::function<void(std::string_view)>& f,
+                const EvalFile&                              evalFile,
+                std::string                                  evalfilePath) const;
+
     NnueEvalTrace trace_evaluate(const Position&    pos,
                                  AccumulatorStack&  accumulatorStack,
                                  AccumulatorCaches& cache) const;
 
-   private:
-    void load_user_net(const std::string&, const std::string&);
-    void load_internal();
+    void load_external(const std::string&, const std::string&, EvalFile&);
+    void load_internal(EvalFile&);
 
+   private:
     void initialize();
 
     bool                       save(std::ostream&, const std::string&, const std::string&) const;
@@ -93,8 +95,6 @@ class Network {
 
     // Evaluation function
     NetworkArchitecture network[LayerStacks];
-
-    EvalFile evalFile;
 
     bool initialized = false;
 

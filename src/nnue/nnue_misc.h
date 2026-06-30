@@ -32,7 +32,8 @@ class Position;
 
 namespace Eval::NNUE {
 
-// EvalFile uses fixed string types because it's part of the network structure which must be trivial.
+// NNUE file metadata uses fixed string types so it stays trivially copyable and cheap to move
+// around between the engine and the network loader.
 struct EvalFile {
     // Default net name, will use one of the EvalFileDefaultName* macros defined
     // in evaluate.h

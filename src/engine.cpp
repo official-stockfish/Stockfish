@@ -62,7 +62,8 @@ Engine::Engine(std::optional<std::string> path) :
     numaContext(NumaConfig::from_system(DefaultNumaPolicy)),
     states(new std::deque<StateInfo>(1)),
     threads(),
-    network(numaContext, get_default_network()) {
+    networkFile{EvalFileDefaultName, "None", ""},
+    network(numaContext) {
 
     pos.set(StartFEN, false, &states->back());
 
@@ -137,6 +138,7 @@ Engine::Engine(std::optional<std::string> path) :
           return std::nullopt;
       }));
 
+    network = get_default_network();
     threads.clear();
     threads.ensure_network_replicated();
     resize_threads();
@@ -256,7 +258,7 @@ void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
 // network related
 
 void Engine::verify_network() const {
-    network->verify(options["EvalFile"], onVerifyNetwork);
+    network->verify(onVerifyNetwork, networkFile, options["EvalFile"]);
 
     auto statuses = network.get_status_and_errors();
     for (usize i = 0; i < statuses.size(); ++i)
@@ -289,24 +291,25 @@ void Engine::verify_network() const {
     }
 }
 
-std::unique_ptr<Eval::NNUE::Network> Engine::get_default_network() const {
+std::unique_ptr<Eval::NNUE::Network> Engine::get_default_network() {
 
-    auto network_ = std::make_unique<NN::Network>(NN::EvalFile{EvalFileDefaultName, "None", ""});
+    auto network_ = std::make_unique<NN::Network>();
 
-    network_->load(binaryDirectory, "");
+    network_->load_internal(networkFile);
 
     return network_;
 }
 
 void Engine::load_network(const std::string& file) {
     network.modify_and_replicate(
-      [this, &file](NN::Network& network_) { network_.load(binaryDirectory, file); });
+      [this, &file](NN::Network& network_) { network_.load(binaryDirectory, file, networkFile); });
     threads.clear();
     threads.ensure_network_replicated();
 }
 
 void Engine::save_network(const std::pair<std::optional<std::string>, std::string> file) {
-    network.modify_and_replicate([&file](NN::Network& network_) { network_.save(file.first); });
+    network.modify_and_replicate(
+      [&file, this](NN::Network& network_) { network_.save(networkFile, file.first); });
 }
 
 // utility functions
