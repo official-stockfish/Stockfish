@@ -190,7 +190,7 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
 
 // Assigns a numerical value to each move in a list, used for sorting.
 // Captures are ordered by Most Valuable Victim (MVV), preferring captures
-// with a good history. Quiets moves are ordered using the history tables.
+// with a good history. Quiet moves are ordered using the history tables.
 template<GenType Type>
 ExtMove* MovePicker::score(const MoveList<Type>& ml) {
 

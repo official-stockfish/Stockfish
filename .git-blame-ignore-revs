@@ -5,3 +5,7 @@
 # Post commit formatting fixes
 0fca5605fa2e5e7240fde5e1aae50952b2612231
 08ed4c90db31959521b7ef3186c026edd1e90307
+
+# Ignore commits related to integer type renamings
+dd3e1c4a50fd358c8bf8051c9ef73219669ff6c0
+6e4e03fd282d5e1cba514197bf1ef326c990f0d2

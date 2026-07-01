@@ -252,7 +252,7 @@ class FeatureTransformer {
             // means our pairwise product is zero. If we perform packus and
             // remove the lower-side clip for the second element, then our
             // product before packus will be negative, and is zeroed on pack.
-            // The two operation produce equivalent results, but the second
+            // The two operations produce equivalent results, but the second
             // one (using packus) saves one max operation per pair.
 
             // But here we run into a problem: mullo does not preserve the

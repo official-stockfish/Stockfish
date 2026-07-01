@@ -158,9 +158,9 @@ constexpr
             if (!tableAlreadyInit)
             {
                 Bitboard sliding = sliding_attack(pt, s, b);
-                m.attacks[size] =
-                  sliding != prevSliding ? constexpr_pext(sliding, attacks) : m.attacks[size - 1];
-                prevSliding = sliding;
+                m.attacks[size]  = sliding != prevSliding ? u16(constexpr_pext(sliding, attacks))
+                                                          : m.attacks[size - 1];
+                prevSliding      = sliding;
             }
     #else
             occupancy[size] = b;
