@@ -43,11 +43,12 @@ jobs:
           message: |
             clang-format 20 needs to be run on this PR.
             If you do not have clang-format installed, the maintainer will run it when merging.
-            For the exact version please see https://packages.ubuntu.com/plucky/clang-format-20.
+            For the exact version please see https://packages.ubuntu.com/questing/clang-format-20.
+            An easier way to install it might be through https://apt.llvm.org/#llvmsh.
 
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
-          comment_tag: execution
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          comment-tag: execution
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment on PR
         if: steps.clang-format.outcome != 'failure'
@@ -55,7 +56,7 @@ jobs:
         with:
           message: |
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
-          create_if_not_exists: false
-          comment_tag: execution
+          create-if-not-exists: false
+          comment-tag: execution
           mode: delete
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
