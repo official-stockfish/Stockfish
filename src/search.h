@@ -127,14 +127,14 @@ struct RootMove {
 
     explicit RootMove(Move m) { pv.push_back(m); }
     bool extract_ponder_from_tt(const TranspositionTable& tt, Position& pos);
-    bool score_is_bound() const { return scoreLowerbound || scoreUpperbound; }
-    bool score_is_exact_loss() const {
-        return score != -VALUE_INFINITE && is_loss(score) && !score_is_bound();
+    constexpr bool is_inexact() const { return inexactLower || inexactUpper; }
+    constexpr bool is_exact_loss() const {
+        return score != -VALUE_INFINITE && is_loss(score) && !is_inexact();
     }
-    void unset_bound_flags() { scoreLowerbound = scoreUpperbound = false; }
+    constexpr void unset_inexact() { inexactLower = inexactUpper = false; }
     bool operator==(const Move& m) const { return pv[0] == m; }
     // Sort in descending order
-    bool operator<(const RootMove& m) const {
+    constexpr bool operator<(const RootMove& m) const {
         return m.score != score ? m.score < score : m.previousScore < previousScore;
     }
 
@@ -144,8 +144,8 @@ struct RootMove {
     Value   averageScore       = -VALUE_INFINITE;
     Value   meanSquaredScore   = -VALUE_INFINITE * VALUE_INFINITE;
     Value   uciScore           = -VALUE_INFINITE;
-    bool    scoreLowerbound    = false;
-    bool    scoreUpperbound    = false;
+    bool    inexactLower       = false;  // By default root scores are exact, unless flagged as a
+    bool    inexactUpper       = false;  // one-sided bound here. See also `enum Bound` in types.h
     bool    previousScoreExact = false;
     int     selDepth           = 0;
     int     tbRank             = 0;

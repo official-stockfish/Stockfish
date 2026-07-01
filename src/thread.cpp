@@ -378,10 +378,10 @@ Thread* ThreadPool::get_best_thread() const {
         // Aborted (d1) searches may lead to inexact win (or loss) scores.
         const bool bestThreadDecisive = bestThreadMove.score != -VALUE_INFINITE
                                      && is_decisive(bestThreadMove.score)
-                                     && !bestThreadMove.score_is_bound();
+                                     && !bestThreadMove.is_inexact();
         const bool newThreadDecisive = newThreadMove.score != -VALUE_INFINITE
                                     && is_decisive(newThreadMove.score)
-                                    && !newThreadMove.score_is_bound();
+                                    && !newThreadMove.is_inexact();
 
         // We make sure not to pick a thread with a truncated principal variation.
         const bool betterVotingValue =
