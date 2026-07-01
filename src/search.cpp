@@ -446,7 +446,7 @@ bool Search::Worker::iterative_deepening() {
                 // when pvIdx - 1 is a proven loss.
                 // Moreover, we do not trust an exact loss score from an aborted search.
                 if ((is_loss(rootMoves[pvIdx - 1].score) && rootMoves[pvIdx] < rootMoves[pvIdx - 1])
-                    || rootMoves[pvIdx].score_is_exact_loss())
+                    || rootMoves[pvIdx].is_exact_loss())
                 {
                     // If previousScore is exact and worse than pvIdx - 1, we can safely use it.
                     // If it is equal, we make sure it cannot overtake pvIdx - 1.
@@ -458,11 +458,11 @@ bool Search::Worker::iterative_deepening() {
                           rootMoves[pvIdx].previousScore;
                         rootMoves[pvIdx].previousScore = -VALUE_INFINITE;
                         rootMoves[pvIdx].pv            = rootMoves[pvIdx].previousPV;
-                        rootMoves[pvIdx].unset_bound_flags();
+                        rootMoves[pvIdx].unset_inexact();
                     }
 
                     // Otherwise, if we can, we cap the score to the best possible, and mark
-                    // the score as a bound (also a valid excuse for the incomplete PV.)
+                    // the score as inexact (also a valid excuse for the incomplete PV.)
                     else
                     {
                         if (is_loss(rootMoves[pvIdx - 1].score))
@@ -471,19 +471,19 @@ bool Search::Worker::iterative_deepening() {
                               rootMoves[pvIdx - 1].score;
                             rootMoves[pvIdx].previousScore = -VALUE_INFINITE;
                             rootMoves[pvIdx].pv.resize(1);
-                            rootMoves[pvIdx].scoreUpperbound = true;
+                            rootMoves[pvIdx].inexactUpper = true;
                         }
                         else
-                            rootMoves[pvIdx].scoreUpperbound = false;
+                            rootMoves[pvIdx].inexactUpper = false;
 
-                        rootMoves[pvIdx].scoreLowerbound = !rootMoves[pvIdx].scoreUpperbound;
+                        rootMoves[pvIdx].inexactLower = !rootMoves[pvIdx].inexactUpper;
                     }
                 }
 
-                // Finally, we mark all loss scores from partially searched moves as a bound.
+                // Finally, we mark all loss scores from partially searched moves as inexact.
                 for (usize i = pvIdx + 1; i < multiPV; ++i)
-                    if (rootMoves[i].score_is_exact_loss())
-                        rootMoves[i].scoreLowerbound = true;
+                    if (rootMoves[i].is_exact_loss())
+                        rootMoves[i].inexactLower = true;
             }
 
             // Sort the PV lines searched so far and update the GUI
@@ -502,7 +502,7 @@ bool Search::Worker::iterative_deepening() {
         const bool forgottenMate = lastBestMoveScore != -VALUE_INFINITE
                                 && is_mate_or_mated(lastBestMoveScore)
                                 && (std::abs(rootMoves[0].score) < std::abs(lastBestMoveScore)
-                                    || rootMoves[0].score_is_bound());
+                                    || rootMoves[0].is_inexact());
 
         if (!threads.stop)
         {
@@ -517,7 +517,7 @@ bool Search::Worker::iterative_deepening() {
             }
         }
 
-        const bool abortedLossSearch = threads.stop && !pvIdx && rootMoves[0].score_is_exact_loss();
+        const bool abortedLossSearch = threads.stop && !pvIdx && rootMoves[0].is_exact_loss();
 
         // An exact mated-in/TB-loss score from an aborted search cannot be trusted: the
         // loss could be delayed or refuted upon exploring the remaining root-moves.
@@ -533,14 +533,14 @@ bool Search::Worker::iterative_deepening() {
                                                     const auto& rm) { return rm == lastPV[0]; });
                 rootMoves[0].score = rootMoves[0].uciScore = lastBestMoveScore;
                 rootMoves[0].pv                            = lastBestMovePV;
-                rootMoves[0].unset_bound_flags();
+                rootMoves[0].unset_inexact();
 
                 if (mainThread)
                     uciPvSent = false;
             }
-            // For an aborted d1 search we label the loss score as a lower bound.
+            // For an aborted d1 search we label the loss score as inexact.
             else if (abortedLossSearch)
-                rootMoves[0].scoreLowerbound = true;
+                rootMoves[0].inexactLower = true;
         }
 
         // Have we found a "mate in x" after a completed iteration?
@@ -1426,17 +1426,17 @@ moves_loop:  // When in check, search starts here
             {
                 rm.score = rm.uciScore = value;
                 rm.selDepth            = selDepth;
-                rm.unset_bound_flags();
+                rm.unset_inexact();
 
                 if (value >= beta)
                 {
-                    rm.scoreLowerbound = true;
-                    rm.uciScore        = beta;
+                    rm.inexactLower = true;
+                    rm.uciScore     = beta;
                 }
                 else if (value <= alpha)
                 {
-                    rm.scoreUpperbound = true;
-                    rm.uciScore        = alpha;
+                    rm.inexactUpper = true;
+                    rm.uciScore     = alpha;
                 }
 
                 rm.pv.resize(1);
@@ -2232,9 +2232,9 @@ void SearchManager::pv(Search::Worker&           worker,
         v              = isTBScore ? rootMoves[i].tbScore : v;
 
         // Potentially correct and extend the PV, and in exceptional cases v.
-        // Previous PVs have already been extended. Bound flags indicate an unreliable PV.
+        // Previous PVs have already been extended. Inexact flags indicate an unreliable PV.
         if (is_decisive(v) && !is_mate_or_mated(v) && !usePreviousScore
-            && (!rootMoves[i].score_is_bound() || isTBScore))
+            && (!rootMoves[i].is_inexact() || isTBScore))
             syzygy_extend_pv(worker.options, worker.limits, pos, rootMoves[i], v);
 
         std::string pv;
@@ -2246,9 +2246,12 @@ void SearchManager::pv(Search::Worker&           worker,
             pv.pop_back();
 
         auto wdl   = worker.options["UCI_ShowWDL"] ? UCIEngine::wdl(v, pos) : "";
-        auto bound = rootMoves[i].scoreLowerbound
-                     ? "lowerbound"
-                     : (rootMoves[i].scoreUpperbound ? "upperbound" : "");
+
+        // Scores can't be both exact and inexact
+        assert(!(rootMoves[i].inexactLower && rootMoves[i].inexactUpper));
+        auto bound =   rootMoves[i].inexactLower ? "lowerbound"
+                     : rootMoves[i].inexactUpper ? "upperbound"
+                     :                             "";
 
         InfoFull info;
 
@@ -2258,7 +2261,7 @@ void SearchManager::pv(Search::Worker&           worker,
         info.score    = {v, pos};
         info.wdl      = wdl;
 
-        // TB and previous scores are exact, even though their bound flags may say otherwise.
+        // TB and previous scores are exact, even though their flags may say otherwise.
         if (!(isTBScore || usePreviousScore))
             info.bound = bound;
 
