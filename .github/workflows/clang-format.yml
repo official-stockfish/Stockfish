@@ -43,7 +43,8 @@ jobs:
           message: |
             clang-format 20 needs to be run on this PR.
             If you do not have clang-format installed, the maintainer will run it when merging.
-            For the exact version please see https://packages.ubuntu.com/plucky/clang-format-20.
+            For the exact version please see https://packages.ubuntu.com/questing/clang-format-20.
+            An easier way to install it might be through https://apt.llvm.org/#llvmsh.
 
             _(execution **${{ github.run_id }}** / attempt **${{ github.run_attempt }}**)_
           comment-tag: execution
