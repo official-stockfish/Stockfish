@@ -108,45 +108,34 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
     }
 }
 
-
 bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& filename) const {
     if (!evalFile.current.has_value())
     {
-        sync_cout << "Failed to export a net. "
-                  << "No network file is currently loaded. Please load a network file first."
+        sync_cout << "Failed to export a net. No network file is currently loaded. "
+                     "Please load a network file first."
                   << sync_endl;
         return false;
     }
 
-    fs::path    actualFilename;
-    std::string msg;
-
-    if (filename.has_value())
-        actualFilename = filename.value();
-    else
+    if (!filename.has_value() && evalFile.current != evalFile.defaultName)
     {
-        if (evalFile.current != evalFile.defaultName)
-        {
-            msg = "Failed to export a net. "
-                  "A non-embedded net can only be saved if the filename is specified";
-
-            sync_cout << msg << sync_endl;
-            return false;
-        }
-
-        actualFilename = evalFile.defaultName;
+        sync_cout << "Failed to export a net. A non-embedded net can only be "
+                     "saved if the filename is specified"
+                  << sync_endl;
+        return false;
     }
 
+    fs::path      actualFilename = filename.value_or(evalFile.defaultName);
     std::ofstream stream(actualFilename, std::ios_base::binary);
-    bool          saved = save(stream, evalFile.netDescription);
 
-    msg =
-      saved ? "Network saved successfully to " + actualFilename.string() : "Failed to export a net";
+    bool saved = save(stream, evalFile.netDescription);
 
-    sync_cout << msg << sync_endl;
+    sync_cout << (saved ? "Network saved successfully to " + actualFilename.string()
+                        : "Failed to export a net")
+              << sync_endl;
+
     return saved;
 }
-
 
 NetworkOutput Network::evaluate(const Position&    pos,
                                 AccumulatorStack&  accumulatorStack,
