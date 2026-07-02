@@ -48,6 +48,8 @@
 
 namespace Stockfish {
 
+namespace fs = std::filesystem;
+
 namespace {
 
 // Version number or dev.
@@ -94,7 +96,7 @@ class Logger {
     Tie           in, out;
 
    public:
-    static void start(const std::filesystem::path& fname) {
+    static void start(const fs::path& fname) {
 
         static Logger l;
 
@@ -485,7 +487,7 @@ u64 hash_bytes(const char* data, usize size) {
 }
 
 // Trampoline helper to avoid moving Logger to misc.h
-void start_logger(const std::filesystem::path& fname) { Logger::start(fname); }
+void start_logger(const fs::path& fname) { Logger::start(fname); }
 
 std::string utf8_from_wstring(std::wstring_view s) {
 #ifdef _WIN32
@@ -505,7 +507,7 @@ std::string utf8_from_wstring(std::wstring_view s) {
 #endif
 }
 
-std::filesystem::path path_from_utf8(const std::string& path) {
+fs::path path_from_utf8(const std::string& path) {
 #ifdef _WIN32
     int u8len = static_cast<int>(path.size());
     int wlen  = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), u8len, NULL, 0);
@@ -563,24 +565,24 @@ bool is_whitespace(std::string_view s) {
     return std::all_of(s.begin(), s.end(), [](char c) { return std::isspace(c); });
 }
 
-std::filesystem::path CommandLine::get_binary_directory(std::filesystem::path argv0) {
+fs::path CommandLine::get_binary_directory(fs::path argv0) {
 
 #ifdef _WIN32
     #ifdef _MSC_VER
     // Prefer the executable path reported by the CRT when available.
     wchar_t* pgmptr = nullptr;
     if (!_get_wpgmptr(&pgmptr) && pgmptr != nullptr && *pgmptr)
-        argv0 = std::filesystem::path(pgmptr);
+        argv0 = fs::path(pgmptr);
     #endif
 #endif
 
     auto binaryDirectory = argv0.parent_path();
     if (binaryDirectory.empty())
-        binaryDirectory = std::filesystem::path(".");
+        binaryDirectory = fs::path(".");
     return binaryDirectory;
 }
 
-std::filesystem::path CommandLine::get_working_directory() {
+fs::path CommandLine::get_working_directory() {
     return std::filesystem::current_path();
 }
 
