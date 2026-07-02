@@ -582,9 +582,7 @@ fs::path CommandLine::get_binary_directory(fs::path argv0) {
     return binaryDirectory;
 }
 
-fs::path CommandLine::get_working_directory() {
-    return std::filesystem::current_path();
-}
+fs::path CommandLine::get_working_directory() { return std::filesystem::current_path(); }
 
 void set_console_utf8() {
 #ifdef _WIN32
