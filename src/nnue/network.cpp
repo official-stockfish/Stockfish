@@ -96,9 +96,9 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
 #endif
 
     if (evalfilePath.empty())
-        evalfilePath = fs::path(evalFile.defaultName);
+        evalfilePath = evalFile.defaultName;
 
-    if (evalFile.current != evalfilePath && evalfilePath == fs::path(evalFile.defaultName))
+    if (evalFile.current != evalfilePath && evalfilePath == evalFile.defaultName)
         load_internal(evalFile);
 
     for (const auto& directory : dirs)
@@ -125,7 +125,7 @@ bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& file
         actualFilename = filename.value();
     else
     {
-        if (evalFile.current != fs::path(evalFile.defaultName))
+        if (evalFile.current != evalFile.defaultName)
         {
             msg = "Failed to export a net. "
                   "A non-embedded net can only be saved if the filename is specified";
@@ -134,7 +134,7 @@ bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& file
             return false;
         }
 
-        actualFilename = fs::path(evalFile.defaultName);
+        actualFilename = evalFile.defaultName;
     }
 
     std::ofstream stream(actualFilename, std::ios_base::binary);
@@ -273,7 +273,7 @@ void Network::load_internal(EvalFile& evalFile) {
 
     if (description.has_value())
     {
-        evalFile.current        = fs::path(evalFile.defaultName);
+        evalFile.current        = evalFile.defaultName;
         evalFile.netDescription = description.value();
     }
 }
