@@ -65,8 +65,8 @@
     #endif
 
     // Enforce minimum Clang version
-    #if defined(__clang__) && (__clang_major__ < 10)
-        #error "Stockfish requires Clang 10.0 or later for correct compilation"
+    #if defined(__clang__) && (__clang_major__ < 11)
+        #error "Stockfish requires Clang 11.0 or later for correct compilation"
     #endif
 
     #define ASSERT_ALIGNED(ptr, alignment) assert(reinterpret_cast<uintptr_t>(ptr) % alignment == 0)

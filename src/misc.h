@@ -30,10 +30,9 @@
 #include <exception>  // IWYU pragma: keep
 // IWYU pragma: no_include <__exception/terminate.h>
 #include <functional>
+#include <filesystem>
 #include <iosfwd>
 #include <optional>
-#include <cstring>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -132,9 +131,12 @@ void prefetch(const void* addr) {
 }
 #endif
 
-void start_logger(const std::string& fname);
+void start_logger(const std::filesystem::path& fname);
 
 usize str_to_size_t(const std::string& s);
+
+std::string           utf8_from_wstring(std::wstring_view s);
+std::filesystem::path path_from_utf8(const std::string& path);
 
 #if defined(__linux__)
 
@@ -524,88 +526,26 @@ inline void hash_combine(usize& seed, const T& v) {
 
 inline u64 hash_string(const std::string& sv) { return hash_bytes(sv.data(), sv.size()); }
 
-template<usize Capacity>
-class FixedString {
-   public:
-    FixedString() :
-        length_(0) {
-        data_[0] = '\0';
-    }
-
-    FixedString(const char* str) {
-        usize len = std::strlen(str);
-        if (len > Capacity)
-            std::terminate();
-        std::memcpy(data_, str, len);
-        length_        = len;
-        data_[length_] = '\0';
-    }
-
-    FixedString(const std::string& str) {
-        if (str.size() > Capacity)
-            std::terminate();
-        std::memcpy(data_, str.data(), str.size());
-        length_        = str.size();
-        data_[length_] = '\0';
-    }
-
-    usize size() const { return length_; }
-    usize capacity() const { return Capacity; }
-
-    const char* c_str() const { return data_; }
-    const char* data() const { return data_; }
-
-    char& operator[](usize i) { return data_[i]; }
-
-    const char& operator[](usize i) const { return data_[i]; }
-
-    FixedString& operator+=(const char* str) {
-        usize len = std::strlen(str);
-        if (length_ + len > Capacity)
-            std::terminate();
-        std::memcpy(data_ + length_, str, len);
-        length_ += len;
-        data_[length_] = '\0';
-        return *this;
-    }
-
-    FixedString& operator+=(const FixedString& other) { return (*this += other.c_str()); }
-
-    operator std::string() const { return std::string(data_, length_); }
-
-    operator std::string_view() const { return std::string_view(data_, length_); }
-
-    template<typename T>
-    bool operator==(const T& other) const noexcept {
-        return (std::string_view) (*this) == other;
-    }
-
-    template<typename T>
-    bool operator!=(const T& other) const noexcept {
-        return (std::string_view) (*this) != other;
-    }
-
-    void clear() {
-        length_  = 0;
-        data_[0] = '\0';
-    }
-
-   private:
-    char  data_[Capacity + 1];  // +1 for null terminator
-    usize length_;
-};
-
 struct CommandLine {
    public:
-    CommandLine(int _argc, char** _argv) :
-        argc(_argc),
-        argv(_argv) {}
+    CommandLine(int _argc, char** _argv);
 
-    static std::string get_binary_directory(std::string argv0);
-    static std::string get_working_directory();
+    CommandLine(const CommandLine&)            = delete;
+    CommandLine& operator=(const CommandLine&) = delete;
+    CommandLine(CommandLine&&)                 = default;
+    CommandLine& operator=(CommandLine&&)      = default;
+
+    static std::filesystem::path get_binary_directory(std::filesystem::path argv0);
+    static std::filesystem::path get_working_directory();
 
     int    argc;
     char** argv;
+
+   private:
+#ifdef _WIN32
+    std::vector<std::string> argv_storage;
+    std::vector<char*>       argv_utf8;
+#endif
 };
 
 namespace Utility {
@@ -666,13 +606,8 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
     #define RESTRICT
 #endif
 
-}  // namespace Stockfish
+void set_console_utf8();
 
-template<Stockfish::usize N>
-struct std::hash<Stockfish::FixedString<N>> {
-    Stockfish::usize operator()(const Stockfish::FixedString<N>& fstr) const noexcept {
-        return Stockfish::hash_bytes(fstr.data(), fstr.size());
-    }
-};
+}  // namespace Stockfish
 
 #endif  // #ifndef MISC_H_INCLUDED
