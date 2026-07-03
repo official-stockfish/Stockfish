@@ -27,6 +27,7 @@
 #include <memory>
 #include <sstream>
 
+#include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_misc.h"
 #include "position.h"
@@ -52,11 +53,11 @@ Value Eval::evaluate(const Eval::NNUE::Network&     network,
 
     // Blend optimism and eval with nnue complexity
     int nnueComplexity = std::abs(psqt - positional);
-    optimism += optimism * nnueComplexity / 476;
-    nnue -= nnue * nnueComplexity / 18236;
+    optimism += optimism * i64(nnueComplexity) / 476;
+    nnue -= nnue * i64(nnueComplexity) / 18236;
 
     int material = 534 * pos.count<PAWN>() + pos.non_pawn_material();
-    int v        = (nnue * (77871 + material) + optimism * (7191 + material)) / 77871;
+    int v        = (nnue * i64(77871 + material) + optimism * i64(7191 + material)) / 77871;
 
     // Damp down the evaluation linearly when shuffling
     v -= v * pos.rule50_count() / 199;
