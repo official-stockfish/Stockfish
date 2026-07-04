@@ -18,11 +18,7 @@
 
 #include "bitboard.h"
 
-#include <bitset>
-
 namespace Stockfish {
-
-u8 PopCnt16[1 << 16];
 
 // Returns an ASCII representation of a bitboard suitable
 // to be printed to standard output. Useful for debugging.
@@ -43,12 +39,6 @@ std::string Bitboards::pretty(Bitboard b) {
     s += "  a   b   c   d   e   f   g   h\n";
 
     return s;
-}
-
-// Initializes the popcount table at startup.
-void Bitboards::init() {
-    for (unsigned i = 0; i < (1 << 16); ++i)
-        PopCnt16[i] = u8(std::bitset<16>(i).count());
 }
 
 }  // namespace Stockfish
