@@ -345,8 +345,7 @@ inline int Position::rule50_count() const { return st->rule50; }
 inline bool Position::is_chess960() const { return chess960; }
 
 inline bool Position::capture(Move m) const {
-    assert(m.is_ok());
-    return (!empty(m.to_sq()) && m.type_of() != CASTLING) || m.type_of() == EN_PASSANT;
+    return (board[m.to_sq()] != 0) ^ (m.type_of() >> 15);
 }
 
 // Returns true if a move is generated from the capture stage, having also
