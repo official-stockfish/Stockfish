@@ -44,7 +44,15 @@ void init();
 
 inline Bitboard reverse_bb(Bitboard bb) {
     #ifdef __aarch64__
+        #if defined(__GNUC__) && !defined(__clang__) \
+          && (__GNUC__ < 12 || (__GNUC__ == 12 && __GNUC_MINOR__ < 2))
+    // no rbit in arm_acle.h
+    Bitboard out;
+    asm("rbit %0, %1" : "=r"(out) : "r"(bb));
+    return out;
+        #else
     return __rbitll(bb);
+        #endif
     #else  // loongarch
     Bitboard out;
     asm("bitrev.d %0, %1" : "=r"(out) : "r"(bb));
