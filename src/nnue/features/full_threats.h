@@ -29,16 +29,18 @@ class Position;
 
 namespace Stockfish::Eval::NNUE::Features {
 
-static constexpr int numValidTargets[PIECE_NB] = {0, 6, 10, 8, 8, 10, 0, 0,
-                                                  0, 6, 10, 8, 8, 10, 0, 0};
+// Pawn diagonal threats only target knights and rooks (pawn-pawn relationships
+// are handled by the PP_3Wide feature set), so pawns have 4 valid targets.
+static constexpr int numValidTargets[PIECE_NB] = {0, 4, 10, 8, 8, 10, 0, 0,
+                                                  0, 4, 10, 8, 8, 10, 0, 0};
 
 class FullThreats {
    public:
     // Hash value embedded in the evaluation file
-    static constexpr u32 HashValue = 0x8f234cb8u;
+    static constexpr u32 HashValue = 0x2e6b9d04u;
 
     // Number of feature dimensions
-    static constexpr IndexType Dimensions = 60720;
+    static constexpr IndexType Dimensions = 59808;
 
     // clang-format off
     // Orient a square according to perspective (rotates by 180 for black)
@@ -54,7 +56,7 @@ class FullThreats {
     };
 
     static constexpr int map[PIECE_TYPE_NB-2][PIECE_TYPE_NB-2] = {
-      { 0,  1, -1,  2, -1, -1},
+      {-1,  0, -1,  1, -1, -1},
       { 0,  1,  2,  3,  4, -1},
       { 0,  1,  2,  3, -1, -1},
       { 0,  1,  2,  3, -1, -1},
@@ -64,9 +66,8 @@ class FullThreats {
     // clang-format on
 
     // Maximum number of simultaneously active features.
-    static constexpr IndexType MaxActiveDimensions = 128;
-    using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
-    using DiffType                                 = DirtyThreats;
+    using IndexList = ValueList<u16, 256>;
+    using DiffType  = DirtyThreats;
 
     static IndexType
     make_index(Color perspective, Piece attkr, Square from, Square to, Piece attkd, Square ksq);

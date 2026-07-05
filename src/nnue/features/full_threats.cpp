@@ -73,7 +73,7 @@ constexpr auto make_piece_indices_piece() {
 
     for (Square from = SQ_A1; from <= SQ_H8; ++from)
     {
-        Bitboard attacks = Attacks::PawnPushOrAttacks[C][from];
+        Bitboard attacks = Attacks::PseudoAttacks[C][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
         {
@@ -136,8 +136,8 @@ constexpr auto init_threat_offsets() {
 
             else if (from >= SQ_A2 && from <= SQ_H7)
             {
-                Bitboard attacks = (pieceIdx < 8) ? Attacks::PawnPushOrAttacks[WHITE][from]
-                                                  : Attacks::PawnPushOrAttacks[BLACK][from];
+                Bitboard attacks = (pieceIdx < 8) ? Attacks::PseudoAttacks[WHITE][from]
+                                                  : Attacks::PseudoAttacks[BLACK][from];
                 cumulativePieceOffset += constexpr_popcount(attacks);
             }
         }
@@ -208,11 +208,9 @@ inline sf_always_inline IndexType FullThreats::make_index(
 // Get a list of indices for active features in ascending order
 
 void FullThreats::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
-    const Square   ksq      = pos.square<KING>(perspective);
-    const Bitboard occupied = pos.pieces();
-    const Bitboard pawns    = pos.pieces(PAWN);
-
-    const Bitboard pawnTargets        = pos.pieces(PAWN, KNIGHT, ROOK);
+    const Square   ksq                = pos.square<KING>(perspective);
+    const Bitboard occupied           = pos.pieces();
+    const Bitboard pawnTargets        = pos.pieces(KNIGHT, ROOK);
     const Bitboard minorSliderTargets = pos.pieces(PAWN, KNIGHT, BISHOP, ROOK);
     const Bitboard queenTargets       = pos.pieces(PAWN, KNIGHT, BISHOP, ROOK, QUEEN);
 
@@ -221,18 +219,14 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
         const Color c = Color(perspective ^ color);
 
         {
-            const Piece    attacker = make_piece(c, PAWN);
-            const Bitboard cPawns   = pos.pieces(c, PAWN);
-            // Set of pawns which are prevented from movement by a pawn in front of them
-            const Bitboard pushers = pawn_single_push_bb(~c, pawns) & cPawns;
-
-            auto process_pawn_attacks = [&](Bitboard attacks, Direction attkDir) {
+            const Piece    attacker             = make_piece(c, PAWN);
+            const Bitboard cPawns               = pos.pieces(c, PAWN);
+            auto           process_pawn_attacks = [&](Bitboard attacks, Direction attkDir) {
                 while (attacks)
                 {
-                    Square to       = pop_lsb(attacks);
-                    Square from     = to - attkDir;
-                    Piece  attacked = pos.piece_on(to);
-                    assert(file_of(from) != file_of(to) || type_of(attacked) == PAWN);
+                    Square    to       = pop_lsb(attacks);
+                    Square    from     = to - attkDir;
+                    Piece     attacked = pos.piece_on(to);
                     IndexType index = make_index(perspective, attacker, from, to, attacked, ksq);
                     active.push_back_if_lt(index, Dimensions);
                 }
@@ -242,13 +236,11 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
             {
                 process_pawn_attacks(shift<NORTH_EAST>(cPawns) & pawnTargets, NORTH_EAST);
                 process_pawn_attacks(shift<NORTH_WEST>(cPawns) & pawnTargets, NORTH_WEST);
-                process_pawn_attacks(shift<NORTH>(pushers), NORTH);
             }
             else
             {
                 process_pawn_attacks(shift<SOUTH_WEST>(cPawns) & pawnTargets, SOUTH_WEST);
                 process_pawn_attacks(shift<SOUTH_EAST>(cPawns) & pawnTargets, SOUTH_EAST);
-                process_pawn_attacks(shift<SOUTH>(pushers), SOUTH);
             }
         }
 

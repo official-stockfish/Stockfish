@@ -127,8 +127,23 @@ constexpr Bitboard pawn_single_push_bb(Color c, Bitboard b) {
     return c == WHITE ? shift<NORTH>(b) : shift<SOUTH>(b);
 }
 
-constexpr int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
+constexpr auto PawnPairBB = []() {
+    std::array<Bitboard, SQUARE_NB> result{};
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+    {
+        Bitboard file  = file_bb(s);
+        Bitboard files = file | shift<EAST>(file) | shift<WEST>(file);
+        result[s]      = files & ~(Rank1BB | Rank8BB) & ~square_bb(s);
+    }
+    return result;
+}();
 
+// Returns the squares that can host a pawn forming a "pawn pair" with a pawn
+// on s: own file plus adjacent files, restricted to ranks 2-7, excluding s.
+// The geometry is color-independent.
+constexpr Bitboard pawn_pair_bb(Square s) { return PawnPairBB[s]; }
+
+constexpr int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
 
 template<typename T>
 constexpr int constexpr_popcount(T v) {

@@ -815,8 +815,7 @@ bool Position::gives_check(Move m) const {
 void Position::do_move(Move                      m,
                        StateInfo&                newSt,
                        bool                      givesCheck,
-                       DirtyPiece&               dp,
-                       DirtyThreats&             dts,
+                       Dirties&                  dirties,
                        const TranspositionTable* tt      = nullptr,
                        const SharedHistories*    history = nullptr) {
 
@@ -837,6 +836,13 @@ void Position::do_move(Move                      m,
     ++gamePly;
     ++st->rule50;
     ++st->pliesFromNull;
+
+    auto& dpps = dirties.dirtyPawnPairs;
+    auto& dts  = dirties.dirtyThreats;
+    auto& dp   = dirties.dirtyPiece;
+
+    dpps.before[WHITE] = pieces(WHITE, PAWN);
+    dpps.before[BLACK] = pieces(BLACK, PAWN);
 
     Color  us       = sideToMove;
     Color  them     = ~us;
@@ -1063,6 +1069,9 @@ void Position::do_move(Move                      m,
 
     assert(pos_is_ok());
 
+    dpps.after[WHITE] = pieces(WHITE, PAWN);
+    dpps.after[BLACK] = pieces(BLACK, PAWN);
+
     assert(dp.pc != NO_PIECE);
     assert(!(bool(captured) || m.type_of() == CASTLING) ^ (dp.remove_sq != SQ_NONE));
     assert(dp.from != SQ_NONE);
@@ -1235,32 +1244,20 @@ void Position::update_piece_threats(Piece               pc,
     Bitboard threatened       = attacks_bb(pc, s, occupied) & occupiedNoK;
     Bitboard incoming_threats = PseudoAttacks[KNIGHT][s] & knights;
 
-    // Compute both incoming and outgoing pawn threats. Incoming pawn pushers are only
-    // added if 'pc' is a pawn.
     Bitboard pawnThreats = 0;
-    if (type_of(pc) == PAWN)
-    {
-        Bitboard whiteAttacks = PawnPushOrAttacks[WHITE][s];
-        Bitboard blackAttacks = PawnPushOrAttacks[BLACK][s];
-
-        threatened |= (color_of(pc) == WHITE ? whiteAttacks : blackAttacks) & pieces(PAWN);
-
-        pawnThreats = whiteAttacks & blackPawns;
-        pawnThreats |= blackAttacks & whitePawns;
-    }
-    else
+    if (type_of(pc) != PAWN)
     {
         pawnThreats =
           (attacks_bb<PAWN>(s, WHITE) & blackPawns) | (attacks_bb<PAWN>(s, BLACK) & whitePawns);
     }
 
-    if (type_of(pc) == PAWN || type_of(pc) == KNIGHT || type_of(pc) == ROOK)
+    if (type_of(pc) == KNIGHT || type_of(pc) == ROOK)
         incoming_threats |= pawnThreats;
 
     switch (type_of(pc))
     {
     case PAWN :
-        threatened &= pieces(PAWN, KNIGHT, ROOK);
+        threatened &= pieces(KNIGHT, ROOK);
         break;
     case BISHOP :
     case ROOK :

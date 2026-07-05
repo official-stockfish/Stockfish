@@ -644,12 +644,13 @@ void Search::Worker::do_move(
     bool capture = pos.capture_stage(move);
     ++nodes;
 
-    auto [dirtyPiece, dirtyThreats] = accumulatorStack.push();
-    pos.do_move(move, st, givesCheck, dirtyPiece, dirtyThreats, &tt, &sharedHistory);
+    Dirties& dirties = accumulatorStack.push();
+    pos.do_move(move, st, givesCheck, dirties, &tt, &sharedHistory);
 
     if (ss != nullptr)
     {
-        ss->currentMove = move;
+        auto& dirtyPiece = dirties.dirtyPiece;
+        ss->currentMove  = move;
         ss->continuationHistory =
           &continuationHistory[ss->inCheck][capture][dirtyPiece.pc][move.to_sq()];
         ss->continuationCorrectionHistory =
