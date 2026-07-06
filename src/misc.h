@@ -621,6 +621,10 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 }
 }
 
+#ifndef __has_builtin
+    #define __has_builtin(x) 0
+#endif
+
 #if defined(__GNUC__)
     #define sf_always_inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
