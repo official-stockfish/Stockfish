@@ -42,7 +42,7 @@ struct NNZInfo {
             indices[i] = {0, 1, 2,  3,  16, 17, 18, 19, 4,  5,  6,  7,  20, 21, 22, 23,
                           8, 9, 10, 11, 24, 25, 26, 27, 12, 13, 14, 15, 28, 29, 30, 31};
             for (u16& m : indices[i])
-                m += i * Dimensions / 8;
+                m += u16(i * Dimensions / 8);
         }
         return indices;
     }();
@@ -85,9 +85,10 @@ struct NNZInfo {
             count += popcount(nnzMask);
             indices = _mm512_add_epi16(indices, increment);
     #else
+            const __m512i increment = _mm512_set1_epi32(16);
+
             for (auto neurons : {neurons1, neurons2})
             {
-                const __m512i increment = _mm512_set1_epi32(16);
                 // Get a bitmask and gather non zero indices
                 const __mmask16 nnzMask = _mm512_test_epi32_mask(neurons, neurons);
                 const __m512i   nnzV    = _mm512_maskz_compress_epi32(nnzMask, indices);
@@ -162,6 +163,6 @@ struct NNZInfo {
     NNZCursor make_cursor(bool perspective) { return {*this, perspective}; }
 #endif
 };
-}  // namespace Stockfish
+}  // namespace Stockfish::Eval::NNUE
 
 #endif

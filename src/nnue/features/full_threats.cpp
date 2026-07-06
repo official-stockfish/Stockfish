@@ -256,10 +256,10 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
         {
             Piece    attacker = make_piece(c, pt);
             Bitboard bb       = pos.pieces(c, pt);
+            Bitboard targets  = pt == KNIGHT || pt == QUEEN ? queenTargets : minorSliderTargets;
             while (bb)
             {
                 Square   from    = pop_lsb(bb);
-                Bitboard targets = pt == KNIGHT || pt == QUEEN ? queenTargets : minorSliderTargets;
                 Bitboard attacks = Attacks::attacks_bb(pt, from, occupied) & targets;
                 while (attacks)
                 {

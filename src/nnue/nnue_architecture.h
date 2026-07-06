@@ -73,8 +73,8 @@ struct NetworkArchitecture {
         hashValue ^= TransformedFeatureDimensions * 2;
 
         hashValue = decltype(fc_0)::get_hash_value(hashValue);
-        // TODO: considerincluding hash value of ac_sqr_0 in the overall hash value.
-        // For now omitted on purpose because hash value is not written by trainer yet
+        // TODO: consider including hash value of ac_sqr_0 in the overall hash value.
+        // For now omitted on purpose because hash value is not written by trainer (yet)
         hashValue = decltype(ac_0)::get_hash_value(hashValue);
         hashValue = decltype(fc_1)::get_hash_value(hashValue);
         hashValue = decltype(ac_1)::get_hash_value(hashValue);

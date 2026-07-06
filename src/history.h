@@ -54,7 +54,10 @@ static_assert((CORRHIST_BASE_SIZE & (CORRHIST_BASE_SIZE - 1)) == 0,
 // when we update values with the << operator
 template<typename T, int D, bool Shared = false>
 struct StatsEntry {
-    static_assert(std::is_arithmetic_v<T>, "Not an arithmetic type");
+    static_assert(std::is_integral_v<T> && std::is_signed_v<T>, "Not a signed integer type");
+    static_assert(D > 0 && D <= std::numeric_limits<T>::max()
+                    && D <= std::numeric_limits<int>::max() / D,
+                  "D can lead to overflows");
 
    private:
     std::conditional_t<Shared, RelaxedAtomic<T>, T> entry;

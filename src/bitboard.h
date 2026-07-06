@@ -21,9 +21,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstring>
-#include <cstdlib>
 #include <string>
 
 #include "types.h"
@@ -66,7 +64,6 @@ constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern u8 PopCnt16[1 << 16];
-extern u8 SquareDistance[SQUARE_NB][SQUARE_NB];
 
 constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
@@ -133,29 +130,7 @@ constexpr Bitboard pawn_single_push_bb(Color c, Bitboard b) {
     return c == WHITE ? shift<NORTH>(b) : shift<SOUTH>(b);
 }
 
-// distance() functions return the distance between x and y, defined as the
-// number of steps for a king in x to reach y.
-
-template<typename T1 = Square>
-inline int distance(Square x, Square y);
-
-template<>
-inline int distance<File>(Square x, Square y) {
-    return std::abs(file_of(x) - file_of(y));
-}
-
-template<>
-inline int distance<Rank>(Square x, Square y) {
-    return std::abs(rank_of(x) - rank_of(y));
-}
-
-template<>
-inline int distance<Square>(Square x, Square y) {
-    return SquareDistance[x][y];
-}
-
 inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
-
 
 constexpr int constexpr_popcount(Bitboard b) {
     b = b - ((b >> 1) & 0x5555555555555555ULL);

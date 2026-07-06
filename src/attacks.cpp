@@ -70,7 +70,7 @@ static void init_magics(Magic magics[][2]) {
 
 // Sliding attacks within a rank, indexed by the slider's file and the
 // 8-bit rank occupancy, yielding the 8-bit attack set on that rank
-[[maybe_unused]] constexpr auto RankAttacks = []() {
+constexpr auto RankAttacks = []() {
     std::array<std::array<u8, 256>, FILE_NB> table{};
     for (int file = 0; file < 8; ++file)
         for (int occ = 0; occ < 256; ++occ)
@@ -117,8 +117,7 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
         m.attacks        = s == SQ_A1 ? table : magics[s - 1][pt - BISHOP].attacks + size;
         size             = 0;
 
-        Bitboard                  b           = 0;
-        [[maybe_unused]] Bitboard prevSliding = -1;
+        Bitboard b = 0;
         do
         {
             occupancy[size] = b;

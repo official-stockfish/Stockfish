@@ -113,8 +113,8 @@ inline int H1(Key h) { return h & 0x1fff; }
 inline int H2(Key h) { return (h >> 16) & 0x1fff; }
 
 // Cuckoo tables with Zobrist hashes of valid reversible moves, and the moves themselves
-std::array<Key, 8192>  cuckoo;
-std::array<Move, 8192> cuckooMove;
+static std::array<Key, 8192>  cuckoo;
+static std::array<Move, 8192> cuckooMove;
 
 // Initializes at startup the various arrays used to compute hash keys
 void Position::init() {
@@ -305,7 +305,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     // if an inner rook is associated with the castling right, the castling tag is
     // replaced by the file letter of the involved rook, as for the Shredder-FEN.
     //
-    // NOTE: Due to the prevalnce of incorrect (or missing) castling rights the
+    // NOTE: Due to the prevalence of incorrect (or missing) castling rights the
     // validation is less strict. However, incorrect castling rights are still sanitized.
     int num_castling_rights = 0;
     for (;;)
@@ -421,7 +421,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
     ss >> std::skipws >> st->rule50 >> gamePly;
 
     // Normally values larger than 99 would be pointless but we do support ignoring 50 move rule for TB purposes.
-    // Limit at 2**15 as it's used multiplicativly with position evaluation during search.
+    // Limit at 2**15 as it's used multiplicatively with position evaluation during search.
     if (st->rule50 < 0 || st->rule50 > 32767)
         return PositionSetError("Unsupported position. Rule50 counter out of range.");
 
@@ -1636,21 +1636,16 @@ bool Position::material_key_is_ok() const { return compute_material_key() == st-
 // This is meant to be helpful when debugging.
 bool Position::pos_is_ok() const {
 
-    constexpr bool Fast = false;  // fast or full check?
-
     if ((sideToMove != WHITE && sideToMove != BLACK) || piece_on(square<KING>(WHITE)) != W_KING
         || piece_on(square<KING>(BLACK)) != B_KING
         || (ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6))
         assert(0 && "pos_is_ok: Default");
 
-    if (Fast)
-        return true;
-
-    if (pieceCount[W_KING] != 1 || pieceCount[B_KING] != 1
+    if (count<KING>(WHITE) != 1 || count<KING>(BLACK) != 1
         || attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
         assert(0 && "pos_is_ok: Kings");
 
-    if ((pieces(PAWN) & (Rank1BB | Rank8BB)) || pieceCount[W_PAWN] > 8 || pieceCount[B_PAWN] > 8)
+    if ((pieces(PAWN) & (Rank1BB | Rank8BB)) || count<PAWN>(WHITE) > 8 || count<PAWN>(BLACK) > 8)
         assert(0 && "pos_is_ok: Pawns");
 
 
@@ -1679,7 +1674,6 @@ bool Position::pos_is_ok() const {
             if (p1 != p2 && (pieces(p1) & pieces(p2)))
                 assert(0 && "pos_is_ok: Bitboards");
 
-
     for (Piece pc : Pieces)
         if (pieceCount[pc] != popcount(pieces(color_of(pc), type_of(pc)))
             || pieceCount[pc] != std::count(board.begin(), board.end(), pc))
@@ -1691,7 +1685,7 @@ bool Position::pos_is_ok() const {
             if (!can_castle(cr))
                 continue;
 
-            if (piece_on(castlingRookSquare[cr]) != make_piece(c, ROOK)
+            if (piece_on(castling_rook_square(cr)) != make_piece(c, ROOK)
                 || castlingRightsMask[castlingRookSquare[cr]] != cr
                 || (castlingRightsMask[square<KING>(c)] & cr) != cr)
                 assert(0 && "pos_is_ok: Castling");

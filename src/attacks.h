@@ -102,10 +102,10 @@ struct alignas(32) DualMagic {
     //
     // When using hyperbola quintessence, file, diagonal and antidiagonal attacks
     // can use a byte reversal rather than a full bit reversal (because all squares
-    // reside in different bytes). Rank atttacks cannot. Thus, for rank attacks
+    // reside in different bytes). Rank attacks cannot. Thus, for rank attacks
     // only, we use a compact lookup table indexed by the 8 bits of the rank's occupancy.
     std::pair<Bitboard, Bitboard> both_attacks_bb(Bitboard occupied) const {
-        // Byteswap within 64-bit elements
+        // Byteswap within 128-bit elements
         const auto bswap = [](__m256i v) {
             return _mm256_shuffle_epi8(v, _mm256_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
                                                           13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -270,7 +270,7 @@ inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
 
 // Returns the attacks by the given piece
 // assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
+// Sliding piece attacks do not continue past an occupied square.
 template<PieceType Pt>
 inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
@@ -306,7 +306,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
 
 // Returns the attacks by the given piece
 // assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
+// Sliding piece attacks do not continue past an occupied square.
 inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
 
     assert(pt != PAWN && is_ok(s));
@@ -318,7 +318,7 @@ inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
     case ROOK :
         return attacks_bb<ROOK>(s, occupied);
     case QUEEN :
-        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
+        return attacks_bb<QUEEN>(s, occupied);
     default :
         return PseudoAttacks[pt][s];
     }
