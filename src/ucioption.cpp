@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cerrno>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -153,9 +154,23 @@ Option& Option::operator=(const std::string& v) {
     assert(!type.empty());
 
     if ((type != "button" && type != "string" && v.empty())
-        || (type == "check" && v != "true" && v != "false")
-        || (type == "spin" && (std::stoi(v) < min || std::stoi(v) > max)))
+        || (type == "check" && v != "true" && v != "false"))
         return *this;
+
+    // For spin options, reject values that don't parse as a full int or fall
+    // outside [min, max]. std::strtol is used instead of std::stoi because the
+    // codebase is compiled with -fno-exceptions, so throwing on malformed UCI
+    // input would terminate the engine.
+    if (type == "spin")
+    {
+        errno             = 0;
+        char* end         = nullptr;
+        const char* begin = v.c_str();
+        const long parsed = std::strtol(begin, &end, 10);
+
+        if (begin == end || *end != '\0' || errno == ERANGE || parsed < min || parsed > max)
+            return *this;
+    }
 
     if (type == "combo")
     {
