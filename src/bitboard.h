@@ -20,9 +20,7 @@
 #define BITBOARD_H_INCLUDED
 
 #include <algorithm>
-#include <array>
 #include <cassert>
-#include <cstring>
 #include <string>
 #include <type_traits>
 
@@ -161,22 +159,7 @@ constexpr int constexpr_popcount(T v) {
 // Counts the number of non-zero bits in a bitboard.
 inline int popcount(Bitboard b) {
 
-#ifndef USE_POPCNT
-    static constexpr auto PopCnt16 = []() {
-        std::array<u8, 1 << 16> result{};
-
-        for (unsigned i = 0; i < (1 << 16); ++i)
-            result[i] = static_cast<u8>(constexpr_popcount(i));
-
-        return result;
-    }();
-
-    u16 indices[4];
-    std::memcpy(indices, &b, sizeof(b));
-    return PopCnt16[indices[0]] + PopCnt16[indices[1]] + PopCnt16[indices[2]]
-         + PopCnt16[indices[3]];
-
-#elif defined(_MSC_VER)
+#ifdef _MSC_VER
 
     return int(_mm_popcnt_u64(b));
 
