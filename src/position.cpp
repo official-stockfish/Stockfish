@@ -1636,15 +1636,10 @@ bool Position::material_key_is_ok() const { return compute_material_key() == st-
 // This is meant to be helpful when debugging.
 bool Position::pos_is_ok() const {
 
-    constexpr bool Fast = false;  // fast or full check?
-
     if ((sideToMove != WHITE && sideToMove != BLACK) || piece_on(square<KING>(WHITE)) != W_KING
         || piece_on(square<KING>(BLACK)) != B_KING
         || (ep_square() != SQ_NONE && relative_rank(sideToMove, ep_square()) != RANK_6))
         assert(0 && "pos_is_ok: Default");
-
-    if (Fast)
-        return true;
 
     if (pieceCount[W_KING] != 1 || pieceCount[B_KING] != 1
         || attackers_to_exist(square<KING>(~sideToMove), pieces(), sideToMove))
