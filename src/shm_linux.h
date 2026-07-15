@@ -43,6 +43,7 @@
 #include <sys/file.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include <limits.h>
 #define SF_MAX_SEM_NAME_LEN NAME_MAX
@@ -140,6 +141,10 @@ class CleanupHooks {
 
 inline std::once_flag CleanupHooks::register_once_;
 
+// How long to wait for a racing creator to finish initializing a region
+// before treating it as a crash leftover, and the polling interval.
+constexpr int STALE_WAIT_BUDGET_MS = 1000;
+constexpr int STALE_WAIT_POLL_MS   = 10;
 
 }  // namespace detail
 
@@ -225,7 +230,9 @@ class SharedMemory: public detail::SharedMemoryBase {
     [[nodiscard]] bool open(const T& initial_value) noexcept {
         detail::CleanupHooks::ensure_registered();
 
-        bool retried_stale = false;
+        int  stale_waited_ms = 0;
+        bool unlinked_stale  = false;
+        bool retried_mutex   = false;
 
         while (true)
         {
@@ -257,35 +264,57 @@ class SharedMemory: public detail::SharedMemoryBase {
 
             if (!success)
             {
-                if (created_new || invalid_header)
-                    shm_unlink(name_.c_str());
+                bool wait_for_creator = false;
+                bool retry_create     = false;
+
+                if (created_new)
+                    unlink_if_same_inode();
+                else if (invalid_header)
+                {
+                    // Uninitialized region: a racing creator or a crash
+                    // leftover. Wait for a live creator first; reclaim
+                    // only after the budget expires, and only once.
+                    if (stale_waited_ms < detail::STALE_WAIT_BUDGET_MS)
+                        wait_for_creator = true;
+                    else if (!unlinked_stale)
+                    {
+                        unlink_if_same_inode();
+                        unlinked_stale = true;
+                        retry_create   = true;
+                    }
+                }
+
                 if (mapped_ptr_)
                     unmap_region();
                 unlock_file();
                 ::close(fd_);
                 reset();
 
-                if (!created_new && invalid_header && !retried_stale)
+                if (wait_for_creator)
                 {
-                    retried_stale = true;
+                    struct timespec ts{0, detail::STALE_WAIT_POLL_MS * 1000000L};
+                    nanosleep(&ts, nullptr);
+                    stale_waited_ms += detail::STALE_WAIT_POLL_MS;
                     continue;
                 }
+                if (retry_create)
+                    continue;
                 return false;
             }
 
             if (!lock_shared_mutex())
             {
                 if (created_new)
-                    shm_unlink(name_.c_str());
+                    unlink_if_same_inode();
                 if (mapped_ptr_)
                     unmap_region();
                 unlock_file();
                 ::close(fd_);
                 reset();
 
-                if (!created_new && !retried_stale)
+                if (!created_new && !retried_mutex)
                 {
-                    retried_stale = true;
+                    retried_mutex = true;
                     continue;
                 }
                 return false;
@@ -296,7 +325,7 @@ class SharedMemory: public detail::SharedMemoryBase {
                 unlock_shared_mutex();
                 unmap_region();
                 if (created_new)
-                    shm_unlink(name_.c_str());
+                    unlink_if_same_inode();
                 unlock_file();
                 ::close(fd_);
                 reset();
@@ -345,7 +374,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             unmap_region();
 
         if (remove_region)
-            shm_unlink(name_.c_str());
+            unlink_if_same_inode();
 
         if (file_locked)
             unlock_file();
@@ -397,6 +426,27 @@ class SharedMemory: public detail::SharedMemoryBase {
             data_ptr_   = nullptr;
             header_ptr_ = nullptr;
         }
+    }
+
+    // Unlink the shm name only if it still refers to the inode behind fd_,
+    // so we never delete a region re-created under our name by another process.
+    void unlink_if_same_inode() noexcept {
+        if (fd_ == -1 || name_.empty())
+            return;
+
+        struct stat fd_st;
+        if (fstat(fd_, &fd_st) != 0)
+            return;
+
+        const std::string path =
+          name_.front() == '/' ? "/dev/shm" + name_ : "/dev/shm/" + name_;
+
+        struct stat name_st;
+        if (::stat(path.c_str(), &name_st) != 0)
+            return;
+
+        if (fd_st.st_dev == name_st.st_dev && fd_st.st_ino == name_st.st_ino)
+            shm_unlink(name_.c_str());
     }
 
     [[nodiscard]] bool lock_file(int operation) noexcept {
