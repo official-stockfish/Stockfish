@@ -1511,11 +1511,9 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
    public:
     using ReplicatorFuncType = std::function<T(const T&)>;
 
-    LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx) :
-        NumaReplicatedBase(ctx) {
-        prepare_replicate_from(std::make_unique<T>());
-    }
-
+    // No default-value constructor: publishing a default-constructed T as a
+    // system-wide shared constant would create (and share) a full-size region
+    // of meaningless content. Construct from the real value instead.
     LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx, std::unique_ptr<T>&& source) :
         NumaReplicatedBase(ctx) {
         prepare_replicate_from(std::move(source));
