@@ -296,9 +296,9 @@ void apply_combined(Color                              perspective,
     usize tileOffset = 0;
 
     const auto* psqWeights        = &featureTransformer.weights[0];
-    const auto* threatWeights     = &featureTransformer.threatWeights[0];
+    const auto* threatWeights     = &featureTransformer.threatAndPpWeights[0];
     const auto* psqtWeights       = &featureTransformer.psqtWeights[0];
-    const auto* threatPsqtWeights = &featureTransformer.threatPsqtWeights[0];
+    const auto* threatPsqtWeights = &featureTransformer.threatAndPpPsqtWeights[0];
 
     while (tileOffset < Dimensions)
     {
@@ -376,36 +376,18 @@ void apply_combined(Color                              perspective,
     {
         const IndexType offset = Dimensions * index;
         for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.threatWeights[offset + j];
+            toAcc[j] -= featureTransformer.threatAndPpWeights[offset + j];
         for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
+            toPsqtAcc[k] -= featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
     }
 
     for (const auto index : thrAdded)
     {
         const IndexType offset = Dimensions * index;
         for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.threatWeights[offset + j];
+            toAcc[j] += featureTransformer.threatAndPpWeights[offset + j];
         for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : ppRemoved)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.ppWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.ppPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : ppAdded)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.ppWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.ppPsqtWeights[index * PSQTBuckets + k];
+            toPsqtAcc[k] += featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
     }
 
 #endif
@@ -704,9 +686,9 @@ void update_accumulator_refresh_cache(Color                     perspective,
 #elif defined(USE_RVV)
 
     const auto* weights           = &featureTransformer.weights[0];
-    const auto* threatWeights     = &featureTransformer.threatWeights[0];
+    const auto* threatWeights     = &featureTransformer.threatAndPpWeights[0];
     const auto* psqtWeights       = &featureTransformer.psqtWeights[0];
-    const auto* threatPsqtWeights = &featureTransformer.threatPsqtWeights[0];
+    const auto* threatPsqtWeights = &featureTransformer.threatAndPpPsqtWeights[0];
 
     usize tileOffset = 0;
 
@@ -791,23 +773,11 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         for (IndexType j = 0; j < Dimensions; ++j)
             accumulator.accumulation[perspective][j] +=
-              featureTransformer.threatWeights[offset + j];
+              featureTransformer.threatAndPpWeights[offset + j];
 
         for (usize k = 0; k < PSQTBuckets; ++k)
             accumulator.psqtAccumulation[perspective][k] +=
-              featureTransformer.threatPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : activePp)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            accumulator.accumulation[perspective][j] += featureTransformer.ppWeights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            accumulator.psqtAccumulation[perspective][k] +=
-              featureTransformer.ppPsqtWeights[index * PSQTBuckets + k];
+              featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
     }
 
 #endif
