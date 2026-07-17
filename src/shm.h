@@ -417,7 +417,7 @@ class SharedMemoryBackend {
         return reinterpret_cast<void*>(const_cast<T*>(ptr));
     }
 
-    bool is_valid() const { return shm1 && shm1->is_open() && shm1->is_initialized(); }
+    bool is_valid() const { return shm1 && shm1->is_mapped() && shm1->is_serving(); }
 
     SystemWideSharedConstantAllocationStatus get_status() const {
         return is_valid() ? SystemWideSharedConstantAllocationStatus::SharedMemory
@@ -428,11 +428,11 @@ class SharedMemoryBackend {
         if (!shm1)
             return "Shared memory not initialized";
 
-        if (!shm1->is_open())
-            return "Shared memory is not open";
+        if (!shm1->is_mapped())
+            return "Shared memory is not mapped";
 
-        if (!shm1->is_initialized())
-            return "Not initialized";
+        if (!shm1->is_serving())
+            return "Shared memory is not serving to other processes";
 
         return std::nullopt;
     }
