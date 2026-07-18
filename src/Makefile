@@ -90,7 +90,7 @@ HEADERS = attacks.h benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.
 		nnue/layers/affine_transform.h nnue/layers/affine_transform_sparse_input.h \
 		nnue/layers/clipped_relu.h nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h \
 		nnue/nnue_architecture.h nnue/nnue_common.h nnue/nnue_feature_transformer.h nnue/simd.h \
-		nnue/nnz_helper.h position.h search.h syzygy/tbprobe.h thread.h thread_win32_osx.h timeman.h \
+		nnue/nnz_helper.h position.h search.h syzygy/tbprobe.h thread.h thread_native.h timeman.h \
 		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h engine.h score.h numa.h memory.h shm.h shm_linux.h
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
@@ -685,31 +685,27 @@ else ifeq ($(COMP),mingw)
 	CXXFLAGS += -fno-ipa-cp-clone
 endif
 
-### On mingw use Windows threads, otherwise POSIX
-ifneq ($(comp),mingw)
-	CXXFLAGS += -DUSE_PTHREADS
-	# On Android Bionic's C library comes with its own pthread implementation bundled in
-	ifneq ($(OS),Android)
-		# Haiku has pthreads in its libroot, so only link it in on other platforms
-		ifneq ($(KERNEL),Haiku)
-			ifneq ($(COMP),ndk)
-			ifneq ($(arch),wasm32)
-				LDFLAGS += -lpthread
+# On Android Bionic's C library comes with its own pthread implementation bundled in
+ifneq ($(OS),Android)
+	# Haiku has pthreads in its libroot, so only link it in on other platforms
+	ifneq ($(KERNEL),Haiku)
+		ifneq ($(COMP),ndk)
+		ifneq ($(arch),wasm32)
+			LDFLAGS += -lpthread
 
-				add_lrt = yes
-				ifeq ($(target_windows),yes)
-					add_lrt = no
-				endif
-
-				ifeq ($(TARGET_KERNEL),Darwin)
-					add_lrt = no
-				endif
-
-				ifeq ($(add_lrt),yes)
-					LDFLAGS += -lrt
-				endif
+			add_lrt = yes
+			ifeq ($(target_windows),yes)
+				add_lrt = no
 			endif
+
+			ifeq ($(TARGET_KERNEL),Darwin)
+				add_lrt = no
 			endif
+
+			ifeq ($(add_lrt),yes)
+				LDFLAGS += -lrt
+			endif
+		endif
 		endif
 	endif
 endif

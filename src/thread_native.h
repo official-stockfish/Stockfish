@@ -16,23 +16,35 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef THREAD_WIN32_OSX_H_INCLUDED
-#define THREAD_WIN32_OSX_H_INCLUDED
+#ifndef THREAD_NATIVE_H_INCLUDED
+#define THREAD_NATIVE_H_INCLUDED
 
-#include <thread>
+#ifdef _MSC_VER
+    #include <thread>
+#else
+    #include <pthread.h>
+    #include <functional>
+    #include <utility>
+
+    #include "misc.h"
+#endif
+
+namespace Stockfish {
+
+#ifdef _MSC_VER
+
+// MSVC-compatible toolchains use std::thread because they do not provide
+// pthreads by default. On all other platforms, pthreads is required and used.
+
+using NativeThread = std::thread;
+
+#else
 
 // On OSX threads other than the main thread are created with a reduced stack
 // size of 512KB by default, this is too low for deep searches, which require
 // somewhat more than 1MB stack, so adjust it to TH_STACK_SIZE.
 // The implementation calls pthread_create() with the stack size parameter
 // equal to the Linux 8MB default, on platforms that support it.
-
-#if defined(__APPLE__) || defined(__MINGW32__) || defined(__MINGW64__) || defined(USE_PTHREADS)
-
-    #include <pthread.h>
-    #include <functional>
-
-namespace Stockfish {
 
 class NativeThread {
     pthread_t thread;
@@ -63,16 +75,8 @@ class NativeThread {
     void join() { pthread_join(thread, nullptr); }
 };
 
-}  // namespace Stockfish
-
-#else  // Default case: use STL classes
-
-namespace Stockfish {
-
-using NativeThread = std::thread;
+#endif  // _MSC_VER
 
 }  // namespace Stockfish
 
-#endif
-
-#endif  // #ifndef THREAD_WIN32_OSX_H_INCLUDED
+#endif  // #ifndef THREAD_NATIVE_H_INCLUDED

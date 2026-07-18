@@ -31,7 +31,7 @@
 #include "numa.h"
 #include "position.h"
 #include "search.h"
-#include "thread_win32_osx.h"
+#include "thread_native.h"
 
 namespace Stockfish {
 
