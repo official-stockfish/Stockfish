@@ -1244,15 +1244,9 @@ void Position::update_piece_threats(Piece               pc,
     Bitboard threatened       = attacks_bb(pc, s, occupied) & occupiedNoK;
     Bitboard incoming_threats = PseudoAttacks[KNIGHT][s] & knights;
 
-    Bitboard pawnThreats = 0;
-    if (type_of(pc) != PAWN)
-    {
-        pawnThreats =
-          (attacks_bb<PAWN>(s, WHITE) & blackPawns) | (attacks_bb<PAWN>(s, BLACK) & whitePawns);
-    }
-
     if (type_of(pc) == KNIGHT || type_of(pc) == ROOK)
-        incoming_threats |= pawnThreats;
+        incoming_threats |=
+          (attacks_bb<PAWN>(s, WHITE) & blackPawns) | (attacks_bb<PAWN>(s, BLACK) & whitePawns);
 
     switch (type_of(pc))
     {

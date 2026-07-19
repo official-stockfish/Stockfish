@@ -20,6 +20,7 @@
 #define BITBOARD_H_INCLUDED
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <string>
 #include <type_traits>
@@ -127,7 +128,7 @@ constexpr Bitboard pawn_single_push_bb(Color c, Bitboard b) {
     return c == WHITE ? shift<NORTH>(b) : shift<SOUTH>(b);
 }
 
-constexpr auto PawnPairBB = []() {
+inline constexpr auto PawnPairBB = []() {
     std::array<Bitboard, SQUARE_NB> result{};
     for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {

@@ -20,9 +20,11 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 
 #include "full_threats.h"
 #include "../../bitboard.h"
+#include "../../misc.h"
 #include "../../position.h"
 #include "../../types.h"
 #include "../nnue_common.h"

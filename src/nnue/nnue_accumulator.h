@@ -24,8 +24,6 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
-#include <tuple>
-#include <utility>
 
 #include "../types.h"
 #include "../misc.h"

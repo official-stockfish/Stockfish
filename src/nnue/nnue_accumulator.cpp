@@ -414,24 +414,24 @@ void update_accumulator_incremental(Color                     perspective,
     const auto& dirtyThreats   = Forward ? target_state.dirtyThreats : computed.dirtyThreats;
     const auto& dirtyPawnPairs = Forward ? target_state.dirtyPawnPairs : computed.dirtyPawnPairs;
 
-    const auto* threatBase = featureTransformer.threatWeights();
-    const auto* ppBase     = featureTransformer.ppWeights();
-    IndexType   pfStride   = FeatureTransformer::OutputDimensions;
+    // Used solely for prefetching
+    const auto* threatPpBase = &featureTransformer.threatAndPpWeights[0];
+    IndexType   pfStride     = FeatureTransformer::OutputDimensions;
 
     if constexpr (Forward)
     {
         ThreatFeatureSet::append_changed_indices(perspective, ksq, dirtyThreats, thrRemoved,
-                                                 thrAdded, threatBase, pfStride);
+                                                 thrAdded, threatPpBase, pfStride);
         PairFeatureSet::append_changed_indices(perspective, ksq, dirtyPawnPairs, thrRemoved,
-                                               thrAdded, ppBase, pfStride);
+                                               thrAdded, threatPpBase, pfStride);
         PSQFeatureSet::append_changed_indices(perspective, ksq, dirtyPiece, psqRemoved, psqAdded);
     }
     else
     {
         ThreatFeatureSet::append_changed_indices(perspective, ksq, dirtyThreats, thrAdded,
-                                                 thrRemoved, threatBase, pfStride);
+                                                 thrRemoved, threatPpBase, pfStride);
         PairFeatureSet::append_changed_indices(perspective, ksq, dirtyPawnPairs, thrAdded,
-                                               thrRemoved, ppBase, pfStride);
+                                               thrRemoved, threatPpBase, pfStride);
         PSQFeatureSet::append_changed_indices(perspective, ksq, dirtyPiece, psqAdded, psqRemoved);
     }
 
