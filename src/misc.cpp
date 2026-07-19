@@ -554,7 +554,8 @@ std::optional<usize> str_to_size_t(const std::string& s) {
     errno                           = 0;
     char*                    endptr = nullptr;
     const unsigned long long value  = std::strtoull(s.c_str(), &endptr, 10);
-    if (errno == ERANGE || *endptr != '\0' || value > std::numeric_limits<usize>::max())
+    if (errno == ERANGE || (*endptr != '\0' && !std::isspace(*endptr))
+        || value > std::numeric_limits<usize>::max())
         return std::nullopt;
     return static_cast<usize>(value);
 }
