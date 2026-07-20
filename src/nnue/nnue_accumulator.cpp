@@ -180,6 +180,68 @@ void AccumulatorStack::backward_update_incremental(Color                     per
 
 namespace {
 
+constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
+
+#ifdef VECTOR
+
+using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
+
+template<int sign>
+sf_always_inline inline void apply_psq_features(IndexType j,
+                                                vec_t acc[],
+                                                const PSQFeatureSet::IndexList& list,
+                                                const FeatureTransformer& ft) {
+    static_assert(sign == 1 || sign == -1);
+
+    const usize tileOff    = j * Tiling::TileHeight;
+    for (int i = 0; i < list.ssize(); ++i)
+    {
+        auto* column = reinterpret_cast<const vec_t*>(&ft.weights[list[i] * Dimensions + tileOff]);
+        for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+            if constexpr (sign == +1)
+                acc[k] = vec_add_16(acc[k], column[k]);
+            else
+                acc[k] = vec_sub_16(acc[k], column[k]);
+    }
+}
+
+template<int sign>
+sf_always_inline inline void apply_threat_features(IndexType j,
+                                                   vec_t acc[],
+                                                   const ThreatFeatureSet::IndexList& list,
+                                                   const FeatureTransformer& ft) {
+    static_assert(sign == 1 || sign == -1);
+
+    const usize tileOff    = j * Tiling::TileHeight;
+    for (int i = 0; i < list.ssize(); ++i)
+    {
+        auto* column = reinterpret_cast<const vec_i8_t*>(&ft.threatAndPpWeights[list[i] * Dimensions + tileOff]);
+#ifdef USE_NEON
+        for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+        {
+            if constexpr (sign == +1)
+            {
+                acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
+                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
+            }
+            else
+            {
+                acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
+                acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
+            }
+        }
+#else
+        for (IndexType k = 0; k < Tiling::NumRegs; ++k)
+            if constexpr (sign == +1)
+                acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
+            else
+                acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
+#endif
+    }
+}
+
+#endif
+
 void apply_combined(Color                              perspective,
                     const FeatureTransformer&          featureTransformer,
                     const AccumulatorState&            from,
@@ -188,7 +250,6 @@ void apply_combined(Color                              perspective,
                     const PSQFeatureSet::IndexList&    psqRemoved,
                     const ThreatFeatureSet::IndexList& thrAdded,
                     const ThreatFeatureSet::IndexList& thrRemoved) {
-    constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
 
     const auto& fromAcc = from.accumulation[perspective];
     auto&       toAcc   = to.accumulation[perspective];
@@ -197,13 +258,9 @@ void apply_combined(Color                              perspective,
     auto&       toPsqtAcc   = to.psqtAccumulation[perspective];
 
 #ifdef VECTOR
-    using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
-
-    const auto* psqWeights         = &featureTransformer.weights[0];
-    const auto* threatAndPpWeights = &featureTransformer.threatAndPpWeights[0];
 
     for (IndexType j = 0; j < Dimensions / Tiling::TileHeight; ++j)
     {
@@ -214,55 +271,11 @@ void apply_combined(Color                              perspective,
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
             acc[k] = fromTile[k];
 
-        for (int i = 0; i < psqRemoved.ssize(); ++i)
-        {
-            auto* row =
-              reinterpret_cast<const vec_t*>(&psqWeights[psqRemoved[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], row[k]);
-        }
+        apply_psq_features<-1>(j, acc, psqRemoved, featureTransformer);
+        apply_psq_features<+1>(j, acc, psqAdded, featureTransformer);
 
-        for (int i = 0; i < psqAdded.ssize(); ++i)
-        {
-            auto* row =
-              reinterpret_cast<const vec_t*>(&psqWeights[psqAdded[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], row[k]);
-        }
-
-        for (int i = 0; i < thrRemoved.ssize(); ++i)
-        {
-            auto* column = reinterpret_cast<const vec_i8_t*>(
-              &threatAndPpWeights[thrRemoved[i] * Dimensions + tileOff]);
-
-    #ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
-            }
-    #else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
-        }
-
-        for (int i = 0; i < thrAdded.ssize(); ++i)
-        {
-            auto* column = reinterpret_cast<const vec_i8_t*>(
-              &threatAndPpWeights[thrAdded[i] * Dimensions + tileOff]);
-
-    #ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
-            }
-    #else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
-        }
+        apply_threat_features<-1>(j, acc, thrRemoved, featureTransformer);
+        apply_threat_features<+1>(j, acc, thrAdded, featureTransformer);
 
         for (IndexType k = 0; k < Tiling::NumRegs; k++)
             vec_store(&toTile[k], acc[k]);
@@ -662,8 +675,6 @@ void update_accumulator_hybrid(Color                     perspective,
     PairFeatureSet::append_changed_indices(perspective, newKsq, target.dirtyPawnPairs, thrRemoved,
                                            thrAdded, threatPpBase, pfStride);
 
-    constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
-
     const auto& fromAcc = computed.accumulation[perspective];
     auto&       toAcc   = target.accumulation[perspective];
 
@@ -671,13 +682,8 @@ void update_accumulator_hybrid(Color                     perspective,
     auto&       toPsqtAcc   = target.psqtAccumulation[perspective];
 
 #ifdef VECTOR
-    using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
-
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
-
-    const auto* weights            = &featureTransformer.weights[0];
-    const auto* threatAndPpWeights = &featureTransformer.threatAndPpWeights[0];
 
     for (IndexType j = 0; j < Dimensions / Tiling::TileHeight; ++j)
     {
@@ -690,20 +696,8 @@ void update_accumulator_hybrid(Color                     perspective,
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
             acc[k] = newEntryTile[k];
 
-        for (int i = 0; i < newRemove.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[newRemove[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
-        }
-        for (int i = 0; i < newAdd.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[newAdd[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
-        }
+        apply_psq_features<-1>(j, acc, newRemove, featureTransformer);
+        apply_psq_features<+1>(j, acc, newAdd, featureTransformer);
 
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
         {
@@ -717,54 +711,11 @@ void update_accumulator_hybrid(Color                     perspective,
         }
 
         // ... then we adjust
-        for (int i = 0; i < oldRemove.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[oldRemove[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
-        }
-        for (int i = 0; i < oldAdd.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[oldAdd[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
-        }
+        apply_psq_features<+1>(j, acc, oldRemove, featureTransformer);
+        apply_psq_features<-1>(j, acc, oldAdd, featureTransformer);
 
-        for (int i = 0; i < thrRemoved.ssize(); ++i)
-        {
-            auto* column = reinterpret_cast<const vec_i8_t*>(
-              &threatAndPpWeights[thrRemoved[i] * Dimensions + tileOff]);
-
-    #ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
-            }
-    #else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
-        }
-
-        for (int i = 0; i < thrAdded.ssize(); ++i)
-        {
-            auto* column = reinterpret_cast<const vec_i8_t*>(
-              &threatAndPpWeights[thrAdded[i] * Dimensions + tileOff]);
-
-    #ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
-            }
-    #else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
-        }
+        apply_threat_features<-1>(j, acc, thrRemoved, featureTransformer);
+        apply_threat_features<+1>(j, acc, thrAdded, featureTransformer);
 
         for (IndexType k = 0; k < Tiling::NumRegs; k++)
             vec_store(&toTile[k], acc[k]);
@@ -926,9 +877,6 @@ void update_accumulator_refresh_cache(Color                     perspective,
                                       const Position&           pos,
                                       AccumulatorState&         accumulator,
                                       AccumulatorCaches&        cache) {
-    constexpr auto Dimensions = FeatureTransformer::OutputDimensions;
-
-    using Tiling [[maybe_unused]] = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
     const Square             ksq   = pos.square<KING>(perspective);
     auto&                    entry = cache[ksq][perspective];
@@ -967,9 +915,6 @@ void update_accumulator_refresh_cache(Color                     perspective,
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
 
-    const auto* weights            = &featureTransformer.weights[0];
-    const auto* threatAndPpWeights = &featureTransformer.threatAndPpWeights[0];
-
     for (IndexType j = 0; j < Dimensions / Tiling::TileHeight; ++j)
     {
         const usize tileOff = j * Tiling::TileHeight;
@@ -979,40 +924,13 @@ void update_accumulator_refresh_cache(Color                     perspective,
         for (IndexType k = 0; k < Tiling::NumRegs; ++k)
             acc[k] = entryTile[k];
 
-        for (int i = 0; i < removed.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[removed[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_sub_16(acc[k], column[k]);
-        }
-        for (int i = 0; i < added.ssize(); ++i)
-        {
-            auto* column =
-              reinterpret_cast<const vec_t*>(&weights[added[i] * Dimensions + tileOff]);
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], column[k]);
-        }
+        apply_psq_features<-1>(j, acc, removed, featureTransformer);
+        apply_psq_features<+1>(j, acc, added, featureTransformer);
 
         for (IndexType k = 0; k < Tiling::NumRegs; k++)
             vec_store(&entryTile[k], acc[k]);
 
-        for (int i = 0; i < active.ssize(); ++i)
-        {
-            auto* column = reinterpret_cast<const vec_i8_t*>(
-              &threatAndPpWeights[active[i] * Dimensions + tileOff]);
-
-    #ifdef USE_NEON
-            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
-            {
-                acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
-                acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
-            }
-    #else
-            for (IndexType k = 0; k < Tiling::NumRegs; ++k)
-                acc[k] = vec_add_16(acc[k], vec_convert_8_16(column[k]));
-    #endif
-        }
+        apply_threat_features<+1>(j, acc, active, featureTransformer);
 
         for (IndexType k = 0; k < Tiling::NumRegs; k++)
             vec_store(&accTile[k], acc[k]);
