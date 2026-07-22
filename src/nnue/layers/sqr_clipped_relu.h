@@ -185,10 +185,8 @@ class SqrClippedReLU {
             const __m256i words1 = __lasx_xvssrani_h_w(in[i * 4 + 3], in[i * 4 + 2], 0);
             const __m256i sqr0   = __lasx_xvmuh_h(words0, words0);
             const __m256i sqr1   = __lasx_xvmuh_h(words1, words1);
-            __m256i       packed;
-            packed               = __lasx_xvssrlni_b_h(sqr1, sqr0, SimdShiftAmount);
-            const __m256i permed = __lasx_xvpermi_d(packed, 0xD8);
-            __lasx_xvst(__lasx_xvshuf4i_w(permed, 0xD8), out + i, 0);
+            const __m256i packed = __lasx_xvssrlni_b_h(sqr1, sqr0, SimdShiftAmount);
+            __lasx_xvst(packed, out + i, 0);
         }
         constexpr IndexType Start = NumChunks * 32;
 

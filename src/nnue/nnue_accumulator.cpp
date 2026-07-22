@@ -241,6 +241,13 @@ void apply_combined(Color                              perspective,
                 acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
                 acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
             }
+    #elif defined(USE_LSX) && !defined(USE_LASX)
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                const __m128i weight = __lsx_vld(reinterpret_cast<const void*>(&column[k]), 0);
+                acc[k]               = vec_sub_16(acc[k], __lsx_vsllwil_h_b(weight, 0));
+                acc[k + 1]           = vec_sub_16(acc[k + 1], __lsx_vexth_h_b(weight));
+            }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
@@ -257,6 +264,13 @@ void apply_combined(Color                              perspective,
             {
                 acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
                 acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
+            }
+    #elif defined(USE_LSX) && !defined(USE_LASX)
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                const __m128i weight = __lsx_vld(reinterpret_cast<const void*>(&column[k]), 0);
+                acc[k]               = vec_add_16(acc[k], __lsx_vsllwil_h_b(weight, 0));
+                acc[k + 1]           = vec_add_16(acc[k + 1], __lsx_vexth_h_b(weight));
             }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
@@ -743,6 +757,13 @@ void update_accumulator_hybrid(Color                     perspective,
                 acc[k]     = vsubw_s8(acc[k], vget_low_s8(column[k / 2]));
                 acc[k + 1] = vsubw_high_s8(acc[k + 1], column[k / 2]);
             }
+    #elif defined(USE_LSX) && !defined(USE_LASX)
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                const __m128i weight = __lsx_vld(reinterpret_cast<const void*>(&column[k]), 0);
+                acc[k]               = vec_sub_16(acc[k], __lsx_vsllwil_h_b(weight, 0));
+                acc[k + 1]           = vec_sub_16(acc[k + 1], __lsx_vexth_h_b(weight));
+            }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
                 acc[k] = vec_sub_16(acc[k], vec_convert_8_16(column[k]));
@@ -759,6 +780,13 @@ void update_accumulator_hybrid(Color                     perspective,
             {
                 acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
                 acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
+            }
+    #elif defined(USE_LSX) && !defined(USE_LASX)
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                const __m128i weight = __lsx_vld(reinterpret_cast<const void*>(&column[k]), 0);
+                acc[k]               = vec_add_16(acc[k], __lsx_vsllwil_h_b(weight, 0));
+                acc[k + 1]           = vec_add_16(acc[k + 1], __lsx_vexth_h_b(weight));
             }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
@@ -1007,6 +1035,13 @@ void update_accumulator_refresh_cache(Color                     perspective,
             {
                 acc[k]     = vaddw_s8(acc[k], vget_low_s8(column[k / 2]));
                 acc[k + 1] = vaddw_high_s8(acc[k + 1], column[k / 2]);
+            }
+    #elif defined(USE_LSX) && !defined(USE_LASX)
+            for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+            {
+                const __m128i weight = __lsx_vld(reinterpret_cast<const void*>(&column[k]), 0);
+                acc[k]               = vec_add_16(acc[k], __lsx_vsllwil_h_b(weight, 0));
+                acc[k + 1]           = vec_add_16(acc[k + 1], __lsx_vexth_h_b(weight));
             }
     #else
             for (IndexType k = 0; k < Tiling::NumRegs; ++k)
