@@ -268,12 +268,14 @@ class SearchManager: public ISearchManager {
     using UpdateFull     = std::function<void(const InfoFull&)>;
     using UpdateIter     = std::function<void(const InfoIteration&)>;
     using UpdateBestmove = std::function<void(std::string_view, std::string_view)>;
+    using UpdateStart    = std::function<void()>;
 
     struct UpdateContext {
         UpdateShort    onUpdateNoMoves;
         UpdateFull     onUpdateFull;
         UpdateIter     onIter;
         UpdateBestmove onBestmove;
+        UpdateStart onStart;
     };
 
 
