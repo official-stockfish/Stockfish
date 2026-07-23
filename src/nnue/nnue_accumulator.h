@@ -113,7 +113,8 @@ class AccumulatorStack {
                        const Position&           pos,
                        const FeatureTransformer& featureTransformer,
                        // Silence spurious warning on GCC 10
-                       [[maybe_unused]] AccumulatorCaches& cache) noexcept;
+                       [[maybe_unused]] AccumulatorCaches& cache,
+                       usize                               last_usable_accum) noexcept;
 
     [[nodiscard]] usize find_last_usable_accumulator(Color perspective) const noexcept;
 
@@ -126,6 +127,11 @@ class AccumulatorStack {
                                      const Position&           pos,
                                      const FeatureTransformer& featureTransformer,
                                      const usize               end) noexcept;
+
+    void forward_update_incremental_both(const Position&           pos,
+                                         const FeatureTransformer& featureTransformer,
+                                         usize                     white_begin,
+                                         usize                     black_begin) noexcept;
 
     std::array<AccumulatorState, MaxSize> accumulators;
     usize                                 size = 1;
