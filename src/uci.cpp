@@ -321,11 +321,11 @@ void UCIEngine::benchmark(std::istream& args) {
     std::string token;
     u64         cnt = 1;
 
-    engine.set_on_update_full([](const auto&) { });
-    engine.set_on_iter([](const auto&) { });
-    engine.set_on_update_no_moves([](const auto&) { });
-    engine.set_on_bestmove([](const auto&, const auto&) { });
-    engine.set_on_verify_network([](const auto&) { });
+    engine.set_on_update_full([](const auto&) {});
+    engine.set_on_iter([](const auto&) {});
+    engine.set_on_update_no_moves([](const auto&) {});
+    engine.set_on_bestmove([](const auto&, const auto&) {});
+    engine.set_on_verify_network([](const auto&) {});
 
     Benchmark::BenchmarkSetup setup = Benchmark::setup_benchmark(args);
 

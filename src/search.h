@@ -275,7 +275,7 @@ class SearchManager: public ISearchManager {
         UpdateFull     onUpdateFull;
         UpdateIter     onIter;
         UpdateBestmove onBestmove;
-        UpdateStart onStart;
+        UpdateStart    onStart;
     };
 
 
