@@ -653,13 +653,12 @@ void update_accumulator_hybrid(Color                     perspective,
 #endif
 
     ThreatFeatureSet::IndexList thrRemoved, thrAdded; // also contain pp indices
-    const auto* threatBase = featureTransformer.threatWeights();
-    const auto* ppBase     = featureTransformer.ppWeights();
-    IndexType                   pfStride = FeatureTransformer::OutputDimensions;
+    const auto* threatPpBase = &featureTransformer.threatAndPpWeights[0];
+    IndexType       pfStride = FeatureTransformer::OutputDimensions;
     ThreatFeatureSet::append_changed_indices(perspective, newKsq, target.dirtyThreats, thrRemoved,
-                                             thrAdded, threatBase, pfStride);
+                                             thrAdded, threatPpBase, pfStride);
     PairFeatureSet::append_changed_indices(perspective, newKsq, target.dirtyPawnPairs, thrRemoved,
-                                           thrAdded, ppBase, pfStride);
+                                           thrAdded, threatPpBase, pfStride);
 
     constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
 
