@@ -67,9 +67,9 @@ class SqrClippedReLU {
         return h;
     }
 
-#if defined(USE_AVX2_PAIR_ACTIVATIONS)
+#if defined(USE_PAIR_ACTIVATIONS)
     // Produce the squared and linear clipped activations together, sharing the input loads and
-    // the initial signed 32-to-16-bit saturating packs.
+    // the initial signed 32-to-16-bit saturating narrowing.
     void propagate_pair(const InputType* input, OutputType* squared, OutputType* clipped) const {
         static_assert(WeightScaleBitsLocal >= 5 && WeightScaleBitsLocal <= 8,
                       "SqrClippedReLU only support WeightScaleBitsLocal between 5 and 8");
@@ -78,6 +78,29 @@ class SqrClippedReLU {
         constexpr IndexType NumChunks       = InputDimensions / 32;
         constexpr int       SimdShiftAmount = WeightScaleBitsLocal * 2 + 7 - 16;
 
+    #if defined(USE_AVX512)
+        const auto in      = reinterpret_cast<const __m512i*>(input);
+        auto       sqrOut  = reinterpret_cast<__m256i*>(squared);
+        auto       clipOut = reinterpret_cast<__m256i*>(clipped);
+
+        const __m512i zero = _mm512_setzero_si512();
+
+        for (IndexType i = 0; i < NumChunks; ++i)
+        {
+            const __m256i words0 = _mm512_cvtsepi32_epi16(_mm512_load_si512(&in[i * 2 + 0]));
+            const __m256i words1 = _mm512_cvtsepi32_epi16(_mm512_load_si512(&in[i * 2 + 1]));
+            const __m512i words  = _mm512_inserti64x4(_mm512_castsi256_si512(words0), words1, 1);
+
+            const __m512i sqrWords =
+              _mm512_srli_epi16(_mm512_mulhi_epi16(words, words), SimdShiftAmount);
+            _mm256_store_si256(&sqrOut[i], _mm512_cvtsepi16_epi8(sqrWords));
+
+            const __m512i clipWords =
+              _mm512_srli_epi16(_mm512_max_epi16(words, zero), WeightScaleBitsLocal);
+            _mm256_store_si256(&clipOut[i], _mm512_cvtsepi16_epi8(clipWords));
+        }
+
+    #elif defined(USE_AVX2_PAIR_ACTIVATIONS)
         const auto in      = reinterpret_cast<const __m256i*>(input);
         auto       sqrOut  = reinterpret_cast<__m256i*>(squared);
         auto       clipOut = reinterpret_cast<__m256i*>(clipped);
@@ -105,6 +128,7 @@ class SqrClippedReLU {
             const __m256i clipPacked = _mm256_packs_epi16(clip0, clip1);
             _mm256_store_si256(&clipOut[i], clipPacked);
         }
+    #endif
     }
 #endif
 

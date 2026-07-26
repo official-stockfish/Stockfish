@@ -117,7 +117,7 @@ struct NetworkArchitecture {
         Buffer buffer;
 
         fc_0.propagate(transformedFeatures, buffer.fc_0_out, nnzInfo);
-#if defined(USE_AVX2_PAIR_ACTIVATIONS)
+#if defined(USE_PAIR_ACTIVATIONS)
         ac_sqr_0.propagate_pair(buffer.fc_0_out, buffer.concat_buffer,
                                 buffer.concat_buffer + FC_0_OUTPUTS);
 #else
@@ -126,7 +126,7 @@ struct NetworkArchitecture {
 #endif
 
         fc_1.propagate(buffer.concat_buffer, buffer.fc_1_out);
-#if defined(USE_AVX2_PAIR_ACTIVATIONS)
+#if defined(USE_PAIR_ACTIVATIONS)
         ac_sqr_1.propagate_pair(buffer.fc_1_out, buffer.concat_buffer + FC_0_OUTPUTS * 2,
                                 buffer.concat_buffer + FC_0_OUTPUTS * 2 + FC_1_OUTPUTS);
 #else
