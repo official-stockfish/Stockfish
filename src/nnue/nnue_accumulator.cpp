@@ -182,7 +182,7 @@ namespace {
 
 constexpr IndexType Dimensions = FeatureTransformer::OutputDimensions;
 
-#ifdef VECTOR
+#ifndef USE_RVV
 
 using Tiling = SIMDTiling<Dimensions, Dimensions, PSQTBuckets>;
 
@@ -279,7 +279,7 @@ void apply_combined(Color                              perspective,
     const auto& fromPsqtAcc = from.psqtAccumulation[perspective];
     auto&       toPsqtAcc   = to.psqtAccumulation[perspective];
 
-#ifdef VECTOR
+#ifndef USE_RVV
 
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
@@ -322,7 +322,7 @@ void apply_combined(Color                              perspective,
             vec_store_psqt(&toTilePsqt[k], psqt[k]);
     }
 
-#elif defined(USE_RVV)
+#else
 
     usize tileOffset = 0;
 
@@ -378,47 +378,6 @@ void apply_combined(Color                              perspective,
         __riscv_vse32_v_i32m1(&toPsqtAcc[tileOffset], accum, vl);
 
         tileOffset += vl;
-    }
-
-#else
-
-    toAcc     = fromAcc;
-    toPsqtAcc = fromPsqtAcc;
-
-    for (const auto index : psqRemoved)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.weights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : psqAdded)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.weights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : thrRemoved)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.threatAndPpWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : thrAdded)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.threatAndPpWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
     }
 
 #endif
@@ -676,7 +635,7 @@ void update_accumulator_hybrid(Color                     perspective,
     const auto& fromPsqtAcc = computed.psqtAccumulation[perspective];
     auto&       toPsqtAcc   = target.psqtAccumulation[perspective];
 
-#ifdef VECTOR
+#ifndef USE_RVV
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
 
@@ -748,77 +707,8 @@ void update_accumulator_hybrid(Color                     perspective,
         for (IndexType k = 0; k < Tiling::NumPsqtRegs; ++k)
             vec_store_psqt(&toTilePsqt[k], psqt[k]);
     }
-
 #else
-    for (const auto index : newRemove)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            newEntry.accumulation[j] -= featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            newEntry.psqtAccumulation[k] -= featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-    for (const auto index : newAdd)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            newEntry.accumulation[j] += featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            newEntry.psqtAccumulation[k] += featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-
-    toAcc     = newEntry.accumulation;
-    toPsqtAcc = newEntry.psqtAccumulation;
-
-    for (IndexType j = 0; j < Dimensions; ++j)
-    {
-        toAcc[j] += fromAcc[j];
-        toAcc[j] -= oldEntry.accumulation[j];
-    }
-    for (usize k = 0; k < PSQTBuckets; ++k)
-    {
-        toPsqtAcc[k] += fromPsqtAcc[k];
-        toPsqtAcc[k] -= oldEntry.psqtAccumulation[k];
-    }
-
-    for (const auto index : oldRemove)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-    for (const auto index : oldAdd)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-
-    for (const auto index : thrRemoved)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] -= featureTransformer.threatAndPpWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] -= featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
-    }
-    for (const auto index : thrAdded)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            toAcc[j] += featureTransformer.threatAndPpWeights[offset + j];
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            toPsqtAcc[k] += featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
-    }
-
+// TODO
 #endif
 
     newEntry.pieces  = currentPieces;
@@ -868,7 +758,7 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
     accumulator.computed[perspective] = true;
 
-#ifdef VECTOR
+#ifndef USE_RVV
     vec_t      acc[Tiling::NumRegs];
     psqt_vec_t psqt[Tiling::NumPsqtRegs];
 
@@ -915,7 +805,7 @@ void update_accumulator_refresh_cache(Color                     perspective,
             vec_store_psqt(&accTilePsqt[k], psqt[k]);
     }
 
-#elif defined(USE_RVV)
+#else
 
     const auto* weights           = &featureTransformer.weights[0];
     const auto* threatWeights     = &featureTransformer.threatAndPpWeights[0];
@@ -972,46 +862,6 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         tileOffset += vl;
     }
-
-#else
-
-    for (const auto index : removed)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            entry.accumulation[j] -= featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            entry.psqtAccumulation[k] -= featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-    for (const auto index : added)
-    {
-        const IndexType offset = Dimensions * index;
-        for (IndexType j = 0; j < Dimensions; ++j)
-            entry.accumulation[j] += featureTransformer.weights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            entry.psqtAccumulation[k] += featureTransformer.psqtWeights[index * PSQTBuckets + k];
-    }
-
-    // The accumulator of the refresh entry has been updated.
-    // Now copy its content to the actual accumulator we were refreshing.
-    accumulator.accumulation[perspective]     = entry.accumulation;
-    accumulator.psqtAccumulation[perspective] = entry.psqtAccumulation;
-
-    for (const auto index : active)
-    {
-        const IndexType offset = Dimensions * index;
-
-        for (IndexType j = 0; j < Dimensions; ++j)
-            accumulator.accumulation[perspective][j] +=
-              featureTransformer.threatAndPpWeights[offset + j];
-
-        for (usize k = 0; k < PSQTBuckets; ++k)
-            accumulator.psqtAccumulation[perspective][k] +=
-              featureTransformer.threatAndPpPsqtWeights[index * PSQTBuckets + k];
-    }
-
 #endif
 }
 
