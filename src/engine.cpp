@@ -186,6 +186,8 @@ void Engine::set_on_bestmove(std::function<void(std::string_view, std::string_vi
     updateContext.onBestmove = std::move(f);
 }
 
+void Engine::set_on_start(std::function<void()>&& f) { updateContext.onStart = std::move(f); }
+
 void Engine::set_on_verify_network(std::function<void(std::string_view)>&& f) {
     onVerifyNetwork = std::move(f);
 }
