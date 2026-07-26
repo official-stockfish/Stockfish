@@ -40,7 +40,6 @@ class Option {
    public:
     using OnChange = std::function<std::optional<std::string>(const Option&)>;
 
-    Option(const OptionsMap*);
     Option(OnChange = nullptr);
     Option(bool v, OnChange = nullptr);
     Option(const char* v, OnChange = nullptr);
