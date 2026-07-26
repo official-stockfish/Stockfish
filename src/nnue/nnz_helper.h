@@ -104,6 +104,9 @@ struct NNZInfo {
     };
 
     NNZCursor make_cursor(bool perspective) { return {*this, perspective, count}; }
+#elif defined(USE_RVV)
+    usize count = 0;
+    u16   nnz[Dimensions];  // indices of non-zero chunks
 #else
     // Each 8-bit chunk
     alignas(8) u8 bitset[(Dimensions + 31) / 32];

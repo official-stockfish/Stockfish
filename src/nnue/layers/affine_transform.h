@@ -46,7 +46,7 @@ namespace Stockfish::Eval::NNUE::Layers {
 
 // Fallback implementation for older/other architectures.
 // Requires the input to be padded to at least 16 values.
-#ifndef ENABLE_SEQ_OPT
+#if !defined(ENABLE_SEQ_OPT) && !defined(USE_RVV)
 
 template<IndexType InputDimensions, IndexType PaddedInputDimensions, IndexType OutputDimensions>
 static void
@@ -104,26 +104,6 @@ affine_transform_non_ssse3(i32* output, const i8* weights, const i32* biases, co
         output[i] = SIMD::neon_m128_reduce_add_epi32(sum);
 
         #endif
-    }
-    #elif defined(USE_RVV)
-    for (IndexType i = 0; i < OutputDimensions; ++i)
-    {
-        const i8*  row  = &weights[i * PaddedInputDimensions];
-        vint32m1_t vsum = __riscv_vmv_v_x_i32m1(0, __riscv_vsetvlmax_e32m1());
-
-        for (usize j = 0; j < InputDimensions;)
-        {
-            usize vl = __riscv_vsetvl_e8m4(InputDimensions - j);
-
-            vint8m4_t  w    = __riscv_vle8_v_i8m4(&row[j], vl);
-            vuint8m4_t x    = __riscv_vle8_v_u8m4(&input[j], vl);
-            vint16m8_t prod = __riscv_vwmulsu_vv_i16m8(w, x, vl);
-
-            vsum = __riscv_vwredsum_vs_i16m8_i32m1(prod, vsum, vl);
-            j += vl;
-        }
-
-        output[i] = biases[i] + __riscv_vmv_x_s_i32m1_i32(vsum);
     }
     #else
     std::memcpy(output, biases, sizeof(i32) * OutputDimensions);
@@ -377,6 +357,48 @@ class AffineTransform {
     #undef vec_add_dpbusd_32
     #undef vec_hadd
         }
+#elif defined(USE_RVV)
+        const i8* wIt = weights;
+
+    #define RVV_PROPAGATE_SINGLE(m2, m1) \
+        do \
+        { \
+            vint32m1_t     zero = __riscv_vmv_s_x_i32m1(0, 1); \
+            usize          vl   = __riscv_vsetvl_e8##m1(InputDimensions); \
+            vuint8##m1##_t in   = __riscv_vle8_v_u8##m1(input, vl); \
+            for (IndexType i = 0; i < OutputDimensions; ++i, wIt += PaddedInputDimensions) \
+            { \
+                vint8##m1##_t  w    = __riscv_vle8_v_i8##m1(wIt, vl); \
+                vint16##m2##_t prod = __riscv_vwmulsu(w, in, vl); \
+                output[i]           = biases[i] + __riscv_vmv_x(__riscv_vwredsum(prod, zero, vl)); \
+            } \
+        } while (0)
+
+        static usize VL1 = __riscv_vsetvlmax_e16m1();
+        if (InputDimensions <= VL1)
+            RVV_PROPAGATE_SINGLE(m1, mf2);
+        else if (InputDimensions <= VL1 * 2)
+            RVV_PROPAGATE_SINGLE(m2, m1);
+        else if (InputDimensions <= VL1 * 4)
+            RVV_PROPAGATE_SINGLE(m4, m2);
+        else
+        {
+            for (IndexType i = 0; i < OutputDimensions; ++i, wIt += PaddedInputDimensions)
+            {
+                vint32m1_t sum = __riscv_vmv_s_x_i32m1(0, 1);
+                for (IndexType vl, j = 0; j < InputDimensions; j += vl)
+                {
+                    vl              = __riscv_vsetvl_e8m2(InputDimensions - j);
+                    vuint8m2_t in   = __riscv_vle8_v_u8m2(input + j, vl);
+                    vint8m2_t  w    = __riscv_vle8_v_i8m2(wIt + j, vl);
+                    vint16m4_t prod = __riscv_vwmulsu(w, in, vl);
+                    sum             = __riscv_vwredsum(prod, sum, vl);
+                }
+                output[i] = biases[i] + __riscv_vmv_x(sum);
+            }
+        }
+
+    #undef RVV_PROPAGATE_SINGLE
 #else
         // Use old implementation for the other architectures.
         affine_transform_non_ssse3<InputDimensions, PaddedInputDimensions, OutputDimensions>(

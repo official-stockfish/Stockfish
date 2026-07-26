@@ -59,8 +59,7 @@ class AffineTransformSparseInput {
     static constexpr IndexType PaddedOutputDimensions =
       ceil_to_multiple<IndexType>(OutputDimensions, MaxSimdWidth);
 
-#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8) \
-     || defined(USE_RVV))
+#if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8))
     static constexpr IndexType ChunkSize = 4;
 #else
     static constexpr IndexType ChunkSize = 1;
@@ -372,48 +371,50 @@ class AffineTransformSparseInput {
         #undef vec_add_32
     #endif
 #elif defined(USE_RVV)
-        static_assert(InputDimensions % 256 == 0);
+        // we don't support larger for now
+        static_assert(OutputDimensions <= 128 * 8 / 32);
 
-        const i8* weights_cp = weights;
-
-    #define RVV_SPARSE_PROPAGATE(LMUL) \
+    #define RVV_SPARSE_PROPAGATE(m1, m2, m4) \
         do \
         { \
-            const usize blk = __riscv_vsetvlmax_e32m##LMUL(); \
-            for (IndexType ob = 0; ob < OutputDimensions; ob += blk) \
+            usize          vl  = OutputDimensions; \
+            vint32##m4##_t acc = __riscv_vle32_v_i32##m4(biases, vl); \
+            IndexType      i   = 0; \
+            for (; i + 2 <= nnzInfo.count; i += 2) \
             { \
-                const usize       vl  = __riscv_vsetvl_e32m##LMUL(OutputDimensions - ob); \
-                vint32m##LMUL##_t acc = __riscv_vle32_v_i32m##LMUL(biases + ob, vl); \
-                for (IndexType k = 0; k < InputDimensions / 256; ++k) \
-                { \
-                    u64   bits         = load_as<u64>(nnzInfo.bitset + k * 8); \
-                    isize base         = k * 64; \
-                    auto* base_addr    = input + base * sizeof(i32); \
-                    auto* weights_base = &weights_cp[base * OutputDimensions * ChunkSize]; \
-                    while (bits) \
-                    { \
-                        isize             i = pop_lsb(bits); \
-                        vuint8m##LMUL##_t a = __riscv_vreinterpret_v_u32m##LMUL##_u8m##LMUL( \
-                          __riscv_vmv_v_x_u32m##LMUL(load_as<u32>(base_addr + i * sizeof(i32)), \
-                                                     vl)); \
-                        vint8m##LMUL##_t b = __riscv_vle8_v_i8m##LMUL( \
-                          &weights_base[i * OutputDimensions * ChunkSize + ob * ChunkSize], \
-                          vl * ChunkSize); \
-                        acc = \
-                          __riscv_vadd_vv_i32m##LMUL(acc, SIMD::rvv_dpbusd_m##LMUL(a, b, vl), vl); \
-                    } \
-                } \
-                __riscv_vse32_v_i32m##LMUL(output + ob, acc, vl); \
+                usize         idx0 = nnzInfo.nnz[i + 0]; \
+                usize         idx1 = nnzInfo.nnz[i + 1]; \
+                uint8_t       in0  = input[idx0]; \
+                uint8_t       in1  = input[idx1]; \
+                vint8##m1##_t w0   = __riscv_vle8_v_i8##m1(&weights[idx0 * OutputDimensions], vl); \
+                vint8##m1##_t w1   = __riscv_vle8_v_i8##m1(&weights[idx1 * OutputDimensions], vl); \
+                /* input is in [0:127], weights is in [-128:127], \
+                 * so it's safe to accumulate into 16-bit twice */ \
+                vint16##m2##_t prod = __riscv_vwmulsu(w0, in0, vl); \
+                prod                = __riscv_vwmaccus(prod, in1, w1, vl); \
+                acc                 = __riscv_vwadd_wv(acc, prod, vl); \
             } \
+            if (i < nnzInfo.count) \
+            { \
+                usize          idx  = nnzInfo.nnz[i]; \
+                uint8_t        in   = input[idx]; \
+                vint8##m1##_t  w    = __riscv_vle8_v_i8##m1(&weights[idx * OutputDimensions], vl); \
+                vint16##m2##_t prod = __riscv_vwmulsu(w, in, vl); \
+                acc                 = __riscv_vwadd_wv(acc, prod, vl); \
+            } \
+            __riscv_vse32(output, acc, vl); \
         } while (0)
 
         // Select LMUL
-        if (__riscv_vsetvlmax_e32m1() >= OutputDimensions)
-            RVV_SPARSE_PROPAGATE(1);
-        else if (__riscv_vsetvlmax_e32m2() >= OutputDimensions)
-            RVV_SPARSE_PROPAGATE(2);
+        const usize VL1 = __riscv_vsetvlmax_e32m1();
+        if (VL1 >= OutputDimensions)
+            RVV_SPARSE_PROPAGATE(mf4, mf2, m1);
+        else if (VL1 * 2 >= OutputDimensions)
+            RVV_SPARSE_PROPAGATE(mf2, m1, m2);
+        else if (VL1 * 4 >= OutputDimensions)
+            RVV_SPARSE_PROPAGATE(m1, m2, m4);
         else
-            RVV_SPARSE_PROPAGATE(4);
+            RVV_SPARSE_PROPAGATE(m2, m4, m8);
 
     #undef RVV_SPARSE_PROPAGATE
 #else
