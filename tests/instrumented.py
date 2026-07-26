@@ -610,6 +610,11 @@ class TestInvalidOptions(metaclass=OrderedClassMembers):
         self.stockfish.send_command("isready")
         self.stockfish.equals("readyok")
 
+    def test_spin_partially_numeric(self):
+        self.stockfish.send_command("setoption name Threads value 12abc")
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
+
     def test_spin_out_of_range(self):
         self.stockfish.send_command("setoption name Threads value 999999999999")
         self.stockfish.send_command("isready")
