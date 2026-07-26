@@ -104,7 +104,8 @@ struct alignas(32) DualMagic {
     // When using hyperbola quintessence, file, diagonal and antidiagonal attacks
     // can use a byte reversal rather than a full bit reversal (because all squares
     // reside in different bytes). Rank attacks cannot. Thus, for rank attacks
-    // only, we use a compact lookup table indexed by the 8 bits of the rank's occupancy.
+    // only, we use a compact lookup table indexed by the 6 inner bits of the rank's
+    // occupancy (the edge squares never affect the attack set).
     std::pair<Bitboard, Bitboard> both_attacks_bb(Bitboard occupied) const {
         // Byteswap within 128-bit elements
         const auto bswap = [](__m256i v) {
@@ -128,7 +129,7 @@ struct alignas(32) DualMagic {
         __m128i rookBishop =
           _mm_or_si128(_mm256_extracti128_si256(result, 1), _mm256_castsi256_si128(result));
 
-        Bitboard rowOccupancy = rankAttacksLookup[(occupied >> shift) & 0xff];
+        Bitboard rowOccupancy = rankAttacksLookup[(occupied >> (shift + 1)) & 0x3f];
         Bitboard rankAttacks  = rowOccupancy << shift;
 
         // [bishop, rook]
@@ -136,9 +137,8 @@ struct alignas(32) DualMagic {
     }
 };
 
-extern DualMagic DualMagics[SQUARE_NB];
-
-inline const DualMagic& dual_magic(Square s) { return DualMagics[s]; }
+extern const std::array<DualMagic, SQUARE_NB> DualMagics;
+inline const DualMagic&                       dual_magic(Square s) { return DualMagics[s]; }
 
 #else
 // Magic holds all magic bitboards relevant data for a single square
@@ -295,7 +295,7 @@ inline Bitboard attacks_bb(Square s, Bitboard occupied) {
     assert(Pt != PAWN && is_ok(s));
 
 #ifdef USE_DUAL_HYPERBOLA_QUINT
-    const auto [bishop, rook] = dual_magic(s).both_attacks_bb(occupied);
+    [[maybe_unused]] const auto [bishop, rook] = dual_magic(s).both_attacks_bb(occupied);
 
     switch (Pt)
     {
