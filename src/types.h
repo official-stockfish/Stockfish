@@ -83,12 +83,6 @@
         #include <xmmintrin.h>  // Microsoft header for _mm_prefetch()
     #endif
 
-    #if defined(USE_PEXT)
-        #include <immintrin.h>  // Header for _pext_u64() intrinsic
-        #define pext(b, m) _pext_u64(b, m)
-        #define pdep(b, m) _pdep_u64(b, m)
-    #endif
-
 namespace Stockfish {
 
     #ifdef USE_POPCNT
