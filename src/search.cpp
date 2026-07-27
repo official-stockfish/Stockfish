@@ -1274,14 +1274,10 @@ moves_loop:  // When in check, search starts here
             // if the ttMove is singular or can do a multi-cut, so we reduce the
             // ttMove in favor of other moves based on some conditions:
 
-            // If the ttMove is assumed to fail high over current beta
-            else if (ttData.value >= beta)
+            // If the ttMove is assumed to fail high over current beta or
+            // if we are on a cutNode
+            else if (ttData.value >= beta || cutNode)
                 extension = -3;
-
-            // If we are on a cutNode but the ttMove is not assumed to fail high
-            // over current beta
-            else if (cutNode)
-                extension = -2;
         }
 
         u64 nodeCount = rootNode ? u64(nodes) : 0;
