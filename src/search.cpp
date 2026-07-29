@@ -638,11 +638,22 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
 
 void Search::Worker::do_move(
   Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
-    // prefetch_key does not model castling, en passant or promotion keys
-    // exactly; for rare moves the prefetch lands on an unused line.
+    // prefetch_key does not model castling, en passant or promotion exactly.
+    // The correction-history prefetches also approximate castling and promotion;
+    // for these rare moves the prefetches land on unused lines.
     prefetch(tt.first_entry(pos.prefetch_key(move)));
 
     bool capture = pos.capture_stage(move);
+
+    if (ss != nullptr)
+    {
+        const Piece  pc = pos.moved_piece(move);
+        const Square to = move.to_sq();
+
+        prefetch(&(*(ss - 1)->continuationCorrectionHistory)[pc][to]);
+        prefetch(&(*(ss - 3)->continuationCorrectionHistory)[pc][to]);
+    }
+
     ++nodes;
 
     Dirties& dirties = accumulatorStack.push();
