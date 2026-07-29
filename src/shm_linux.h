@@ -122,7 +122,7 @@ struct TempRoot {
 
     static const std::optional<TempRoot>& get_temp_root() {
         static auto temp_root = []() -> std::optional<TempRoot> {
-            auto proposed = std::string("/tmp/stockfish-") + std::to_string(getuid()) + "/";
+            auto proposed = std::string("/tmp/stockfish-") + std::to_string(getuid());
 
             if (mkdir(proposed.c_str(), 0700) == 0)
             {
@@ -133,8 +133,8 @@ struct TempRoot {
             {
                 // Temp root already exists, check perms
                 struct stat st;
-                if (stat(proposed.c_str(), &st) == 0 && S_ISDIR(st.st_mode) && st.st_uid == getuid()
-                    && (st.st_mode & 07777) == 0700)
+                if (lstat(proposed.c_str(), &st) == 0 && S_ISDIR(st.st_mode)
+                    && st.st_uid == getuid() && (st.st_mode & 07777) == 0700)
                 {
                     return {{proposed}};
                 }
@@ -249,7 +249,7 @@ class SharedMemory: public detail::SharedMemoryBase {
    public:
     explicit SharedMemory(const std::string& name, const TempRoot& tempRoot) noexcept :
         name_(name),
-        shared_dir_(tempRoot.prefix + make_sentinel_base(name)),
+        shared_dir_(tempRoot.prefix + "/" + make_sentinel_base(name)),
         init_lock_path_(shared_dir_ + "/init_lock"),
         socket_path_(shared_dir_ + "/" + std::to_string(getpid()) + ".sock"),
         server_thread_(std::nullopt) {}
@@ -378,8 +378,11 @@ class SharedMemory: public detail::SharedMemoryBase {
         {
             struct dirent* entry;
             while ((entry = readdir(dir)) != nullptr)
-                if (entry->d_type == DT_SOCK)
-                    peer_sockets.push_back(shared_dir_ + "/" + entry->d_name);
+            {
+                std::string name = entry->d_name;
+                if (name.size() >= 5 && name.compare(name.size() - 5, 5, ".sock") == 0)
+                    peer_sockets.push_back(shared_dir_ + "/" + name);
+            }
             closedir(dir);
         }
         return peer_sockets;
@@ -387,6 +390,8 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     std::optional<int> try_receive_memfd(const std::string& their_path) noexcept {
         int peer_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        if (peer_fd == -1)
+            return std::nullopt;
 
         struct sockaddr_un addr = {};
         addr.sun_family         = AF_UNIX;
@@ -422,7 +427,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             setsockopt(peer_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
             ssize_t bytes_recv;
-            while ((bytes_recv = recvmsg(peer_fd, &msg, 0)) < 0 && errno == EINTR)
+            while ((bytes_recv = recvmsg(peer_fd, &msg, MSG_CMSG_CLOEXEC)) < 0 && errno == EINTR)
             {}
 
             if (bytes_recv > 0)
@@ -486,7 +491,8 @@ class SharedMemory: public detail::SharedMemoryBase {
                 {
                     // Another fish wants access
                     int client_fd;
-                    while ((client_fd = accept(server_fd, NULL, NULL)) < 0 && errno == EINTR)
+                    while ((client_fd = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC)) < 0
+                           && errno == EINTR)
                     {}
                     if (client_fd < 0)
                         continue;
