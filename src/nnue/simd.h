@@ -340,6 +340,17 @@ inline __m128i vec_convert_8_16(u64 x) {
     #define MaxChunkSize 16
 
 #else
+using vec_t      = WeightType;
+using vec_i8_t   = ThreatWeightType;
+using psqt_vec_t = PSQTWeightType;
+    #define vec_store(a, b) *(a) = (b)
+    #define vec_convert_8_16(a) static_cast<vec_t>(a)
+    #define vec_add_16(a, b) ((a) + (b))
+    #define vec_sub_16(a, b) ((a) - (b))
+    #define vec_store_psqt(a, b) *(a) = (b)
+    #define vec_add_psqt_32(a, b) ((a) + (b))
+    #define vec_sub_psqt_32(a, b) ((a) - (b))
+
     #undef VECTOR
 
 #endif
@@ -523,12 +534,16 @@ class SIMDTiling {
     static constexpr int NumPsqtRegs =
       BestRegisterCount<psqt_vec_t, PSQTWeightType, PSQTBuckets, NumRegistersSIMD>();
 
-    static constexpr IndexType TileHeight     = NumRegs * sizeof(vec_t) / 2;
-    static constexpr IndexType PsqtTileHeight = NumPsqtRegs * sizeof(psqt_vec_t) / 4;
+#else
+   public:
+    static constexpr int       NumRegs       = HalfDimensions;
+    static constexpr int       NumPsqtRegs   = PSQTBuckets;
+#endif
+    static constexpr IndexType TileHeight     = NumRegs * sizeof(vec_t) / sizeof(WeightType);
+    static constexpr IndexType PsqtTileHeight = NumPsqtRegs * sizeof(psqt_vec_t) / sizeof(PSQTWeightType);
 
     static_assert(HalfDimensions % TileHeight == 0, "TileHeight must divide HalfDimensions");
     static_assert(PSQTBuckets % PsqtTileHeight == 0, "PsqtTileHeight must divide PSQTBuckets");
-#endif
 };
 
 }
