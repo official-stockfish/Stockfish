@@ -125,11 +125,8 @@ class ClippedReLU {
         {
             const __m256i packed0 = SIMD::lasx_packus_32(in[i * 4 + 0], in[i * 4 + 1]);
             const __m256i packed1 = SIMD::lasx_packus_32(in[i * 4 + 2], in[i * 4 + 3]);
-            const __m256i words0  = __lasx_xvsrli_h(packed0, WeightScaleBitsLocal);
-            const __m256i words1  = __lasx_xvsrli_h(packed1, WeightScaleBitsLocal);
-            const __m256i packed  = __lasx_xvssrani_b_h(words1, words0, 0);
-            const __m256i swaped  = __lasx_xvpermi_d(packed, 0xD8);
-            __lasx_xvst(__lasx_xvshuf4i_w(swaped, 0xD8), out + i, 0);
+            const __m256i packed  = __lasx_xvssrlni_b_h(packed1, packed0, WeightScaleBitsLocal);
+            __lasx_xvst(packed, out + i, 0);
         }
         constexpr IndexType Start = NumChunks * 32;
 
@@ -141,9 +138,7 @@ class ClippedReLU {
         {
             const __m128i packed0 = SIMD::lsx_packus_32(in[i * 4 + 0], in[i * 4 + 1]);
             const __m128i packed1 = SIMD::lsx_packus_32(in[i * 4 + 2], in[i * 4 + 3]);
-            const __m128i words0  = __lsx_vsrli_h(packed0, WeightScaleBitsLocal);
-            const __m128i words1  = __lsx_vsrli_h(packed1, WeightScaleBitsLocal);
-            out[i]                = __lsx_vssrani_b_h(words1, words0, 0);
+            out[i]                = __lsx_vssrlni_b_h(packed1, packed0, WeightScaleBitsLocal);
         }
         constexpr IndexType Start = NumChunks * 16;
 
