@@ -146,7 +146,7 @@ void PP_3Wide::append_changed_indices(Color                                    p
         auto push = [&](IndexType index) {
             if (prefetchBase)
                 prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
-                  reinterpret_cast<uintptr_t>(prefetchBase) + index * prefetchStride));
+                  reinterpret_cast<uintptr_t>(prefetchBase) + uintptr_t(index) * prefetchStride));
             out.push_back(index);
         };
         const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
@@ -166,6 +166,73 @@ void PP_3Wide::append_changed_indices(Color                                    p
     generate(whiteAfter & ~whiteBefore, blackAfter & ~blackBefore, whiteAfter, blackAfter, added);
     generate(whiteBefore & ~whiteAfter, blackBefore & ~blackAfter, whiteBefore, blackBefore,
              removed);
+}
+
+void PP_3Wide::append_changed_indices_both(Square                  white_ksq,
+                                           Square                  black_ksq,
+                                           const DiffType&         diff,
+                                           IndexList&              white_removed,
+                                           IndexList&              white_added,
+                                           IndexList&              black_removed,
+                                           IndexList&              black_added,
+                                           const ThreatWeightType* prefetchBase,
+                                           IndexType               prefetchStride) {
+
+#ifdef USE_AVX512ICL
+    append_changed_indices(WHITE, white_ksq, diff, white_removed, white_added, prefetchBase,
+                           prefetchStride);
+    append_changed_indices(BLACK, black_ksq, diff, black_removed, black_added, prefetchBase,
+                           prefetchStride);
+#else
+    const Bitboard whiteBefore = diff.before[WHITE];
+    const Bitboard blackBefore = diff.before[BLACK];
+    const Bitboard whiteAfter  = diff.after[WHITE];
+    const Bitboard blackAfter  = diff.after[BLACK];
+
+    if (whiteBefore == whiteAfter && blackBefore == blackAfter)
+        return;
+
+    auto generate = [&](Bitboard updatedW, Bitboard updatedB, Bitboard pawnsW, Bitboard pawnsB,
+                        IndexList& white_out, IndexList& black_out) {
+        auto push = [&](Color color, Square from, Square to, Color pairedColor) {
+            const IndexType white_index =
+              make_index(WHITE, color, from, to, pairedColor, white_ksq);
+            const IndexType black_index =
+              make_index(BLACK, color, from, to, pairedColor, black_ksq);
+
+            if (prefetchBase)
+            {
+                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
+                  reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(prefetchBase)
+                                                + uintptr_t(white_index) * prefetchStride));
+                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
+                  reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(prefetchBase)
+                                                + uintptr_t(black_index) * prefetchStride));
+            }
+
+            white_out.push_back(white_index);
+            black_out.push_back(black_index);
+        };
+
+        const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
+        for (Bitboard updated = updatedW | updatedB; updated;)
+        {
+            const Square   from  = pop_lsb(updated);
+            const Bitboard mask  = pawn_pair_bb(from) & (unchanged | updated);
+            const Color    color = (pawnsB & from) ? BLACK : WHITE;
+
+            for (Bitboard paired = pawnsB & mask; paired;)
+                push(color, from, pop_lsb(paired), BLACK);
+            for (Bitboard paired = pawnsW & mask; paired;)
+                push(color, from, pop_lsb(paired), WHITE);
+        }
+    };
+
+    generate(whiteAfter & ~whiteBefore, blackAfter & ~blackBefore, whiteAfter, blackAfter,
+             white_added, black_added);
+    generate(whiteBefore & ~whiteAfter, blackBefore & ~blackAfter, whiteBefore, blackBefore,
+             white_removed, black_removed);
+#endif
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features
