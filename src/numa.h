@@ -1511,11 +1511,6 @@ class LazyNumaReplicatedSystemWide: public NumaReplicatedBase {
    public:
     using ReplicatorFuncType = std::function<T(const T&)>;
 
-    LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx) :
-        NumaReplicatedBase(ctx) {
-        prepare_replicate_from(std::make_unique<T>());
-    }
-
     LazyNumaReplicatedSystemWide(NumaReplicationContext& ctx, std::unique_ptr<T>&& source) :
         NumaReplicatedBase(ctx) {
         prepare_replicate_from(std::move(source));

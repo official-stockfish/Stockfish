@@ -41,10 +41,16 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/file.h>
+#include <sys/eventfd.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/un.h>
+#include <poll.h>
 #include <unistd.h>
 #include <limits.h>
+
 #define SF_MAX_SEM_NAME_LEN NAME_MAX
 
 #include "misc.h"
@@ -53,19 +59,16 @@ namespace Stockfish::shm {
 
 namespace detail {
 
-struct ShmHeader {
-    static constexpr u32 SHM_MAGIC = 0xAD5F1A12;
-    pthread_mutex_t      mutex;
-    std::atomic<u32>     ref_count{0};
-    std::atomic<bool>    initialized{false};
-    u32                  magic = SHM_MAGIC;
-};
-
 class SharedMemoryBase {
    public:
-    virtual ~SharedMemoryBase()                                        = default;
-    virtual void               close(bool skip_unmap = false) noexcept = 0;
-    virtual const std::string& name() const noexcept                   = 0;
+    enum class CloseType {
+        Normal,
+        AtExit,
+    };
+
+    virtual ~SharedMemoryBase()                          = default;
+    virtual void               close(CloseType) noexcept = 0;
+    virtual const std::string& name() const noexcept     = 0;
 };
 
 class SharedMemoryRegistry {
@@ -86,11 +89,12 @@ class SharedMemoryRegistry {
           active_instances_.end());
     }
 
-    static void cleanup_all(bool skip_unmap = false) noexcept {
+    static void cleanup_at_exit() noexcept {
         std::scoped_lock lock(registry_mutex_);
+        // TODO: we litter .sock files upon an abnormal exit (e.g. Ctrl-C)
+        // but it's unsafe to acquire the lock in a signal handler
         for (auto* instance : active_instances_)
-            instance->close(skip_unmap);
-        active_instances_.clear();
+            instance->close(SharedMemoryBase::CloseType::AtExit);
     }
 };
 
@@ -101,47 +105,114 @@ class CleanupHooks {
    private:
     static std::once_flag register_once_;
 
-    static void handle_signal(int sig) noexcept {
-        // Search threads may still be running, so skip munmap (but still perform
-        // other cleanup actions). The memory mappings will be released on exit.
-        SharedMemoryRegistry::cleanup_all(true);
-
-        // Invoke the default handler, which will exit
-        struct sigaction sa;
-        sa.sa_handler = SIG_DFL;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0;
-        if (sigaction(sig, &sa, nullptr) == -1)
-            _Exit(128 + sig);
-
-        raise(sig);
-    }
-
-    static void register_signal_handlers() noexcept {
-        std::atexit([]() { SharedMemoryRegistry::cleanup_all(true); });
-
-        constexpr int signals[] = {SIGHUP,  SIGINT,  SIGQUIT, SIGILL, SIGABRT, SIGFPE,
-                                   SIGSEGV, SIGTERM, SIGBUS,  SIGSYS, SIGXCPU, SIGXFSZ};
-
-        struct sigaction sa;
-        sa.sa_handler = handle_signal;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0;
-
-        for (int sig : signals)
-            sigaction(sig, &sa, nullptr);
-    }
+    static void register_atexit() noexcept { std::atexit(SharedMemoryRegistry::cleanup_at_exit); }
 
    public:
-    static void ensure_registered() noexcept {
-        std::call_once(register_once_, register_signal_handlers);
-    }
+    static void ensure_registered() noexcept { std::call_once(register_once_, register_atexit); }
 };
 
 inline std::once_flag CleanupHooks::register_once_;
 
-
 }  // namespace detail
+
+
+struct TempRoot {
+    // /tmp/stockfish-[uid], with appropriate permissions
+    std::string prefix;
+
+    static const std::optional<TempRoot>& get_temp_root() {
+        static auto temp_root = []() -> std::optional<TempRoot> {
+            auto proposed = std::string("/tmp/stockfish-") + std::to_string(getuid());
+
+            if (mkdir(proposed.c_str(), 0700) == 0)
+            {
+                return {{proposed}};
+            }
+
+            if (errno == EEXIST)
+            {
+                // Temp root already exists, check perms
+                struct stat st;
+                if (lstat(proposed.c_str(), &st) == 0 && S_ISDIR(st.st_mode)
+                    && st.st_uid == getuid() && (st.st_mode & 07777) == 0700)
+                {
+                    return {{proposed}};
+                }
+            }
+
+            return std::nullopt;
+        }();
+
+        return temp_root;
+    }
+};
+
+// Allows notifying the background thread that it should close
+struct EventNotifier {
+    static std::unique_ptr<EventNotifier> create() noexcept {
+        int fd = eventfd(0, EFD_CLOEXEC);
+        if (fd == -1)
+            return nullptr;
+        return std::unique_ptr<EventNotifier>(new EventNotifier(fd));
+    }
+
+    EventNotifier(const EventNotifier&)             = delete;
+    EventNotifier& operator=(const EventNotifier&)  = delete;
+    EventNotifier& operator=(EventNotifier&& other) = delete;
+    EventNotifier(EventNotifier&& other)            = delete;
+
+    int  get_listener_fd() const noexcept { return event_fd_; }
+    void send_shutdown() const {
+        uint64_t                 value = 1;
+        [[maybe_unused]] ssize_t r     = write(event_fd_, &value, sizeof(value));
+    }
+
+    ~EventNotifier() noexcept { ::close(event_fd_); }
+
+   private:
+    EventNotifier(int fd) :
+        event_fd_(fd) {}
+    int event_fd_;
+};
+
+// Wrapper around flock() on a file
+struct InitLock {
+    InitLock(const InitLock&)            = delete;
+    InitLock& operator=(const InitLock&) = delete;
+    InitLock(InitLock&&)                 = delete;
+    InitLock& operator=(InitLock&&)      = delete;
+
+    ~InitLock() {
+        if (lock_fd != -1)
+        {
+            flock(lock_fd, LOCK_UN);
+            ::close(lock_fd);
+        }
+    }
+
+    static std::unique_ptr<InitLock> wait_for_init_lock(const std::string& path) noexcept {
+        int lock_fd = ::open(path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0666);
+        if (lock_fd == -1)
+            return nullptr;
+
+        // Blocks here if another process is currently initializing
+        while (flock(lock_fd, LOCK_EX) == -1)
+        {
+            if (errno != EINTR)
+            {
+                ::close(lock_fd);  // failed to acquire
+                return nullptr;
+            }
+        }
+
+        return std::unique_ptr<InitLock>(new InitLock(lock_fd));
+    }
+
+   private:
+    int lock_fd;
+    InitLock(int fd) :
+        lock_fd(fd) {}
+};
 
 template<typename T>
 class SharedMemory: public detail::SharedMemoryBase {
@@ -149,18 +220,23 @@ class SharedMemory: public detail::SharedMemoryBase {
     static_assert(!std::is_pointer_v<T>, "T cannot be a pointer type");
 
    private:
-    std::string        name_;
-    int                fd_         = -1;
-    void*              mapped_ptr_ = nullptr;
-    T*                 data_ptr_   = nullptr;
-    detail::ShmHeader* header_ptr_ = nullptr;
-    usize              total_size_ = 0;
-    std::string        sentinel_base_;
-    std::string        sentinel_path_;
+    std::string name_;
+    int         fd_         = -1;
+    void*       mapped_ptr_ = nullptr;
+    T*          data_ptr_   = nullptr;  // = mapped_ptr_
 
-    static constexpr usize calculate_total_size() noexcept {
-        return sizeof(T) + sizeof(detail::ShmHeader);
-    }
+    // Fishes will put their .sock files in this folder, and each folder is associated with a single underlying
+    // shared memfd. Therefore in a NUMA setting, we may have multiple such folders
+    std::string shared_dir_;
+
+    // Threads need to successfully and exclusively lock this file to initialize the memfd. If another process has
+    // a lock on it, then we wait for it to finish initializing (or die) and release the lock
+    std::string init_lock_path_;
+
+    // serve requests for the shared segment on this .sock
+    std::string                    socket_path_;
+    std::optional<std::thread>     server_thread_;
+    std::unique_ptr<EventNotifier> shutdown_;  // used to shut down the server thread
 
     static std::string make_sentinel_base(const std::string& name) {
         char buf[32];
@@ -171,14 +247,16 @@ class SharedMemory: public detail::SharedMemoryBase {
     }
 
    public:
-    explicit SharedMemory(const std::string& name) noexcept :
+    explicit SharedMemory(const std::string& name, const TempRoot& tempRoot) noexcept :
         name_(name),
-        total_size_(calculate_total_size()),
-        sentinel_base_(make_sentinel_base(name)) {}
+        shared_dir_(tempRoot.prefix + "/" + make_sentinel_base(name)),
+        init_lock_path_(shared_dir_ + "/init_lock"),
+        socket_path_(shared_dir_ + "/" + std::to_string(getpid()) + ".sock"),
+        server_thread_(std::nullopt) {}
 
     ~SharedMemory() noexcept override {
         detail::SharedMemoryRegistry::unregister_instance(this);
-        close();
+        SharedMemory::close(CloseType::Normal);
     }
 
     SharedMemory(const SharedMemory&)            = delete;
@@ -189,475 +267,369 @@ class SharedMemory: public detail::SharedMemoryBase {
         fd_(other.fd_),
         mapped_ptr_(other.mapped_ptr_),
         data_ptr_(other.data_ptr_),
-        header_ptr_(other.header_ptr_),
-        total_size_(other.total_size_),
-        sentinel_base_(std::move(other.sentinel_base_)),
-        sentinel_path_(std::move(other.sentinel_path_)) {
+        shared_dir_(std::move(other.shared_dir_)),
+        init_lock_path_(std::move(other.init_lock_path_)),
+        socket_path_(std::move(other.socket_path_)),
+        server_thread_(std::move(other.server_thread_)),
+        shutdown_(std::move(other.shutdown_)) {
 
         detail::SharedMemoryRegistry::unregister_instance(&other);
         detail::SharedMemoryRegistry::register_instance(this);
-        other.reset();
+
+        other.fd_         = -1;
+        other.mapped_ptr_ = nullptr;
+        other.data_ptr_   = nullptr;
     }
 
     SharedMemory& operator=(SharedMemory&& other) noexcept {
         if (this != &other)
         {
             detail::SharedMemoryRegistry::unregister_instance(this);
-            close();
+            close(CloseType::Normal);
 
-            name_          = std::move(other.name_);
-            fd_            = other.fd_;
-            mapped_ptr_    = other.mapped_ptr_;
-            data_ptr_      = other.data_ptr_;
-            header_ptr_    = other.header_ptr_;
-            total_size_    = other.total_size_;
-            sentinel_base_ = std::move(other.sentinel_base_);
-            sentinel_path_ = std::move(other.sentinel_path_);
+            name_           = std::move(other.name_);
+            fd_             = other.fd_;
+            mapped_ptr_     = other.mapped_ptr_;
+            data_ptr_       = other.data_ptr_;
+            shared_dir_     = std::move(other.shared_dir_);
+            init_lock_path_ = std::move(other.init_lock_path_);
+            socket_path_    = std::move(other.socket_path_);
+            server_thread_  = std::move(other.server_thread_);
+            shutdown_       = std::move(other.shutdown_);
 
             detail::SharedMemoryRegistry::unregister_instance(&other);
             detail::SharedMemoryRegistry::register_instance(this);
 
-            other.reset();
+            other.fd_         = -1;
+            other.mapped_ptr_ = nullptr;
+            other.data_ptr_   = nullptr;
         }
         return *this;
     }
 
-    [[nodiscard]] bool open(const T& initial_value) noexcept {
-        detail::CleanupHooks::ensure_registered();
-
-        bool retried_stale = false;
-
-        while (true)
+    void close(CloseType closeType) noexcept override {
+        if (closeType == CloseType::AtExit)
         {
-            if (is_open())
-                return false;
-
-            bool created_new = false;
-            fd_              = shm_open(name_.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
-
-            if (fd_ == -1)
+            // Don't unmap on exit as this may cause currently searching threads to segfault.
+            // Also, don't join() the server thread on exit.
+            if (server_thread_)
             {
-                fd_ = shm_open(name_.c_str(), O_RDWR, 0666);
-                if (fd_ == -1)
-                    return false;
+                server_thread_->detach();
+                server_thread_ = std::nullopt;
             }
-            else
-                created_new = true;
-
-            if (!lock_file(LOCK_EX))
-            {
-                ::close(fd_);
-                reset();
-                return false;
-            }
-
-            bool invalid_header = false;
-            bool success =
-              created_new ? setup_new_region(initial_value) : setup_existing_region(invalid_header);
-
-            if (!success)
-            {
-                if (created_new || invalid_header)
-                    shm_unlink(name_.c_str());
-                if (mapped_ptr_)
-                    unmap_region();
-                unlock_file();
-                ::close(fd_);
-                reset();
-
-                if (!created_new && invalid_header && !retried_stale)
-                {
-                    retried_stale = true;
-                    continue;
-                }
-                return false;
-            }
-
-            if (!lock_shared_mutex())
-            {
-                if (created_new)
-                    shm_unlink(name_.c_str());
-                if (mapped_ptr_)
-                    unmap_region();
-                unlock_file();
-                ::close(fd_);
-                reset();
-
-                if (!created_new && !retried_stale)
-                {
-                    retried_stale = true;
-                    continue;
-                }
-                return false;
-            }
-
-            if (!create_sentinel_file_locked())
-            {
-                unlock_shared_mutex();
-                unmap_region();
-                if (created_new)
-                    shm_unlink(name_.c_str());
-                unlock_file();
-                ::close(fd_);
-                reset();
-                return false;
-            }
-
-            header_ptr_->ref_count.fetch_add(1, std::memory_order_acq_rel);
-
-            unlock_shared_mutex();
-            unlock_file();
-            detail::SharedMemoryRegistry::register_instance(this);
-            return true;
-        }
-    }
-
-    void close(bool skip_unmap = false) noexcept override {
-        if (fd_ == -1 && mapped_ptr_ == nullptr)
-            return;
-
-        bool remove_region = false;
-        bool file_locked   = lock_file(LOCK_EX);
-        bool mutex_locked  = false;
-
-        if (file_locked && header_ptr_ != nullptr)
-            mutex_locked = lock_shared_mutex();
-
-        if (mutex_locked)
-        {
-            if (header_ptr_)
-            {
-                header_ptr_->ref_count.fetch_sub(1, std::memory_order_acq_rel);
-            }
-            remove_sentinel_file();
-            remove_region = !has_other_live_sentinels_locked();
-            unlock_shared_mutex();
         }
         else
         {
-            remove_sentinel_file();
-            decrement_refcount_relaxed();
-        }
-
-        if (skip_unmap)
-            mapped_ptr_ = nullptr;
-        else
             unmap_region();
-
-        if (remove_region)
-            shm_unlink(name_.c_str());
-
-        if (file_locked)
-            unlock_file();
-
-        if (fd_ != -1)
-        {
-            ::close(fd_);
-            fd_ = -1;
         }
-
-        if (!skip_unmap)
-            reset();
+        reset();
     }
+
+    bool is_mapped() const noexcept { return mapped_ptr_ != nullptr; }
+
+    bool is_serving() const noexcept { return server_thread_.has_value(); }
 
     const std::string& name() const noexcept override { return name_; }
 
-    [[nodiscard]] bool is_open() const noexcept { return fd_ != -1 && mapped_ptr_ && data_ptr_; }
+    const T& get() const noexcept {
+        assert(data_ptr_ != nullptr);
 
-    [[nodiscard]] const T& get() const noexcept { return *data_ptr_; }
-
-    [[nodiscard]] const T* operator->() const noexcept { return data_ptr_; }
-
-    [[nodiscard]] const T& operator*() const noexcept { return *data_ptr_; }
-
-    [[nodiscard]] u32 ref_count() const noexcept {
-        return header_ptr_ ? header_ptr_->ref_count.load(std::memory_order_acquire) : 0;
+        return *data_ptr_;
     }
-
-    [[nodiscard]] bool is_initialized() const noexcept {
-        return header_ptr_ ? header_ptr_->initialized.load(std::memory_order_acquire) : false;
-    }
-
-    static void cleanup_all_instances() noexcept { detail::SharedMemoryRegistry::cleanup_all(); }
 
    private:
     void reset() noexcept {
+        if (!socket_path_.empty())
+        {
+            unlink(socket_path_.c_str());
+        }
+
+        if (shutdown_)
+            shutdown_->send_shutdown();
+
+        if (server_thread_ && server_thread_->joinable())
+        {
+            server_thread_->join();
+            server_thread_ = std::nullopt;
+        }
+
+        shutdown_.reset();
+        if (fd_ != -1)
+            ::close(fd_);
+
         fd_         = -1;
         mapped_ptr_ = nullptr;
         data_ptr_   = nullptr;
-        header_ptr_ = nullptr;
-        sentinel_path_.clear();
     }
 
     void unmap_region() noexcept {
         if (mapped_ptr_)
         {
-            munmap(mapped_ptr_, total_size_);
+            munmap(mapped_ptr_, sizeof(T));
             mapped_ptr_ = nullptr;
             data_ptr_   = nullptr;
-            header_ptr_ = nullptr;
         }
     }
 
-    [[nodiscard]] bool lock_file(int operation) noexcept {
-        if (fd_ == -1)
-            return false;
-
-        while (flock(fd_, operation) == -1)
+    // Discover all peers in the shared dir
+    std::vector<std::string> get_peer_sockets() noexcept {
+        std::vector<std::string> peer_sockets;
+        if (DIR* dir = opendir(shared_dir_.c_str()))
         {
-            if (errno == EINTR)
-                continue;
-            return false;
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != nullptr)
+            {
+                std::string name = entry->d_name;
+                if (name.size() >= 5 && name.compare(name.size() - 5, 5, ".sock") == 0)
+                    peer_sockets.push_back(shared_dir_ + "/" + name);
+            }
+            closedir(dir);
         }
-        return true;
+        return peer_sockets;
     }
 
-    void unlock_file() noexcept {
-        if (fd_ == -1)
-            return;
+    std::optional<int> try_receive_memfd(const std::string& their_path) noexcept {
+        int peer_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        if (peer_fd == -1)
+            return std::nullopt;
 
-        while (flock(fd_, LOCK_UN) == -1)
-        {
-            if (errno == EINTR)
-                continue;
-            break;
-        }
-    }
+        struct sockaddr_un addr = {};
+        addr.sun_family         = AF_UNIX;
+        std::strncpy(addr.sun_path, their_path.c_str(), sizeof(addr.sun_path) - 1);
 
-    std::string sentinel_full_path(pid_t pid) const {
-        char buf[1024];
-        // See above snprintf comment
-        std::snprintf(buf, sizeof(buf), "/dev/shm/%s.%ld", sentinel_base_.c_str(), long(pid));
-        return buf;
-    }
-
-    void decrement_refcount_relaxed() noexcept {
-        if (!header_ptr_)
-            return;
-
-        u32 expected = header_ptr_->ref_count.load(std::memory_order_relaxed);
-        while (expected != 0
-               && !header_ptr_->ref_count.compare_exchange_weak(
-                 expected, expected - 1, std::memory_order_acq_rel, std::memory_order_relaxed))
+        // Connect to peer socket and request access to the memfd
+        int ret;
+        while ((ret = connect(peer_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) < 0
+               && errno == EINTR)
         {}
-    }
 
-    bool create_sentinel_file_locked() noexcept {
-        if (!header_ptr_)
-            return false;
-
-        const pid_t self_pid = getpid();
-        sentinel_path_       = sentinel_full_path(self_pid);
-
-        for (int attempt = 0; attempt < 2; ++attempt)
+        if (ret == 0)
         {
-            int fd = ::open(sentinel_path_.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0600);
-            if (fd != -1)
-            {
-                ::close(fd);
-                return true;
-            }
+            msghdr msg = {};
 
-            if (errno == EEXIST)
-            {
-                ::unlink(sentinel_path_.c_str());
-                decrement_refcount_relaxed();
-                continue;
-            }
+            char         buf[1];
+            struct iovec iov[1];
+            iov[0].iov_base = buf;
+            iov[0].iov_len  = 1;
+            msg.msg_iov     = iov;
+            msg.msg_iovlen  = 1;
 
-            break;
+            union {
+                char           buf[CMSG_SPACE(sizeof(int))];
+                struct cmsghdr align;
+            } control_msg = {};
+
+            msg.msg_control    = control_msg.buf;
+            msg.msg_controllen = sizeof(control_msg.buf);
+
+            // 1-second timeout in case the peer is stopped
+            struct timeval tv = {1, 0};
+            setsockopt(peer_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+            ssize_t bytes_recv;
+            while ((bytes_recv = recvmsg(peer_fd, &msg, MSG_CMSG_CLOEXEC)) < 0 && errno == EINTR)
+            {}
+
+            if (bytes_recv > 0)
+            {
+                cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+                // Receive rights to the memfd from the peer; see make_server_thread
+                if (cmsg && cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
+                {
+                    int received_fd;
+                    memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(received_fd));
+                    ::close(peer_fd);
+                    return received_fd;
+                }
+            }
+        }
+        else if (errno == ECONNREFUSED || errno == ENOENT)
+        {
+            // Failed to connect, clean up dead peer
+            unlink(their_path.c_str());
         }
 
-        sentinel_path_.clear();
-        return false;
+        ::close(peer_fd);
+        return std::nullopt;
     }
 
-    void remove_sentinel_file() noexcept {
-        if (!sentinel_path_.empty())
-        {
-            ::unlink(sentinel_path_.c_str());
-            sentinel_path_.clear();
-        }
-    }
+    // Server thread:
+    //  - Listens on server_fd
+    //  - Forwards the file descriptor fd
+    //  - Exits early upon receiving data (from the main thread) on shutdown_fd
+    static std::thread make_server_thread(int fd, int shutdown_fd, int server_fd) {
+        return std::thread([fd, shutdown_fd, server_fd]() {
+            enum {
+                FdServer,
+                FdShutdown,
+                FdCount,
+            };
 
-    static bool pid_is_alive(pid_t pid) noexcept {
-        if (pid <= 0)
-            return false;
+            struct pollfd fds[FdCount];
+            fds[FdServer].fd     = server_fd;
+            fds[FdServer].events = POLLIN;
 
-        if (kill(pid, 0) == 0)
-            return true;
+            fds[FdShutdown].fd     = shutdown_fd;
+            fds[FdShutdown].events = POLLIN;
 
-        return errno == EPERM;
-    }
-
-    [[nodiscard]] bool initialize_shared_mutex() noexcept {
-        if (!header_ptr_)
-            return false;
-
-        pthread_mutexattr_t attr;
-        if (pthread_mutexattr_init(&attr) != 0)
-            return false;
-
-        bool success = pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED) == 0;
-#if _POSIX_C_SOURCE >= 200809L
-        if (success)
-            success = pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST) == 0;
-#endif
-
-        if (success)
-            success = pthread_mutex_init(&header_ptr_->mutex, &attr) == 0;
-
-        pthread_mutexattr_destroy(&attr);
-        return success;
-    }
-
-    [[nodiscard]] bool lock_shared_mutex() noexcept {
-        if (!header_ptr_)
-            return false;
-
-        while (true)
-        {
-            int rc = pthread_mutex_lock(&header_ptr_->mutex);
-            if (rc == 0)
-                return true;
-
-#if _POSIX_C_SOURCE >= 200809L
-            if (rc == EOWNERDEAD)
+            while (true)
             {
-                if (pthread_mutex_consistent(&header_ptr_->mutex) == 0)
-                    return true;
+                int ret = poll(fds, FdCount, -1);
+                if (ret < 0)
+                {
+                    if (errno == EINTR)
+                        continue;
+
+                    break;
+                }
+
+                if (fds[FdShutdown].revents
+                    & (POLLIN | POLLERR | POLLNVAL))  // shutdown requested by main thread
+                    break;
+
+                if (fds[FdServer].revents & POLLIN)
+                {
+                    // Another fish wants access
+                    int client_fd;
+                    while ((client_fd = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC)) < 0
+                           && errno == EINTR)
+                    {}
+                    if (client_fd < 0)
+                        continue;
+
+                    msghdr msg    = {};
+                    char   buf[1] = {};
+                    iovec  iov[1];
+                    iov[0].iov_base = buf;
+                    iov[0].iov_len  = 1;
+                    msg.msg_iov     = iov;
+                    msg.msg_iovlen  = 1;
+
+                    union {
+                        char           buf[CMSG_SPACE(sizeof(fd))];
+                        struct cmsghdr align;
+                    } control_msg = {};
+
+                    msg.msg_control    = control_msg.buf;
+                    msg.msg_controllen = sizeof(control_msg.buf);
+
+                    // Send over rights to the memfd (SCM_RIGHTS). The fd may be given a different number, but
+                    // will refer to the same underlying file. Once it's mmapped then it will share physical memory
+                    // between the processes.
+                    // See https://man7.org/linux/man-pages/man7/unix.7.html for more information on SCM_RIGHTS
+                    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+                    cmsg->cmsg_level     = SOL_SOCKET;
+                    cmsg->cmsg_type      = SCM_RIGHTS;
+                    cmsg->cmsg_len       = CMSG_LEN(sizeof(fd));
+                    memcpy(CMSG_DATA(cmsg), &fd, sizeof(fd));
+
+                    while (sendmsg(client_fd, &msg, 0) < 0 && errno == EINTR)
+                    {}
+
+                    ::close(client_fd);
+                }
+            }
+
+            ::close(server_fd);
+        });
+    }
+
+   public:
+    [[nodiscard]] bool open(const T& initial_value) noexcept {
+        detail::CleanupHooks::ensure_registered();
+
+        if (socket_path_.size() >= sizeof(sockaddr_un::sun_path))
+            return false;
+
+        if (mkdir(shared_dir_.c_str(), 0700) != 0 && errno != EEXIST)
+            return false;
+
+        {
+            auto initLock = InitLock::wait_for_init_lock(init_lock_path_);
+            if (!initLock)
+                return false;
+
+            // Candidates for receiving the shared memfd
+            std::vector<std::string> peer_sockets = get_peer_sockets();
+
+            // Assume we must create it until proven otherwise, i.e., we get it from a peer
+            fd_          = -1;
+            bool creator = true;
+
+            for (const auto& sock_path : peer_sockets)
+            {
+                std::optional<int> maybe_memfd = try_receive_memfd(sock_path);
+
+                if (maybe_memfd.has_value() && *maybe_memfd != -1)
+                {
+                    fd_     = maybe_memfd.value();
+                    creator = false;
+                    break;
+                }
+            }
+
+            if (creator)
+            {
+                // Failed to get it from a peer (no peers, or only dead peers), so create
+                fd_ = memfd_create("replicated_data", MFD_CLOEXEC);
+                if (fd_ == -1)
+                    return false;
+
+                if (ftruncate(fd_, sizeof(T)) != 0)
+                {
+                    ::close(fd_);
+                    fd_ = -1;
+                    return false;
+                }
+            }
+
+            assert(fd_ != -1);
+
+            // Try to map the memfd
+            T* mapped_mem =
+              static_cast<T*>(mmap(NULL, sizeof(T), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
+            if (mapped_mem == MAP_FAILED)
+            {
+                ::close(fd_);
+                fd_ = -1;
                 return false;
             }
-#endif
 
-            if (rc == EINTR)
-                continue;
+            (void) madvise(mapped_mem, sizeof(T), MADV_HUGEPAGE);
 
-            return false;
-        }
-    }
-
-    void unlock_shared_mutex() noexcept {
-        if (header_ptr_)
-            pthread_mutex_unlock(&header_ptr_->mutex);
-    }
-
-    bool has_other_live_sentinels_locked() const noexcept {
-        DIR* dir = opendir("/dev/shm");
-        if (!dir)
-            return false;
-
-        std::string prefix = sentinel_base_ + ".";
-        bool        found  = false;
-
-        while (dirent* entry = readdir(dir))
-        {
-            std::string name = entry->d_name;
-            if (name.rfind(prefix, 0) != 0)
-                continue;
-
-            auto  pid_str = name.substr(prefix.size());
-            char* end     = nullptr;
-            long  value   = std::strtol(pid_str.c_str(), &end, 10);
-            if (!end || *end != '\0')
-                continue;
-
-            pid_t pid = static_cast<pid_t>(value);
-            if (pid_is_alive(pid))
+            if (creator)
             {
-                found = true;
-                break;
+                // Creator is responsible for initialization
+                *mapped_mem = initial_value;
             }
 
-            std::string stale_path = std::string("/dev/shm/") + name;
-            ::unlink(stale_path.c_str());
-            const_cast<SharedMemory*>(this)->decrement_refcount_relaxed();
-        }
+            mapped_ptr_ = data_ptr_ = mapped_mem;
 
-        closedir(dir);
-        return found;
-    }
+            detail::SharedMemoryRegistry::register_instance(this);  // register for cleanup at exit
 
-    [[nodiscard]] bool setup_new_region(const T& initial_value) noexcept {
-        if (ftruncate(fd_, static_cast<off_t>(total_size_)) == -1)
-            return false;
+            shutdown_ = EventNotifier::create();
+            if (!shutdown_)
+                return false;
 
-        mapped_ptr_ = mmap(nullptr, total_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
-        if (mapped_ptr_ == MAP_FAILED)
-        {
-            mapped_ptr_ = nullptr;
-            return false;
-        }
+            int server_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+            if (server_fd == -1)
+                return false;
 
-#ifdef MADV_POPULATE_WRITE
-        // Pre-populate, attempting first with THP, to guarantee that the memory
-        // is allocated and avoid crashing on the first write.
-        madvise(mapped_ptr_, total_size_, MADV_HUGEPAGE);
+            struct sockaddr_un addr = {};
+            addr.sun_family         = AF_UNIX;
+            strncpy(addr.sun_path, socket_path_.c_str(), sizeof(addr.sun_path) - 1);
 
-        const bool populated = madvise(mapped_ptr_, total_size_, MADV_POPULATE_WRITE) == 0;
-#else
-        const bool populated = false;
-#endif
-        // If the THP population failed, try with fallocate
-        if (!populated && posix_fallocate(fd_, 0, static_cast<off_t>(total_size_)) != 0)
-        {
-            // Release any partially populated pages by a failed MADV_POPULATE_WRITE.
-            // TODO: Not robust. Need to avoid residual pages if the process
-            // is terminated between the failed madvise and the ftruncate.
-            int err = ftruncate(fd_, 0);
-            (void) err;
-            munmap(mapped_ptr_, total_size_);
-            mapped_ptr_ = nullptr;
-            return false;
-        }
+            unlink(socket_path_.c_str());
+            if (bind(server_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1
+                || listen(server_fd, 5) == -1)
+            {
+                ::close(server_fd);
+                return false;
+            }
 
-        data_ptr_ = static_cast<T*>(mapped_ptr_);
-        header_ptr_ =
-          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T));
-
-        new (header_ptr_) detail::ShmHeader{};
-        new (data_ptr_) T{initial_value};
-
-        if (!initialize_shared_mutex())
-            return false;
-
-        header_ptr_->ref_count.store(0, std::memory_order_release);
-        header_ptr_->initialized.store(true, std::memory_order_release);
-        return true;
-    }
-
-    [[nodiscard]] bool setup_existing_region(bool& invalid_header) noexcept {
-        invalid_header = false;
-
-        struct stat st;
-        fstat(fd_, &st);
-        if (static_cast<usize>(st.st_size) < total_size_)
-        {
-            invalid_header = true;
-            return false;
-        }
-
-        mapped_ptr_ = mmap(nullptr, total_size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
-        if (mapped_ptr_ == MAP_FAILED)
-        {
-            mapped_ptr_ = nullptr;
-            return false;
-        }
-
-#ifdef MADV_HUGEPAGE
-        madvise(mapped_ptr_, total_size_, MADV_HUGEPAGE);
-#endif
-
-        data_ptr_   = static_cast<T*>(mapped_ptr_);
-        header_ptr_ = std::launder(
-          reinterpret_cast<detail::ShmHeader*>(static_cast<char*>(mapped_ptr_) + sizeof(T)));
-
-        if (!header_ptr_->initialized.load(std::memory_order_acquire)
-            || header_ptr_->magic != detail::ShmHeader::SHM_MAGIC)
-        {
-            invalid_header = true;
-            unmap_region();
-            return false;
+            // Don't release the init lock until we've actually made a socket that
+            // other fishes can use.
+            server_thread_ = make_server_thread(fd_, shutdown_->get_listener_fd(), server_fd);
         }
 
         return true;
@@ -667,7 +639,10 @@ class SharedMemory: public detail::SharedMemoryBase {
 template<typename T>
 [[nodiscard]] std::optional<SharedMemory<T>> create_shared(const std::string& name,
                                                            const T& initial_value) noexcept {
-    SharedMemory<T> shm(name);
+    auto tempRoot = TempRoot::get_temp_root();
+    if (!tempRoot.has_value())
+        return std::nullopt;
+    SharedMemory<T> shm(name, *tempRoot);
     if (shm.open(initial_value))
         return shm;
     return std::nullopt;
