@@ -8,6 +8,19 @@
 
   [Official Stockfish](https://stockfishchess.org) · [This Fork](https://github.com/GizzZmo/Stockfish) · [Issues](https://github.com/GizzZmo/Stockfish/issues)
 
+  <!-- CI Badges -->
+  [![Stockfish Build](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/stockfish.yml?branch=master&style=for-the-badge&label=Stockfish&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/stockfish.yml)
+  [![Tests](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/tests.yml?branch=master&style=for-the-badge&label=Tests&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/tests.yml)
+  [![Universal](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/universal_compilation.yml?branch=master&style=for-the-badge&label=Universal&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/universal_compilation.yml)
+  <br>
+  [![Sanitizers](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/sanitizers.yml?branch=master&style=for-the-badge&label=Sanitizers&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/sanitizers.yml)
+  [![CodeQL](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/codeql.yml?branch=master&style=for-the-badge&label=CodeQL&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/codeql.yml)
+  [![Clang Format](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/clang-format.yml?branch=master&style=for-the-badge&label=Format&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/clang-format.yml)
+  <br>
+  [![WASM](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/wasm_compilation.yml?branch=master&style=for-the-badge&label=WASM&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/wasm_compilation.yml)
+  [![License](https://img.shields.io/github/license/GizzZmo/Stockfish?style=for-the-badge&label=License&color=success)](https://github.com/GizzZmo/Stockfish/blob/master/Copying.txt)
+  [![Last Commit](https://img.shields.io/github/last-commit/GizzZmo/Stockfish?style=for-the-badge&logo=github)](https://github.com/GizzZmo/Stockfish/commits/master)
+
 </div>
 
 ## Overview
