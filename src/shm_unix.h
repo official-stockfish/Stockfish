@@ -138,6 +138,11 @@ struct UniqueFd {
         fd_ = fd;
     }
 
+    void set_cloexec() noexcept {
+        if (fd_ != -1)
+            (void) fcntl(fd_, F_SETFD, fcntl(fd_, F_GETFD) | FD_CLOEXEC);
+    }
+
    private:
     int fd_ = -1;
 };
@@ -373,8 +378,7 @@ class SharedMemory: public detail::SharedMemoryBase {
         UniqueFd fd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 #else
         UniqueFd fd(socket(AF_UNIX, SOCK_STREAM, 0));
-        if (fd.is_valid())
-            (void) fcntl(fd.get(), F_SETFD, fcntl(fd.get(), F_GETFD) | FD_CLOEXEC);
+        fd.set_cloexec();
 #endif
         return fd;
     }
@@ -433,12 +437,13 @@ class SharedMemory: public detail::SharedMemoryBase {
                 // Receive rights to the memfd from the peer; see make_server_thread
                 if (cmsg && cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS)
                 {
-                    int received_fd;
-                    memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(received_fd));
+                    int raw_received_fd;
+                    memcpy(&raw_received_fd, CMSG_DATA(cmsg), sizeof(raw_received_fd));
+                    UniqueFd received_fd(raw_received_fd);
 #ifndef MSG_CMSG_CLOEXEC
-                    (void) fcntl(received_fd, F_SETFD, fcntl(received_fd, F_GETFD) | FD_CLOEXEC);
+                    received_fd.set_cloexec();
 #endif
-                    return UniqueFd(received_fd);
+                    return received_fd;
                 }
             }
         }
@@ -491,15 +496,12 @@ class SharedMemory: public detail::SharedMemoryBase {
                     // Another fish wants access
 #if !defined(__APPLE__)
                     UniqueFd client_fd(accept4(server_fd.get(), nullptr, nullptr, SOCK_CLOEXEC));
-                    if (!client_fd.is_valid())
-                        continue;  // including EINTR
 #else
                     UniqueFd client_fd(accept(server_fd.get(), nullptr, nullptr));
+                    client_fd.set_cloexec();
+#endif
                     if (!client_fd.is_valid())
                         continue;  // including EINTR
-                    (void) fcntl(client_fd.get(), F_SETFD,
-                                 fcntl(client_fd.get(), F_GETFD) | FD_CLOEXEC);
-#endif
 
                     msghdr msg    = {};
                     char   buf[1] = {};
@@ -576,7 +578,7 @@ class SharedMemory: public detail::SharedMemoryBase {
                 memfd.reset(mkstemp(temp_path));
                 if (!memfd.is_valid())
                     return false;
-                (void) fcntl(memfd.get(), F_SETFD, fcntl(memfd.get(), F_GETFD) | FD_CLOEXEC);
+                memfd.set_cloexec();
                 unlink(temp_path);
 #endif
 
@@ -610,14 +612,16 @@ class SharedMemory: public detail::SharedMemoryBase {
 #if !defined(__APPLE__)
             if (pipe2(shutdown_pipe, O_CLOEXEC) != 0)
                 return false;
+            UniqueFd shutdown_receiver(shutdown_pipe[0]);
+            shutdown_ = UniqueFd(shutdown_pipe[1]);
 #else
             if (pipe(shutdown_pipe) != 0)
                 return false;
-            (void) fcntl(shutdown_pipe[0], F_SETFD, fcntl(shutdown_pipe[0], F_GETFD) | FD_CLOEXEC);
-            (void) fcntl(shutdown_pipe[1], F_SETFD, fcntl(shutdown_pipe[1], F_GETFD) | FD_CLOEXEC);
-#endif
             UniqueFd shutdown_receiver(shutdown_pipe[0]);
             shutdown_ = UniqueFd(shutdown_pipe[1]);
+            shutdown_receiver.set_cloexec();
+            shutdown_.set_cloexec();
+#endif
 
             auto server_fd = create_unix_socket();
             if (!server_fd.is_valid())
