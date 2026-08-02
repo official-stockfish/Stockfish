@@ -1,0 +1,130 @@
+name: Assets & Release Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_gui_builds:
+        description: 'Include latest GUI build artifacts (if available from same run chain)'
+        type: boolean
+        default: true
+      retention_days:
+        description: 'Artifact retention (days)'
+        type: number
+        default: 90
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'assets/**'
+      - '.github/workflows/assets.yml'
+  workflow_call:
+    inputs:
+      retention_days:
+        type: number
+        required: false
+        default: 90
+
+concurrency:
+  group: assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-assets:
+    name: Package project assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Create assets tree
+        run: |
+          mkdir -p package/assets/{docs,screenshots,icons,logos,gui}
+
+          # Documentation
+          if [ -d docs ]; then
+            cp -r docs/* package/assets/docs/ 2>/dev/null || true
+          fi
+          cp README.md package/assets/ 2>/dev/null || true
+          cp CONTRIBUTING.md package/assets/ 2>/dev/null || true
+
+          # Existing assets folder (if any)
+          if [ -d assets ]; then
+            cp -r assets/* package/assets/ 2>/dev/null || true
+          fi
+
+          # Logos / icons from known locations
+          find . -maxdepth 3 \( -name '*.png' -o -name '*.svg' -o -name '*.ico' \) \
+            -path '*/public/*' -o -path '*/icons/*' 2>/dev/null | head -50 | while read f; do
+              cp "$f" package/assets/icons/ 2>/dev/null || true
+            done
+
+          # Manifest
+          cat > package/assets/MANIFEST.md << EOF
+          # Stockfish Fork – Assets Package
+
+          **Repository**: ${{ github.repository }}
+          **Commit**: ${{ github.sha }}
+          **Branch**: ${{ github.ref_name }}
+          **Generated**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          **Workflow run**: ${{ github.run_id }}
+
+          ## Contents
+
+          - \`docs/\` – project documentation
+          - \`screenshots/\` – GUI screenshots (when produced by Screenshots workflow)
+          - \`icons/\` – application icons and logos
+          - \`gui/\` – optional GUI build drop-ins
+
+          ## GUIs
+
+          | Name | Path |
+          |------|------|
+          | Matrix GUI | matrix-gui/ |
+          | NexusChess | Avalonia UI/ |
+          | NeuralChess PWA | neuralchess-pwa/ |
+          EOF
+
+          echo "Package tree:"
+          find package -type f | head -100
+
+      - name: Create tarball
+        run: |
+          cd package
+          tar -czf ../stockfish-assets-${{ github.sha }}.tar.gz assets
+          cd ..
+          sha256sum stockfish-assets-${{ github.sha }}.tar.gz > stockfish-assets-${{ github.sha }}.sha256
+          ls -lh stockfish-assets-*
+
+      - name: Upload assets package
+        uses: actions/upload-artifact@v4
+        with:
+          name: assets-package-${{ github.sha }}
+          path: |
+            stockfish-assets-${{ github.sha }}.tar.gz
+            stockfish-assets-${{ github.sha }}.sha256
+            package/assets/
+          retention-days: ${{ inputs.retention_days || 90 }}
+
+      - name: Summary
+        run: |
+          echo "# 🎁 Assets Package" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Artifact**: \`assets-package-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Archive**: \`stockfish-assets-${{ github.sha }}.tar.gz\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Includes docs, icons, and any present screenshots." >> $GITHUB_STEP_SUMMARY
+          echo "Run the **Screenshots** and **GUI Artifacts** workflows for full visual assets." >> $GITHUB_STEP_SUMMARY
+
+  trigger-related:
+    name: Note related workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Related workflows
+        run: |
+          echo "# Related CI" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [GUI Artifacts](../actions/workflows/gui-artifacts.yml) – builds Matrix GUI, NeuralChess, NexusChess" >> $GITHUB_STEP_SUMMARY
+          echo "- [Screenshots](../actions/workflows/screenshots.yml) – Playwright screenshots of web GUIs" >> $GITHUB_STEP_SUMMARY
+          echo "- [Artifact Management](../actions/workflows/artifact-management.yml) – engine binary packaging (reusable)" >> $GITHUB_STEP_SUMMARY

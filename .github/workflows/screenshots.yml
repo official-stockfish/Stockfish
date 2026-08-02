@@ -1,0 +1,195 @@
+name: Screenshots
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'matrix-gui/**'
+      - 'neuralchess-pwa/**'
+      - 'scripts/generate-screenshots.*'
+      - '.github/workflows/screenshots.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'matrix-gui/**'
+      - 'neuralchess-pwa/**'
+      - 'scripts/generate-screenshots.*'
+      - '.github/workflows/screenshots.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  neuralchess-screenshots:
+    name: NeuralChess PWA screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: neuralchess-pwa/package-lock.json
+
+      - name: Install dependencies
+        working-directory: neuralchess-pwa
+        run: npm ci || npm install
+
+      - name: Install Playwright browsers
+        working-directory: neuralchess-pwa
+        run: npx playwright install --with-deps chromium
+
+      - name: Build PWA
+        working-directory: neuralchess-pwa
+        run: npm run build
+        env:
+          CI: true
+
+      - name: Start preview server
+        working-directory: neuralchess-pwa
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 &
+          echo $! > /tmp/preview.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:4173 >/dev/null; then
+              echo "Server ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Generate screenshots
+        working-directory: neuralchess-pwa
+        run: |
+          mkdir -p ../screenshots/neuralchess
+          node ../scripts/generate-screenshots.mjs \
+            --url http://127.0.0.1:4173 \
+            --out ../screenshots/neuralchess \
+            --name neuralchess \
+            --widths 1280,1920,390
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ -f /tmp/preview.pid ]; then kill $(cat /tmp/preview.pid) || true; fi
+
+      - name: Upload NeuralChess screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-neuralchess-${{ github.sha }}
+          path: screenshots/neuralchess/
+          retention-days: 90
+          if-no-files-found: warn
+
+  matrix-gui-screenshots:
+    name: Matrix GUI screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: matrix-gui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: matrix-gui
+        run: npm ci || npm install
+
+      - name: Install Playwright browsers
+        working-directory: matrix-gui
+        run: npx --yes playwright install --with-deps chromium
+
+      - name: Build React app
+        working-directory: matrix-gui
+        run: npm run build
+        env:
+          CI: true
+
+      - name: Serve build & capture screenshots
+        working-directory: matrix-gui
+        run: |
+          npx --yes serve -s build -l 3000 &
+          echo $! > /tmp/serve.pid
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3000 >/dev/null; then
+              echo "Server ready"
+              break
+            fi
+            sleep 1
+          done
+          mkdir -p ../screenshots/matrix-gui
+          node ../scripts/generate-screenshots.mjs \
+            --url http://127.0.0.1:3000 \
+            --out ../screenshots/matrix-gui \
+            --name matrix-gui \
+            --widths 1280,1920,390
+          kill $(cat /tmp/serve.pid) || true
+
+      - name: Upload Matrix GUI screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-matrix-gui-${{ github.sha }}
+          path: screenshots/matrix-gui/
+          retention-days: 90
+          if-no-files-found: warn
+
+  collect-screenshots:
+    name: Collect all screenshots
+    needs: [neuralchess-screenshots, matrix-gui-screenshots]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all screenshot artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-screenshots/
+          pattern: screenshots-*
+          merge-multiple: false
+
+      - name: Organize & package
+        run: |
+          mkdir -p assets/screenshots
+          find all-screenshots -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.webp' \) -exec cp {} assets/screenshots/ \; || true
+          ls -la assets/screenshots/ || true
+          cat > assets/screenshots/README.md << 'EOF'
+          # GUI Screenshots
+
+          Auto-generated by the **Screenshots** GitHub Actions workflow.
+
+          - `neuralchess-*.png` – NeuralChess PWA (glassmorphism)
+          - `matrix-gui-*.png` – Matrix GUI (cyberpunk / digital rain)
+
+          Widths typically include desktop (1280, 1920) and mobile (390).
+          EOF
+
+      - name: Upload combined screenshots package
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-all-${{ github.sha }}
+          path: assets/screenshots/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Summary
+        run: |
+          echo "# 📸 Screenshots" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| NeuralChess PWA | ${{ needs.neuralchess-screenshots.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Matrix GUI | ${{ needs.matrix-gui-screenshots.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Combined package: \`screenshots-all-${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
