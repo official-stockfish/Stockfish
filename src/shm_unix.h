@@ -16,12 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SHM_LINUX_H_INCLUDED
-#define SHM_LINUX_H_INCLUDED
-
-#if !defined(__linux__) || defined(__ANDROID__)
-    #error shm_linux.h should not be included on this platform.
-#endif
+#ifndef SHM_UNIX_H_INCLUDED
+#define SHM_UNIX_H_INCLUDED
 
 #include <atomic>
 #include <cassert>
@@ -41,7 +37,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/file.h>
-#include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -50,6 +45,12 @@
 #include <poll.h>
 #include <unistd.h>
 #include <limits.h>
+
+#if defined(__linux__) || defined(__FreeBSD__)
+    // Also gates memfd_create and various CLOEXEC flags
+    #define HAS_EVENTFD
+    #include <sys/eventfd.h>
+#endif
 
 #define SF_MAX_SEM_NAME_LEN NAME_MAX
 
@@ -147,6 +148,7 @@ struct TempRoot {
     }
 };
 
+#ifdef HAS_EVENTFD
 // Allows notifying the background thread that it should close
 struct EventNotifier {
     static std::unique_ptr<EventNotifier> create() noexcept {
@@ -174,6 +176,44 @@ struct EventNotifier {
         event_fd_(fd) {}
     int event_fd_;
 };
+#else
+struct EventNotifier {
+    static std::unique_ptr<EventNotifier> create() noexcept {
+        // Use self-pipe trick
+        int fds[2];
+        if (pipe(fds) == -1)
+            return nullptr;
+
+        for (int fd : fds)
+        {
+            fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+        }
+
+        return std::unique_ptr<EventNotifier>(new EventNotifier(fds));
+    }
+
+    EventNotifier(const EventNotifier&)             = delete;
+    EventNotifier& operator=(const EventNotifier&)  = delete;
+    EventNotifier& operator=(EventNotifier&& other) = delete;
+    EventNotifier(EventNotifier&& other)            = delete;
+
+    int  get_listener_fd() const noexcept { return fds_[0]; }
+    void send_shutdown() const noexcept {
+        u8                       terminate = 1;
+        [[maybe_unused]] ssize_t unused    = write(fds_[1], &terminate, sizeof(terminate));
+    }
+
+    ~EventNotifier() noexcept {
+        ::close(fds_[0]);
+        ::close(fds_[1]);
+    }
+
+   private:
+    EventNotifier(int fds[2]) { std::memcpy(fds_, fds, sizeof(fds_)); }
+    int fds_[2] = {};
+};
+#endif
 
 // Wrapper around flock() on a file
 struct InitLock {
@@ -388,8 +428,19 @@ class SharedMemory: public detail::SharedMemoryBase {
         return peer_sockets;
     }
 
+    static int create_unix_socket() {
+#ifdef SOCK_CLOEXEC
+        int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+#else
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd != -1)
+            (void) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+#endif
+        return fd;
+    }
+
     std::optional<int> try_receive_memfd(const std::string& their_path) noexcept {
-        int peer_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        int peer_fd = create_unix_socket();
         if (peer_fd == -1)
             return std::nullopt;
 
@@ -427,7 +478,12 @@ class SharedMemory: public detail::SharedMemoryBase {
             setsockopt(peer_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
             ssize_t bytes_recv;
-            while ((bytes_recv = recvmsg(peer_fd, &msg, MSG_CMSG_CLOEXEC)) < 0 && errno == EINTR)
+#ifdef MSG_CMSG_CLOEXEC
+            int flags = MSG_CMSG_CLOEXEC;
+#else
+            int flags = 0;
+#endif
+            while ((bytes_recv = recvmsg(peer_fd, &msg, flags)) < 0 && errno == EINTR)
             {}
 
             if (bytes_recv > 0)
@@ -438,6 +494,9 @@ class SharedMemory: public detail::SharedMemoryBase {
                 {
                     int received_fd;
                     memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(received_fd));
+#ifndef MSG_CMSG_CLOEXEC
+                    fcntl(received_fd, F_SETFD, fcntl(received_fd, F_GETFD) | FD_CLOEXEC);
+#endif
                     ::close(peer_fd);
                     return received_fd;
                 }
@@ -491,11 +550,19 @@ class SharedMemory: public detail::SharedMemoryBase {
                 {
                     // Another fish wants access
                     int client_fd;
+#ifdef HAS_EVENTFD
                     while ((client_fd = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC)) < 0
                            && errno == EINTR)
                     {}
                     if (client_fd < 0)
                         continue;
+#else
+                    while ((client_fd = accept(server_fd, NULL, NULL)) < 0 && errno == EINTR)
+                    {}
+                    if (client_fd < 0)
+                        continue;
+                    (void) fcntl(client_fd, F_SETFD, fcntl(client_fd, F_GETFD) | FD_CLOEXEC);
+#endif
 
                     msghdr msg    = {};
                     char   buf[1] = {};
@@ -570,10 +637,21 @@ class SharedMemory: public detail::SharedMemoryBase {
 
             if (creator)
             {
+#ifdef HAS_EVENTFD
                 // Failed to get it from a peer (no peers, or only dead peers), so create
                 fd_ = memfd_create("replicated_data", MFD_CLOEXEC);
                 if (fd_ == -1)
                     return false;
+#else
+                char temp_path[PATH_MAX];
+                strncpy(temp_path, "/tmp/stockfish_replicated_data.XXXXXX", PATH_MAX);
+
+                fd_ = mkstemp(temp_path);
+                if (fd_ == -1)
+                    return false;
+                (void) fcntl(fd_, F_SETFD, fcntl(fd_, F_GETFD) | FD_CLOEXEC);
+                unlink(temp_path);
+#endif
 
                 if (ftruncate(fd_, sizeof(T)) != 0)
                 {
@@ -595,7 +673,9 @@ class SharedMemory: public detail::SharedMemoryBase {
                 return false;
             }
 
+#ifdef MADV_HUGEPAGE
             (void) madvise(mapped_mem, sizeof(T), MADV_HUGEPAGE);
+#endif
 
             if (creator)
             {
@@ -611,7 +691,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             if (!shutdown_)
                 return false;
 
-            int server_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+            int server_fd = create_unix_socket();
             if (server_fd == -1)
                 return false;
 
@@ -650,4 +730,4 @@ template<typename T>
 
 }  // namespace Stockfish::shm
 
-#endif  // #ifndef SHM_LINUX_H_INCLUDED
+#endif  // #ifndef SHM_UNIX_H_INCLUDED
