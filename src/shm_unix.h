@@ -388,6 +388,11 @@ class SharedMemory: public detail::SharedMemoryBase {
         if (!peer_fd.is_valid())
             return {};
 
+        // 1-second timeout for connect and receive
+        struct timeval tv = {1, 0};
+        setsockopt(peer_fd.get(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        setsockopt(peer_fd.get(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
         struct sockaddr_un addr = {};
         addr.sun_family         = AF_UNIX;
         std::strncpy(addr.sun_path, their_path.c_str(), sizeof(addr.sun_path) - 1);
@@ -416,10 +421,6 @@ class SharedMemory: public detail::SharedMemoryBase {
 
             msg.msg_control    = control_msg.buf;
             msg.msg_controllen = sizeof(control_msg.buf);
-
-            // 1-second timeout in case the peer is stopped
-            struct timeval tv = {1, 0};
-            setsockopt(peer_fd.get(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
             ssize_t bytes_recv;
 #ifdef MSG_CMSG_CLOEXEC
