@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,11 +19,15 @@
 #ifndef NNUE_MISC_H_INCLUDED
 #define NNUE_MISC_H_INCLUDED
 
-#include <cstddef>
 #include <string>
+#include <string_view>
+#include <optional>
+#include <filesystem>
 
+#include "../misc.h"
 #include "../types.h"
 #include "nnue_architecture.h"
+#include "../evaluate.h"
 
 namespace Stockfish {
 
@@ -31,29 +35,30 @@ class Position;
 
 namespace Eval::NNUE {
 
+// NNUE file metadata uses fixed string types so it stays trivially copyable and cheap to move
+// around between the engine and the network loader.
 struct EvalFile {
     // Default net name, will use one of the EvalFileDefaultName* macros defined
     // in evaluate.h
-    std::string defaultName;
+    constexpr static std::string_view defaultName = EvalFileDefaultName;
     // Selected net name, either via uci option or default
-    std::string current;
+    std::optional<std::filesystem::path> current;
     // Net description extracted from the net file
     std::string netDescription;
 };
 
-
 struct NnueEvalTrace {
     static_assert(LayerStacks == PSQTBuckets);
 
-    Value       psqt[LayerStacks];
-    Value       positional[LayerStacks];
-    std::size_t correctBucket;
+    Value psqt[LayerStacks];
+    Value positional[LayerStacks];
+    usize correctBucket;
 };
 
-struct Networks;
+class Network;
 struct AccumulatorCaches;
 
-std::string trace(Position& pos, const Networks& networks, AccumulatorCaches& caches);
+std::string trace(Position& pos, const Network& network, AccumulatorCaches& caches);
 
 }  // namespace Stockfish::Eval::NNUE
 }  // namespace Stockfish

@@ -12,37 +12,27 @@ on:
 jobs:
   Artifacts:
     name: ${{ matrix.config.name }} ${{ matrix.binaries }}
-    runs-on: ${{ matrix.config.os }}
+    runs-on: ubuntu-latest
     env:
-      COMPCXX: ${{ matrix.config.compiler }}
-      COMP: ${{ matrix.config.comp }}
       EXT: ${{ matrix.config.ext }}
       NAME: ${{ matrix.config.simple_name }}
       BINARY: ${{ matrix.binaries }}
-      SDE: ${{ matrix.config.sde }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(inputs.matrix) }}
     defaults:
       run:
-        shell: ${{ matrix.config.shell }}
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Download artifact from compilation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
           path: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
-
-      - name: Setup msys and install required packages
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.config.msys_sys }}
-          install: mingw-w64-${{ matrix.config.msys_env }} make git zip
 
       - name: Create Package
         run: |
@@ -69,19 +59,19 @@ jobs:
           cp CONTRIBUTING.md ../stockfish/
 
       - name: Create tar
-        if: runner.os != 'Windows'
+        if: ${{ startsWith(matrix.config.archive_ext, 'tar') }}
         run: |
           chmod +x ./stockfish/stockfish-$NAME-$BINARY$EXT
-          tar -cvf stockfish-$NAME-$BINARY.tar stockfish
+          tar -cavf stockfish-$NAME-$BINARY."${{ matrix.config.archive_ext }}" stockfish
 
       - name: Create zip
-        if: runner.os == 'Windows'
+        if: ${{ matrix.config.archive_ext == 'zip' }}
         run: |
           zip -r stockfish-$NAME-$BINARY.zip stockfish
 
       - name: Release
         if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
           token: ${{ secrets.token }}
@@ -102,10 +92,20 @@ jobs:
           CHANGES=$(git rev-list HEAD..origin/master --count)
           echo "CHANGES=$CHANGES" >> $GITHUB_ENV
 
+      - name: Official Release?
+        id: official_release
+        # Check for "Official release version of Stockfish" in the commit message
+        run: |
+          if git log -1 --pretty=%B | grep -q "Official release version of Stockfish"; then
+            echo "OFFICIAL_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "OFFICIAL_RELEASE=false" >> $GITHUB_ENV
+          fi
+
       - name: Prerelease
-        if: github.ref_name == 'master' && env.CHANGES == '0'
+        if: github.ref_name == 'master' && env.CHANGES == '0' && env.OFFICIAL_RELEASE == 'false'
         continue-on-error: true
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}

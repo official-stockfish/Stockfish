@@ -7,9 +7,12 @@ jobs:
   Matetrack:
     name: Matetrack
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout SF repo 
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           path: Stockfish
@@ -20,11 +23,11 @@ jobs:
         run: make -j profile-build
 
       - name: Checkout matetrack repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: vondele/matetrack
           path: matetrack
-          ref: 4f8a80860ed8f3607f05a9195df8b40203bdc360
+          ref: 1e7f6c6fff8e2f23923880a94fae596281346395
           persist-credentials: false
 
       - name: matetrack install deps
@@ -33,7 +36,7 @@ jobs:
 
       - name: cache syzygy
         id: cache-syzygy
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
            path: |
               matetrack/3-4-5-wdl/
@@ -47,25 +50,81 @@ jobs:
           wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-wdl/
           wget --no-verbose -r -nH --cut-dirs=2 --no-parent --reject="index.html*" -e robots=off https://tablebase.lichess.ovh/tables/standard/3-4-5-dtz/
 
-      - name: Run matetrack
+
+      # matecheck/python chess is not good at handling crashing engines. Do a basic check first.
+      - name: Test engine functionality
+        working-directory: Stockfish/src
+        run: |
+           python3 ../tests/instrumented.py --none ./stockfish
+
+      - name: Run matetrack th1
         working-directory: matetrack
         run: |
-          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 | tee matecheckout.out
-          ! grep "issues were detected" matecheckout.out > /dev/null
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 | tee matecheck1.out
+          ! grep "issues were detected" matecheck1.out > /dev/null
 
-      - name: Run matetrack with --syzygy50MoveRule false
+      - name: Run matetrack th4
+        working-directory: matetrack
+        run: |
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --nodes 100000 --threads 4 | tee matecheck4.out
+          ! grep "issues were detected" matecheck4.out > /dev/null
+
+      - name: Run matetrack th4 gameplay
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --time 3 --timeinc 0.01 --threads 4 | tee matecheck4g.out
+          ! grep "issues were detected" matecheck4g.out > /dev/null
+
+      - name: Run matetrack th4 go-mate
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 2 --mate 0 --threads 4 | tee matecheck4gm.out
+          ! grep "issues were detected" matecheck4gm.out > /dev/null
+          total=$(grep "Total FENs:" matecheck4gm.out | awk '{print $3}')
+          bmates=$(grep "Best mates:" matecheck4gm.out | awk '{print $3}')
+          if [ $bmates -ne $total ]; then
+            echo "At least one go-mate search did not yield expected mate, see matecheck4gm.out" >&2
+            exit 1
+          fi
+
+      - name: Run matetrack th1 multiPV
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 10 --nodes 5000 --multiPV 20 --checkMultiPVs | tee matecheck1mpv.out
+          ! grep "issues were detected" matecheck1mpv.out > /dev/null
+
+      - name: Run matetrack th4 multiPV
+        working-directory: matetrack
+        run: |
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 10 --nodes 5000 --threads 4 --multiPV 20 --checkMultiPVs | tee matecheck4mpv.out
+          ! grep "issues were detected" matecheck4mpv.out > /dev/null
+
+      - name: Run matetrack th1 with --syzygy50MoveRule false
         working-directory: matetrack
         run: |
           grep 5men cursed.epd > cursed5.epd
-          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile cursed5.epd --nodes 100000 --syzygy50MoveRule false | tee matecheckcursed.out
-          ! grep "issues were detected" matecheckcursed.out > /dev/null
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile cursed5.epd --nodes 100000 --syzygy50MoveRule false | tee matecheckcursed1.out
+          ! grep "issues were detected" matecheckcursed1.out > /dev/null
 
-      - name: Verify mate and TB win count for matecheckcursed.out
+      - name: Run matetrack th4 with --syzygy50MoveRule false
         working-directory: matetrack
         run: |
-          mates=$(grep "Found mates:" matecheckcursed.out | awk '{print $3}')
-          tbwins=$(grep "Found TB wins:" matecheckcursed.out | awk '{print $4}')
+          grep 5men cursed.epd > cursed5.epd
+          python matecheck.py --syzygyPath 3-4-5-wdl/:3-4-5-dtz/ --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile cursed5.epd --nodes 100000 --threads 4 --syzygy50MoveRule false | tee matecheckcursed4.out
+          ! grep "issues were detected" matecheckcursed4.out > /dev/null
+
+      - name: Verify mate and TB win count for matecheckcursed[14].out
+        working-directory: matetrack
+        run: |
+          mates=$(grep "Found mates:" matecheckcursed1.out | awk '{print $3}')
+          tbwins=$(grep "Found TB wins:" matecheckcursed1.out | awk '{print $4}')
           if [ $(($mates + $tbwins)) -ne 32 ]; then
-            echo "Sum of mates and TB wins is not 32 in matecheckcursed.out" >&2
+            echo "Sum of mates and TB wins is not 32 in matecheckcursed1.out" >&2
+            exit 1
+          fi
+          mates=$(grep "Found mates:" matecheckcursed4.out | awk '{print $3}')
+          tbwins=$(grep "Found TB wins:" matecheckcursed4.out | awk '{print $4}')
+          if [ $(($mates + $tbwins)) -ne 32 ]; then
+            echo "Sum of mates and TB wins is not 32 in matecheckcursed4.out" >&2
             exit 1
           fi

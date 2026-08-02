@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,10 +19,9 @@
 #ifndef TT_H_INCLUDED
 #define TT_H_INCLUDED
 
-#include <cstddef>
-#include <cstdint>
 #include <tuple>
 
+#include "misc.h"
 #include "memory.h"
 #include "types.h"
 
@@ -37,14 +36,11 @@ struct Cluster;
 // thus elo. As a hash table, collisions are possible and may cause chess playing issues (bizarre blunders, faulty mate
 // reports, etc). Fixing these also loses elo; however such risk decreases quickly with larger TT size.
 //
-// `probe` is the primary method: given a board position, we lookup its entry in the table, and return a tuple of:
-//   1) whether the entry already has this position
-//   2) a copy of the prior data (if any) (may be inconsistent due to read races)
-//   3) a writer object to this entry
-// The copied data and the writer are separated to maintain clear boundaries between local vs global objects.
+// We clearly separate TTData, a local copy of an entry, from TTWriter, which writes to the global table.
 
 
-// A copy of the data already in the entry (possibly collided). `probe` may be racy, resulting in inconsistent data.
+// A copy of the data already in an entry (possibly collided). Probes and reads are racy and non-atomic,
+// possibly resulting in inconsistent data.
 struct TTData {
     Move  move;
     Value value, eval;
@@ -66,10 +62,12 @@ struct TTData {
 };
 
 
-// This is used to make racy writes to the global TT.
+// This is used to make racy, non-atomic writes to the global TT. Writes are not "guaranteed":
+// for chess reasons, we may decide the new data is less important than the old.
 struct TTWriter {
    public:
-    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    void write(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 generation8);
+    void penalize(int penalty);  // decrement stored depth by the penalty
 
    private:
     friend class TranspositionTable;
@@ -83,26 +81,30 @@ class TranspositionTable {
    public:
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
-    void resize(size_t mbSize, ThreadPool& threads);  // Set TT size
-    void clear(ThreadPool& threads);                  // Re-initialize memory, multithreaded
-    int  hashfull(int maxAge = 0)
-      const;  // Approximate what fraction of entries (permille) have been written to during this root search
+    void resize(usize mbSize, ThreadPool& threads);  // Set TT size in MiB
+    void clear(ThreadPool& threads);                 // Re-initialize memory, multithreaded
 
     void
     new_search();  // This must be called at the beginning of each root search to track entry aging
-    uint8_t generation() const;  // The current age, used when writing new data to the TT
-    std::tuple<bool, TTData, TTWriter>
-    probe(const Key key) const;  // The main method, whose retvals separate local vs global objects
-    TTEntry* first_entry(const Key key)
-      const;  // This is the hash function; its only external use is memory prefetching.
+    u8 generation() const;  // The current age, used when writing new data to the TT
+    // Approximate what fraction of entries (permille) have been written to during this root search
+    int hashfull(int maxAge = 0) const;
+
+    // `probe` is the primary method: given a board position, we lookup its entry in the table, and return a tuple of:
+    //   1) whether the entry already had data on this position
+    //   2) a copy of the prior data, if any (may be self-inconsistent due to read races)
+    //   3) a writer object to the entry
+    std::tuple<bool, TTData, TTWriter> probe(const Key key) const;
+    // The hash function; its only external use is memory prefetching
+    TTEntry* first_entry(const Key key) const;
 
    private:
     friend struct TTEntry;
 
-    size_t   clusterCount;
+    usize    clusterCount;
     Cluster* table = nullptr;
 
-    uint8_t generation8 = 0;  // Size must be not bigger than TTEntry::genBound8
+    u8 generation8 = 0;
 };
 
 }  // namespace Stockfish

@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 #include "benchmark.h"
 #include "numa.h"
+#include "misc.h"
 
 #include <cstdlib>
 #include <fstream>
@@ -64,6 +65,11 @@ const std::vector<std::string> Defaults = {
   "r3k2r/3nnpbp/q2pp1p1/p7/Pp1PPPP1/4BNN1/1P5P/R2Q1RK1 w kq - 0 16",
   "3Qb1k1/1r2ppb1/pN1n2q1/Pp1Pp1Pr/4P2p/4BP2/4B1R1/1R5K b - - 11 40",
   "4k3/3q1r2/1N2r1b1/3ppN2/2nPP3/1B1R2n1/2R1Q3/3K4 w - - 5 1",
+  "1r6/1P4bk/3qr1p1/N6p/3pp2P/6R1/3Q1PP1/1R4K1 w - - 1 42",
+
+  // Positions with high numbers of changed threats
+  "k7/2n1n3/1nbNbn2/2NbRBn1/1nbRQR2/2NBRBN1/3N1N2/7K w - - 0 1",
+  "K7/8/8/BNQNQNB1/N5N1/R1Q1q2r/n5n1/bnqnqnbk w - - 0 1",
 
   // 5-man positions
   "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",     // Kc2 - mate
@@ -450,7 +456,7 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
     int desiredTimeS;
 
     if (!(is >> setup.threads))
-        setup.threads = get_hardware_concurrency();
+        setup.threads = int(get_hardware_concurrency());
     else
         setup.originalInvocation += std::to_string(setup.threads);
 
@@ -478,16 +484,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     float totalTime = 0;
     for (const auto& game : BenchmarkPositions)
-    {
-        setup.commands.emplace_back("ucinewgame");
-        int ply = 1;
-        for (int i = 0; i < static_cast<int>(game.size()); ++i)
-        {
-            const float correctedTime = getCorrectedTime(ply);
-            totalTime += correctedTime;
-            ply += 1;
-        }
-    }
+        for (usize i = 0; i < game.size(); ++i)
+            totalTime += float(getCorrectedTime(int(i + 1)));
 
     float timeScaleFactor = static_cast<float>(desiredTimeS * 1000) / totalTime;
 
@@ -498,11 +496,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         for (const std::string& fen : game)
         {
             setup.commands.emplace_back("position fen " + fen);
-
-            const int correctedTime = static_cast<int>(getCorrectedTime(ply) * timeScaleFactor);
+            const int correctedTime = static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor);
             setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
-
-            ply += 1;
         }
     }
 

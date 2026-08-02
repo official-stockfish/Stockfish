@@ -39,15 +39,6 @@ jobs:
             comp: ndk
             run_armv7_tests: true
             shell: bash
-          # Currently segfaults in the CI unrelated to a Stockfish change.
-          # - name: Linux GCC riscv64
-          #   os: ubuntu-22.04
-          #   compiler: g++
-          #   comp: gcc
-          #   run_riscv64_tests: true
-          #   base_image: "riscv64/alpine:edge"
-          #   platform: linux/riscv64
-          #   shell: bash
           - name: Linux GCC ppc64
             os: ubuntu-22.04
             compiler: g++
@@ -56,21 +47,29 @@ jobs:
             base_image: "ppc64le/alpine:latest"
             platform: linux/ppc64le
             shell: bash
-          - name: MacOS 13 Apple Clang
-            os: macos-13
+          - name: Linux GCC loongarch64
+            os: ubuntu-22.04
+            compiler: g++
+            comp: gcc
+            run_loongarch64_tests: true
+            base_image: "loongarch64/alpine:3.21"
+            platform: linux/loong64
+            shell: bash
+          - name: macOS 15 Apple Clang
+            os: macos-15-intel
             compiler: clang++
             comp: clang
             run_64bit_tests: true
             shell: bash
-          - name: MacOS 14 Apple Clang M1
-            os: macos-14
+          - name: macOS 15 Apple Clang M1
+            os: macos-15
             compiler: clang++
             comp: clang
             run_64bit_tests: false
             run_m1_tests: true
             shell: bash
-          - name: MacOS 13 GCC 11
-            os: macos-13
+          - name: macOS 15 GCC 11
+            os: macos-15-intel
             compiler: g++-11
             comp: gcc
             run_64bit_tests: true
@@ -112,7 +111,7 @@ jobs:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -139,11 +138,11 @@ jobs:
 
       - name: Set up QEMU
         if: matrix.config.base_image
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
       - name: Set up Docker Buildx
         if: matrix.config.base_image
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build Docker container
         if: matrix.config.base_image
@@ -157,11 +156,17 @@ jobs:
 
       - name: Download required macOS packages
         if: runner.os == 'macOS'
-        run: brew install coreutils gcc@11
+        run: brew install coreutils
+
+      - name: Install GCC on macOS
+        if: runner.os == 'macOS' && matrix.config.comp == 'gcc'
+        run: |
+          brew install gcc@11 || true
+          g++-11 --version
 
       - name: Setup msys and install required packages
         if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2.31.1
         with:
           msystem: ${{ matrix.config.msys_sys }}
           install: mingw-w64-${{ matrix.config.msys_env }} make git expect
@@ -306,6 +311,13 @@ jobs:
           make -j4 ARCH=apple-silicon build
           ../tests/signature.sh $benchref
 
+      - name: Test apple-silicon build with system g++ (macOS g++ == clang++)
+        if: matrix.config.run_m1_tests
+        run: |
+          make clean
+          env -u COMPCXX make -j4 ARCH=apple-silicon build COMP=gcc
+          ../tests/signature.sh $benchref
+
       # armv8 tests
 
       - name: Test armv8 build
@@ -350,21 +362,35 @@ jobs:
           make -j4 ARCH=armv7-neon build
           ../tests/signature.sh $benchref
 
-      # riscv64 tests
-
-      - name: Test riscv64 build
-        if: matrix.config.run_riscv64_tests
-        run: |
-          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=riscv64 build" > script.sh
-          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
-          ../tests/signature.sh $benchref
-
       # ppc64 tests
 
       - name: Test ppc64 build
         if: matrix.config.run_ppc64_tests
         run: |
           echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=ppc-64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      # loongarch64 tests
+
+      - name: Test loongarch64 build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64 build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      - name: Test loongarch64-lsx build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64-lsx build" > script.sh
+          docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
+          ../tests/signature.sh $benchref
+
+      - name: Test loongarch64-lasx build
+        if: matrix.config.run_loongarch64_tests
+        run: |
+          echo "cd src && export LDFLAGS='-static' && make clean && make -j4 ARCH=loongarch64-lasx build" > script.sh
           docker run --rm --platform ${{ matrix.config.platform }} -v ${{ github.workspace }}:/app sf_builder
           ../tests/signature.sh $benchref
 

@@ -11,16 +11,24 @@ on:
     branches:
       - master
       - tools
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   Prerelease:
+    name: Prerelease
     if: github.repository == 'official-stockfish/Stockfish' && (github.ref == 'refs/heads/master' || (startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'))
     runs-on: ubuntu-latest
+    needs: [Matrix, ARMCompilation, UniversalCompilation]
     permissions:
       contents: write # For deleting/creating a prerelease
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       # returns null if no pre-release exists
       - name: Get Commit SHA of Latest Pre-release
@@ -53,69 +61,128 @@ jobs:
         id: commit_date
         run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
 
+      - name: Official Release?
+        id: official_release
+        # Check for "Official release version of Stockfish" in the commit message
+        run: |
+          if git log -1 --pretty=%B | grep -q "Official release version of Stockfish"; then
+            echo "OFFICIAL_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "OFFICIAL_RELEASE=false" >> $GITHUB_ENV
+          fi
+
+      # Get recent commits for release body
+      - name: Get commits in this push
+        id: recent_commits
+        run: |
+          COMMITS=$(git log \
+            --format="- [\`%h\`](https://github.com/${{ github.repository }}/commit/%H) *%s*" \
+            ${{ github.event.before }}..HEAD)
+          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       # Create a new pre-release, the other upload_binaries.yml will upload the binaries
       # to this pre-release.
       - name: Create Prerelease
-        if: github.ref_name == 'master' && env.CHANGES == '0'
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
+        if: github.ref_name == 'master' && env.CHANGES == '0' && env.OFFICIAL_RELEASE == 'false'
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
           prerelease: true
-
+          body: |
+            Precompiled binaries of the latest Stockfish development version, built automatically on every commit.
+            
+            > [!NOTE]
+            > For stable, thoroughly tested builds use the [official releases](https://github.com/official-stockfish/Stockfish/releases).
+            > Pre-releases may contain bugs.
+            
+            *Some platforms ship a **universal binary** that automatically selects the best
+            instruction set for your CPU - no manual selection needed.*
+            
+            ---
+            
+            ## Commits
+            
+            ${{ steps.recent_commits.outputs.COMMITS }}
+            
+            [View all commits →](https://github.com/${{ github.repository }}/commits/master)
   Matrix:
+    name: Prepare matrices
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
       arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
+      universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - id: set-matrix
-        run: |
-          TASKS=$(echo $(cat .github/ci/matrix.json) )
-          echo "MATRIX=$TASKS" >> $GITHUB_OUTPUT
       - id: set-arm-matrix
         run: |
-          TASKS_ARM=$(echo $(cat .github/ci/arm_matrix.json) )
-          echo "ARM_MATRIX=$TASKS_ARM" >> $GITHUB_OUTPUT
-  Compilation:
-    needs: [Matrix]
-    uses: ./.github/workflows/compilation.yml
-    with:
-      matrix: ${{ needs.Matrix.outputs.matrix }}
+          ARM_MATRIX=$(jq -c '.' .github/ci/arm_matrix.json)
+          echo "ARM_MATRIX=$ARM_MATRIX" >> $GITHUB_OUTPUT
+      - id: set-universal-matrix
+        run: |
+          UNIVERSAL_MATRIX=$(jq -c '.' .github/ci/universal_matrix.json)
+          echo "UNIVERSAL_MATRIX=$UNIVERSAL_MATRIX" >> $GITHUB_OUTPUT
+  # Testing Jobs
+  IWYU:
+    name: IWYU
+    uses: ./.github/workflows/iwyu.yml
+  Sanitizers:
+    name: Sanitizers
+    if: ${{ always() }}
+    uses: ./.github/workflows/sanitizers.yml
+  Tests:
+    name: Tests
+    if: ${{ always() }}
+    uses: ./.github/workflows/tests.yml
+  Matetrack:
+    name: Matetrack
+    if: ${{ always() }}
+    uses: ./.github/workflows/matetrack.yml
+  Games:
+    name: Games
+    if: ${{ always() }}
+    uses: ./.github/workflows/games.yml
+  CompilerCheck:
+    name: Compiler check
+    if: ${{ always() }}
+    uses: ./.github/workflows/avx2_compilers.yml
+  WASMCompilation:
+    name: WASM compilation
+    if: ${{ always() }}
+    uses: ./.github/workflows/wasm_compilation.yml
+  # Release Jobs
   ARMCompilation:
-    needs: [Matrix]
+    name: Android builds
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
     uses: ./.github/workflows/arm_compilation.yml
     with:
       matrix: ${{ needs.Matrix.outputs.arm_matrix }}
-  IWYU:
-    uses: ./.github/workflows/iwyu.yml
-  Sanitizers:
-    uses: ./.github/workflows/sanitizers.yml
-  Tests:
-    uses: ./.github/workflows/tests.yml
-  Matetrack:
-    uses: ./.github/workflows/matetrack.yml
-  Games:
-    uses: ./.github/workflows/games.yml
-  Binaries:
+  UniversalCompilation:
+    name: "Universal builds"
+    needs: [Matrix, Sanitizers, Tests, Matetrack, Games, CompilerCheck]
+    uses: ./.github/workflows/universal_compilation.yml
+  ARM_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, Compilation]
+    name: Android uploads
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
-      matrix: ${{ needs.Matrix.outputs.matrix }}
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
     permissions:
       contents: write # For deleting/creating a (pre)release
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
-  ARM_Binaries:
+  Universal_Binaries:
     if: github.repository == 'official-stockfish/Stockfish'
-    needs: [Matrix, Prerelease, ARMCompilation]
+    name: Universal binaries
+    needs: [Prerelease, Matrix]
     uses: ./.github/workflows/upload_binaries.yml
     with:
-      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+      matrix: ${{ needs.Matrix.outputs.universal_matrix }}
     permissions:
       contents: write # For deleting/creating a (pre)release
     secrets:

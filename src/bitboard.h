@@ -1,6 +1,6 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2025 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,23 +20,30 @@
 #define BITBOARD_H_INCLUDED
 
 #include <algorithm>
+#include <array>
 #include <cassert>
-#include <cmath>
-#include <cstring>
-#include <cstdint>
-#include <cstdlib>
 #include <string>
+#include <type_traits>
 
 #include "types.h"
+#include "misc.h"
 
 namespace Stockfish {
 
 namespace Bitboards {
 
-void        init();
 std::string pretty(Bitboard b);
 
 }  // namespace Stockfish::Bitboards
+
+#ifdef USE_AVX512
+// clang-format off
+inline const __m512i AllSquares = _mm512_set_epi8(
+    63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41,
+    40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18,
+    17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+// clang-format on
+#endif
 
 constexpr Bitboard FileABB = 0x0101010101010101ULL;
 constexpr Bitboard FileBBB = FileABB << 1;
@@ -56,46 +63,9 @@ constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
 constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
 constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
-extern uint8_t PopCnt16[1 << 16];
-extern uint8_t SquareDistance[SQUARE_NB][SQUARE_NB];
-
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard PseudoAttacks[PIECE_TYPE_NB][SQUARE_NB];
-
-
-// Magic holds all magic bitboards relevant data for a single square
-struct Magic {
-    Bitboard  mask;
-    Bitboard* attacks;
-#ifndef USE_PEXT
-    Bitboard magic;
-    unsigned shift;
-#endif
-
-    // Compute the attack's index using the 'magic bitboards' approach
-    unsigned index(Bitboard occupied) const {
-
-#ifdef USE_PEXT
-        return unsigned(pext(occupied, mask));
-#else
-        if (Is64Bit)
-            return unsigned(((occupied & mask) * magic) >> shift);
-
-        unsigned lo = unsigned(occupied) & unsigned(mask);
-        unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
-        return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
-#endif
-    }
-
-    Bitboard attacks_bb(Bitboard occupied) const { return attacks[index(occupied)]; }
-};
-
-extern Magic Magics[SQUARE_NB][2];
-
 constexpr Bitboard square_bb(Square s) {
     assert(is_ok(s));
-    return (1ULL << s);
+    return 1ULL << s;
 }
 
 
@@ -154,116 +124,58 @@ constexpr Bitboard pawn_attacks_bb(Bitboard b) {
                       : shift<SOUTH_WEST>(b) | shift<SOUTH_EAST>(b);
 }
 
-
-// Returns a bitboard representing an entire line (from board edge
-// to board edge) that intersects the two given squares. If the given squares
-// are not on a same file/rank/diagonal, the function returns 0. For instance,
-// line_bb(SQ_C4, SQ_F7) will return a bitboard with the A2-G8 diagonal.
-inline Bitboard line_bb(Square s1, Square s2) {
-
-    assert(is_ok(s1) && is_ok(s2));
-    return LineBB[s1][s2];
+constexpr Bitboard pawn_single_push_bb(Color c, Bitboard b) {
+    return c == WHITE ? shift<NORTH>(b) : shift<SOUTH>(b);
 }
 
-
-// Returns a bitboard representing the squares in the semi-open
-// segment between the squares s1 and s2 (excluding s1 but including s2). If the
-// given squares are not on a same file/rank/diagonal, it returns s2. For instance,
-// between_bb(SQ_C4, SQ_F7) will return a bitboard with squares D5, E6 and F7, but
-// between_bb(SQ_E6, SQ_F8) will return a bitboard with the square F8. This trick
-// allows to generate non-king evasion moves faster: the defending piece must either
-// interpose itself to cover the check or capture the checking piece.
-inline Bitboard between_bb(Square s1, Square s2) {
-
-    assert(is_ok(s1) && is_ok(s2));
-    return BetweenBB[s1][s2];
-}
-
-// distance() functions return the distance between x and y, defined as the
-// number of steps for a king in x to reach y.
-
-template<typename T1 = Square>
-inline int distance(Square x, Square y);
-
-template<>
-inline int distance<File>(Square x, Square y) {
-    return std::abs(file_of(x) - file_of(y));
-}
-
-template<>
-inline int distance<Rank>(Square x, Square y) {
-    return std::abs(rank_of(x) - rank_of(y));
-}
-
-template<>
-inline int distance<Square>(Square x, Square y) {
-    return SquareDistance[x][y];
-}
-
-inline int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
-
-// Returns the pseudo attacks of the given piece type
-// assuming an empty board.
-template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Color c = COLOR_NB) {
-
-    assert((Pt != PAWN || c < COLOR_NB) && (is_ok(s)));
-    return Pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[Pt][s];
-}
-
-
-// Returns the attacks by the given piece
-// assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
-template<PieceType Pt>
-inline Bitboard attacks_bb(Square s, Bitboard occupied) {
-
-    assert((Pt != PAWN) && (is_ok(s)));
-
-    switch (Pt)
+inline constexpr auto PawnPairBB = []() {
+    std::array<Bitboard, SQUARE_NB> result{};
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
     {
-    case BISHOP :
-    case ROOK :
-        return Magics[s][Pt - BISHOP].attacks_bb(occupied);
-    case QUEEN :
-        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
-    default :
-        return PseudoAttacks[Pt][s];
+        Bitboard file  = file_bb(s);
+        Bitboard files = file | shift<EAST>(file) | shift<WEST>(file);
+        result[s]      = files & ~(Rank1BB | Rank8BB) & ~square_bb(s);
+    }
+    return result;
+}();
+
+// Returns the squares that can host a pawn forming a "pawn pair" with a pawn
+// on s: own file plus adjacent files, restricted to ranks 2-7, excluding s.
+// The geometry is color-independent.
+constexpr Bitboard pawn_pair_bb(Square s) { return PawnPairBB[s]; }
+
+constexpr int edge_distance(File f) { return std::min(f, File(FILE_H - f)); }
+
+template<typename T>
+constexpr int constexpr_popcount(T v) {
+    static_assert(std::is_integral_v<T>, "constexpr_popcount is undefined for non-integral types");
+
+    if constexpr (sizeof(T) <= 8)
+    {
+        u64 b = static_cast<std::make_unsigned_t<T>>(v);
+
+        b = b - ((b >> 1) & 0x5555555555555555ULL);
+        b = (b & 0x3333333333333333ULL) + ((b >> 2) & 0x3333333333333333ULL);
+        b = (b + (b >> 4)) & 0x0F0F0F0F0F0F0F0FULL;
+
+        return static_cast<int>((b * 0x0101010101010101ULL) >> 56);
+    }
+    else
+    {
+        int result = 0;
+
+        for (; v; v >>= static_cast<T>(1))
+            if (v & static_cast<T>(1))
+                ++result;
+
+        return result;
     }
 }
-
-// Returns the attacks by the given piece
-// assuming the board is occupied according to the passed Bitboard.
-// Sliding piece attacks do not continue passed an occupied square.
-inline Bitboard attacks_bb(PieceType pt, Square s, Bitboard occupied) {
-
-    assert((pt != PAWN) && (is_ok(s)));
-
-    switch (pt)
-    {
-    case BISHOP :
-        return attacks_bb<BISHOP>(s, occupied);
-    case ROOK :
-        return attacks_bb<ROOK>(s, occupied);
-    case QUEEN :
-        return attacks_bb<BISHOP>(s, occupied) | attacks_bb<ROOK>(s, occupied);
-    default :
-        return PseudoAttacks[pt][s];
-    }
-}
-
 
 // Counts the number of non-zero bits in a bitboard.
 inline int popcount(Bitboard b) {
 
-#ifndef USE_POPCNT
-
-    std::uint16_t indices[4];
-    std::memcpy(indices, &b, sizeof(b));
-    return PopCnt16[indices[0]] + PopCnt16[indices[1]] + PopCnt16[indices[2]]
-         + PopCnt16[indices[3]];
-
-#elif defined(_MSC_VER)
+#ifdef _MSC_VER
 
     return int(_mm_popcnt_u64(b));
 
@@ -272,6 +184,17 @@ inline int popcount(Bitboard b) {
     return __builtin_popcountll(b);
 
 #endif
+}
+
+inline constexpr int lsb_index64[64] = {
+  0,  47, 1,  56, 48, 27, 2,  60, 57, 49, 41, 37, 28, 16, 3,  61, 54, 58, 35, 52, 50, 42,
+  21, 44, 38, 32, 29, 23, 17, 11, 4,  62, 46, 55, 26, 59, 40, 36, 15, 53, 34, 51, 20, 43,
+  31, 22, 10, 45, 25, 39, 14, 33, 19, 30, 9,  24, 13, 18, 8,  12, 7,  6,  5,  63};
+
+constexpr int constexpr_lsb(u64 bb) {
+    assert(bb != 0);
+    constexpr u64 debruijn64 = 0x03F79D71B4CB0A89ULL;
+    return lsb_index64[((bb ^ (bb - 1)) * debruijn64) >> 58];
 }
 
 // Returns the least significant bit in a non-zero bitboard.
@@ -294,12 +217,12 @@ inline Square lsb(Bitboard b) {
 
     if (b & 0xffffffff)
     {
-        _BitScanForward(&idx, int32_t(b));
+        _BitScanForward(&idx, i32(b));
         return Square(idx);
     }
     else
     {
-        _BitScanForward(&idx, int32_t(b >> 32));
+        _BitScanForward(&idx, i32(b >> 32));
         return Square(idx + 32);
     }
     #endif
@@ -329,12 +252,12 @@ inline Square msb(Bitboard b) {
 
     if (b >> 32)
     {
-        _BitScanReverse(&idx, int32_t(b >> 32));
+        _BitScanReverse(&idx, i32(b >> 32));
         return Square(idx + 32);
     }
     else
     {
-        _BitScanReverse(&idx, int32_t(b));
+        _BitScanReverse(&idx, i32(b));
         return Square(idx);
     }
     #endif

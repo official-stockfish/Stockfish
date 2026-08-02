@@ -1,0 +1,177 @@
+/*
+  Stockfish, a UCI chess playing engine derived from Glaurung 2.1
+  Copyright (C) 2004-2026 The Stockfish developers (see AUTHORS file)
+
+  Stockfish is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Stockfish is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include <cpuid.h>
+#include <stdint.h>
+
+#ifdef __APPLE__
+    // We locate each arch's initializer pointer array at runtime via getsectiondata().
+    // Example name is "_i_sse41_popcnt", baseline build is just "_i_"
+    #include <stdio.h>
+    #include <mach-o/getsect.h>
+    #include <sys/sysctl.h>
+
+extern "C" const struct mach_header_64 _mh_execute_header;
+
+    #define DEFINE_BUILD(x) \
+        namespace Stockfish_##x { \
+            extern int main(int argc, char* argv[]); \
+        } \
+        int entry_##x(int argc, char* argv[]) { \
+            char        name[17]; \
+            const char* full = #x; \
+            snprintf(name, sizeof(name), "_i_%s", full[6] ? full + 7 : ""); \
+            unsigned long size = 0; \
+            auto**        fns  = reinterpret_cast<void (**)()>( \
+              getsectiondata(&_mh_execute_header, "__DATA", name, &size)); \
+            for (unsigned long i = 0; i < size / sizeof(*fns); i++) \
+                fns[i](); \
+            return Stockfish_##x::main(argc, argv); \
+        }
+#else
+    #define DEFINE_BUILD(x) \
+        namespace Stockfish_##x { \
+            extern int main(int argc, char* argv[]); \
+        } \
+        extern "C" void (*__start_##x##_init[])(void); \
+        extern "C" void (*__stop_##x##_init[])(void); \
+        int entry_##x(int argc, char* argv[]) { \
+            unsigned count = __stop_##x##_init - __start_##x##_init; \
+            for (unsigned i = 0; i < count; i++) \
+                __start_##x##_init[i](); \
+            return Stockfish_##x::main(argc, argv); \
+        }
+#endif
+
+DEFINE_BUILD(x86_64)
+DEFINE_BUILD(x86_64_sse41_popcnt)
+DEFINE_BUILD(x86_64_avx2)
+DEFINE_BUILD(x86_64_bmi2)
+DEFINE_BUILD(x86_64_avxvnni)
+DEFINE_BUILD(x86_64_avx512)
+DEFINE_BUILD(x86_64_vnni512)
+DEFINE_BUILD(x86_64_avx512icl)
+
+// AMD Excavator (family 15h) and Zen/Zen+/Zen2 (family 17h) implement pdep/pext via microcode.
+static bool has_slow_bmi2() {
+    return __builtin_cpu_is("amd")
+        && (__builtin_cpu_is("bdver4") || __builtin_cpu_is("znver1") || __builtin_cpu_is("znver2"));
+}
+
+struct CpuFeatures {
+    bool sse41;            // SSE4.1
+    bool popcnt;           // POPCNT
+    bool avx2;             // AVX2
+    bool bmi2;             // BMI2 (may be slow on AMD Excavator and Zen/Zen+/Zen2)
+    bool avx512f;          // AVX-512 Foundation
+    bool avx512vl;         // AVX-512 Vector Length extensions
+    bool avx512bw;         // AVX-512 Byte and Word instructions
+    bool avx512vnni;       // AVX-512 Vector Neural Network Instructions
+    bool avx512ifma;       // AVX-512 Integer Fused Multiply-Add
+    bool avx512vbmi;       // AVX-512 Vector Bit Manipulation Instructions
+    bool avx512vbmi2;      // AVX-512 VBMI2
+    bool avx512vpopcntdq;  // AVX-512 VPOPCNTDQ
+    bool avx512bitalg;     // AVX-512 BITALG
+    bool vpclmulqdq;       // Carry-less multiplication (AVX512 variant)
+    bool gfni;             // Galois Field instructions
+    bool vaes;             // AES instructions (AVX512 variant)
+    bool avxvnni;          // AVX-VNNI (non-512 dot product instructions)
+};
+
+
+static CpuFeatures query_cpu_features() {
+    return {
+      .sse41           = (bool) __builtin_cpu_supports("sse4.1"),
+      .popcnt          = (bool) __builtin_cpu_supports("popcnt"),
+      .avx2            = (bool) __builtin_cpu_supports("avx2"),
+      .bmi2            = (bool) __builtin_cpu_supports("bmi2"),
+      .avx512f         = (bool) __builtin_cpu_supports("avx512f"),
+      .avx512vl        = (bool) __builtin_cpu_supports("avx512vl"),
+      .avx512bw        = (bool) __builtin_cpu_supports("avx512bw"),
+      .avx512vnni      = (bool) __builtin_cpu_supports("avx512vnni"),
+      .avx512ifma      = (bool) __builtin_cpu_supports("avx512ifma"),
+      .avx512vbmi      = (bool) __builtin_cpu_supports("avx512vbmi"),
+      .avx512vbmi2     = (bool) __builtin_cpu_supports("avx512vbmi2"),
+      .avx512vpopcntdq = (bool) __builtin_cpu_supports("avx512vpopcntdq"),
+      .avx512bitalg    = (bool) __builtin_cpu_supports("avx512bitalg"),
+      .vpclmulqdq      = (bool) __builtin_cpu_supports("vpclmulqdq"),
+      .gfni            = (bool) __builtin_cpu_supports("gfni"),
+      .vaes            = (bool) __builtin_cpu_supports("vaes"),
+      .avxvnni         = (bool) __builtin_cpu_supports("avxvnni"),
+    };
+}
+
+
+// Selects the most capable ISA variant supported by this CPU and OS
+static int dispatch(const CpuFeatures& f, int argc, char* argv[]) {
+    if (!f.sse41 || !f.popcnt)
+        return entry_x86_64(argc, argv);
+
+    if (!f.avx2)
+        return entry_x86_64_sse41_popcnt(argc, argv);
+
+    if (!f.bmi2 || has_slow_bmi2())
+        return entry_x86_64_avx2(argc, argv);
+
+    if (!f.avx512f || !f.avx512vl || !f.avx512bw)
+    {
+        if (f.avxvnni)
+            return entry_x86_64_avxvnni(argc, argv);
+        return entry_x86_64_bmi2(argc, argv);
+    }
+
+    if (!f.avx512vnni)
+        return entry_x86_64_avx512(argc, argv);
+
+    // AVX512ICL requires the full Icelake-client feature suite
+    if (!f.avx512ifma          //
+        || !f.avx512vbmi       //
+        || !f.avx512vbmi2      //
+        || !f.avx512vpopcntdq  //
+        || !f.avx512bitalg     //
+        || !f.vpclmulqdq       //
+        || !f.gfni             //
+        || !f.vaes             //
+    )
+        return entry_x86_64_vnni512(argc, argv);
+
+    return entry_x86_64_avx512icl(argc, argv);
+}
+
+static void maybe_promote_thread_to_avx512() {
+#ifdef __APPLE__
+    // Intel Macs supporting AVX512 don't advertise it in xgetbv and only
+    // do so once at least one avx512 instruction has been executed.
+    // See https://github.com/apple/darwin-xnu/blob/0a798f6738bc1db01281fc08ae024145e84df927/osfmk/i386/fpu.c#L176
+
+    int    supported = 0;
+    size_t len       = sizeof(supported);
+    if (sysctlbyname("hw.optional.avx512f", &supported, &len, nullptr, 0) == 0 && supported)
+    {
+        asm volatile(".byte 0x62, 0xf1, 0x7d, 0x48, 0x6f, 0xc0");  // vmovdqa32 zmm0,zmm0
+    }
+#endif
+}
+
+int main(int argc, char* argv[]) {
+    maybe_promote_thread_to_avx512();
+
+    __builtin_cpu_init();
+    CpuFeatures features = query_cpu_features();
+    return dispatch(features, argc, argv);
+}

@@ -1,0 +1,318 @@
+name: Universal Compilation
+on:
+  workflow_call:
+jobs:
+  UniversalLinux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install GCC 15
+        uses: egor-tensin/setup-gcc@a2861a8b8538f49cf2850980acccf6b05a1b2ae4 # v2.0
+        with:
+          version: 15
+
+      - name: Download SDE package
+        uses: petarpetrovt/setup-sde@31aa4a8e85e109bef00f1d838613fcc6ec421271 # v5.0
+        with:
+          environmentVariableName: SDE_DIR
+          sdeVersion: 9.58.0
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=x86-64-universal profile-build RUN_PREFIX="$SDE_DIR/sde -future --"
+
+      - name: Strip binary
+        run: strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-linux-x86-64-universal
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check arch selection under SDE
+        run: ./scripts/check_universal.sh ./stockfish-linux-x86-64-universal "$SDE_DIR/sde" "$benchref"
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux x86-64-universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalWindows:
+    name: Windows
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup msys and install required packages
+        uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2.31.1
+        with:
+          msystem: mingw64
+          install: mingw-w64-x86_64-gcc make git zip
+
+      - name: Download SDE package
+        uses: petarpetrovt/setup-sde@31aa4a8e85e109bef00f1d838613fcc6ec421271 # v5.0
+        with:
+          environmentVariableName: SDE_DIR
+          sdeVersion: 9.58.0
+
+      - name: Build universal binary
+        run: |
+          SDE_PATH=$(cygpath "$SDE_DIR")
+          make -j4 -C src ARCH=x86-64-universal profile-build RUN_PREFIX="$SDE_PATH/sde.exe -future --"
+
+      - name: Strip binary
+        run: strip src/stockfish.exe
+
+      - name: Rename binary
+        run: mv src/stockfish.exe stockfish-windows-x86-64-universal.exe
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check arch selection under SDE
+        run: ./scripts/check_universal.sh ./stockfish-windows-x86-64-universal.exe "$SDE_DIR/sde" "$benchref"
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows x86-64-universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalLinuxARM64:
+    name: Linux arm64
+    runs-on: ubuntu-22.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install GCC 15
+        uses: egor-tensin/setup-gcc@a2861a8b8538f49cf2850980acccf6b05a1b2ae4 # v2.0
+        with:
+          version: 15
+
+      - name: Install qemu-user
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=arm64-universal profile-build
+
+      - name: Strip binary
+        run: strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-linux-arm64-universal
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Check arch selection under qemu
+        run: ./scripts/check_universal_arm.sh ./stockfish-linux-arm64-universal "$benchref"
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux arm64-universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalWindowsARM64:
+    name: Windows arm64
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup msys and install required packages
+        uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2.31.1
+        with:
+          msystem: clangarm64
+          install: mingw-w64-clang-aarch64-clang make git zip
+
+      - name: Build universal binary
+        run: make -j4 -C src ARCH=arm64-universal profile-build COMP=clang COMPCXX=clang++
+
+      - name: Strip binary
+        run: strip src/stockfish.exe
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Verify bench and compiler
+        working-directory: src
+        run: |
+          ../tests/signature.sh $benchref
+          ./stockfish compiler 2>&1 | grep -q DOTPROD || { echo "compiler output missing DOTPROD" >&2; exit 1; }
+
+      - name: Rename binary
+        run: mv src/stockfish.exe stockfish-windows-arm64-universal.exe
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows arm64-universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalMacOS:
+    name: macOS
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # macos-15 is Apple silicon; Rosetta 2 is needed to exercise the x86-64 slice
+      - name: Install Rosetta 2
+        run: softwareupdate --install-rosetta --agree-to-license
+
+      - name: Build universal binary
+        run: make -j4 -C src macos-lipo COMP=clang
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-macos-universal
+
+      - name: Verify binary runs natively and under Rosetta
+        run: ./scripts/check_universal_macos.sh ./stockfish-macos-universal
+
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos universal
+          path: |
+             .
+             !.git
+             !.output
+
+  UniversalLinuxRISCV64:
+    name: Linux riscv64
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      QEMU_DEB: https://launchpad.net/ubuntu/+archive/primary/+files/qemu-user_9.2.1+ds-1ubuntu5_amd64.deb
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install clang and the riscv cross runtime
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc >/dev/null
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-20 lld-20 llvm-20 g++-riscv64-linux-gnu
+          echo "/usr/lib/llvm-20/bin" >> "$GITHUB_PATH"
+      - name: Install qemu
+        run: |
+          curl -sL -o /tmp/qemu.deb "$QEMU_DEB"
+          dpkg -x /tmp/qemu.deb /tmp/qemu
+          /tmp/qemu/usr/bin/qemu-riscv64 --version
+          echo "/tmp/qemu/usr/bin" >> "$GITHUB_PATH"
+      - name: Build universal binary
+        run: |
+          make -j4 -C src ARCH=riscv64-universal build \
+            COMP=clang COMPCXX=clang++ \
+            EXTRACXXFLAGS="--target=riscv64-linux-gnu" \
+            EXTRALDFLAGS="--target=riscv64-linux-gnu -fuse-ld=lld" \
+            OBJCOPY=llvm-objcopy
+      - name: Strip binary
+        run: llvm-strip src/stockfish
+
+      - name: Rename binary
+        run: mv src/stockfish stockfish-linux-riscv64-universal
+
+      - name: Extract the bench number from the commit history
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+      - name: Check arch selection under qemu
+        run: |
+          QEMU=qemu-riscv64 QEMU_LD_PREFIX=/usr/riscv64-linux-gnu \
+          ./scripts/check_universal_riscv.sh ./stockfish-linux-riscv64-universal "$benchref"
+      - name: Remove non-src files
+        run: git clean -fxd -- src
+
+      - name: Upload artifact for (pre)-release
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux riscv64-universal
+          path: |
+             .
+             !.git
+             !.output
