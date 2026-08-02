@@ -16,8 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SHM_LINUX_H_INCLUDED
-#define SHM_LINUX_H_INCLUDED
+#ifndef SHM_UNIX_H_INCLUDED
+#define SHM_UNIX_H_INCLUDED
 
 #include <atomic>
 #include <cassert>
@@ -730,4 +730,4 @@ template<typename T>
 
 }  // namespace Stockfish::shm
 
-#endif  // #ifndef SHM_LINUX_H_INCLUDED
+#endif  // #ifndef SHM_UNIX_H_INCLUDED
