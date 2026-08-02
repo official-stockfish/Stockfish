@@ -13,11 +13,14 @@
   [![Tests](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/tests.yml?branch=master&style=for-the-badge&label=Tests&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/tests.yml)
   [![Universal](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/universal_compilation.yml?branch=master&style=for-the-badge&label=Universal&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/universal_compilation.yml)
   <br>
+  [![GUI Artifacts](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/gui-artifacts.yml?branch=master&style=for-the-badge&label=GUI%20Artifacts&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/gui-artifacts.yml)
+  [![Screenshots](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/screenshots.yml?branch=master&style=for-the-badge&label=Screenshots&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/screenshots.yml)
+  [![Assets](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/assets.yml?branch=master&style=for-the-badge&label=Assets&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/assets.yml)
+  <br>
   [![Sanitizers](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/sanitizers.yml?branch=master&style=for-the-badge&label=Sanitizers&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/sanitizers.yml)
   [![CodeQL](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/codeql.yml?branch=master&style=for-the-badge&label=CodeQL&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/codeql.yml)
-  [![Clang Format](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/clang-format.yml?branch=master&style=for-the-badge&label=Format&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/clang-format.yml)
-  <br>
   [![WASM](https://img.shields.io/github/actions/workflow/status/GizzZmo/Stockfish/wasm_compilation.yml?branch=master&style=for-the-badge&label=WASM&logo=github)](https://github.com/GizzZmo/Stockfish/actions/workflows/wasm_compilation.yml)
+  <br>
   [![License](https://img.shields.io/github/license/GizzZmo/Stockfish?style=for-the-badge&label=License&color=success)](https://github.com/GizzZmo/Stockfish/blob/master/Copying.txt)
   [![Last Commit](https://img.shields.io/github/last-commit/GizzZmo/Stockfish?style=for-the-badge&logo=github)](https://github.com/GizzZmo/Stockfish/commits/master)
 
@@ -85,6 +88,19 @@ npm run dev                    # http://localhost:5173
 
 Detailed instructions for each GUI live in their own `README.md`.
 
+## CI: Artifacts, Screenshots & Assets
+
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| [**GUI Artifacts**](.github/workflows/gui-artifacts.yml) | Builds Matrix GUI (React), NeuralChess PWA, and NexusChess (Avalonia); uploads downloadable packages | Push/PR to GUI paths, or manual |
+| [**Screenshots**](.github/workflows/screenshots.yml) | Playwright full-page screenshots of web GUIs (desktop + mobile widths) | Push/PR to GUI paths, or manual |
+| [**Assets**](.github/workflows/assets.yml) | Packages docs, icons, logos, and screenshots into a tarball + SHA256 | Push to docs/assets, or manual |
+| [**Artifact Management**](.github/workflows/artifact-management.yml) | Reusable engine binary packaging (metadata, multi-arch, debug info) | `workflow_call` |
+
+Run **Screenshots** or **GUI Artifacts** from the Actions tab → *Run workflow*.
+
+Screenshot helper script: [`scripts/generate-screenshots.mjs`](scripts/generate-screenshots.mjs)
+
 ## Repository Structure
 
 ```
@@ -93,9 +109,10 @@ Detailed instructions for each GUI live in their own `README.md`.
 ├── matrix-gui/              # Electron + React cyberpunk GUI
 ├── Avalonia UI/             # NexusChess – Avalonia/.NET desktop GUI
 ├── neuralchess-pwa/         # Vue 3 Progressive Web App
-├── scripts/                 # Build / universal binary helpers
+├── scripts/                 # Build helpers + screenshot generator
 ├── tests/                   # Engine tests
 ├── docs/                    # Project documentation (this fork)
+├── .github/workflows/       # CI (engine + GUI artifacts/screenshots/assets)
 ├── AUTHORS, Copying.txt     # Original Stockfish credits & GPL-3.0
 ├── CONTRIBUTING.md
 └── README.md                # You are here
