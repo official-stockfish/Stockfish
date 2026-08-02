@@ -32,7 +32,9 @@
 #include <pthread.h>
 #include <string>
 #include <inttypes.h>
+#include <thread>
 #include <type_traits>
+#include <utility>
 
 #include <fcntl.h>
 #include <signal.h>
@@ -45,12 +47,6 @@
 #include <poll.h>
 #include <unistd.h>
 #include <limits.h>
-
-#if defined(__linux__) || defined(__FreeBSD__)
-    // Also gates memfd_create and various CLOEXEC flags
-    #define HAS_EVENTFD
-    #include <sys/eventfd.h>
-#endif
 
 #define SF_MAX_SEM_NAME_LEN NAME_MAX
 
@@ -117,6 +113,40 @@ inline std::once_flag CleanupHooks::register_once_;
 }  // namespace detail
 
 
+[[maybe_unused]] static void set_cloexec(int fd) {
+    if (fd != -1)
+        (void) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+}
+
+struct UniqueFd {
+    UniqueFd() noexcept = default;
+    explicit UniqueFd(int fd) noexcept :
+        fd_{fd} {}
+    UniqueFd(const UniqueFd&) = delete;
+    UniqueFd(UniqueFd&& other) noexcept :
+        fd_{other.release()} {}
+    UniqueFd& operator=(const UniqueFd&) = delete;
+    UniqueFd& operator=(UniqueFd&& other) noexcept {
+        std::swap(fd_, other.fd_);
+        return *this;
+    }
+    ~UniqueFd() { reset(); }
+
+    int  get() const noexcept { return fd_; }
+    bool is_valid() const noexcept { return fd_ != -1; }
+
+    int release() noexcept { return std::exchange(fd_, -1); }
+
+    void reset(int fd = -1) noexcept {
+        if (fd_ != -1)
+            ::close(fd_);
+        fd_ = fd;
+    }
+
+   private:
+    int fd_ = -1;
+};
+
 struct TempRoot {
     // /tmp/stockfish-[uid], with appropriate permissions
     std::string prefix;
@@ -148,110 +178,36 @@ struct TempRoot {
     }
 };
 
-#ifdef HAS_EVENTFD
-// Allows notifying the background thread that it should close
-struct EventNotifier {
-    static std::unique_ptr<EventNotifier> create() noexcept {
-        int fd = eventfd(0, EFD_CLOEXEC);
-        if (fd == -1)
-            return nullptr;
-        return std::unique_ptr<EventNotifier>(new EventNotifier(fd));
-    }
-
-    EventNotifier(const EventNotifier&)             = delete;
-    EventNotifier& operator=(const EventNotifier&)  = delete;
-    EventNotifier& operator=(EventNotifier&& other) = delete;
-    EventNotifier(EventNotifier&& other)            = delete;
-
-    int  get_listener_fd() const noexcept { return event_fd_; }
-    void send_shutdown() const {
-        uint64_t                 value = 1;
-        [[maybe_unused]] ssize_t r     = write(event_fd_, &value, sizeof(value));
-    }
-
-    ~EventNotifier() noexcept { ::close(event_fd_); }
-
-   private:
-    EventNotifier(int fd) :
-        event_fd_(fd) {}
-    int event_fd_;
-};
-#else
-struct EventNotifier {
-    static std::unique_ptr<EventNotifier> create() noexcept {
-        // Use self-pipe trick
-        int fds[2];
-        if (pipe(fds) == -1)
-            return nullptr;
-
-        for (int fd : fds)
-        {
-            fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
-            fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
-        }
-
-        return std::unique_ptr<EventNotifier>(new EventNotifier(fds));
-    }
-
-    EventNotifier(const EventNotifier&)             = delete;
-    EventNotifier& operator=(const EventNotifier&)  = delete;
-    EventNotifier& operator=(EventNotifier&& other) = delete;
-    EventNotifier(EventNotifier&& other)            = delete;
-
-    int  get_listener_fd() const noexcept { return fds_[0]; }
-    void send_shutdown() const noexcept {
-        u8                       terminate = 1;
-        [[maybe_unused]] ssize_t unused    = write(fds_[1], &terminate, sizeof(terminate));
-    }
-
-    ~EventNotifier() noexcept {
-        ::close(fds_[0]);
-        ::close(fds_[1]);
-    }
-
-   private:
-    EventNotifier(int fds[2]) { std::memcpy(fds_, fds, sizeof(fds_)); }
-    int fds_[2] = {};
-};
-#endif
-
 // Wrapper around flock() on a file
 struct InitLock {
-    InitLock(const InitLock&)            = delete;
-    InitLock& operator=(const InitLock&) = delete;
-    InitLock(InitLock&&)                 = delete;
-    InitLock& operator=(InitLock&&)      = delete;
+    InitLock() = default;
 
     ~InitLock() {
-        if (lock_fd != -1)
-        {
-            flock(lock_fd, LOCK_UN);
-            ::close(lock_fd);
-        }
+        if (lock_fd_.is_valid())
+            flock(lock_fd_.get(), LOCK_UN);
     }
 
-    static std::unique_ptr<InitLock> wait_for_init_lock(const std::string& path) noexcept {
-        int lock_fd = ::open(path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0666);
-        if (lock_fd == -1)
-            return nullptr;
+    static InitLock wait_for_init_lock(const std::string& path) noexcept {
+        UniqueFd lock_fd(::open(path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0666));
+        if (!lock_fd.is_valid())
+            return {};
 
         // Blocks here if another process is currently initializing
-        while (flock(lock_fd, LOCK_EX) == -1)
+        while (flock(lock_fd.get(), LOCK_EX) == -1)
         {
             if (errno != EINTR)
-            {
-                ::close(lock_fd);  // failed to acquire
-                return nullptr;
-            }
+                return {};  // failed to acquire
         }
 
-        return std::unique_ptr<InitLock>(new InitLock(lock_fd));
+        return InitLock(std::move(lock_fd));
     }
 
+    bool is_valid() const { return lock_fd_.is_valid(); }
+
    private:
-    int lock_fd;
-    InitLock(int fd) :
-        lock_fd(fd) {}
+    UniqueFd lock_fd_;
+    explicit InitLock(UniqueFd lock_fd) :
+        lock_fd_(std::move(lock_fd)) {}
 };
 
 template<typename T>
@@ -261,7 +217,6 @@ class SharedMemory: public detail::SharedMemoryBase {
 
    private:
     std::string name_;
-    int         fd_         = -1;
     void*       mapped_ptr_ = nullptr;
     T*          data_ptr_   = nullptr;  // = mapped_ptr_
 
@@ -274,9 +229,9 @@ class SharedMemory: public detail::SharedMemoryBase {
     std::string init_lock_path_;
 
     // serve requests for the shared segment on this .sock
-    std::string                    socket_path_;
-    std::optional<std::thread>     server_thread_;
-    std::unique_ptr<EventNotifier> shutdown_;  // used to shut down the server thread
+    std::string                socket_path_;
+    std::optional<std::thread> server_thread_;
+    UniqueFd                   shutdown_;  // close to signal server thread shutdown
 
     static std::string make_sentinel_base(const std::string& name) {
         char buf[32];
@@ -304,7 +259,6 @@ class SharedMemory: public detail::SharedMemoryBase {
 
     SharedMemory(SharedMemory&& other) noexcept :
         name_(std::move(other.name_)),
-        fd_(other.fd_),
         mapped_ptr_(other.mapped_ptr_),
         data_ptr_(other.data_ptr_),
         shared_dir_(std::move(other.shared_dir_)),
@@ -316,7 +270,6 @@ class SharedMemory: public detail::SharedMemoryBase {
         detail::SharedMemoryRegistry::unregister_instance(&other);
         detail::SharedMemoryRegistry::register_instance(this);
 
-        other.fd_         = -1;
         other.mapped_ptr_ = nullptr;
         other.data_ptr_   = nullptr;
     }
@@ -328,7 +281,6 @@ class SharedMemory: public detail::SharedMemoryBase {
             close(CloseType::Normal);
 
             name_           = std::move(other.name_);
-            fd_             = other.fd_;
             mapped_ptr_     = other.mapped_ptr_;
             data_ptr_       = other.data_ptr_;
             shared_dir_     = std::move(other.shared_dir_);
@@ -340,7 +292,6 @@ class SharedMemory: public detail::SharedMemoryBase {
             detail::SharedMemoryRegistry::unregister_instance(&other);
             detail::SharedMemoryRegistry::register_instance(this);
 
-            other.fd_         = -1;
             other.mapped_ptr_ = nullptr;
             other.data_ptr_   = nullptr;
         }
@@ -384,8 +335,7 @@ class SharedMemory: public detail::SharedMemoryBase {
             unlink(socket_path_.c_str());
         }
 
-        if (shutdown_)
-            shutdown_->send_shutdown();
+        shutdown_.reset();
 
         if (server_thread_ && server_thread_->joinable())
         {
@@ -393,11 +343,6 @@ class SharedMemory: public detail::SharedMemoryBase {
             server_thread_ = std::nullopt;
         }
 
-        shutdown_.reset();
-        if (fd_ != -1)
-            ::close(fd_);
-
-        fd_         = -1;
         mapped_ptr_ = nullptr;
         data_ptr_   = nullptr;
     }
@@ -428,21 +373,25 @@ class SharedMemory: public detail::SharedMemoryBase {
         return peer_sockets;
     }
 
-    static int create_unix_socket() {
+    static UniqueFd create_unix_socket() {
 #ifdef SOCK_CLOEXEC
-        int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        UniqueFd fd(socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0));
 #else
-        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (fd != -1)
-            (void) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+        UniqueFd fd(socket(AF_UNIX, SOCK_STREAM, 0));
+        set_cloexec(fd.get());
 #endif
         return fd;
     }
 
-    std::optional<int> try_receive_memfd(const std::string& their_path) noexcept {
-        int peer_fd = create_unix_socket();
-        if (peer_fd == -1)
-            return std::nullopt;
+    UniqueFd try_receive_memfd(const std::string& their_path) noexcept {
+        auto peer_fd = create_unix_socket();
+        if (!peer_fd.is_valid())
+            return {};
+
+        // 1-second timeout for connect and receive
+        struct timeval tv = {1, 0};
+        setsockopt(peer_fd.get(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        setsockopt(peer_fd.get(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
         struct sockaddr_un addr = {};
         addr.sun_family         = AF_UNIX;
@@ -450,9 +399,9 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         // Connect to peer socket and request access to the memfd
         int ret;
-        while ((ret = connect(peer_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) < 0
-               && errno == EINTR)
-        {}
+        do
+            ret = connect(peer_fd.get(), reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+        while (ret < 0 && errno == EINTR);
 
         if (ret == 0)
         {
@@ -473,18 +422,15 @@ class SharedMemory: public detail::SharedMemoryBase {
             msg.msg_control    = control_msg.buf;
             msg.msg_controllen = sizeof(control_msg.buf);
 
-            // 1-second timeout in case the peer is stopped
-            struct timeval tv = {1, 0};
-            setsockopt(peer_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
             ssize_t bytes_recv;
 #ifdef MSG_CMSG_CLOEXEC
             int flags = MSG_CMSG_CLOEXEC;
 #else
             int flags = 0;
 #endif
-            while ((bytes_recv = recvmsg(peer_fd, &msg, flags)) < 0 && errno == EINTR)
-            {}
+            do
+                bytes_recv = recvmsg(peer_fd.get(), &msg, flags);
+            while (bytes_recv < 0 && errno == EINTR);
 
             if (bytes_recv > 0)
             {
@@ -495,10 +441,9 @@ class SharedMemory: public detail::SharedMemoryBase {
                     int received_fd;
                     memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(received_fd));
 #ifndef MSG_CMSG_CLOEXEC
-                    fcntl(received_fd, F_SETFD, fcntl(received_fd, F_GETFD) | FD_CLOEXEC);
+                    set_cloexec(received_fd);
 #endif
-                    ::close(peer_fd);
-                    return received_fd;
+                    return UniqueFd(received_fd);
                 }
             }
         }
@@ -508,16 +453,17 @@ class SharedMemory: public detail::SharedMemoryBase {
             unlink(their_path.c_str());
         }
 
-        ::close(peer_fd);
-        return std::nullopt;
+        return {};
     }
 
     // Server thread:
-    //  - Listens on server_fd
     //  - Forwards the file descriptor fd
-    //  - Exits early upon receiving data (from the main thread) on shutdown_fd
-    static std::thread make_server_thread(int fd, int shutdown_fd, int server_fd) {
-        return std::thread([fd, shutdown_fd, server_fd]() {
+    //  - Exits when shutdown_receiver is hung up on
+    //  - Listens on server_fd
+    static std::thread
+    make_server_thread(UniqueFd fd, UniqueFd shutdown_receiver, UniqueFd server_fd) {
+        return std::thread([fd = std::move(fd), shutdown_receiver = std::move(shutdown_receiver),
+                            server_fd = std::move(server_fd)]() {
             enum {
                 FdServer,
                 FdShutdown,
@@ -525,10 +471,10 @@ class SharedMemory: public detail::SharedMemoryBase {
             };
 
             struct pollfd fds[FdCount];
-            fds[FdServer].fd     = server_fd;
+            fds[FdServer].fd     = server_fd.get();
             fds[FdServer].events = POLLIN;
 
-            fds[FdShutdown].fd     = shutdown_fd;
+            fds[FdShutdown].fd     = shutdown_receiver.get();
             fds[FdShutdown].events = POLLIN;
 
             while (true)
@@ -542,27 +488,20 @@ class SharedMemory: public detail::SharedMemoryBase {
                     break;
                 }
 
-                if (fds[FdShutdown].revents
-                    & (POLLIN | POLLERR | POLLNVAL))  // shutdown requested by main thread
-                    break;
+                if (fds[FdShutdown].revents)
+                    break;  // shutdown requested by main thread
 
                 if (fds[FdServer].revents & POLLIN)
                 {
                     // Another fish wants access
-                    int client_fd;
-#ifdef HAS_EVENTFD
-                    while ((client_fd = accept4(server_fd, NULL, NULL, SOCK_CLOEXEC)) < 0
-                           && errno == EINTR)
-                    {}
-                    if (client_fd < 0)
-                        continue;
+#if !defined(__APPLE__)
+                    UniqueFd client_fd(accept4(server_fd.get(), nullptr, nullptr, SOCK_CLOEXEC));
 #else
-                    while ((client_fd = accept(server_fd, NULL, NULL)) < 0 && errno == EINTR)
-                    {}
-                    if (client_fd < 0)
-                        continue;
-                    (void) fcntl(client_fd, F_SETFD, fcntl(client_fd, F_GETFD) | FD_CLOEXEC);
+                    UniqueFd client_fd(accept(server_fd.get(), nullptr, nullptr));
+                    set_cloexec(client_fd.get());
 #endif
+                    if (!client_fd.is_valid())
+                        continue;  // including EINTR
 
                     msghdr msg    = {};
                     char   buf[1] = {};
@@ -573,7 +512,7 @@ class SharedMemory: public detail::SharedMemoryBase {
                     msg.msg_iovlen  = 1;
 
                     union {
-                        char           buf[CMSG_SPACE(sizeof(fd))];
+                        char           buf[CMSG_SPACE(sizeof(int))];
                         struct cmsghdr align;
                     } control_msg = {};
 
@@ -584,20 +523,17 @@ class SharedMemory: public detail::SharedMemoryBase {
                     // will refer to the same underlying file. Once it's mmapped then it will share physical memory
                     // between the processes.
                     // See https://man7.org/linux/man-pages/man7/unix.7.html for more information on SCM_RIGHTS
-                    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-                    cmsg->cmsg_level     = SOL_SOCKET;
-                    cmsg->cmsg_type      = SCM_RIGHTS;
-                    cmsg->cmsg_len       = CMSG_LEN(sizeof(fd));
-                    memcpy(CMSG_DATA(cmsg), &fd, sizeof(fd));
+                    int             raw_fd = fd.get();
+                    struct cmsghdr* cmsg   = CMSG_FIRSTHDR(&msg);
+                    cmsg->cmsg_level       = SOL_SOCKET;
+                    cmsg->cmsg_type        = SCM_RIGHTS;
+                    cmsg->cmsg_len         = CMSG_LEN(sizeof(raw_fd));
+                    memcpy(CMSG_DATA(cmsg), &raw_fd, sizeof(raw_fd));
 
-                    while (sendmsg(client_fd, &msg, 0) < 0 && errno == EINTR)
+                    while (sendmsg(client_fd.get(), &msg, 0) < 0 && errno == EINTR)
                     {}
-
-                    ::close(client_fd);
                 }
             }
-
-            ::close(server_fd);
         });
     }
 
@@ -613,65 +549,50 @@ class SharedMemory: public detail::SharedMemoryBase {
 
         {
             auto initLock = InitLock::wait_for_init_lock(init_lock_path_);
-            if (!initLock)
+            if (!initLock.is_valid())
                 return false;
 
-            // Candidates for receiving the shared memfd
+            // Try to receive the shared memfd
+            UniqueFd                 memfd;
             std::vector<std::string> peer_sockets = get_peer_sockets();
-
-            // Assume we must create it until proven otherwise, i.e., we get it from a peer
-            fd_          = -1;
-            bool creator = true;
-
             for (const auto& sock_path : peer_sockets)
             {
-                std::optional<int> maybe_memfd = try_receive_memfd(sock_path);
-
-                if (maybe_memfd.has_value() && *maybe_memfd != -1)
-                {
-                    fd_     = maybe_memfd.value();
-                    creator = false;
+                memfd = try_receive_memfd(sock_path);
+                if (memfd.is_valid())
                     break;
-                }
             }
+
+            const bool creator = !memfd.is_valid();  // We must create it
 
             if (creator)
             {
-#ifdef HAS_EVENTFD
+#if defined(__linux__) || defined(__FreeBSD__)
                 // Failed to get it from a peer (no peers, or only dead peers), so create
-                fd_ = memfd_create("replicated_data", MFD_CLOEXEC);
-                if (fd_ == -1)
+                memfd.reset(memfd_create("replicated_data", MFD_CLOEXEC));
+                if (!memfd.is_valid())
                     return false;
 #else
                 char temp_path[PATH_MAX];
                 strncpy(temp_path, "/tmp/stockfish_replicated_data.XXXXXX", PATH_MAX);
 
-                fd_ = mkstemp(temp_path);
-                if (fd_ == -1)
+                memfd.reset(mkstemp(temp_path));
+                if (!memfd.is_valid())
                     return false;
-                (void) fcntl(fd_, F_SETFD, fcntl(fd_, F_GETFD) | FD_CLOEXEC);
+                set_cloexec(memfd.get());
                 unlink(temp_path);
 #endif
 
-                if (ftruncate(fd_, sizeof(T)) != 0)
-                {
-                    ::close(fd_);
-                    fd_ = -1;
+                if (ftruncate(memfd.get(), sizeof(T)) != 0)
                     return false;
-                }
             }
 
-            assert(fd_ != -1);
+            assert(memfd.is_valid());
 
             // Try to map the memfd
-            T* mapped_mem =
-              static_cast<T*>(mmap(NULL, sizeof(T), PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
+            T* mapped_mem = static_cast<T*>(
+              mmap(NULL, sizeof(T), PROT_READ | PROT_WRITE, MAP_SHARED, memfd.get(), 0));
             if (mapped_mem == MAP_FAILED)
-            {
-                ::close(fd_);
-                fd_ = -1;
                 return false;
-            }
 
 #ifdef MADV_HUGEPAGE
             (void) madvise(mapped_mem, sizeof(T), MADV_HUGEPAGE);
@@ -687,12 +608,21 @@ class SharedMemory: public detail::SharedMemoryBase {
 
             detail::SharedMemoryRegistry::register_instance(this);  // register for cleanup at exit
 
-            shutdown_ = EventNotifier::create();
-            if (!shutdown_)
+            int shutdown_pipe[2];
+#if !defined(__APPLE__)
+            if (pipe2(shutdown_pipe, O_CLOEXEC) != 0)
                 return false;
+#else
+            if (pipe(shutdown_pipe) != 0)
+                return false;
+            set_cloexec(shutdown_pipe[0]);
+            set_cloexec(shutdown_pipe[1]);
+#endif
+            UniqueFd shutdown_receiver(shutdown_pipe[0]);
+            shutdown_ = UniqueFd(shutdown_pipe[1]);
 
-            int server_fd = create_unix_socket();
-            if (server_fd == -1)
+            auto server_fd = create_unix_socket();
+            if (!server_fd.is_valid())
                 return false;
 
             struct sockaddr_un addr = {};
@@ -700,16 +630,16 @@ class SharedMemory: public detail::SharedMemoryBase {
             strncpy(addr.sun_path, socket_path_.c_str(), sizeof(addr.sun_path) - 1);
 
             unlink(socket_path_.c_str());
-            if (bind(server_fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1
-                || listen(server_fd, 5) == -1)
+            if (bind(server_fd.get(), reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1
+                || listen(server_fd.get(), 5) == -1)
             {
-                ::close(server_fd);
                 return false;
             }
 
             // Don't release the init lock until we've actually made a socket that
             // other fishes can use.
-            server_thread_ = make_server_thread(fd_, shutdown_->get_listener_fd(), server_fd);
+            server_thread_ = make_server_thread(std::move(memfd), std::move(shutdown_receiver),
+                                                std::move(server_fd));
         }
 
         return true;
