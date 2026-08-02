@@ -66,9 +66,9 @@ class ClippedReLU {
         return h;
     }
 
+#if !defined(USE_PAIR_ACTIVATIONS)
     // Forward propagation
     void propagate(const InputType* input, OutputType* output) const {
-
 
 #if defined(USE_SSE2)
         constexpr IndexType NumChunks = InputDimensions / 16;
@@ -170,6 +170,7 @@ class ClippedReLU {
               static_cast<OutputType>(std::clamp(input[i] >> WeightScaleBitsLocal, 0, 127));
         }
     }
+#endif
 };
 
 }  // namespace Stockfish::Eval::NNUE::Layers
