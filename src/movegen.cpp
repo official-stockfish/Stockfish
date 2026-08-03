@@ -87,15 +87,16 @@ template<GenType Type, Direction D, bool Enemy>
 Move* make_promotions(Move* moveList, [[maybe_unused]] Square to) {
 
     constexpr bool all = Type == EVASIONS || Type == NON_EVASIONS;
+    [[maybe_unused]] Square from = to - D;
 
     if constexpr (Type == CAPTURES || all)
-        *moveList++ = Move::make<PROMOTION>(to - D, to, QUEEN);
+        *moveList++ = Move::make<PROMOTION>(from, to, QUEEN);
 
     if constexpr ((Type == CAPTURES && Enemy) || (Type == QUIETS && !Enemy) || all)
     {
-        *moveList++ = Move::make<PROMOTION>(to - D, to, ROOK);
-        *moveList++ = Move::make<PROMOTION>(to - D, to, BISHOP);
-        *moveList++ = Move::make<PROMOTION>(to - D, to, KNIGHT);
+        *moveList++ = Move::make<PROMOTION>(from, to, ROOK);
+        *moveList++ = Move::make<PROMOTION>(from, to, BISHOP);
+        *moveList++ = Move::make<PROMOTION>(from, to, KNIGHT);
     }
 
     return moveList;
