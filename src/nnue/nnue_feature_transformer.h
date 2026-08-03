@@ -32,6 +32,7 @@
 #include "nnue_accumulator.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
+#include "huffman.h"
 #include "simd.h"
 
 namespace Stockfish::Eval::NNUE {
@@ -167,17 +168,19 @@ class FeatureTransformer {
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
-        read_leb_128(stream, biases);
+        read_huffman<BiasType>(stream, biases.data(), HalfDimensions);
 
-        read_little_endian<ThreatWeightType>(stream, threatWeights(),
-                                             ThreatInputDimensions * HalfDimensions);
-        read_leb_128(stream, threatPsqtWeights(), ThreatFeatureSet::Dimensions * PSQTBuckets);
-        read_little_endian<ThreatWeightType>(stream, ppWeights(),
-                                             PairInputDimensions * HalfDimensions);
-        read_leb_128(stream, ppPsqtWeights(), PairFeatureSet::Dimensions * PSQTBuckets);
+        read_huffman<ThreatWeightType>(stream, threatWeights(),
+                                       ThreatInputDimensions * HalfDimensions);
+        read_huffman<PSQTWeightType>(stream, threatPsqtWeights(),
+                                     ThreatFeatureSet::Dimensions * PSQTBuckets);
+        read_huffman<ThreatWeightType>(stream, ppWeights(), PairInputDimensions * HalfDimensions);
+        read_huffman<PSQTWeightType>(stream, ppPsqtWeights(),
+                                     PairFeatureSet::Dimensions * PSQTBuckets);
 
-        read_leb_128(stream, weights);
-        read_leb_128(stream, psqtWeights);
+        read_huffman<WeightType>(stream, weights.data(), weights.size());
+        read_huffman<PSQTWeightType>(stream, psqtWeights.data(),
+                                     PSQTBuckets * PSQFeatureSet::Dimensions);
 
         permute_weights();
 
@@ -190,20 +193,20 @@ class FeatureTransformer {
 
         copy->unpermute_weights();
 
-        write_leb_128<BiasType>(stream, copy->biases);
+        write_huffman<BiasType>(stream, copy->biases.data(), HalfDimensions);
 
-
-        write_little_endian<ThreatWeightType>(stream, copy->threatWeights(),
-                                              ThreatInputDimensions * HalfDimensions);
-        write_leb_128<PSQTWeightType>(stream, copy->threatPsqtWeights(),
+        write_huffman<ThreatWeightType>(stream, copy->threatWeights(),
+                                        ThreatInputDimensions * HalfDimensions);
+        write_huffman<PSQTWeightType>(stream, copy->threatPsqtWeights(),
                                       ThreatFeatureSet::Dimensions * PSQTBuckets);
-        write_little_endian<ThreatWeightType>(stream, copy->ppWeights(),
-                                              PairInputDimensions * HalfDimensions);
-        write_leb_128<PSQTWeightType>(stream, copy->ppPsqtWeights(),
+        write_huffman<ThreatWeightType>(stream, copy->ppWeights(),
+                                        PairInputDimensions * HalfDimensions);
+        write_huffman<PSQTWeightType>(stream, copy->ppPsqtWeights(),
                                       PairFeatureSet::Dimensions * PSQTBuckets);
 
-        write_leb_128<WeightType>(stream, copy->weights);
-        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights);
+        write_huffman<WeightType>(stream, copy->weights.data(), copy->weights.size());
+        write_huffman<PSQTWeightType>(stream, copy->psqtWeights.data(),
+                                      PSQTBuckets * PSQFeatureSet::Dimensions);
 
         return !stream.fail();
     }
