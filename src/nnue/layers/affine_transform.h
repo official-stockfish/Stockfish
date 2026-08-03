@@ -122,7 +122,7 @@ affine_transform_non_ssse3(i32* output, const i8* weights, const i32* biases, co
 
 #endif  // !ENABLE_SEQ_OPT
 
-template<IndexType InDims, IndexType OutDims, bool ScrambledInput = false>
+template<IndexType InDims, IndexType OutDims>
 class AffineTransform {
    public:
     // Input/output type
@@ -152,18 +152,18 @@ class AffineTransform {
     static constexpr IndexType get_weight_index_scrambled(IndexType i) {
         IndexType inputIndex = i % PaddedInputDimensions;
 
-#if defined(USE_SCRAMBLED_ACTIVATIONS)
-        if constexpr (ScrambledInput)
-        {
-            // AVX2 and LASX packs operate independently on 128-bit lanes. Keep their interleaved
-            // output order and rearrange the following layer's weights instead of issuing a
-            // runtime permutation.
-            const IndexType block = inputIndex / 32;
-            const IndexType chunk = (inputIndex % 32) / 4;
-            inputIndex            = block * 32 + ((chunk % 2) * 4 + chunk / 2) * 4 + inputIndex % 4;
-        }
+#if defined(USE_PAIR_ACTIVATIONS) || defined(USE_LASX)
+        // At load time, pre-permute the weights to match the per-128-bit-lane interleaving that
+        // the previous layer produces, either via SqrClippedReLU::propagate_pair() or via the
+        // separate SqrClippedReLU/ClippedReLU propagate() calls, so no shuffle is needed at runtime.
+        const IndexType block = inputIndex / 32;
+        const IndexType chunk = (inputIndex % 32) / 4;
+    #if defined(USE_AVX512)
+        inputIndex = block * 32 + ((chunk % 4) * 2 + chunk / 4) * 4 + inputIndex % 4;
+    #else
+        inputIndex = block * 32 + ((chunk % 2) * 4 + chunk / 2) * 4 + inputIndex % 4;
+    #endif
 #endif
-
         return inputIndex / 4 * OutputDimensions * 4 + i / PaddedInputDimensions * 4
              + inputIndex % 4;
     }

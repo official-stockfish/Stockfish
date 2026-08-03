@@ -59,19 +59,14 @@ struct NetworkArchitecture {
     static constexpr IndexType TransformedFeatureDimensions = L1;
     static constexpr int       FC_0_OUTPUTS                 = L2;
     static constexpr int       FC_1_OUTPUTS                 = L3;
-#if defined(USE_SCRAMBLED_ACTIVATIONS)
-    static constexpr bool ScrambledInput = true;
-#else
-    static constexpr bool ScrambledInput = false;
-#endif
 
-    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS>  fc_0;
-    Layers::SqrClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                       ac_sqr_0;
-    Layers::ClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                          ac_0;
-    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS, ScrambledInput>         fc_1;
-    Layers::SqrClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                           ac_sqr_1;
-    Layers::ClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                              ac_1;
-    Layers::AffineTransform<FC_0_OUTPUTS * 2 + FC_1_OUTPUTS * 2, 1, ScrambledInput> fc_2;
+    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS> fc_0;
+    Layers::SqrClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                      ac_sqr_0;
+    Layers::ClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                         ac_0;
+    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                        fc_1;
+    Layers::SqrClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                          ac_sqr_1;
+    Layers::ClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                             ac_1;
+    Layers::AffineTransform<FC_0_OUTPUTS * 2 + FC_1_OUTPUTS * 2, 1>                fc_2;
 
     // Hash value embedded in the evaluation file
     static constexpr u32 get_hash_value() {
