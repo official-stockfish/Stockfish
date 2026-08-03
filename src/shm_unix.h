@@ -530,7 +530,17 @@ class SharedMemory: public detail::SharedMemoryBase {
                     cmsg->cmsg_len         = CMSG_LEN(sizeof(raw_fd));
                     memcpy(CMSG_DATA(cmsg), &raw_fd, sizeof(raw_fd));
 
-                    while (sendmsg(client_fd.get(), &msg, 0) < 0 && errno == EINTR)
+#ifdef SO_NOSIGPIPE
+                    int yes = 1;
+                    setsockopt(client_fd.get(), SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes));
+#endif
+
+#ifdef MSG_NOSIGNAL
+                    int flags = MSG_NOSIGNAL;
+#else
+                    int flags = 0;
+#endif
+                    while (sendmsg(client_fd.get(), &msg, flags) < 0 && errno == EINTR)
                     {}
                 }
             }
