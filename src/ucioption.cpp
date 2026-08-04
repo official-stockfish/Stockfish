@@ -88,24 +88,18 @@ usize OptionsMap::count(const std::string& name) const { return options_map.coun
 
 Option::Option(const char* v, OnChange f) :
     type("string"),
-    min(0),
-    max(0),
     on_change(std::move(f)) {
     defaultValue = currentValue = v;
 }
 
 Option::Option(bool v, OnChange f) :
     type("check"),
-    min(0),
-    max(0),
     on_change(std::move(f)) {
     defaultValue = currentValue = (v ? "true" : "false");
 }
 
 Option::Option(OnChange f) :
     type("button"),
-    min(0),
-    max(0),
     on_change(std::move(f)) {}
 
 Option::Option(int v, int minv, int maxv, OnChange f) :
@@ -118,8 +112,6 @@ Option::Option(int v, int minv, int maxv, OnChange f) :
 
 Option::Option(const char* v, const char* cur, OnChange f) :
     type("combo"),
-    min(0),
-    max(0),
     on_change(std::move(f)) {
     defaultValue = v;
     currentValue = cur;

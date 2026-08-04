@@ -63,8 +63,8 @@ class Option {
 
 
     std::string       defaultValue, currentValue, type;
-    int               min, max;
-    usize             idx;
+    int               min = 0, max = 0;
+    usize             idx = 0;
     OnChange          on_change;
     const OptionsMap* parent = nullptr;
 };
