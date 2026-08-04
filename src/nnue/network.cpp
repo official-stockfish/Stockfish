@@ -138,7 +138,7 @@ bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& file
     return saved;
 }
 
-NetworkOutput Network::evaluate(const Position&    pos,
+Value Network::evaluate(const Position&    pos,
                                 AccumulatorStack&  accumulatorStack,
                                 AccumulatorCaches& cache) const {
 
@@ -154,7 +154,7 @@ NetworkOutput Network::evaluate(const Position&    pos,
     const auto psqt       = featureTransformer.transform(pos, accumulatorStack, cache,
                                                          transformedFeatures, bucket, nnzInfo);
     const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
-    return {static_cast<Value>(psqt / OutputScale), static_cast<Value>(positional / OutputScale)};
+    return static_cast<Value>(psqt / OutputScale) + static_cast<Value>(positional / OutputScale);
 }
 
 
