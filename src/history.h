@@ -195,6 +195,10 @@ using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 
 using TTMoveHistory = StatsEntry<i16, 8192>;
 
+struct ContinuationHistoryBlock {
+    ContinuationHistory table[2][2];
+};
+
 // Set of histories shared between groups of threads. To avoid excessive
 // cross-node data transfer, histories are shared only between threads
 // on a given NUMA node. The passed size must be a power of two to make
@@ -202,11 +206,14 @@ using TTMoveHistory = StatsEntry<i16, 8192>;
 struct SharedHistories {
     SharedHistories(usize threadCount) :
         correctionHistory(threadCount),
+        continuationHistoryBlock(make_unique_large_page<ContinuationHistoryBlock>()),
         pawnHistory(threadCount) {
         assert((threadCount & (threadCount - 1)) == 0 && threadCount != 0);
         sizeMinus1         = correctionHistory.get_size() - 1;
         pawnHistSizeMinus1 = pawnHistory.get_size() - 1;
     }
+
+    auto& continuationHistory() { return continuationHistoryBlock->table; }
 
     usize get_size() const { return sizeMinus1 + 1; }
 
@@ -240,9 +247,9 @@ struct SharedHistories {
         return correctionHistory[pos.non_pawn_key(c) & sizeMinus1];
     }
 
-    UnifiedCorrectionHistory correctionHistory;
-    ContinuationHistory      continuationHistory[2][2];
-    PawnHistory              pawnHistory;
+    UnifiedCorrectionHistory               correctionHistory;
+    LargePagePtr<ContinuationHistoryBlock> continuationHistoryBlock;
+    PawnHistory                            pawnHistory;
 
 
    private:
