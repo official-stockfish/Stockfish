@@ -110,6 +110,13 @@ class CleanupHooks {
 
 inline std::once_flag CleanupHooks::register_once_;
 
+inline uint64_t next_socket_id() noexcept {
+    // A process may own several SharedMemory instances for the same segment.
+    // Give every server its own endpoint instead of relying on the PID alone.
+    static std::atomic_uint64_t sequence{0};
+    return sequence.fetch_add(1, std::memory_order_relaxed);
+}
+
 }  // namespace detail
 
 
@@ -246,7 +253,8 @@ class SharedMemory: public detail::SharedMemoryBase {
         name_(name),
         shared_dir_(tempRoot.prefix + "/" + make_sentinel_base(name)),
         init_lock_path_(shared_dir_ + "/init_lock"),
-        socket_path_(shared_dir_ + "/" + std::to_string(getpid()) + ".sock"),
+        socket_path_(shared_dir_ + "/" + std::to_string(getpid()) + "."
+                     + std::to_string(detail::next_socket_id()) + ".sock"),
         server_thread_(std::nullopt) {}
 
     ~SharedMemory() noexcept override {

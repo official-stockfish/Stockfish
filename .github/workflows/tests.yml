@@ -396,6 +396,14 @@ jobs:
 
       # Other tests
 
+      - name: Test Unix shared memory
+        if: runner.os != 'Windows' && matrix.config.run_64bit_tests
+        run: bash ../tests/shm_unix.sh
+
+      - name: Test Windows shared memory
+        if: runner.os == 'Windows' && matrix.config.run_64bit_tests
+        run: bash ../tests/shm_windows.sh
+
       - name: Check perft and search reproducibility
         if: matrix.config.run_64bit_tests
         run: |
