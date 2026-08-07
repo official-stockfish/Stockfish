@@ -252,6 +252,14 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
 
 // Sets threadPool data to initial values
 void ThreadPool::clear() {
+
+    // Draw a fresh seed for the evaluation noise of a strength limited search.
+    // clear() is called whenever a new game starts, so an engine playing at a
+    // limited strength varies its play from game to game, while still being
+    // consistent with itself within a game.
+    static PRNG rng(now());
+    skillSeed = rng.rand<u64>();
+
     if (threads.size() == 0)
         return;
 
