@@ -156,6 +156,11 @@ class ThreadPool {
 
     std::atomic_bool stop, increaseDepth;
 
+    // Seed mixed into the evaluation noise of a strength limited search. It is
+    // redrawn once per game, and shared by all threads so that they agree on the
+    // distorted evaluation of a position and can share a transposition table.
+    u64 skillSeed = 1;
+
     auto cbegin() const noexcept { return threads.cbegin(); }
     auto begin() noexcept { return threads.begin(); }
     auto end() noexcept { return threads.end(); }

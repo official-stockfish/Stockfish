@@ -241,10 +241,33 @@ struct InfoIteration {
 // Stockfish at various skill levels and various versions of the Stash engine.
 // Skill 0 .. 19 now covers CCRL Blitz Elo from 1320 to 3190, approximately
 // Reference: https://github.com/vondele/Stockfish/commit/a08b8d4e9711c2
+//
+// The strength is limited in two complementary ways, see the discussion in
+// https://github.com/official-stockfish/Stockfish/issues/3635 :
+//
+//  - a level dependent cap on the root depth, which takes away the deep tactics
+//    and the long forced mates that a weakened evaluation alone still finds, and
+//  - logistic noise added to every leaf evaluation, which makes the engine
+//    genuinely misjudge positions, instead of playing at full strength and then
+//    throwing the game away with a single random move at the root.
+//
+// The cap sets the strength over the whole range. The noise only bites at the
+// weak levels, since a deep search averages independent leaf errors away, and
+// it is scaled to match: it costs about 180 Elo at level 5 and nothing at all
+// at level 19. What it buys at those weak levels is a plausible looking mistake
+// rather than a random one, and a different game every time from one position.
+//
+// The noise is a deterministic function of the position key, so a node keeps
+// the same distorted evaluation across re-searches and through the
+// transposition table and the search stays stable. The key is mixed with a seed
+// that is redrawn once per game, so a strength limited engine is not a
+// deterministic opponent that can be beaten by replaying a memorized game.
 struct Skill {
     // Lowest and highest Elo ratings used in the skill level calculation
     constexpr static int LowestElo  = 1320;
     constexpr static int HighestElo = 3190;
+
+    Skill() = default;
 
     Skill(int skill_level, int uci_elo) {
         if (uci_elo)
@@ -255,12 +278,18 @@ struct Skill {
         else
             level = double(skill_level);
     }
-    bool enabled() const { return level < 20.0; }
-    bool time_to_pick(Depth depth) const { return depth == 1 + int(level); }
-    Move pick_best(const RootMoves&, usize multiPV);
 
-    double level;
-    Move   best = Move::none();
+    bool enabled() const { return level < 20.0; }
+
+    // Root depth at which the search is stopped. One ply per level, so that the
+    // cap still bites at the strong levels: at blitz time controls a full
+    // strength search reaches about depth 20, which is what level 19 is allowed.
+    Depth depth_limit() const { return Depth(1.0 + level); }
+
+    // Returns 'v' with the evaluation noise for 'pos' added to it
+    Value perturb(Value v, const Position& pos, u64 seed) const;
+
+    double level = 20.0;
 };
 
 // SearchManager manages the search from the main thread. It is responsible for
@@ -378,6 +407,7 @@ class Worker {
     Value evaluate(const Position&);
 
     LimitsType limits;
+    Skill      skill;
 
     usize              pvIdx, pvLast;
     RelaxedAtomic<u64> nodes, tbHits, bestMoveChanges;

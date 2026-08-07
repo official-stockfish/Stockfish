@@ -238,8 +238,6 @@ void Search::Worker::start_searching() {
                                               - limits.inc[rootPos.side_to_move()]);
 
     Worker* bestThread = this;
-    Skill   skill =
-      Skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
     if (!limits.depth && !skill.enabled())
         bestThread = threads.get_best_thread()->worker.get();
@@ -311,12 +309,9 @@ bool Search::Worker::iterative_deepening() {
     }
 
     usize multiPV = usize(options["MultiPV"]);
-    Skill skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
-    // When playing with strength handicap enable MultiPV search that we will
-    // use behind-the-scenes to retrieve a set of possible moves.
-    if (skill.enabled())
-        multiPV = std::max(multiPV, usize(4));
+    // Set up the strength limit, which is read by evaluate() during the search
+    skill = Skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
     multiPV = std::min(multiPV, rootMoves.size());
 
@@ -331,7 +326,8 @@ bool Search::Worker::iterative_deepening() {
 
     // Iterative deepening loop until requested to stop or the target depth is reached
     while (rootDepth + 1 < MAX_PLY && !threads.stop
-           && !(limits.depth && mainThread && rootDepth >= limits.depth))
+           && !(limits.depth && mainThread && rootDepth >= limits.depth)
+           && !(skill.enabled() && mainThread && rootDepth >= skill.depth_limit()))
     {
         rootDepth++;
 
@@ -554,10 +550,6 @@ bool Search::Worker::iterative_deepening() {
         if (!mainThread)
             continue;
 
-        // If the skill level is enabled and time is up, pick a sub-optimal best move
-        if (skill.enabled() && skill.time_to_pick(rootDepth))
-            skill.pick_best(rootMoves, multiPV);
-
         // Use part of the gained time from a previous stable move for the current move
         for (auto&& th : threads)
         {
@@ -621,12 +613,6 @@ bool Search::Worker::iterative_deepening() {
         return false;
 
     mainThread->previousTimeReduction = timeReduction;
-
-    // If the skill level is enabled, swap the best PV line with the sub-optimal one
-    if (skill.enabled())
-        std::swap(rootMoves[0],
-                  *std::find(rootMoves.begin(), rootMoves.end(),
-                             skill.best ? skill.best : skill.pick_best(rootMoves, multiPV)));
 
     return uciPvSent;
 }
@@ -1872,8 +1858,10 @@ TimePoint Search::Worker::elapsed() const {
 }
 
 Value Search::Worker::evaluate(const Position& pos) {
-    return Eval::evaluate(network[numaAccessToken], pos, accumulatorStack, refreshTable,
-                          optimism[pos.side_to_move()]);
+    Value v = Eval::evaluate(network[numaAccessToken], pos, accumulatorStack, refreshTable,
+                             optimism[pos.side_to_move()]);
+
+    return skill.enabled() ? skill.perturb(v, pos, threads.skillSeed) : v;
 }
 
 namespace {
@@ -2030,42 +2018,67 @@ void update_quiet_histories(
 }
 }
 
-// When playing with strength handicap, choose the best move among a set of
-// RootMoves using a statistical rule dependent on 'level'. Idea by Heinz van Saanen.
-Move Skill::pick_best(const RootMoves& rootMoves, usize multiPV) {
-    static PRNG rng(now());  // PRNG sequence should be non-deterministic
+namespace {
 
-    // With tablebases at the root, rootMoves are ordered by tbRank rather than by
-    // score, so compute the score range explicitly to keep 'delta' non-negative.
-    Value topScore = rootMoves[0].score;
-    Value minScore = rootMoves[0].score;
-    for (usize i = 1; i < multiPV; ++i)
+// Quantile function of the standard logistic distribution, tabulated at the
+// midpoints of NoiseSamples equal probability intervals. Indexing the table with
+// a uniformly distributed value draws from a logistic distribution, without
+// needing a std::log() call at every leaf.
+//
+// A logistic distribution has much fatter tails than a normal one, so most
+// evaluations come out barely changed while a few come out badly wrong. That
+// resembles a weak player, who mostly understands the position and then
+// occasionally misses something completely, far better than the uniformly
+// mediocre judgement that a normal distribution of the same width would give.
+constexpr int NoiseSamples = 1024;
+
+const auto NoiseQuantile = []() {
+    std::array<double, NoiseSamples> q{};
+    for (int i = 0; i < NoiseSamples; ++i)
     {
-        topScore = std::max(topScore, rootMoves[i].score);
-        minScore = std::min(minScore, rootMoves[i].score);
+        double p = (i + 0.5) / NoiseSamples;
+        q[i]     = std::log(p / (1.0 - p));
     }
-    int    delta    = std::min(topScore - minScore, int(PawnValue));
-    int    maxScore = -VALUE_INFINITE;
-    double weakness = 120 - 2 * level;
+    return q;
+}();
 
-    // Choose best move. For each move score we add two terms, both dependent on
-    // weakness. One is deterministic and bigger for weaker levels, and one is
-    // random. Then we choose the move with the resulting highest score.
-    for (usize i = 0; i < multiPV; ++i)
-    {
-        // This is our magic formula
-        int push = int(weakness * int(topScore - rootMoves[i].score)
-                       + delta * (rng.rand<unsigned>() % int(weakness)))
-                 / 128;
+// Width of the noise at level 0, and the factor by which it shrinks per level.
+// NoiseDecay^19 is about 1/100, so the noise fades from a couple of pawns at
+// level 0 to a negligible few centipawns at level 19.
+constexpr double NoiseBase  = 2.0 * PawnValue;
+constexpr double NoiseDecay = 0.785;
 
-        if (rootMoves[i].score + push >= maxScore)
-        {
-            maxScore = rootMoves[i].score + push;
-            best     = rootMoves[i].pv[0];
-        }
-    }
+// Total non-pawn material of both sides at the start of the game
+constexpr double MaxNonPawnMaterial =
+  2.0 * (2 * KnightValue + 2 * BishopValue + 2 * RookValue + QueenValue);
 
-    return best;
+// Final mixing step of splitmix64, used to turn a position key into a value
+// that is uniformly distributed over the table indices
+u64 mix(u64 x) {
+    x ^= x >> 30;
+    x *= 0xBF58476D1CE4E5B9ULL;
+    x ^= x >> 27;
+    x *= 0x94D049BB133111EBULL;
+    x ^= x >> 31;
+    return x;
+}
+}
+
+// When playing with strength handicap, degrade the evaluation of a position by a
+// pseudo random amount, so that the engine misjudges the position the way a
+// weaker player would. The amount is derived from the position key, hence a node
+// keeps the same evaluation whenever the search returns to it.
+Value Skill::perturb(Value v, const Position& pos, u64 seed) const {
+
+    // Halve the noise as the pieces come off. A weak player has far fewer ways
+    // to go wrong in a pawn endgame, and the depth cap already hurts most there.
+    double phase = double(pos.non_pawn_material()) / MaxNonPawnMaterial;
+    double scale = NoiseBase * std::pow(NoiseDecay, level) * (0.5 + 0.5 * phase);
+
+    v += Value(std::lround(scale * NoiseQuantile[mix(pos.key() ^ seed) % NoiseSamples]));
+
+    // Never let the noise fabricate a mate or a tablebase score
+    return std::clamp(v, VALUE_TB_LOSS_IN_MAX_PLY + 1, VALUE_TB_WIN_IN_MAX_PLY - 1);
 }
 
 // Used to print debug info and, more importantly, to detect
