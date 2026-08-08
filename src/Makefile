@@ -32,6 +32,15 @@ ifeq ($(COMP),ndk)
 	OS := Android
 endif
 
+### Removing a tree of symlinks. On Windows "ln -s" to a directory creates a
+### native directory symlink that rm cannot unlink; rmdir unlinks it without
+### following it. Elsewhere plain rm -rf is used unchanged.
+ifneq (,$(findstring MSYS,$(KERNEL))$(findstring MINGW,$(KERNEL))$(findstring CYGWIN,$(KERNEL)))
+	rmtree = find $(1) -type l -exec rmdir {} + 2>/dev/null; rm -rf $(1)
+else
+	rmtree = rm -rf $(1)
+endif
+
 ### Command prefix to run the built executable (e.g. wine, sde, qemu)
 ### Backward compatible alias: WINE_PATH (deprecated)
 ifneq ($(strip $(WINE_PATH)),)
@@ -1221,7 +1230,7 @@ profileclean:
 	@rm -f ./-lstdc++.res
 
 universalclean:
-	@rm -rf $(TEMP_DIR)
+	@$(call rmtree,$(TEMP_DIR))
 	@rm -f universal/network_dump.inc
 
 # evaluation network (nnue)
@@ -1493,7 +1502,7 @@ $(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_ENTRY_SRC) | $(TEMP_DIR)
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
-	@rm -rf $(TEMP_DIR)/$*
+	@$(call rmtree,$(TEMP_DIR)/$*)
 	@mkdir -p $(TEMP_DIR)/$*
 	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
