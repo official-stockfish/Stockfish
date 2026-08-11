@@ -22,6 +22,7 @@
 #include <atomic>
 #include <cassert>
 #include <cerrno>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
@@ -52,9 +53,55 @@
 
 #include "misc.h"
 
+#if defined(__linux__) && !defined(MADV_COLLAPSE)
+    #define MADV_COLLAPSE 25
+#endif
+
 namespace Stockfish::shm {
 
 namespace detail {
+
+inline void* map_shared(int fd, size_t size) noexcept {
+#if defined(__linux__)
+    constexpr size_t HugePageSize = 2 * 1024 * 1024;
+    const long       pageSize     = sysconf(_SC_PAGESIZE);
+
+    if (size >= HugePageSize && pageSize > 0)
+    {
+        // File-backed huge pages require matching virtual-address and file-offset alignment.
+        // Reserve the address range first so MAP_FIXED cannot replace an unrelated mapping.
+        const size_t mappingSize =
+          ((size + static_cast<size_t>(pageSize) - 1) / static_cast<size_t>(pageSize))
+          * static_cast<size_t>(pageSize);
+        const size_t reservationSize = mappingSize + HugePageSize;
+        void*        reservation =
+          mmap(nullptr, reservationSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+        if (reservation != MAP_FAILED)
+        {
+            const auto base        = reinterpret_cast<uintptr_t>(reservation);
+            const auto alignedBase = (base + HugePageSize - 1) & ~(HugePageSize - 1);
+            void* mapped = mmap(reinterpret_cast<void*>(alignedBase), size, PROT_READ | PROT_WRITE,
+                                MAP_SHARED | MAP_FIXED, fd, 0);
+
+            if (mapped != MAP_FAILED)
+            {
+                const size_t prefixSize = alignedBase - base;
+                const size_t suffixSize = reservationSize - prefixSize - mappingSize;
+                if (prefixSize)
+                    munmap(reservation, prefixSize);
+                if (suffixSize)
+                    munmap(reinterpret_cast<void*>(alignedBase + mappingSize), suffixSize);
+                return mapped;
+            }
+
+            munmap(reservation, reservationSize);
+        }
+    }
+#endif
+
+    return mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+}
 
 class SharedMemoryRegistry {
    private:
@@ -512,8 +559,7 @@ class SharedMemory {
             assert(memfd.is_valid());
 
             // Try to map the memfd
-            T* mapped_mem = static_cast<T*>(
-              mmap(NULL, sizeof(T), PROT_READ | PROT_WRITE, MAP_SHARED, memfd.get(), 0));
+            T* mapped_mem = static_cast<T*>(detail::map_shared(memfd.get(), sizeof(T)));
             if (mapped_mem == MAP_FAILED)
                 return false;
 
@@ -525,6 +571,10 @@ class SharedMemory {
             {
                 // Creator is responsible for initialization
                 *mapped_mem = initial_value;
+
+#if defined(__linux__)
+                (void) madvise(mapped_mem, sizeof(T), MADV_COLLAPSE);
+#endif
             }
 
             mapped_ptr_ = data_ptr_ = mapped_mem;
