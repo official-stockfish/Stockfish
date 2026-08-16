@@ -27,6 +27,7 @@
 #include <memory>
 #include <sstream>
 
+#include "attacks.h"          // <-- नया include (king_hunter_score के लिए)
 #include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_misc.h"
@@ -36,6 +37,49 @@
 #include "nnue/nnue_accumulator.h"
 
 namespace Stockfish {
+
+// ---------- किंग हंटर बोनस (प्रयोगात्मक) ----------
+template<Color Us>
+Value king_hunter_score(const Position& pos) {
+    constexpr Color Them = ~Us;
+    Square ksq = pos.square<KING>(Them);
+
+    // राजा के आसपास के 8 स्क्वेयर (King Ring)
+    Bitboard kingRing = Attacks::attacks_bb<KING>(ksq);
+
+    int score = 0;
+
+    // हमारे सभी मोहरों में से, जो राजा के आसपास के किसी स्क्वेयर पर हमला करते हैं, उनका वजन जोड़ें
+    Bitboard ourPieces = pos.pieces(Us);
+    while (ourPieces) {
+        Square s = pop_lsb(&ourPieces);
+        PieceType pt = type_of(pos.piece_on(s));
+
+        // उस मोहरे के हमले वाले स्क्वेयर
+        Bitboard attacks = Attacks::attacks_bb(pt, s, pos.pieces());
+
+        if (attacks & kingRing) {
+            int w = 0;
+            switch (pt) {
+                case QUEEN:  w = 9; break;
+                case ROOK:   w = 5; break;
+                case BISHOP: w = 3; break;
+                case KNIGHT: w = 3; break;
+                case PAWN:   w = 1; break;
+                default:     w = 0; break;
+            }
+            score += w;
+        }
+    }
+
+    // राजा के अपने प्यादों (सुरक्षा ढाल) की संख्या – कम प्यादे = अधिक खतरा
+    int friendlyPawns = popcount(pos.pieces(Them, PAWN) & Attacks::attacks_bb<KING>(ksq));
+    score += (6 - friendlyPawns) * 2;   // मनमाना स्केलिंग
+
+    // अंतिम बोनस (कुछ centipawns में)
+    return Value(score * 5);
+}
+// ---------------------------------------------------
 
 // Evaluate is the evaluator for the outer world. It returns a static evaluation
 // of the position from the point of view of the side to move.
@@ -58,6 +102,15 @@ Value Eval::evaluate(const Eval::NNUE::Network&     network,
 
     int material = 534 * pos.count<PAWN>() + pos.non_pawn_material();
     int v        = (nnue * i64(91000 + material) + optimism * i64(7675)) / 91000;
+
+    // ----- किंग हंटर बोनस जोड़ें (चाल चलने वाले के नज़रिए से) -----
+    Value wKing = king_hunter_score<WHITE>(pos);
+    Value bKing = king_hunter_score<BLACK>(pos);
+    Value kingDiff = wKing - bKing;
+    if (pos.side_to_move() == BLACK)
+        kingDiff = -kingDiff;
+    v += kingDiff;   // v पहले से ही side-to-move के अनुसार है
+    // -------------------------------------------------------------
 
     // Damp down the evaluation linearly when shuffling
     v -= v * pos.rule50_count() / 199;
