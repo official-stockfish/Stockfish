@@ -22,7 +22,6 @@
 #include <atomic>
 #include <cassert>
 #include <cerrno>
-#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
@@ -51,6 +50,7 @@
 
 #define SF_MAX_SEM_NAME_LEN NAME_MAX
 
+#include "memory.h"
 #include "misc.h"
 
 #if defined(__linux__) && !defined(MADV_COLLAPSE)
@@ -61,37 +61,37 @@ namespace Stockfish::shm {
 
 namespace detail {
 
-inline void* map_shared(int fd, size_t size) noexcept {
+inline void* map_shared(int fd, usize size) noexcept {
 #if defined(__linux__)
-    constexpr size_t HugePageSize = 2 * 1024 * 1024;
-    const long       pageSize     = sysconf(_SC_PAGESIZE);
+    constexpr usize Alignment = 2 * 1024 * 1024;
+    const long      pageSize  = sysconf(_SC_PAGESIZE);
 
-    if (size >= HugePageSize && pageSize > 0)
+    if (size >= Alignment && pageSize > 0)
     {
         // File-backed huge pages require matching virtual-address and file-offset alignment.
         // Reserve the address range first so MAP_FIXED cannot replace an unrelated mapping.
-        const size_t mappingSize =
-          ((size + static_cast<size_t>(pageSize) - 1) / static_cast<size_t>(pageSize))
-          * static_cast<size_t>(pageSize);
-        const size_t reservationSize = mappingSize + HugePageSize;
-        void*        reservation =
+        const usize mappingSize =
+          ((size + static_cast<usize>(pageSize) - 1) / static_cast<usize>(pageSize))
+          * static_cast<usize>(pageSize);
+        const usize reservationSize = mappingSize + Alignment;
+        void*       reservation =
           mmap(nullptr, reservationSize, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
         if (reservation != MAP_FAILED)
         {
-            const auto base        = reinterpret_cast<uintptr_t>(reservation);
-            const auto alignedBase = (base + HugePageSize - 1) & ~(HugePageSize - 1);
-            void* mapped = mmap(reinterpret_cast<void*>(alignedBase), size, PROT_READ | PROT_WRITE,
-                                MAP_SHARED | MAP_FIXED, fd, 0);
+            char* const base        = static_cast<char*>(reservation);
+            char* const alignedBase = align_ptr_up<Alignment>(base);
+            void*       mapped      = mmap(alignedBase, size, PROT_READ | PROT_WRITE,
+                                           MAP_SHARED | MAP_FIXED, fd, 0);
 
             if (mapped != MAP_FAILED)
             {
-                const size_t prefixSize = alignedBase - base;
-                const size_t suffixSize = reservationSize - prefixSize - mappingSize;
+                const usize prefixSize = static_cast<usize>(alignedBase - base);
+                const usize suffixSize = reservationSize - prefixSize - mappingSize;
                 if (prefixSize)
                     munmap(reservation, prefixSize);
                 if (suffixSize)
-                    munmap(reinterpret_cast<void*>(alignedBase + mappingSize), suffixSize);
+                    munmap(alignedBase + mappingSize, suffixSize);
                 return mapped;
             }
 
