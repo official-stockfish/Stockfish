@@ -81,6 +81,23 @@ using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 // (*Scaler) All tuned parameters at time controls shorter than
 // optimized for require verifications at longer time controls
 
+// Return the piece that made the previous move. In the current position the
+// destination square does not identify the moving piece for promotions or castling.
+Piece previous_moved_piece(const Position& pos, Move move) {
+    assert(move.is_ok());
+
+    const Color previousSide = ~pos.side_to_move();
+
+    if (move.type_of() == PROMOTION)
+        return make_piece(previousSide, PAWN);
+    if (move.type_of() == CASTLING)
+        return make_piece(previousSide, KING);
+
+    const Piece pc = pos.piece_on(move.to_sq());
+    assert(pc != NO_PIECE && color_of(pc) == previousSide);
+    return pc;
+}
+
 int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
     const Color us     = pos.side_to_move();
     const auto  m      = (ss - 1)->currentMove;
@@ -812,9 +829,10 @@ Value Search::Worker::search(
 
     assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-    Square prevSq  = ((ss - 1)->currentMove).is_ok() ? ((ss - 1)->currentMove).to_sq() : SQ_NONE;
-    bestMove       = Move::none();
-    priorReduction = (ss - 1)->reduction;
+    const Move priorMove = (ss - 1)->currentMove;
+    Square     prevSq     = priorMove.is_ok() ? priorMove.to_sq() : SQ_NONE;
+    bestMove              = Move::none();
+    priorReduction        = (ss - 1)->reduction;
     (ss - 1)->reduction = 0;
     ss->statScore       = 0;
     (ss + 2)->cutoffCnt = 0;
@@ -894,7 +912,8 @@ Value Search::Worker::search(
 
             // Extra penalty for early quiet moves of the previous ply
             if (prevSq != SQ_NONE && (ss - 1)->moveCount < 5 && !priorCapture)
-                update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -2210);
+                update_continuation_histories(ss - 1, previous_moved_piece(pos, priorMove), prevSq,
+                                              -2210);
         }
 
         // Partial workaround for the graph history interaction problem
@@ -988,9 +1007,12 @@ Value Search::Worker::search(
     {
         int evalDiff = std::clamp(-int((ss - 1)->staticEval + ss->staticEval), -189, 194) + 60;
         mainHistory[~us][((ss - 1)->currentMove).raw()] << evalDiff * 11;
-        if (!ttHit && type_of(pos.piece_on(prevSq)) != PAWN
-            && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq] << evalDiff * 13;
+        if (!ttHit && priorMove.type_of() != PROMOTION)
+        {
+            const Piece prevPc = previous_moved_piece(pos, priorMove);
+            if (type_of(prevPc) != PAWN)
+                sharedHistory.pawn_entry(pos)[prevPc][prevSq] << evalDiff * 13;
+        }
     }
 
 
@@ -1589,14 +1611,14 @@ moves_loop:  // When in check, search starts here
 
         // scaledBonus ranges from 0 to roughly 2.3M, overflows happen for multipliers larger than 900
         const int scaledBonus = std::min(150 * depth - 85, 1337) * bonusScale;
+        const Piece prevPc     = previous_moved_piece(pos, priorMove);
 
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq,
-                                      scaledBonus * 263 / 16384);
+        update_continuation_histories(ss - 1, prevPc, prevSq, scaledBonus * 263 / 16384);
 
         mainHistory[~us][((ss - 1)->currentMove).raw()] << scaledBonus * 215 / 32768;
 
-        if (type_of(pos.piece_on(prevSq)) != PAWN && ((ss - 1)->currentMove).type_of() != PROMOTION)
-            sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq] << scaledBonus * 324 / 8192;
+        if (type_of(prevPc) != PAWN && priorMove.type_of() != PROMOTION)
+            sharedHistory.pawn_entry(pos)[prevPc][prevSq] << scaledBonus * 324 / 8192;
     }
 
     // Bonus for prior capture countermove that caused the fail low
@@ -1604,7 +1626,7 @@ moves_loop:  // When in check, search starts here
     {
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
-        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 892;
+        captureHistory[previous_moved_piece(pos, priorMove)][prevSq][type_of(capturedPiece)] << 892;
     }
 
     if (PvNode)
@@ -1996,7 +2018,8 @@ void update_all_stats(const Position& pos,
     // Extra penalty for a quiet early move that was not a TT move in
     // previous ply when it gets refuted.
     if (prevSq != SQ_NONE && ((ss - 1)->moveCount == 1 + (ss - 1)->ttHit) && !pos.captured_piece())
-        update_continuation_histories(ss - 1, pos.piece_on(prevSq), prevSq, -malus * 713 / 1024);
+        update_continuation_histories(ss - 1, previous_moved_piece(pos, (ss - 1)->currentMove),
+                                      prevSq, -malus * 713 / 1024);
 
     // Decrease stats for all non-best capture moves
     for (Move move : capturesSearched)
