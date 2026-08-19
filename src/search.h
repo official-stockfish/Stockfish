@@ -60,6 +60,11 @@ class Network;
 
 namespace Search {
 
+// syzygy_extend_pv() may lead to PVs longer than MAX_PLY
+struct RootPVMoves: public std::vector<Move> {
+    RootPVMoves() { reserve(MAX_PLY); }
+};
+
 struct PVMoves {
     Move  moves[MAX_PLY + 1];
     usize length = 0;
@@ -98,6 +103,12 @@ struct PVMoves {
 
         moves[0] = move;
         ++length;
+    }
+
+    PVMoves& operator=(const RootPVMoves& rhs) {
+        length = std::min(rhs.size(), usize(MAX_PLY));
+        std::memcpy(moves, rhs.data(), length * sizeof(Move));
+        return *this;
     }
 };
 
@@ -141,19 +152,19 @@ struct RootMove {
         return m.score != score ? m.score < score : m.previousScore < previousScore;
     }
 
-    u64     effort             = 0;
-    Value   score              = -VALUE_INFINITE;
-    Value   previousScore      = -VALUE_INFINITE;
-    Value   averageScore       = -VALUE_INFINITE;
-    Value   meanSquaredScore   = -VALUE_INFINITE * VALUE_INFINITE;
-    Value   uciScore           = -VALUE_INFINITE;
-    bool    scoreLowerbound    = false;
-    bool    scoreUpperbound    = false;
-    bool    previousScoreExact = false;
-    int     selDepth           = 0;
-    int     tbRank             = 0;
-    Value   tbScore;
-    PVMoves pv, previousPV;
+    u64         effort             = 0;
+    Value       score              = -VALUE_INFINITE;
+    Value       previousScore      = -VALUE_INFINITE;
+    Value       averageScore       = -VALUE_INFINITE;
+    Value       meanSquaredScore   = -VALUE_INFINITE * VALUE_INFINITE;
+    Value       uciScore           = -VALUE_INFINITE;
+    bool        scoreLowerbound    = false;
+    bool        scoreUpperbound    = false;
+    bool        previousScoreExact = false;
+    int         selDepth           = 0;
+    int         tbRank             = 0;
+    Value       tbScore;
+    RootPVMoves pv, previousPV;
 };
 
 using RootMoves = std::vector<RootMove>;

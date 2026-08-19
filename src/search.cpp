@@ -286,9 +286,9 @@ bool Search::Worker::iterative_deepening() {
 
     PVMoves pv;
 
-    PVMoves lastBestMovePV;
-    Depth   lastBestMoveDepth = 0;
-    Value   lastBestMoveScore = -VALUE_INFINITE;
+    RootPVMoves lastBestMovePV;
+    Depth       lastBestMoveDepth = 0;
+    Value       lastBestMoveScore = -VALUE_INFINITE;
 
     Value  alpha, beta;
     Value  bestValue     = -VALUE_INFINITE;

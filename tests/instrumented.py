@@ -474,6 +474,12 @@ class TestSyzygy(metaclass=OrderedClassMembers):
         self.stockfish.check_output(check_output)
         self.stockfish.expect("bestmove *")
 
+    def test_syzygy_position_4(self):
+        self.stockfish.send_command("ucinewgame")
+        self.stockfish.send_command("position fen 8/8/7B/3B3P/7k/8/5K2/3r4 w - - 0 1")
+        self.stockfish.send_command("go depth 1")
+        self.stockfish.expect("bestmove *")
+
 class TestEnPassantSanitization(metaclass=OrderedClassMembers):
     def beforeAll(self):
         self.stockfish = Stockfish()
