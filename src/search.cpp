@@ -1051,6 +1051,9 @@ Value Search::Worker::search(
             if (v >= beta)
                 return nullValue;
         }
+
+        if (depth > 1)
+            --depth;
     }
 
     improving |= ss->staticEval >= beta;
