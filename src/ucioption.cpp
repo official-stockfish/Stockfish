@@ -168,10 +168,13 @@ Option& Option::operator=(const std::string& v) {
             return *this;
     }
 
-    if (type == "string")
-        currentValue = v == "<empty>" ? "" : v;
-    else if (type != "button")
-        currentValue = v;
+    const std::string newValue = type == "string" && v == "<empty>" ? "" : v;
+
+    if (type != "button" && newValue == currentValue)
+        return *this;
+
+    if (type != "button")
+        currentValue = newValue;
 
     if (on_change)
     {

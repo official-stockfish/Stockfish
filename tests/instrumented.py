@@ -222,6 +222,20 @@ class TestInteractive(metaclass=OrderedClassMembers):
     def test_set_threads_option(self):
         self.stockfish.send_command(f"setoption name Threads value {get_threads()}")
 
+    def test_repeated_set_threads_option_is_idempotent(self):
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
+        self.stockfish.clear_output()
+
+        self.stockfish.send_command(f"setoption name Threads value {get_threads()}")
+        self.stockfish.send_command("isready")
+
+        def callback(output):
+            assert not output.startswith("info string Using")
+            return output == "readyok"
+
+        self.stockfish.check_output(callback)
+
     def test_ucinewgame_and_startpos_nodes_1000(self):
         self.stockfish.send_command("ucinewgame")
         self.stockfish.send_command("position startpos")
