@@ -1821,8 +1821,12 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             if (!capture)
                 continue;
 
-            // Do not search moves with bad enough SEE values
-            if (!pos.see_ge(move, -74))
+            // Let capture history adapt the SEE threshold: reliable tactical patterns
+            // may justify a slightly riskier exchange, while repeatedly bad ones are
+            // pruned earlier. A neutral history preserves the existing threshold.
+            int captHist = captureHistory[pos.moved_piece(move)][move.to_sq()]
+                                         [type_of(pos.piece_on(move.to_sq()))];
+            if (!pos.see_ge(move, -74 - captHist / 256))
                 continue;
         }
 
