@@ -116,6 +116,7 @@ struct PVMoves {
 struct Stack {
     PVMoves*                    pv;
     PieceToHistory*             continuationHistory;
+    PieceToHistory*             continuationFromHistory;
     CorrectionHistory<PieceTo>* continuationCorrectionHistory;
     int                         ply;
     Move                        currentMove;
@@ -354,6 +355,7 @@ class Worker {
     TTMoveHistory    ttMoveHistory;
     SharedHistories& sharedHistory;
     ContinuationHistory (&continuationHistory)[2][2];
+    ContinuationHistory (&continuationFromHistory)[2][2];
 
    private:
     bool iterative_deepening();

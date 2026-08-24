@@ -196,7 +196,8 @@ using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 using TTMoveHistory = StatsEntry<i16, 8192>;
 
 struct ContinuationHistoryBlock {
-    ContinuationHistory table[2][2];
+    ContinuationHistory to[2][2];
+    ContinuationHistory from[2][2];
 };
 
 // Set of histories shared between groups of threads. To avoid excessive
@@ -213,7 +214,8 @@ struct SharedHistories {
         pawnHistSizeMinus1 = pawnHistory.get_size() - 1;
     }
 
-    auto& continuationHistory() { return continuationHistoryBlock->table; }
+    auto& continuationHistory() { return continuationHistoryBlock->to; }
+    auto& continuationFromHistory() { return continuationHistoryBlock->from; }
 
     usize get_size() const { return sizeMinus1 + 1; }
 

@@ -157,6 +157,7 @@ MovePicker::MovePicker(const Position&              p,
                        const LowPlyHistory*         lph,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
+                       const PieceToHistory**       cfh,
                        const SharedHistories*       sh,
                        int                          pl) :
     pos(p),
@@ -164,6 +165,7 @@ MovePicker::MovePicker(const Position&              p,
     lowPlyHistory(lph),
     captureHistory(cph),
     continuationHistory(ch),
+    continuationFromHistory(cfh),
     sharedHistory(sh),
     ttMove(ttm),
     depth(d),
@@ -235,6 +237,11 @@ ExtMove* MovePicker::score(const MoveList<Type>& ml) {
             m.value += (*continuationHistory[2])[pc][to];
             m.value += (*continuationHistory[3])[pc][to];
             m.value += (*continuationHistory[5])[pc][to];
+            m.value +=
+              ((*continuationFromHistory[0])[pc][from] + (*continuationFromHistory[1])[pc][from]
+               + (*continuationFromHistory[2])[pc][from] + (*continuationFromHistory[3])[pc][from]
+               + (*continuationFromHistory[5])[pc][from])
+              / 2;
 
             // bonus for checks
             m.value += ((pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
