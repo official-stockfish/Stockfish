@@ -82,10 +82,28 @@ jobs:
           python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2000.epd --time 3 --timeinc 0.01 --threads 4 | tee matecheck4g.out
           ! grep "issues were detected" matecheck4g.out > /dev/null
 
+      - name: Run matetrack th1 go-mate
+        working-directory: matetrack
+        timeout-minutes: 30
+        run: |
+          python advancepvs.py --targetMate -2 --outFile mates2all.epd > /dev/null
+          head -n 1003 mates2all.epd > mates2head.epd
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2head.epd --mate 0 | tee matecheck1gm.out
+          ! grep "issues were detected" matecheck1gm.out > /dev/null
+          total=$(grep "Total FENs:" matecheck1gm.out | awk '{print $3}')
+          bmates=$(grep "Best mates:" matecheck1gm.out | awk '{print $3}')
+          if [ $bmates -ne $total ]; then
+            echo "At least one go-mate search did not yield expected mate, see matecheck1gm.out" >&2
+            exit 1
+          fi
+
       - name: Run matetrack th4 go-mate
         working-directory: matetrack
+        timeout-minutes: 30
         run: |
-          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile matetrack.epd matedtrack.epd --bmMax 2 --mate 0 --threads 4 | tee matecheck4gm.out
+          python advancepvs.py --targetMate -2 --outFile mates2all.epd > /dev/null
+          head -n 1003 mates2all.epd > mates2head.epd
+          python matecheck.py --engine /home/runner/work/Stockfish/Stockfish/Stockfish/src/stockfish --epdFile mates2head.epd --mate 0 --threads 4 | tee matecheck4gm.out
           ! grep "issues were detected" matecheck4gm.out > /dev/null
           total=$(grep "Total FENs:" matecheck4gm.out | awk '{print $3}')
           bmates=$(grep "Best mates:" matecheck4gm.out | awk '{print $3}')
