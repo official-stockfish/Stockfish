@@ -72,7 +72,7 @@ class Engine {
     void stop();
 
     // blocking call to wait for search to finish
-    void wait_for_search_finished();
+    void wait_for_search_finished() const;
     // set a new position, moves are in UCI format
     std::optional<PositionSetError> set_position(const std::string&              fen,
                                                  const std::vector<std::string>& moves);
@@ -130,6 +130,7 @@ class Engine {
     TranspositionTable                                tt;
     Eval::NNUE::EvalFile                              networkFile;
     LazyNumaReplicatedSystemWide<Eval::NNUE::Network> network;
+    bool fresh; // have histories and tt been modified since the last clear?
 
     Search::SearchManager::UpdateContext  updateContext;
     std::function<void(std::string_view)> onVerifyNetwork;
