@@ -81,14 +81,16 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
       }));
 
     options.add(  //
-      "Threads", Option(1, 1, MaxThreads, [this](const Option&) {
-          resize_threads();
+      "Threads", Option(1, 1, MaxThreads, [this](const Option& o) {
+          if ( !(fresh && threads.num_threads() == usize(o)) )
+              resize_threads();
           return thread_allocation_information_as_string();
       }));
 
     options.add(  //
       "Hash", Option(16, 1, MaxHashMB, [this](const Option& o) {
-          set_tt_size(o);
+          if ( !(fresh && tt.size() == usize(o)) )
+              set_tt_size(o);
           return std::nullopt;
       }));
 
@@ -138,8 +140,6 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
           return std::nullopt;
       }));
 
-    threads.clear();
-    threads.ensure_network_replicated();
     resize_threads();
     fresh = true;
 }
@@ -257,6 +257,7 @@ void Engine::resize_threads() {
 
     // Reallocate the hash with the new threadpool size
     set_tt_size(options["Hash"]);
+    fresh = true; // threads.set clears histories, set_tt_size clears tt
     threads.ensure_network_replicated();
 }
 

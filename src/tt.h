@@ -88,6 +88,9 @@ class TranspositionTable {
     // Set TT size in MiB
     void resize(usize mbSize, ThreadPool& threads);
 
+    // returns TT size in MiB
+    usize size();
+
     // Re-initialize memory, multithreaded
     void clear(ThreadPool& threads);
 
