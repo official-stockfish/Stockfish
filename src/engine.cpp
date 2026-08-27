@@ -141,6 +141,7 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
     threads.clear();
     threads.ensure_network_replicated();
     resize_threads();
+    fresh = true;
 }
 
 std::variant<u64, PositionSetError>
@@ -151,6 +152,7 @@ Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
 }
 
 void Engine::go(Search::LimitsType& limits) {
+    fresh = false;
     assert(limits.perft == 0);
     verify_network();
 
@@ -161,11 +163,15 @@ void Engine::stop() { threads.stop = true; }
 void Engine::search_clear() {
     wait_for_search_finished();
 
-    tt.clear(threads);
-    threads.clear();
-
     // TODO: does not work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
+
+    if (fresh) return;
+
+    tt.clear(threads); // initializes TT
+    threads.clear(); // initializes histories
+
+    fresh = true;
 }
 
 void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {
@@ -190,7 +196,7 @@ void Engine::set_on_verify_network(std::function<void(std::string_view)>&& f) {
     onVerifyNetwork = std::move(f);
 }
 
-void Engine::wait_for_search_finished() { threads.main_thread()->wait_for_search_finished(); }
+void Engine::wait_for_search_finished() const { threads.main_thread()->wait_for_search_finished(); }
 
 std::optional<PositionSetError> Engine::set_position(const std::string&              fen,
                                                      const std::vector<std::string>& moves) {
