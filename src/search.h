@@ -294,6 +294,8 @@ class SearchManager {
                    const TranspositionTable& tt,
                    Depth                     depth);
 
+    void clear();
+
     Stockfish::TimeManagement tm;
     double                    originalTimeAdjust;
     int                       callsCnt;

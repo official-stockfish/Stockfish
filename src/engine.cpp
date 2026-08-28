@@ -82,14 +82,14 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
 
     options.add(  //
       "Threads", Option(1, 1, MaxThreads, [this](const Option& o) {
-          if ( !(fresh && threads.num_threads() == usize(o)) )
+          if ( dirty || threads.num_threads() != usize(o) )
               resize_threads();
           return thread_allocation_information_as_string();
       }));
 
     options.add(  //
       "Hash", Option(16, 1, MaxHashMB, [this](const Option& o) {
-          if ( !(fresh && tt.size() == usize(o)) )
+          if ( dirty || tt.size() != usize(o) )
               set_tt_size(o);
           return std::nullopt;
       }));
@@ -141,7 +141,7 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
       }));
 
     resize_threads();
-    fresh = true;
+    dirty = false;
 }
 
 std::variant<u64, PositionSetError>
@@ -152,7 +152,7 @@ Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
 }
 
 void Engine::go(Search::LimitsType& limits) {
-    fresh = false;
+    dirty = true;
     assert(limits.perft == 0);
     verify_network();
 
@@ -166,12 +166,12 @@ void Engine::search_clear() {
     // TODO: does not work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
 
-    if (fresh) return;
+    if (!dirty) return;
 
     tt.clear(threads); // initializes TT
     threads.clear(); // initializes histories
 
-    fresh = true;
+    dirty = false;
 }
 
 void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {
@@ -257,7 +257,7 @@ void Engine::resize_threads() {
 
     // Reallocate the hash with the new threadpool size
     set_tt_size(options["Hash"]);
-    fresh = true; // threads.set clears histories, set_tt_size clears tt
+    dirty = false; // threads.set clears histories, set_tt_size clears tt
     threads.ensure_network_replicated();
 }
 

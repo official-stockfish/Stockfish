@@ -130,7 +130,7 @@ class Engine {
     TranspositionTable                                tt;
     Eval::NNUE::EvalFile                              networkFile;
     LazyNumaReplicatedSystemWide<Eval::NNUE::Network> network;
-    bool fresh; // have histories and tt been modified since the last clear?
+    bool dirty; // have histories and tt been modified since the last clear?
 
     Search::SearchManager::UpdateContext  updateContext;
     std::function<void(std::string_view)> onVerifyNetwork;
