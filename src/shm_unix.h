@@ -336,7 +336,7 @@ class SharedMemory {
         {
             struct msghdr   msg                = {};
             const usize     space              = CMSG_SPACE(sizeof(int));
-            constexpr usize alignment         = alignof(struct cmsghdr);
+            constexpr usize alignment          = alignof(struct cmsghdr);
             auto            v                  = std::make_unique<std::byte[]>(space + alignment);
             std::byte*      control_msg_buffer = align_ptr_up<alignment>(v.get());
 
