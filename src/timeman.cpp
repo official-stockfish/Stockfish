@@ -31,7 +31,8 @@ TimePoint TimeManagement::optimum() const { return optimumTime; }
 TimePoint TimeManagement::maximum() const { return maximumTime; }
 
 void TimeManagement::clear() {
-    availableNodes = -1;  // When in 'nodes as time' mode
+    availableNodes    = -1;  // When in 'nodes as time' mode
+    previousMovesToGo = 0;
 }
 
 void TimeManagement::advance_nodes_time(i64 nodes) {
@@ -77,7 +78,15 @@ void TimeManagement::init(Search::LimitsType& limits,
     if (useNodesTime)
     {
         if (availableNodes == -1)                       // Only once at game start
-            availableNodes = npmsec * limits.time[us];  // Time is in msec
+        {
+            // First time limit includes increment (both are in milliseconds)
+            availableNodes = npmsec * limits.time[us];
+            cyclicBudget = npmsec * (limits.time[us] - limits.inc[us]);
+        }
+        else if (limits.movestogo > 0 && limits.movestogo > previousMovesToGo)
+            availableNodes += cyclicBudget;
+
+        previousMovesToGo = limits.movestogo;
 
         // Convert from milliseconds to nodes
         limits.time[us] = TimePoint(availableNodes);

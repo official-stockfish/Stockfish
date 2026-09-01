@@ -61,8 +61,11 @@ class TimeManagement {
     TimePoint optimumTime = NoBound;
     TimePoint maximumTime = NoBound;
 
-    i64  availableNodes = -1;     // When in 'nodes as time' mode
-    bool useNodesTime   = false;  // True if we are in 'nodes as time' mode
+    // Related to 'nodes as time' mode:
+    bool useNodesTime      = false;
+    i64  availableNodes    = -1;
+    int  previousMovesToGo = 0;
+    i64  cyclicBudget      = 0;
 };
 
 }  // namespace Stockfish
