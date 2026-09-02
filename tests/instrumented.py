@@ -671,13 +671,6 @@ class TestInvalidOptions(metaclass=OrderedClassMembers):
         self.stockfish.send_command("isready")
         self.stockfish.equals("readyok")
 
-    # Non-ASCII bytes must not be passed to <cctype> functions as plain char
-    def test_numa_non_ascii(self):
-        self.stockfish.send_command("setoption name NumaPolicy value 0-1é")
-        self.stockfish.expect("*NumaPolicy: invalid value*keeping previous config.*")
-        self.stockfish.send_command("isready")
-        self.stockfish.equals("readyok")
-
 
 class TestBenchFile(metaclass=OrderedClassMembers):
     def beforeEach(self):

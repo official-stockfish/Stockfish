@@ -1590,10 +1590,8 @@ std::optional<PositionSetError> Position::flip() {
     ss >> token;  // Castling availability
     f += token + " ";
 
-    std::transform(f.begin(), f.end(), f.begin(), [](char c) {
-        const unsigned char u = c;
-        return char(islower(u) ? toupper(u) : tolower(u));
-    });
+    std::transform(f.begin(), f.end(), f.begin(),
+                   [](unsigned char c) { return char(islower(c) ? toupper(c) : tolower(c)); });
 
     ss >> token;  // En passant square
     f += (token == "-" ? token : token.replace(1, 1, token[1] == '3' ? "6" : "3"));
