@@ -269,7 +269,7 @@ class FeatureTransformer {
         vec_t*       out = reinterpret_cast<vec_t*>(output + offset);
 
         // Per the NNUE architecture, here we want to multiply pairs of
-        // clipped elements and divide the product by 128. To do this,
+        // clipped elements and divide the product by 512. To do this,
         // we can naively perform min/max operation to clip each of the
         // four int16 vectors, mullo pairs together, then pack them into
         // one int8 vector. However, there exists a faster way.
@@ -295,25 +295,10 @@ class FeatureTransformer {
         // mulhi cuts off the last 16 bits of the resulting product,
         // which is the same as performing a rightward shift of 16 bits.
         // We can use this to our advantage. Recall that we want to
-        // divide the final product by 128, which is equivalent to a
-        // 7-bit right shift. Intuitively, if we shift the clipped
-        // value left by 9, and perform mulhi, which shifts the product
-        // right by 16 bits, then we will net a right shift of 7 bits.
-        // However, this won't work as intended. Since we clip the
-        // values to have a maximum value of 127, shifting it by 9 bits
-        // might occupy the signed bit, resulting in some positive
-        // values being interpreted as negative after the shift.
-
-        // There is a way, however, to get around this limitation. When
-        // loading the network, scale accumulator weights and biases by
-        // 2. To get the same pairwise multiplication result as before,
-        // we need to divide the product by 128 * 2 * 2 = 512, which
-        // amounts to a right shift of 9 bits. So now we only have to
-        // shift left by 7 bits, perform mulhi (shifts right by 16 bits)
-        // and net a 9 bit right shift. Since we scaled everything by
-        // two, the values are clipped at 127 * 2 = 254, which occupies
-        // 8 bits. Shifting it by 7 bits left will no longer occupy the
-        // signed bit, so we are safe.
+        // divide the final product by 512, which is equivalent to a
+        // 9-bit right shift. Intuitively, if we shift the clipped
+        // value left by 7, and perform mulhi, which shifts the product
+        // right by 16 bits, then we will net a right shift of 9 bits.
 
         for (IndexType j = 0; j < NumOutputChunks; j += 2)
         {
