@@ -976,7 +976,7 @@ void Position::do_move(Move                      m,
     }
 
     if (tt)
-        prefetch(tt->first_entry(adjust_key50(k)));
+        prefetch(tt->get_cluster(adjust_key50(k)));
     // Update the key with the final value
     st->key = k;
 
