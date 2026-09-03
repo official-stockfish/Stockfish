@@ -19,6 +19,7 @@
 #include "uci.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <chrono>
 #include <cmath>
@@ -48,6 +49,20 @@ using Time = std::chrono::steady_clock;
 using ms   = std::chrono::milliseconds;
 
 constexpr auto BenchmarkCommand = "speedtest";
+
+template<typename T>
+bool parse_nonnegative(std::istream& is, T& value) {
+    std::string token;
+
+    if (!(is >> token))
+        return false;
+
+    if (token.empty() || token.front() == '-')
+        return false;
+
+    auto [end, error] = std::from_chars(token.data(), token.data() + token.size(), value);
+    return error == std::errc{} && end == token.data() + token.size();
+}
 
 template<typename... Ts>
 struct overload: Ts... {
@@ -204,32 +219,60 @@ Search::LimitsType UCIEngine::parse_limits(std::istream& is) {
         }
 
         else if (token == "wtime")
-            is >> limits.time[WHITE];
+        {
+            if (!parse_nonnegative(is, limits.time[WHITE]))
+                terminate_on_critical_error("Invalid argument for 'wtime'");
+        }
         else if (token == "btime")
-            is >> limits.time[BLACK];
+        {
+            if (!parse_nonnegative(is, limits.time[BLACK]))
+                terminate_on_critical_error("Invalid argument for 'btime'");
+        }
         else if (token == "winc")
-            is >> limits.inc[WHITE];
+        {
+            if (!parse_nonnegative(is, limits.inc[WHITE]))
+                terminate_on_critical_error("Invalid argument for 'winc'");
+        }
         else if (token == "binc")
-            is >> limits.inc[BLACK];
+        {
+            if (!parse_nonnegative(is, limits.inc[BLACK]))
+                terminate_on_critical_error("Invalid argument for 'binc'");
+        }
         else if (token == "movestogo")
-            is >> limits.movestogo;
+        {
+            if (!parse_nonnegative(is, limits.movestogo))
+                terminate_on_critical_error("Invalid argument for 'movestogo'");
+        }
         else if (token == "depth")
-            is >> limits.depth;
+        {
+            if (!parse_nonnegative(is, limits.depth))
+                terminate_on_critical_error("Invalid argument for 'depth'");
+        }
         else if (token == "nodes")
-            is >> limits.nodes;
+        {
+            if (!parse_nonnegative(is, limits.nodes))
+                terminate_on_critical_error("Invalid argument for 'nodes'");
+        }
         else if (token == "movetime")
-            is >> limits.movetime;
+        {
+            if (!parse_nonnegative(is, limits.movetime))
+                terminate_on_critical_error("Invalid argument for 'movetime'");
+        }
         else if (token == "mate")
-            is >> limits.mate;
+        {
+            if (!parse_nonnegative(is, limits.mate))
+                terminate_on_critical_error("Invalid argument for 'mate'");
+        }
         else if (token == "perft")
-            is >> limits.perft;
+        {
+            if (!parse_nonnegative(is, limits.perft))
+                terminate_on_critical_error("Invalid argument for 'perft'");
+        }
         else if (token == "infinite")
             limits.infinite = 1;
         else if (token == "ponder")
             limits.ponderMode = true;
 
-        if (is.fail())
-            terminate_on_critical_error("Invalid argument for '" + token + "'");
     }
 
     return limits;
