@@ -89,7 +89,7 @@ void TimeManagement::init(Search::LimitsType& limits,
     // These numbers are used where multiplications, divisions,
     // or comparisons with constants are involved.
     const i64       scaleFactor = useNodesTime ? npmsec : 1;
-    const TimePoint scaledTime  = limits.time[us] / scaleFactor;
+    const TimePoint scaledTime  = std::max(TimePoint(1), limits.time[us] / scaleFactor);
 
     // Maximum move horizon
     int mtg = limits.movestogo ? std::min(limits.movestogo, 50) : 50;
