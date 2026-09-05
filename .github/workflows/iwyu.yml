@@ -11,13 +11,13 @@ jobs:
         shell: bash
     steps:
       - name: Checkout Stockfish
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           path: Stockfish
           persist-credentials: false
 
       - name: Checkout include-what-you-use
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: include-what-you-use/include-what-you-use
           ref: f25caa280dc3277c4086ec345ad279a2463fea0f

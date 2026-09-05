@@ -6,12 +6,12 @@ import time
 import sys
 import traceback
 import fnmatch
-from functools import wraps
 from contextlib import redirect_stdout
 import io
 import tarfile
 import pathlib
-import concurrent.futures
+import queue
+import threading
 import tempfile
 import shutil
 import requests
@@ -30,7 +30,14 @@ PATH = pathlib.Path(__file__).parent.resolve()
 
 class Valgrind:
     @staticmethod
-    def get_valgrind_command():
+    def get_valgrind_command(expect_failure=False):
+        if expect_failure:
+            return [
+                "valgrind",
+                "--error-exitcode=42",
+                "--leak-check=no",
+            ]
+
         return [
             "valgrind",
             "--error-exitcode=42",
@@ -41,27 +48,6 @@ class Valgrind:
     @staticmethod
     def get_valgrind_thread_command():
         return ["valgrind", "--error-exitcode=42", "--fair-sched=try"]
-
-
-class TSAN:
-    @staticmethod
-    def set_tsan_option():
-        with open(f"tsan.supp", "w") as f:
-            f.write(
-                """
-race:Stockfish::TTEntry::read
-race:Stockfish::TTEntry::save
-race:Stockfish::TranspositionTable::probe
-race:Stockfish::TranspositionTable::hashfull
-"""
-            )
-
-        os.environ["TSAN_OPTIONS"] = "suppressions=./tsan.supp"
-
-    @staticmethod
-    def unset_tsan_option():
-        os.environ.pop("TSAN_OPTIONS", None)
-        os.remove(f"tsan.supp")
 
 
 class EPD:
@@ -97,6 +83,7 @@ class Syzygy:
                 tarball_path = os.path.join(tmpdirname, f"{file}.tar.gz")
 
                 response = requests.get(url, stream=True)
+                response.raise_for_status()
                 with open(tarball_path, "wb") as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
@@ -122,29 +109,15 @@ class OrderedClassMembers(type):
 
 
 class TimeoutException(Exception):
-    def __init__(self, message: str, timeout: int):
+    def __init__(self, message: str, timeout: float):
+        super().__init__(message)
         self.message = message
         self.timeout = timeout
 
-
-def timeout_decorator(timeout: float):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(func, *args, **kwargs)
-                try:
-                    result = future.result(timeout=timeout)
-                except concurrent.futures.TimeoutError:
-                    raise TimeoutException(
-                        f"Function {func.__name__} timed out after {timeout} seconds",
-                        timeout,
-                    )
-            return result
-
-        return wrapper
-
-    return decorator
+class UnexpectedOutputException(Exception):
+    def __init__(self, actual: str, expected: str):
+        self.actual   = actual
+        self.expected = expected
 
 
 class MiniTestFramework:
@@ -207,6 +180,7 @@ class MiniTestFramework:
 
         buffer = io.StringIO()
         fails = 0
+        failed = False
 
         try:
             t0 = time.time()
@@ -225,21 +199,28 @@ class MiniTestFramework:
             self.print_success(f" {method} ({duration * 1000:.2f}ms)")
             self.passed_tests += 1
         except Exception as e:
+            failed = True
+
             if isinstance(e, TimeoutException):
                 self.print_failure(
                     f" {method} (hit execution limit of {e.timeout} seconds)"
+                )
+
+            if isinstance(e, UnexpectedOutputException):
+                self.print_failure(
+                    f" {method} encountered unexpected output: \"{e.actual}\" when output matching \"{e.expected}\" was expected"
                 )
 
             if isinstance(e, AssertionError):
                 self.__handle_assertion_error(t0, method)
 
             if self.stop_on_failure:
-                self.__print_buffer_output(buffer)
                 raise e
 
             fails += 1
         finally:
-            self.__print_buffer_output(buffer)
+            if failed:
+                self.__print_buffer_output(buffer)
 
         return fails
 
@@ -287,13 +268,17 @@ class Stockfish:
         path: str,
         args: List[str] = [],
         cli: bool = False,
+        expect_failure: bool = False,
     ):
         self.path = path
         self.process = None
         self.args = args
         self.cli = cli
+        self.expect_failure = expect_failure
         self.prefix = prefix
         self.output = []
+        self.output_queue = queue.Queue()
+        self.reader_thread = None
 
         self.start()
 
@@ -310,6 +295,11 @@ class Stockfish:
                 text=True,
             )
 
+            if self.process.stdout:
+                self.output.extend(self.process.stdout.splitlines())
+            if self.process.stderr:
+                self.output.extend(self.process.stderr.splitlines())
+
             if self.process.returncode != 0:
                 print(self.process.stdout)
                 print(self.process.stderr)
@@ -325,6 +315,21 @@ class Stockfish:
             universal_newlines=True,
             bufsize=1,
         )
+        self.reader_thread = threading.Thread(
+            target=self._read_process_output, daemon=True
+        )
+        self.reader_thread.start()
+
+    def _read_process_output(self):
+        try:
+            for line in self.process.stdout:
+                line = line.strip()
+                self.output.append(line)
+                self.output_queue.put(line)
+        except (OSError, ValueError):
+            pass
+        finally:
+            self.output_queue.put(None)
 
     def setoption(self, name: str, value: str):
         self.send_command(f"setoption name {name} value {value}")
@@ -338,31 +343,26 @@ class Stockfish:
         self.process.stdin.write(command + "\n")
         self.process.stdin.flush()
 
-    @timeout_decorator(MAX_TIMEOUT)
     def equals(self, expected_output: str):
         for line in self.readline():
             if line == expected_output:
                 return
 
-    @timeout_decorator(MAX_TIMEOUT)
     def expect(self, expected_output: str):
         for line in self.readline():
             if fnmatch.fnmatch(line, expected_output):
                 return
 
-    @timeout_decorator(MAX_TIMEOUT)
     def contains(self, expected_output: str):
         for line in self.readline():
             if expected_output in line:
                 return
 
-    @timeout_decorator(MAX_TIMEOUT)
     def starts_with(self, expected_output: str):
         for line in self.readline():
             if line.startswith(expected_output):
                 return
 
-    @timeout_decorator(MAX_TIMEOUT)
     def check_output(self, callback):
         if not callback:
             raise ValueError("Callback function is required")
@@ -371,14 +371,41 @@ class Stockfish:
             if callback(line) == True:
                 return
 
-    def readline(self):
+    def expect_for_line_matching(self, line_match: str, expected: str):
+        for line in self.readline():
+            if fnmatch.fnmatch(line, line_match):
+                if fnmatch.fnmatch(line, expected):
+                    break
+                else:
+                    raise UnexpectedOutputException(line, expected)
+
+    def readline(self, timeout: float = MAX_TIMEOUT):
         if not self.process:
             raise RuntimeError("Stockfish process is not started")
 
+        deadline = time.monotonic() + timeout
+
         while True:
             self._check_process_alive()
-            line = self.process.stdout.readline().strip()
-            self.output.append(line)
+
+            remaining_time = deadline - time.monotonic()
+            if remaining_time <= 0:
+                raise TimeoutException(
+                    f"No matching output received after {timeout} seconds",
+                    timeout,
+                )
+
+            try:
+                line = self.output_queue.get(timeout=remaining_time)
+            except queue.Empty:
+                raise TimeoutException(
+                    f"No matching output received after {timeout} seconds",
+                    timeout,
+                )
+
+            if line is None:
+                self._check_process_alive()
+                raise RuntimeError("Stockfish process has terminated")
 
             yield line
 

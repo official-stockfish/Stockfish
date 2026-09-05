@@ -17,11 +17,15 @@
 */
 
 #include "benchmark.h"
+#include "engine.h"
 #include "numa.h"
+#include "misc.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 namespace {
@@ -64,6 +68,7 @@ const std::vector<std::string> Defaults = {
   "r3k2r/3nnpbp/q2pp1p1/p7/Pp1PPPP1/4BNN1/1P5P/R2Q1RK1 w kq - 0 16",
   "3Qb1k1/1r2ppb1/pN1n2q1/Pp1Pp1Pr/4P2p/4BP2/4B1R1/1R5K b - - 11 40",
   "4k3/3q1r2/1N2r1b1/3ppN2/2nPP3/1B1R2n1/2R1Q3/3K4 w - - 5 1",
+  "1r6/1P4bk/3qr1p1/N6p/3pp2P/6R1/3Q1PP1/1R4K1 w - - 1 42",
 
   // Positions with high numbers of changed threats
   "k7/2n1n3/1nbNbn2/2NbRBn1/1nbRQR2/2NBRBN1/3N1N2/7K w - - 0 1",
@@ -448,25 +453,45 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     static constexpr int DEFAULT_DURATION_S = 150;
 
+    static constexpr int MaxDurationS = std::numeric_limits<int>::max() / 1000;
+
     BenchmarkSetup setup{};
 
-    // Assign default values to missing arguments
-    int desiredTimeS;
+    auto clamped = [](const char* what, i64 value, i64 lo, i64 hi) {
+        const i64 fixed = std::clamp(value, lo, hi);
+        if (fixed != value)
+            std::cerr << "info string speedtest: " << what << ' ' << value << " is outside [" << lo
+                      << ", " << hi << "]; using " << fixed << std::endl;
+        return int(fixed);
+    };
 
-    if (!(is >> setup.threads))
+    // Assign default values to missing arguments
+    i64 desiredTimeS;
+    i64 requested;
+
+    if (!(is >> requested))
         setup.threads = int(get_hardware_concurrency());
     else
+    {
+        setup.threads = clamped("threads", requested, 1, MaxThreads);
         setup.originalInvocation += std::to_string(setup.threads);
+    }
 
-    if (!(is >> setup.ttSize))
-        setup.ttSize = TT_SIZE_PER_THREAD * setup.threads;
+    if (!(is >> requested))
+        setup.ttSize = clamped("hash", i64(TT_SIZE_PER_THREAD) * setup.threads, 1, MaxHashMB);
     else
+    {
+        setup.ttSize = clamped("hash", requested, 1, MaxHashMB);
         setup.originalInvocation += " " + std::to_string(setup.ttSize);
+    }
 
     if (!(is >> desiredTimeS))
         desiredTimeS = DEFAULT_DURATION_S;
     else
+    {
+        desiredTimeS = clamped("seconds", desiredTimeS, 1, MaxDurationS);
         setup.originalInvocation += " " + std::to_string(desiredTimeS);
+    }
 
     setup.filledInvocation += std::to_string(setup.threads) + " " + std::to_string(setup.ttSize)
                             + " " + std::to_string(desiredTimeS);
@@ -482,15 +507,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     float totalTime = 0;
     for (const auto& game : BenchmarkPositions)
-    {
-        int ply = 1;
-        for (int i = 0; i < static_cast<int>(game.size()); ++i)
-        {
-            const float correctedTime = float(getCorrectedTime(ply));
-            totalTime += correctedTime;
-            ply += 1;
-        }
-    }
+        for (usize i = 0; i < game.size(); ++i)
+            totalTime += float(getCorrectedTime(int(i + 1)));
 
     float timeScaleFactor = static_cast<float>(desiredTimeS * 1000) / totalTime;
 
@@ -501,11 +519,8 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
         for (const std::string& fen : game)
         {
             setup.commands.emplace_back("position fen " + fen);
-
-            const int correctedTime = static_cast<int>(getCorrectedTime(ply) * timeScaleFactor);
+            const int correctedTime = static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor);
             setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
-
-            ply += 1;
         }
     }
 

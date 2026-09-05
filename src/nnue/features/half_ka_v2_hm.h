@@ -16,20 +16,14 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features HalfKP of NNUE evaluation function
+//Definition of input features HalfKAv2_hm of NNUE evaluation function
 
 #ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 #define NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
 
-#include <cstdint>
-
 #include "../../misc.h"
 #include "../../types.h"
 #include "../nnue_common.h"
-
-namespace Stockfish {
-class Position;
-}
 
 namespace Stockfish::Eval::NNUE::Features {
 
@@ -54,7 +48,7 @@ class HalfKAv2_hm {
         PS_NB       = 11 * SQUARE_NB
     };
 
-    static constexpr IndexType PieceSquareIndex[COLOR_NB][PIECE_NB] = {
+    alignas(64) static constexpr u16 PieceSquareIndex[COLOR_NB][PIECE_NB] = {
       // Convention: W - us, B - them
       // Viewed from other side, W and B are reversed
       {PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
@@ -63,11 +57,8 @@ class HalfKAv2_hm {
        PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE}};
 
    public:
-    // Feature name
-    static constexpr const char* Name = "HalfKAv2_hm(Friend)";
-
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t HashValue = 0x7f234cb8u;
+    static constexpr u32 HashValue = 0x7f234cb8u;
 
     // Number of feature dimensions
     static constexpr IndexType Dimensions =
@@ -103,16 +94,24 @@ class HalfKAv2_hm {
 
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
-    using IndexList                                = ValueList<IndexType, MaxActiveDimensions>;
+    using IndexList                                = ValueList<u16, MaxActiveDimensions>;
     using DiffType                                 = DirtyPiece;
+
+#if defined(USE_AVX512ICL)
+    // Compute all changed feature indices and write them to the given lists
+    static void write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
+                              const std::array<Piece, SQUARE_NB>& newPieces,
+                              Bitboard                            removedBB,
+                              Bitboard                            addedBB,
+                              Color                               perspective,
+                              Square                              ksq,
+                              IndexList&                          removed,
+                              IndexList&                          added);
+#endif
 
     // Index of a feature for a given king position and another piece on some square
 
     static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
-
-    // Get a list of indices for active features
-
-    static void append_active_indices(Color perspective, const Position& pos, IndexList& active);
 
     // Get a list of indices for recently changed features
     static void append_changed_indices(

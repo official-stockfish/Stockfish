@@ -5,6 +5,12 @@ on:
       matrix:
         type: string
         required: true
+      release_tag:
+        type: string
+        required: false
+      release_prerelease:
+        type: boolean
+        required: false
     secrets:
       token:
         required: true
@@ -24,12 +30,12 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Download artifact from compilation
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
           path: ${{ matrix.config.simple_name }} ${{ matrix.binaries }}
@@ -59,46 +65,22 @@ jobs:
           cp CONTRIBUTING.md ../stockfish/
 
       - name: Create tar
-        if: ${{ !startsWith(matrix.config.os, 'windows') }}
+        if: ${{ startsWith(matrix.config.archive_ext, 'tar') }}
         run: |
           chmod +x ./stockfish/stockfish-$NAME-$BINARY$EXT
-          tar -cvf stockfish-$NAME-$BINARY.tar stockfish
+          tar -cavf stockfish-$NAME-$BINARY."${{ matrix.config.archive_ext }}" stockfish
 
       - name: Create zip
-        if: ${{ startsWith(matrix.config.os, 'windows') }}
+        if: ${{ matrix.config.archive_ext == 'zip' }}
         run: |
           zip -r stockfish-$NAME-$BINARY.zip stockfish
 
-      - name: Release
-        if: startsWith(github.ref_name, 'sf_') && github.ref_type == 'tag'
+      - name: Upload Draft Release Asset
+        if: inputs.release_tag != ''
         uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
         with:
-          files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
-          token: ${{ secrets.token }}
-
-      - name: Get last commit sha
-        id: last_commit
-        run: echo "COMMIT_SHA=$(git rev-parse HEAD | cut -c 1-8)" >> $GITHUB_ENV
-
-      - name: Get commit date
-        id: commit_date
-        run: echo "COMMIT_DATE=$(git show -s --date=format:'%Y%m%d' --format=%cd HEAD)" >> $GITHUB_ENV
-
-      # Make sure that an old ci that still runs on master doesn't recreate a prerelease
-      - name: Check Pullable Commits
-        id: check_commits
-        run: |
-          git fetch
-          CHANGES=$(git rev-list HEAD..origin/master --count)
-          echo "CHANGES=$CHANGES" >> $GITHUB_ENV
-
-      - name: Prerelease
-        if: github.ref_name == 'master' && env.CHANGES == '0'
-        continue-on-error: true
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981
-        with:
-          name: Stockfish dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
-          tag_name: stockfish-dev-${{ env.COMMIT_DATE }}-${{ env.COMMIT_SHA }}
-          prerelease: true
+          tag_name: ${{ inputs.release_tag }}
+          draft: true
+          prerelease: ${{ inputs.release_prerelease }}
           files: stockfish-${{ matrix.config.simple_name }}-${{ matrix.binaries }}.${{ matrix.config.archive_ext }}
           token: ${{ secrets.token }}

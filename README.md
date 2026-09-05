@@ -75,7 +75,7 @@ according to the cores per node. To build the cluster
 branch, it is sufficient to specify ```COMPCXX=mpicxx``` (or e.g. CC depending on the name
 of the compiler providing MPI support) on the make command line, and do a clean build:
 ```
-make -j ARCH=x86-64-modern clean build COMPCXX=mpicxx mpi=yes
+make -j clean build COMPCXX=mpicxx mpi=yes
 ```
 Make sure that the MPI installation is configured to support ```MPI_THREAD_MULTIPLE```,
 this might require adding system specific compiler options to the Makefile. Stockfish employs
@@ -83,8 +83,10 @@ non-blocking (asynchronous) communication, and benefits from an MPI
 implementation that efficiently supports this. Some MPI implentations might benefit
 from leaving 1 core/thread free for these asynchronous communications, and might require
 setting additional environment variables. ```mpirun``` should forward stdin/stdout
-to ```rank 0``` only (e.g. ```srun --input=0 --output=0```).
-Refer to your MPI documentation for more info.
+to ```rank 0``` only (e.g. ```srun --input=0 --output=0```). Ensure `mpirun`'s affinity
+setting is compatible with the threading options passed to Stockfish, or disable CPU
+binding entirely (e.g., `--bind-to none` in OpenMPI). Refer to your MPI documentation
+for more info.
 
 ## Contributing
 

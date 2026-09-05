@@ -20,6 +20,7 @@
 #define PERFT_H_INCLUDED
 
 #include <cstdint>
+#include <variant>
 
 #include "cluster.h"
 #include "movegen.h"
@@ -32,11 +33,11 @@ namespace Stockfish::Benchmark {
 // Utility to verify move generation. All the leaf nodes up
 // to the given depth are generated and counted, and the sum is returned.
 template<bool Root>
-uint64_t perft(Position& pos, Depth depth) {
+u64 perft(Position& pos, Depth depth) {
 
     StateInfo st;
 
-    uint64_t   cnt, nodes = 0;
+    u64        cnt, nodes = 0;
     const bool leaf = (depth == 2);
 
     for (const auto& m : MoveList<LEGAL>(pos))
@@ -56,10 +57,13 @@ uint64_t perft(Position& pos, Depth depth) {
     return nodes;
 }
 
-inline uint64_t perft(const std::string& fen, Depth depth, bool isChess960) {
+inline std::variant<u64, PositionSetError>
+perft(const std::string& fen, Depth depth, bool isChess960) {
     StateInfo st;
     Position  p;
-    p.set(fen, isChess960, &st);
+
+    if (auto err = p.set(fen, isChess960, &st))
+        return {*err};
 
     return perft<true>(p, depth);
 }

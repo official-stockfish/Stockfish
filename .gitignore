@@ -2,6 +2,11 @@
 **/*.o
 **/*.s
 src/.depend
+src/temp_builds
+src/universal/network_dump.inc
+.build_sha.txt
+.build_date.txt
+.build_diffindex.txt
 
 # Built binary
 src/stockfish*

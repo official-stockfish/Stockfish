@@ -1,0 +1,56 @@
+name: MSVC
+
+on:
+  workflow_call:
+
+jobs:
+  msvc:
+    name: ${{ matrix.name }} (msvc)
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Runners cannot execute AVX-512, so avx512icl is build-only.
+          - { name: avx2, flags: "/arch:AVX2", bench: true }
+          - { name: avx512icl, flags: "/arch:AVX512 /DUSE_AVX512 /DUSE_VNNI /DUSE_AVX512ICL /DUSE_PEXT", bench: false }
+
+    defaults:
+      run:
+        working-directory: src
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download network
+        if: matrix.bench
+        run: make net
+
+      - name: Extract the bench number from the commit history
+        if: matrix.bench
+        run: |
+          for hash in $(git rev-list -100 HEAD); do
+            benchref=$(git show -s $hash | tac | grep -m 1 -o -x '[[:space:]]*\b[Bb]ench[ :]\+[1-9][0-9]\{5,7\}\b[[:space:]]*' | sed 's/[^0-9]//g') && break || true
+          done
+          [[ -n "$benchref" ]] && echo "benchref=$benchref" >> $GITHUB_ENV && echo "From commit: $hash" && echo "Reference bench: $benchref" || echo "No bench found"
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+
+      - name: Build ${{ matrix.name }} binary
+        shell: cmd
+        run: >-
+          cl /nologo /std:c++17 /MT /EHsc /O2 /MP /W3 /WX /permissive-
+          /DUSE_POPCNT /DUSE_SSE2 /DUSE_SSSE3 /DUSE_SSE41 /DUSE_AVX2 ${{ matrix.flags }}
+          /Fe:stockfish.exe *.cpp nnue\*.cpp nnue\features\*.cpp syzygy\*.cpp
+          /link /STACK:8388608 shell32.lib
+
+      - name: Verify bench signature
+        if: matrix.bench
+        run: EXE=./stockfish.exe ../tests/signature.sh $benchref

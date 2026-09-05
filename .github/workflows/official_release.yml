@@ -1,0 +1,126 @@
+name: Official Release
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Official release tag in the form sf_X or sf_X.Y
+        required: true
+        type: string
+      release_title:
+        description: Official release title
+        required: true
+        type: string
+
+jobs:
+  Matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      universal_matrix: ${{ steps.set-universal-matrix.outputs.universal_matrix }}
+      arm_matrix: ${{ steps.set-arm-matrix.outputs.arm_matrix }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - id: set-universal-matrix
+        run: |
+          UNIVERSAL_MATRIX=$(jq -c '.' .github/ci/universal_matrix.json)
+          echo "UNIVERSAL_MATRIX=$UNIVERSAL_MATRIX" >> $GITHUB_OUTPUT
+      - id: set-arm-matrix
+        run: |
+          ARM_MATRIX=$(jq -c '.' .github/ci/arm_matrix.json)
+          echo "ARM_MATRIX=$ARM_MATRIX" >> $GITHUB_OUTPUT
+
+  OfficialReleaseDraft:
+    if: github.repository == 'official-stockfish/Stockfish'
+    runs-on: ubuntu-latest
+    needs: [Matrix]
+    outputs:
+      release_tag: ${{ steps.release_metadata.outputs.release_tag }}
+    permissions:
+      contents: write # For creating the official release tag and draft
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Validate release request
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TITLE: ${{ inputs.release_title }}
+        run: |
+          if [[ "${{ github.ref_name }}" != 'master' ]]; then
+            echo 'Official releases must be dispatched from master.'
+            exit 1
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^sf_[0-9]+(\.[0-9]+)?$ ]]; then
+            echo 'release_tag must match sf_X or sf_X.Y'
+            exit 1
+          fi
+
+          if [[ -z "$RELEASE_TITLE" ]]; then
+            echo 'release_title is required.'
+            exit 1
+          fi
+
+      - name: Compute release metadata
+        id: release_metadata
+        run: echo "release_tag=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
+
+      - name: Ensure tag does not already exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release view "${{ inputs.release_tag }}" >/dev/null 2>&1 && { echo 'Release already exists for this tag.'; exit 1; } || true
+
+      - name: Ensure git tag does not already exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api "repos/${{ github.repository }}/git/ref/tags/${{ inputs.release_tag }}" >/dev/null 2>&1 && { echo 'Tag already exists.'; exit 1; } || true
+
+      - name: Create official release tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api "repos/${{ github.repository }}/git/refs" -f ref="refs/tags/${{ inputs.release_tag }}" -f sha="${{ github.sha }}"
+
+      - name: Create draft official release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ inputs.release_tag }}" --draft --title "${{ inputs.release_title }}" --notes ''
+
+  UniversalCompilation:
+    needs: [Matrix]
+    uses: ./.github/workflows/universal_compilation.yml
+
+  ARMCompilation:
+    needs: [Matrix]
+    uses: ./.github/workflows/arm_compilation.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+
+  OfficialBinaries:
+    if: github.repository == 'official-stockfish/Stockfish'
+    needs: [OfficialReleaseDraft, Matrix, UniversalCompilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.universal_matrix }}
+      release_tag: ${{ needs.OfficialReleaseDraft.outputs.release_tag }}
+      release_prerelease: false
+    permissions:
+      contents: write # For uploading release assets
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  OfficialARMBinaries:
+    if: github.repository == 'official-stockfish/Stockfish'
+    needs: [OfficialReleaseDraft, Matrix, ARMCompilation]
+    uses: ./.github/workflows/upload_binaries.yml
+    with:
+      matrix: ${{ needs.Matrix.outputs.arm_matrix }}
+      release_tag: ${{ needs.OfficialReleaseDraft.outputs.release_tag }}
+      release_prerelease: false
+    permissions:
+      contents: write # For uploading release assets
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}

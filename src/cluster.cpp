@@ -315,7 +315,7 @@ void save(TranspositionTable& TT,
     {
         // count the TTsaves to information: this should be relatively similar
         // to the number of entries we can send/recv.
-        thread->TTsaves.fetch_add(1, std::memory_order_relaxed);
+        thread->TTsaves += 1;
 
         // Add to thread's send buffer, the locking here avoids races when the master thread
         // prepares the send buffer.

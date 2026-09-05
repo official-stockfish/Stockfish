@@ -22,31 +22,29 @@
 #define NNUE_ARCHITECTURE_H_INCLUDED
 
 #include <cstdint>
-#include <cstring>
 #include <iosfwd>
 
 #include "features/half_ka_v2_hm.h"
 #include "features/full_threats.h"
+#include "features/pp_3wide.h"
 #include "layers/affine_transform.h"
 #include "layers/affine_transform_sparse_input.h"
 #include "layers/clipped_relu.h"
 #include "layers/sqr_clipped_relu.h"
 #include "nnue_common.h"
+#include "nnz_helper.h"
 
 namespace Stockfish::Eval::NNUE {
 
 // Input features used in evaluation function
 using ThreatFeatureSet = Features::FullThreats;
+using PairFeatureSet   = Features::PP_3Wide;
 using PSQFeatureSet    = Features::HalfKAv2_hm;
 
 // Number of input feature dimensions after conversion
-constexpr IndexType TransformedFeatureDimensionsBig = 1024;
-constexpr int       L2Big                           = 15;
-constexpr int       L3Big                           = 32;
-
-constexpr IndexType TransformedFeatureDimensionsSmall = 128;
-constexpr int       L2Small                           = 15;
-constexpr int       L3Small                           = 32;
+constexpr IndexType L1 = 1024;
+constexpr int       L2 = 32;
+constexpr int       L3 = 32;
 
 constexpr IndexType PSQTBuckets = 8;
 constexpr IndexType LayerStacks = 8;
@@ -57,26 +55,28 @@ constexpr IndexType LayerStacks = 8;
 static_assert(PSQTBuckets % 8 == 0,
               "Per feature PSQT values cannot be processed at granularity lower than 8 at a time.");
 
-template<IndexType L1, int L2, int L3>
 struct NetworkArchitecture {
     static constexpr IndexType TransformedFeatureDimensions = L1;
     static constexpr int       FC_0_OUTPUTS                 = L2;
     static constexpr int       FC_1_OUTPUTS                 = L3;
 
-    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS + 1> fc_0;
-    Layers::SqrClippedReLU<FC_0_OUTPUTS + 1>                                           ac_sqr_0;
-    Layers::ClippedReLU<FC_0_OUTPUTS + 1>                                              ac_0;
-    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                            fc_1;
-    Layers::ClippedReLU<FC_1_OUTPUTS>                                                  ac_1;
-    Layers::AffineTransform<FC_1_OUTPUTS, 1>                                           fc_2;
+    Layers::AffineTransformSparseInput<TransformedFeatureDimensions, FC_0_OUTPUTS> fc_0;
+    Layers::SqrClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                      ac_sqr_0;
+    Layers::ClippedReLU<FC_0_OUTPUTS, WeightScaleBits + 1>                         ac_0;
+    Layers::AffineTransform<FC_0_OUTPUTS * 2, FC_1_OUTPUTS>                        fc_1;
+    Layers::SqrClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                          ac_sqr_1;
+    Layers::ClippedReLU<FC_1_OUTPUTS, WeightScaleBits>                             ac_1;
+    Layers::AffineTransform<FC_0_OUTPUTS * 2 + FC_1_OUTPUTS * 2, 1>                fc_2;
 
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
+    static constexpr u32 get_hash_value() {
         // input slice hash
-        std::uint32_t hashValue = 0xEC42E90Du;
+        u32 hashValue = 0xEC42E90Du;
         hashValue ^= TransformedFeatureDimensions * 2;
 
         hashValue = decltype(fc_0)::get_hash_value(hashValue);
+        // TODO: consider including hash value of ac_sqr_0 in the overall hash value.
+        // For now omitted on purpose because hash value is not written by trainer (yet)
         hashValue = decltype(ac_0)::get_hash_value(hashValue);
         hashValue = decltype(fc_1)::get_hash_value(hashValue);
         hashValue = decltype(ac_1)::get_hash_value(hashValue);
@@ -99,52 +99,61 @@ struct NetworkArchitecture {
             && fc_2.write_parameters(stream);
     }
 
-    std::int32_t propagate(const TransformedFeatureType* transformedFeatures) const {
+    i32 propagate(const TransformedFeatureType* transformedFeatures,
+                  const NNZInfo<L1>&            nnzInfo) const {
         struct alignas(CacheLineSize) Buffer {
             alignas(CacheLineSize) typename decltype(fc_0)::OutputBuffer fc_0_out;
             alignas(CacheLineSize) typename decltype(ac_sqr_0)::OutputType
-              ac_sqr_0_out[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2, 32)];
-            alignas(CacheLineSize) typename decltype(ac_0)::OutputBuffer ac_0_out;
+              concat_buffer[ceil_to_multiple<IndexType>(FC_0_OUTPUTS * 2 + FC_1_OUTPUTS * 2, 32)];
             alignas(CacheLineSize) typename decltype(fc_1)::OutputBuffer fc_1_out;
-            alignas(CacheLineSize) typename decltype(ac_1)::OutputBuffer ac_1_out;
             alignas(CacheLineSize) typename decltype(fc_2)::OutputBuffer fc_2_out;
-
-            Buffer() { std::memset(this, 0, sizeof(*this)); }
         };
 
-#if defined(__clang__) && (__APPLE__)
-        // workaround for a bug reported with xcode 12
-        static thread_local auto tlsBuffer = std::make_unique<Buffer>();
-        // Access TLS only once, cache result.
-        Buffer& buffer = *tlsBuffer;
+        Buffer buffer;
+
+        fc_0.propagate(transformedFeatures, buffer.fc_0_out, nnzInfo);
+#if defined(USE_PAIR_ACTIVATIONS)
+        ac_sqr_0.propagate_pair(buffer.fc_0_out, buffer.concat_buffer,
+                                buffer.concat_buffer + FC_0_OUTPUTS);
 #else
-        alignas(CacheLineSize) static thread_local Buffer buffer;
+        ac_sqr_0.propagate(buffer.fc_0_out, buffer.concat_buffer);
+        ac_0.propagate(buffer.fc_0_out, buffer.concat_buffer + FC_0_OUTPUTS);
 #endif
 
-        fc_0.propagate(transformedFeatures, buffer.fc_0_out);
-        ac_sqr_0.propagate(buffer.fc_0_out, buffer.ac_sqr_0_out);
-        ac_0.propagate(buffer.fc_0_out, buffer.ac_0_out);
-        std::memcpy(buffer.ac_sqr_0_out + FC_0_OUTPUTS, buffer.ac_0_out,
-                    FC_0_OUTPUTS * sizeof(typename decltype(ac_0)::OutputType));
-        fc_1.propagate(buffer.ac_sqr_0_out, buffer.fc_1_out);
-        ac_1.propagate(buffer.fc_1_out, buffer.ac_1_out);
-        fc_2.propagate(buffer.ac_1_out, buffer.fc_2_out);
+        fc_1.propagate(buffer.concat_buffer, buffer.fc_1_out);
+#if defined(USE_PAIR_ACTIVATIONS)
+        ac_sqr_1.propagate_pair(buffer.fc_1_out, buffer.concat_buffer + FC_0_OUTPUTS * 2,
+                                buffer.concat_buffer + FC_0_OUTPUTS * 2 + FC_1_OUTPUTS);
+#else
+        ac_sqr_1.propagate(buffer.fc_1_out, buffer.concat_buffer + FC_0_OUTPUTS * 2);
+        ac_1.propagate(buffer.fc_1_out, buffer.concat_buffer + FC_0_OUTPUTS * 2 + FC_1_OUTPUTS);
+#endif
 
-        // buffer.fc_0_out[FC_0_OUTPUTS] is such that 1.0 is equal to 127*(1<<WeightScaleBits) in
+        fc_2.propagate(buffer.concat_buffer, buffer.fc_2_out);
+
+        static_assert(FC_0_OUTPUTS >= 2);
+        i32 fwdOut = buffer.fc_2_out[0];
+        i32 skip_0 = buffer.fc_0_out[FC_0_OUTPUTS - 2] - buffer.fc_0_out[FC_0_OUTPUTS - 1];
+        fwdOut += skip_0;
+
+        // fwdOut is such that 1.0 is equal to HiddenOneVal*(1<<WeightScaleBits)*2 in
         // quantized form, but we want 1.0 to be equal to 600*OutputScale
-        std::int32_t fwdOut =
-          (buffer.fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
-        std::int32_t outputValue = buffer.fc_2_out[0] + fwdOut;
+        // to make overflow impossible we cast to int64_t
+        constexpr i64 multiplier = 600 * OutputScale;
+        constexpr i64 denominator =
+          static_cast<i64>(HiddenOneVal) * static_cast<i64>(1U << WeightScaleBits) * 2;
 
+        i32 outputValue = static_cast<i32>((static_cast<i64>(fwdOut) * multiplier) / denominator);
         return outputValue;
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
         hash_combine(h, fc_0.get_content_hash());
         hash_combine(h, ac_sqr_0.get_content_hash());
         hash_combine(h, ac_0.get_content_hash());
         hash_combine(h, fc_1.get_content_hash());
+        // hash_combine(h, ac_sqr_1.get_content_hash()); TODO
         hash_combine(h, ac_1.get_content_hash());
         hash_combine(h, fc_2.get_content_hash());
         hash_combine(h, get_hash_value());
@@ -154,10 +163,10 @@ struct NetworkArchitecture {
 
 }  // namespace Stockfish::Eval::NNUE
 
-template<Stockfish::Eval::NNUE::IndexType L1, int L2, int L3>
-struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>> {
-    std::size_t
-    operator()(const Stockfish::Eval::NNUE::NetworkArchitecture<L1, L2, L3>& arch) const noexcept {
+template<>
+struct std::hash<Stockfish::Eval::NNUE::NetworkArchitecture> {
+    Stockfish::usize
+    operator()(const Stockfish::Eval::NNUE::NetworkArchitecture& arch) const noexcept {
         return arch.get_content_hash();
     }
 };

@@ -20,8 +20,8 @@
 #define MOVEGEN_H_INCLUDED
 
 #include <algorithm>  // IWYU pragma: keep
-#include <cstddef>
 
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -61,7 +61,7 @@ struct MoveList {
         last(generate<T>(pos, moveList)) {}
     const Move* begin() const { return moveList; }
     const Move* end() const { return last; }
-    size_t      size() const { return last - moveList; }
+    usize       size() const { return last - moveList; }
     bool        contains(Move move) const { return std::find(begin(), end(), move) != end(); }
 
    private:

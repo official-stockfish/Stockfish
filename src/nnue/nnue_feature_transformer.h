@@ -37,35 +37,34 @@
 namespace Stockfish::Eval::NNUE {
 
 // Returns the inverse of a permutation
-template<std::size_t Len>
-constexpr std::array<std::size_t, Len>
-invert_permutation(const std::array<std::size_t, Len>& order) {
-    std::array<std::size_t, Len> inverse{};
-    for (std::size_t i = 0; i < order.size(); i++)
+template<usize Len>
+constexpr std::array<usize, Len> invert_permutation(const std::array<usize, Len>& order) {
+    std::array<usize, Len> inverse{};
+    for (usize i = 0; i < order.size(); i++)
         inverse[order[i]] = i;
     return inverse;
 }
 
 // Divide a byte region of size TotalSize to chunks of size
 // BlockSize, and permute the blocks by a given order
-template<std::size_t BlockSize, typename T, std::size_t N, std::size_t OrderSize>
-void permute(std::array<T, N>& data, const std::array<std::size_t, OrderSize>& order) {
-    constexpr std::size_t TotalSize = N * sizeof(T);
+template<usize BlockSize, typename T, usize N, usize OrderSize>
+void permute(std::array<T, N>& data, const std::array<usize, OrderSize>& order) {
+    constexpr usize TotalSize = N * sizeof(T);
 
     static_assert(TotalSize % (BlockSize * OrderSize) == 0,
                   "ChunkSize * OrderSize must perfectly divide TotalSize");
 
-    constexpr std::size_t ProcessChunkSize = BlockSize * OrderSize;
+    constexpr usize ProcessChunkSize = BlockSize * OrderSize;
 
     std::array<std::byte, ProcessChunkSize> buffer{};
 
     std::byte* const bytes = reinterpret_cast<std::byte*>(data.data());
 
-    for (std::size_t i = 0; i < TotalSize; i += ProcessChunkSize)
+    for (usize i = 0; i < TotalSize; i += ProcessChunkSize)
     {
         std::byte* const values = &bytes[i];
 
-        for (std::size_t j = 0; j < OrderSize; j++)
+        for (usize j = 0; j < OrderSize; j++)
         {
             auto* const buffer_chunk = &buffer[j * BlockSize];
             auto* const value_chunk  = &values[order[j] * BlockSize];
@@ -78,38 +77,48 @@ void permute(std::array<T, N>& data, const std::array<std::size_t, OrderSize>& o
 }
 
 // Input feature converter
-template<IndexType TransformedFeatureDimensions>
 class FeatureTransformer {
-    static constexpr bool UseThreats =
-      (TransformedFeatureDimensions == TransformedFeatureDimensionsBig);
     // Number of output dimensions for one side
-    static constexpr IndexType HalfDimensions = TransformedFeatureDimensions;
+    static constexpr IndexType HalfDimensions = L1;
 
    public:
     // Output type
     using OutputType = TransformedFeatureType;
 
     // Number of input/output dimensions
-    static constexpr IndexType InputDimensions       = PSQFeatureSet::Dimensions;
     static constexpr IndexType ThreatInputDimensions = ThreatFeatureSet::Dimensions;
-    static constexpr IndexType TotalInputDimensions =
-      InputDimensions + (UseThreats ? ThreatInputDimensions : 0);
-    static constexpr IndexType OutputDimensions = HalfDimensions;
+    static constexpr IndexType PairInputDimensions   = PairFeatureSet::Dimensions;
+    static constexpr IndexType PsqDimensions         = PSQFeatureSet::Dimensions;
+    static constexpr IndexType ThreatAndPpDimensions = ThreatInputDimensions + PairInputDimensions;
+    static constexpr IndexType InputDimensions       = PsqDimensions + ThreatAndPpDimensions;
+    static constexpr IndexType OutputDimensions      = HalfDimensions;
+    static constexpr IndexType ThreatWeightSize      = ThreatInputDimensions * HalfDimensions;
+    static constexpr IndexType ThreatPsqtWeightSize  = ThreatInputDimensions * PSQTBuckets;
+    static constexpr IndexType PairWeightSize        = PairInputDimensions * HalfDimensions;
+    static constexpr IndexType PairPsqtWeightSize    = PairInputDimensions * PSQTBuckets;
+    static constexpr IndexType ThreatAndPpWeightSize = ThreatAndPpDimensions * HalfDimensions;
+    static constexpr IndexType ThreatAndPpPsqtSize   = ThreatAndPpDimensions * PSQTBuckets;
+
+    using BiasesArray            = std::array<BiasType, HalfDimensions>;
+    using WeightArray            = std::array<WeightType, HalfDimensions * PsqDimensions>;
+    using ThreatAndPpWeightArray = std::array<ThreatWeightType, ThreatAndPpWeightSize>;
+    using PsqtWeightArray        = std::array<PSQTWeightType, PSQTBuckets * PsqDimensions>;
+    using ThreatAndPpPsqtArray   = std::array<PSQTWeightType, ThreatAndPpPsqtSize>;
 
     // Size of forward propagation buffer
-    static constexpr std::size_t BufferSize = OutputDimensions * sizeof(OutputType);
+    static constexpr usize BufferSize = OutputDimensions * sizeof(OutputType);
 
     // Store the order by which 128-bit blocks of a 1024-bit data must
     // be permuted so that calling packus on adjacent vectors of 16-bit
     // integers loaded from the data results in the pre-permutation order
-    static constexpr auto PackusEpi16Order = []() -> std::array<std::size_t, 8> {
+    static constexpr auto PackusEpi16Order = []() -> std::array<usize, 8> {
 #if defined(USE_AVX512)
         // _mm512_packus_epi16 after permutation:
         // |   0   |   2   |   4   |   6   | // Vector 0
         // |   1   |   3   |   5   |   7   | // Vector 1
         // | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | // Packed Result
         return {0, 2, 4, 6, 1, 3, 5, 7};
-#elif defined(USE_AVX2)
+#elif defined(USE_AVX2) || defined(USE_LASX)
         // _mm256_packus_epi16 after permutation:
         // |   0   |   2   |  |   4   |   6   | // Vector 0, 2
         // |   1   |   3   |  |   5   |   7   | // Vector 1, 3
@@ -122,9 +131,20 @@ class FeatureTransformer {
 
     static constexpr auto InversePackusEpi16Order = invert_permutation(PackusEpi16Order);
 
+    static constexpr u32 combine_hash(std::initializer_list<u32> hashes) {
+        u32 hash = 0;
+        for (const auto component_hash : hashes)
+        {
+            hash = (hash << 1) | (hash >> 31);
+            hash ^= component_hash;
+        }
+        return hash;
+    }
+
     // Hash value embedded in the evaluation file
-    static constexpr std::uint32_t get_hash_value() {
-        return (UseThreats ? ThreatFeatureSet::HashValue : PSQFeatureSet::HashValue)
+    static constexpr u32 get_hash_value() {
+        return combine_hash(
+                 {ThreatFeatureSet::HashValue, PairFeatureSet::HashValue, PSQFeatureSet::HashValue})
              ^ (OutputDimensions * 2);
     }
 
@@ -132,61 +152,34 @@ class FeatureTransformer {
         permute<16>(biases, PackusEpi16Order);
         permute<16>(weights, PackusEpi16Order);
 
-        if (UseThreats)
-            permute<8>(threatWeights, PackusEpi16Order);
+        permute<8>(threatAndPpWeights, PackusEpi16Order);
     }
 
     void unpermute_weights() {
         permute<16>(biases, InversePackusEpi16Order);
         permute<16>(weights, InversePackusEpi16Order);
-
-        if (UseThreats)
-            permute<8>(threatWeights, InversePackusEpi16Order);
+        permute<8>(threatAndPpWeights, InversePackusEpi16Order);
     }
 
-    inline void scale_weights(bool read) {
-        for (auto& w : weights)
-            w = read ? w * 2 : w / 2;
-        for (auto& b : biases)
-            b = read ? b * 2 : b / 2;
-    }
+    ThreatWeightType* threatWeightData() { return threatAndPpWeights.data(); }
+    ThreatWeightType* pawnPairWeightData() { return threatWeightData() + ThreatWeightSize; }
+    PSQTWeightType*   threatPsqtData() { return threatAndPpPsqtWeights.data(); }
+    PSQTWeightType*   pawnPairPsqtData() { return threatPsqtData() + ThreatPsqtWeightSize; }
+
 
     // Read network parameters
-    // TODO: This is ugly. Currently LEB128 on the entire L1 necessitates
-    // reading the weights into a combined array, and then splitting.
     bool read_parameters(std::istream& stream) {
-        read_leb_128<BiasType>(stream, biases);
+        read_leb_128(stream, biases);
 
-        if (UseThreats)
-        {
-            read_little_endian<ThreatWeightType>(stream, threatWeights.data(),
-                                                 ThreatInputDimensions * HalfDimensions);
-            read_leb_128<WeightType>(stream, weights);
+        read_little_endian(stream, threatWeightData(), ThreatWeightSize);
+        read_leb_128(stream, threatPsqtData(), ThreatPsqtWeightSize);
+        read_little_endian(stream, pawnPairWeightData(), PairWeightSize);
+        read_leb_128(stream, pawnPairPsqtData(), PairPsqtWeightSize);
 
-            auto combinedPsqtWeights =
-              std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
-
-            read_leb_128<PSQTWeightType>(stream, *combinedPsqtWeights);
-
-            std::copy(combinedPsqtWeights->begin(),
-                      combinedPsqtWeights->begin() + ThreatInputDimensions * PSQTBuckets,
-                      std::begin(threatPsqtWeights));
-
-            std::copy(combinedPsqtWeights->begin() + ThreatInputDimensions * PSQTBuckets,
-                      combinedPsqtWeights->begin()
-                        + (ThreatInputDimensions + InputDimensions) * PSQTBuckets,
-                      std::begin(psqtWeights));
-        }
-        else
-        {
-            read_leb_128<WeightType>(stream, weights);
-            read_leb_128<PSQTWeightType>(stream, psqtWeights);
-        }
+        read_leb_128(stream, weights);
+        read_leb_128(stream, psqtWeights);
 
         permute_weights();
-
-        if (!UseThreats)
-            scale_weights(true);
 
         return !stream.fail();
     }
@@ -197,251 +190,249 @@ class FeatureTransformer {
 
         copy->unpermute_weights();
 
-        if (!UseThreats)
-            copy->scale_weights(false);
-
         write_leb_128<BiasType>(stream, copy->biases);
 
-        if (UseThreats)
-        {
-            write_little_endian<ThreatWeightType>(stream, copy->threatWeights.data(),
-                                                  ThreatInputDimensions * HalfDimensions);
-            write_leb_128<WeightType>(stream, copy->weights);
 
-            auto combinedPsqtWeights =
-              std::make_unique<std::array<PSQTWeightType, TotalInputDimensions * PSQTBuckets>>();
+        write_little_endian(stream, copy->threatWeightData(), ThreatWeightSize);
+        write_leb_128(stream, copy->threatPsqtData(), ThreatPsqtWeightSize);
+        write_little_endian(stream, copy->pawnPairWeightData(), PairWeightSize);
+        write_leb_128(stream, copy->pawnPairPsqtData(), PairPsqtWeightSize);
 
-            std::copy(std::begin(copy->threatPsqtWeights),
-                      std::begin(copy->threatPsqtWeights) + ThreatInputDimensions * PSQTBuckets,
-                      combinedPsqtWeights->begin());
-
-            std::copy(std::begin(copy->psqtWeights),
-                      std::begin(copy->psqtWeights) + InputDimensions * PSQTBuckets,
-                      combinedPsqtWeights->begin() + ThreatInputDimensions * PSQTBuckets);
-
-            write_leb_128<PSQTWeightType>(stream, *combinedPsqtWeights);
-        }
-        else
-        {
-            write_leb_128<WeightType>(stream, copy->weights);
-            write_leb_128<PSQTWeightType>(stream, copy->psqtWeights);
-        }
+        write_leb_128<WeightType>(stream, copy->weights);
+        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights);
 
         return !stream.fail();
     }
 
-    std::size_t get_content_hash() const {
-        std::size_t h = 0;
+    usize get_content_hash() const {
+        usize h = 0;
+
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_raw_data_hash(psqtWeights));
+
+        hash_combine(h, get_raw_data_hash(threatAndPpWeights));
+        hash_combine(h, get_raw_data_hash(threatAndPpPsqtWeights));
+
         hash_combine(h, get_hash_value());
+
         return h;
     }
 
     // Convert input features
-    std::int32_t transform(const Position&                           pos,
-                           AccumulatorStack&                         accumulatorStack,
-                           AccumulatorCaches::Cache<HalfDimensions>& cache,
-                           OutputType*                               output,
-                           int                                       bucket) const {
-
-        using namespace SIMD;
+    i32 transform(const Position&                             pos,
+                  AccumulatorStack&                           accumulatorStack,
+                  AccumulatorCaches&                          cache,
+                  OutputType*                                 output,
+                  int                                         bucket,
+                  [[maybe_unused]] NNZInfo<OutputDimensions>& nnzInfo) const {
         accumulatorStack.evaluate(pos, *this, cache);
-        const auto& accumulatorState       = accumulatorStack.latest<PSQFeatureSet>();
-        const auto& threatAccumulatorState = accumulatorStack.latest<ThreatFeatureSet>();
+        const auto& accumulatorState = accumulatorStack.latest();
 
         const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
-        const auto& psqtAccumulation = (accumulatorState.acc<HalfDimensions>()).psqtAccumulation;
-        auto        psqt =
-          (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket]);
+        const auto& psqtAccumulation = accumulatorState.psqtAccumulation;
+        const auto  psqt =
+          (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket])
+          / 2;
 
-        if (UseThreats)
-        {
-            const auto& threatPsqtAccumulation =
-              (threatAccumulatorState.acc<HalfDimensions>()).psqtAccumulation;
-            psqt = (psqt + threatPsqtAccumulation[perspectives[0]][bucket]
-                    - threatPsqtAccumulation[perspectives[1]][bucket])
-                 / 2;
-        }
-        else
-            psqt /= 2;
-
-        const auto& accumulation = (accumulatorState.acc<HalfDimensions>()).accumulation;
-        const auto& threatAccumulation =
-          (threatAccumulatorState.acc<HalfDimensions>()).accumulation;
+        const auto& accumulation = accumulatorState.accumulation;
 
         for (IndexType p = 0; p < 2; ++p)
-        {
-            const IndexType offset = (HalfDimensions / 2) * p;
+            transform_perspective(accumulation[perspectives[p]], output, p, nnzInfo);
+
+        return psqt;
+    }
+
+   private:
+    static void transform_perspective(const std::array<i16, HalfDimensions>&      accumulation,
+                                      OutputType*                                 output,
+                                      IndexType                                   perspective,
+                                      [[maybe_unused]] NNZInfo<OutputDimensions>& nnzInfo) {
+
+        using namespace SIMD;
+        const IndexType offset = (HalfDimensions / 2) * perspective;
 
 #if defined(VECTOR)
 
-            constexpr IndexType OutputChunkSize = MaxChunkSize;
-            static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
-            constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
+        [[maybe_unused]] auto cursor = nnzInfo.make_cursor(perspective);
 
-            const vec_t Zero = vec_zero();
-            const vec_t One  = vec_set_16(UseThreats ? 255 : 127 * 2);
+        constexpr IndexType OutputChunkSize = MaxChunkSize;
+        static_assert((HalfDimensions / 2) % OutputChunkSize == 0);
+        constexpr IndexType NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
 
-            const vec_t* in0 = reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][0]));
-            const vec_t* in1 =
-              reinterpret_cast<const vec_t*>(&(accumulation[perspectives[p]][HalfDimensions / 2]));
-            vec_t* out = reinterpret_cast<vec_t*>(output + offset);
+        [[maybe_unused]] const vec_t   Zero  = vec_zero();
+        [[maybe_unused]] const vec_t   FtMax = vec_set_16(FtMaxVal);
+        [[maybe_unused]] constexpr int shift = 7;
 
-            // Per the NNUE architecture, here we want to multiply pairs of
-            // clipped elements and divide the product by 128. To do this,
-            // we can naively perform min/max operation to clip each of the
-            // four int16 vectors, mullo pairs together, then pack them into
-            // one int8 vector. However, there exists a faster way.
+        const vec_t* in0 = reinterpret_cast<const vec_t*>(&accumulation[0]);
+        const vec_t* in1 = reinterpret_cast<const vec_t*>(&accumulation[HalfDimensions / 2]);
+        vec_t*       out = reinterpret_cast<vec_t*>(output + offset);
 
-            // The idea here is to use the implicit clipping from packus to
-            // save us two vec_max_16 instructions. This clipping works due
-            // to the fact that any int16 integer below zero will be zeroed
-            // on packus.
+        // Per the NNUE architecture, here we want to multiply pairs of
+        // clipped elements and divide the product by 512. To do this,
+        // we can naively perform min/max operation to clip each of the
+        // four int16 vectors, mullo pairs together, then pack them into
+        // one int8 vector. However, there exists a faster way.
 
-            // Consider the case where the second element is negative.
-            // If we do standard clipping, that element will be zero, which
-            // means our pairwise product is zero. If we perform packus and
-            // remove the lower-side clip for the second element, then our
-            // product before packus will be negative, and is zeroed on pack.
-            // The two operation produce equivalent results, but the second
-            // one (using packus) saves one max operation per pair.
+        // The idea here is to use the implicit clipping from packus to
+        // save us two vec_max_16 instructions. This clipping works due
+        // to the fact that any int16 integer below zero will be zeroed
+        // on packus.
 
-            // But here we run into a problem: mullo does not preserve the
-            // sign of the multiplication. We can get around this by doing
-            // mulhi, which keeps the sign. But that requires an additional
-            // tweak.
+        // Consider the case where the second element is negative.
+        // If we do standard clipping, that element will be zero, which
+        // means our pairwise product is zero. If we perform packus and
+        // remove the lower-side clip for the second element, then our
+        // product before packus will be negative, and is zeroed on pack.
+        // The two operations produce equivalent results, but the second
+        // one (using packus) saves one max operation per pair.
 
-            // mulhi cuts off the last 16 bits of the resulting product,
-            // which is the same as performing a rightward shift of 16 bits.
-            // We can use this to our advantage. Recall that we want to
-            // divide the final product by 128, which is equivalent to a
-            // 7-bit right shift. Intuitively, if we shift the clipped
-            // value left by 9, and perform mulhi, which shifts the product
-            // right by 16 bits, then we will net a right shift of 7 bits.
-            // However, this won't work as intended. Since we clip the
-            // values to have a maximum value of 127, shifting it by 9 bits
-            // might occupy the signed bit, resulting in some positive
-            // values being interpreted as negative after the shift.
+        // But here we run into a problem: mullo does not preserve the
+        // sign of the multiplication. We can get around this by doing
+        // mulhi, which keeps the sign. But that requires an additional
+        // tweak.
 
-            // There is a way, however, to get around this limitation. When
-            // loading the network, scale accumulator weights and biases by
-            // 2. To get the same pairwise multiplication result as before,
-            // we need to divide the product by 128 * 2 * 2 = 512, which
-            // amounts to a right shift of 9 bits. So now we only have to
-            // shift left by 7 bits, perform mulhi (shifts right by 16 bits)
-            // and net a 9 bit right shift. Since we scaled everything by
-            // two, the values are clipped at 127 * 2 = 254, which occupies
-            // 8 bits. Shifting it by 7 bits left will no longer occupy the
-            // signed bit, so we are safe.
+        // mulhi cuts off the last 16 bits of the resulting product,
+        // which is the same as performing a rightward shift of 16 bits.
+        // We can use this to our advantage. Recall that we want to
+        // divide the final product by 512, which is equivalent to a
+        // 9-bit right shift. Intuitively, if we shift the clipped
+        // value left by 7, and perform mulhi, which shifts the product
+        // right by 16 bits, then we will net a right shift of 9 bits.
 
-            // Note that on NEON processors, we shift left by 6 instead
-            // because the instruction "vqdmulhq_s16" also doubles the
-            // return value after the multiplication, adding an extra shift
-            // to the left by 1, so we compensate by shifting less before
-            // the multiplication.
+        for (IndexType j = 0; j < NumOutputChunks; j += 2)
+        {
+            vec_t packed[2];
+            for (IndexType k = 0; k < 2; ++k)
+            {
+                const IndexType i = (j + k) * 2;
 
-            constexpr int shift =
-    #if defined(USE_SSE2)
-              7;
+                vec_t acc0a = in0[i + 0];
+                vec_t acc0b = in0[i + 1];
+                vec_t acc1a = in1[i + 0];
+                vec_t acc1b = in1[i + 1];
+
+                static_assert(FtMaxVal == 255);
+
+    #if defined(USE_NEON)
+                uint16x8_t mul0 = vmull_u8(vqmovun_s16(acc0a), vqmovun_s16(acc1a));
+                uint16x8_t mul1 = vmull_u8(vqmovun_s16(acc0b), vqmovun_s16(acc1b));
+
+                uint8x16x2_t uzp = vuzpq_u8(vreinterpretq_u8_u16(mul0), vreinterpretq_u8_u16(mul1));
+                uint8x16_t   pab = vshrq_n_u8(uzp.val[1], 1);
+                vec_t        result = reinterpret_cast<vec_t>(pab);
+    #elif defined(USE_LSX) || defined(USE_LASX)
+                vec_t pa = vec_packus_16(acc0a, acc0b);
+                vec_t pb = vec_packus_16(acc1a, acc1b);
+
+                vec_t hi     = vec_mulhi_8(pa, pb);
+                vec_t result = vec_srli_8(hi, 1);
+    #elif defined(__wasm__)
+                // _mm_mulhi_epi16 is lowered to 32-bit multiplies, so we take
+                // a similar approach as the NEON path.
+                vec_t mul0 = vec_packus_16(acc0a, acc0b);
+                vec_t mul1 = vec_packus_16(acc1a, acc1b);
+
+                vec_t low = wasm_u16x8_extmul_low_u8x16(mul0, mul1);
+                vec_t hi  = wasm_u16x8_extmul_high_u8x16(mul0, mul1);
+
+                // equivalent to vuzp2_u8
+                vec_t merged = wasm_i8x16_shuffle(low, hi, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21,
+                                                  23, 25, 27, 29, 31);
+                vec_t result = wasm_u8x16_shr(merged, 1);
     #else
-              6;
+                vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
+                vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);
+                vec_t sum1a = vec_min_16(acc1a, FtMax);
+                vec_t sum1b = vec_min_16(acc1b, FtMax);
+
+                vec_t pa = vec_mulhi_16(sum0a, sum1a);
+                vec_t pb = vec_mulhi_16(sum0b, sum1b);
+
+                vec_t result = vec_packus_16(pa, pb);
     #endif
-            if (UseThreats)
-            {
-                const vec_t* tin0 =
-                  reinterpret_cast<const vec_t*>(&(threatAccumulation[perspectives[p]][0]));
-                const vec_t* tin1 = reinterpret_cast<const vec_t*>(
-                  &(threatAccumulation[perspectives[p]][HalfDimensions / 2]));
-                for (IndexType j = 0; j < NumOutputChunks; ++j)
-                {
-                    const vec_t acc0a = vec_add_16(in0[j * 2 + 0], tin0[j * 2 + 0]);
-                    const vec_t acc0b = vec_add_16(in0[j * 2 + 1], tin0[j * 2 + 1]);
-                    const vec_t acc1a = vec_add_16(in1[j * 2 + 0], tin1[j * 2 + 0]);
-                    const vec_t acc1b = vec_add_16(in1[j * 2 + 1], tin1[j * 2 + 1]);
 
-                    const vec_t sum0a =
-                      vec_slli_16(vec_max_16(vec_min_16(acc0a, One), Zero), shift);
-                    const vec_t sum0b =
-                      vec_slli_16(vec_max_16(vec_min_16(acc0b, One), Zero), shift);
-                    const vec_t sum1a = vec_min_16(acc1a, One);
-                    const vec_t sum1b = vec_min_16(acc1b, One);
-
-                    const vec_t pa = vec_mulhi_16(sum0a, sum1a);
-                    const vec_t pb = vec_mulhi_16(sum0b, sum1b);
-
-                    out[j] = vec_packus_16(pa, pb);
-                }
+                packed[k] = out[j + k] = result;
             }
+
+            cursor.record2(packed[0], packed[1]);
+        }
+
+#elif defined(USE_RVV)
+
+        usize       j  = 0;
+        usize       VL = __riscv_vsetvlmax_e8m1();
+        vuint8m1_t  vid8;
+        vuint16m2_t vid16;
+        if (VL <= 256)
+            vid8 = __riscv_vid_v_u8m1(VL);
+        else
+            vid16 = __riscv_vid_v_u16m2(VL);
+
+        for (usize vl; j < HalfDimensions / 2; j += vl)
+        {
+            vl = __riscv_vsetvl_e16m2(HalfDimensions / 2 - j);
+
+            vint16m2_t acc0 = __riscv_vle16_v_i16m2(&accumulation[j], vl);
+            vint16m2_t acc1 = __riscv_vle16_v_i16m2(&accumulation[j + HalfDimensions / 2], vl);
+
+            acc0 = __riscv_vmax(acc0, 0, vl);
+            acc1 = __riscv_vmax(acc1, 0, vl);
+
+            vuint8m1_t pa = __riscv_vnclipu(__riscv_vreinterpret_u16m2(acc0), 0, 0, vl);
+            vuint8m1_t pb = __riscv_vnclipu(__riscv_vreinterpret_u16m2(acc1), 0, 0, vl);
+
+            vuint8m1_t hi     = __riscv_vmulhu(pa, pb, vl);
+            vuint8m1_t result = __riscv_vsrl(hi, 1, vl);
+
+            __riscv_vse8(&output[offset + j], result, vl);
+
+            vbool8_t    m   = __riscv_vmsne(result, 0, vl);
+            usize       cnt = __riscv_vcpop(m, vl);
+            vuint16m2_t vidx;
+            if (VL <= 256)
+                vidx = __riscv_vzext_vf2(__riscv_vcompress(vid8, m, vl), cnt);
             else
-            {
-                for (IndexType j = 0; j < NumOutputChunks; ++j)
-                {
-                    const vec_t sum0a =
-                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 0], One), Zero), shift);
-                    const vec_t sum0b =
-                      vec_slli_16(vec_max_16(vec_min_16(in0[j * 2 + 1], One), Zero), shift);
-                    const vec_t sum1a = vec_min_16(in1[j * 2 + 0], One);
-                    const vec_t sum1b = vec_min_16(in1[j * 2 + 1], One);
-
-                    const vec_t pa = vec_mulhi_16(sum0a, sum1a);
-                    const vec_t pb = vec_mulhi_16(sum0b, sum1b);
-
-                    out[j] = vec_packus_16(pa, pb);
-                }
-            }
+                vidx = __riscv_vcompress(vid16, m, vl);
+            __riscv_vse16(&nnzInfo.nnz[nnzInfo.count], __riscv_vadd(vidx, offset + j, cnt), cnt);
+            nnzInfo.count += cnt;
+        }
 
 #else
 
-            for (IndexType j = 0; j < HalfDimensions / 2; ++j)
-            {
-                BiasType sum0 = accumulation[static_cast<int>(perspectives[p])][j + 0];
-                BiasType sum1 =
-                  accumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
+        for (IndexType j = 0; j < HalfDimensions / 2; ++j)
+        {
+            BiasType sum0 = accumulation[j];
+            BiasType sum1 = accumulation[j + HalfDimensions / 2];
 
-                if (UseThreats)
-                {
-                    BiasType sum0t = threatAccumulation[static_cast<int>(perspectives[p])][j + 0];
-                    BiasType sum1t =
-                      threatAccumulation[static_cast<int>(perspectives[p])][j + HalfDimensions / 2];
-                    sum0 = std::clamp<BiasType>(sum0 + sum0t, 0, 255);
-                    sum1 = std::clamp<BiasType>(sum1 + sum1t, 0, 255);
-                }
-                else
-                {
-                    sum0 = std::clamp<BiasType>(sum0, 0, 127 * 2);
-                    sum1 = std::clamp<BiasType>(sum1, 0, 127 * 2);
-                }
+            sum0 = std::clamp<BiasType>(sum0, 0, FtMaxVal);
+            sum1 = std::clamp<BiasType>(sum1, 0, FtMaxVal);
 
-                output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
-            }
-
-#endif
+            output[offset + j] = static_cast<OutputType>(unsigned(sum0 * sum1) / 512);
         }
 
-        return psqt;
-    }  // end of function transform()
+#endif
+    }
 
-    alignas(CacheLineSize) std::array<BiasType, HalfDimensions> biases;
-    alignas(CacheLineSize) std::array<WeightType, HalfDimensions * InputDimensions> weights;
-    alignas(CacheLineSize)
-      std::array<ThreatWeightType,
-                 UseThreats ? HalfDimensions * ThreatInputDimensions : 0> threatWeights;
-    alignas(CacheLineSize) std::array<PSQTWeightType, InputDimensions * PSQTBuckets> psqtWeights;
-    alignas(CacheLineSize)
-      std::array<PSQTWeightType,
-                 UseThreats ? ThreatInputDimensions * PSQTBuckets : 0> threatPsqtWeights;
+   public:
+    alignas(CacheLineSize) BiasesArray biases;
+    alignas(CacheLineSize) WeightArray weights;
+
+    // Threats and pawn-pair features are concatenated into one array to allow for a single index to address either.
+    // The first pawn-pair feature is at index ThreatFeatureSet::Dimensions.
+    static_assert(PairFeatureSet::IndexBase == ThreatFeatureSet::Dimensions);
+
+    alignas(CacheLineSize) ThreatAndPpWeightArray threatAndPpWeights;
+    alignas(CacheLineSize) PsqtWeightArray psqtWeights;
+    alignas(CacheLineSize) ThreatAndPpPsqtArray threatAndPpPsqtWeights;
 };
 
 }  // namespace Stockfish::Eval::NNUE
 
-
-template<Stockfish::Eval::NNUE::IndexType TransformedFeatureDimensions>
-struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>> {
-    std::size_t
-    operator()(const Stockfish::Eval::NNUE::FeatureTransformer<TransformedFeatureDimensions>& ft)
-      const noexcept {
+template<>
+struct std::hash<Stockfish::Eval::NNUE::FeatureTransformer> {
+    Stockfish::usize
+    operator()(const Stockfish::Eval::NNUE::FeatureTransformer& ft) const noexcept {
         return ft.get_content_hash();
     }
 };
