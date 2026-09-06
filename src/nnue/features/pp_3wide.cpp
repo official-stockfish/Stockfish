@@ -92,13 +92,15 @@ void PP_3Wide::append_active_indices(Color perspective, const Position& pos, Ind
     }
 }
 
-void PP_3Wide::append_changed_indices(Color                                    perspective,
-                                      Square                                   ksq,
-                                      const DiffType&                          diff,
-                                      IndexList&                               removed,
-                                      IndexList&                               added,
-                                      [[maybe_unused]] const ThreatWeightType* prefetchBase,
-                                      [[maybe_unused]] IndexType               prefetchStride) {
+template<int N>
+static void append_changed_indices_impl(Color                                    perspective,
+                                        const Square (&ksq)[N],
+                                        const PP_3Wide::DiffType&                 diff,
+                                        PP_3Wide::IndexList* const (&removed)[N],
+                                        PP_3Wide::IndexList* const (&added)[N],
+                                        [[maybe_unused]] const ThreatWeightType* prefetchBase,
+                                        [[maybe_unused]] IndexType               prefetchStride) {
+    using IndexList = PP_3Wide::IndexList;
 
     const Bitboard whiteBefore = diff.before[WHITE];
     const Bitboard blackBefore = diff.before[BLACK];
@@ -109,46 +111,61 @@ void PP_3Wide::append_changed_indices(Color                                    p
         return;
 
 #ifdef USE_AVX512ICL
-    const u8      orientation = u8(FullThreats::OrientTBL[ksq]) ^ u8(56 * perspective);
-    const __m512i iota        = AllSquares;
-    const __m512i adjusted =
-      _mm512_sub_epi8(_mm512_xor_si512(iota, _mm512_set1_epi8(orientation)), _mm512_set1_epi8(8));
+    u8      orientation[N];
+    __m512i adjusted[N];
+    for (int i = 0; i < N; ++i)
+    {
+        orientation[i] = u8(FullThreats::OrientTBL[ksq[i]]) ^ u8(56 * (perspective ^ i));
+        adjusted[i] = _mm512_sub_epi8(
+          _mm512_xor_si512(AllSquares, _mm512_set1_epi8(orientation[i])), _mm512_set1_epi8(8));
+    }
 
+    // Enumerate changed pawns and their partners once for all requested perspectives.
     auto generate = [&](Bitboard updatedW, Bitboard updatedB, Bitboard pawnsW, Bitboard pawnsB,
-                        IndexList& out) {
-        const Bitboard friendly = perspective == WHITE ? pawnsW : pawnsB;
-        const Bitboard enemy    = perspective == WHITE ? pawnsB : pawnsW;
-        const __m512i  ids      = _mm512_mask_blend_epi8(
-          friendly, _mm512_add_epi8(adjusted, _mm512_set1_epi8(48)), adjusted);
+                        IndexList* const (&out)[N]) {
+        __m512i ids[N];
+        for (int i = 0; i < N; ++i)
+        {
+            const Bitboard friendly = (perspective ^ i) == WHITE ? pawnsW : pawnsB;
+            ids[i] = _mm512_mask_blend_epi8(
+              friendly, _mm512_add_epi8(adjusted[i], _mm512_set1_epi8(48)), adjusted[i]);
+        }
 
         const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
         for (Bitboard u = updatedW | updatedB; u;)
         {
             const Square   a        = pop_lsb(u);
             const Bitboard partners = pawn_pair_bb(a) & (unchanged | u);
-            const int      n        = popcount(partners);
+            const int n = popcount(partners);
             if (!n)
                 continue;
 
-            const u16     colorOff = (enemy & a) ? 48 : 0;
-            const u16     aId      = u16(((u8(a) ^ orientation) - 8) + colorOff);
-            const __m256i pids     = _mm256_cvtepu8_epi16(
-              _mm512_castsi512_si128(_mm512_maskz_compress_epi8(partners, ids)));
-            const __m256i feats = pp_idx_epi16(_mm256_set1_epi16(aId), pids);
-
-            u16* w = out.make_space(n);
-            _mm256_storeu_epi16(w, feats);
+            for (int i = 0; i < N; ++i)
+            {
+                const Bitboard enemy = (perspective ^ i) == WHITE ? pawnsB : pawnsW;
+                const u16 aId = u16(((u8(a) ^ orientation[i]) - 8) + ((enemy & a) ? 48 : 0));
+                const __m256i pids = _mm256_cvtepu8_epi16(
+                  _mm512_castsi512_si128(_mm512_maskz_compress_epi8(partners, ids[i])));
+                const __m256i feats = pp_idx_epi16(_mm256_set1_epi16(aId), pids);
+                _mm256_storeu_epi16(out[i]->make_space(n), feats);
+            }
         }
     };
 #else
     auto generate = [&](Bitboard updatedW, Bitboard updatedB, Bitboard pawnsW, Bitboard pawnsB,
-                        IndexList& out) {
-        auto push = [&](IndexType index) {
-            if (prefetchBase)
-                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
-                  reinterpret_cast<uintptr_t>(prefetchBase) + uintptr_t(index) * prefetchStride));
-            out.push_back(index);
+                        IndexList* const (&out)[N]) {
+        auto push = [&](Color color, Square from, Square to, Color pairedColor) {
+            for (int i = 0; i < N; ++i)
+            {
+                const IndexType index =
+                  PP_3Wide::make_index(Color(perspective ^ i), color, from, to, pairedColor, ksq[i]);
+                if (prefetchBase)
+                    prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
+                      reinterpret_cast<uintptr_t>(prefetchBase) + uintptr_t(index) * prefetchStride));
+                out[i]->push_back(index);
+            }
         };
+
         const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
         for (Bitboard u = updatedW | updatedB; u;)
         {
@@ -156,9 +173,9 @@ void PP_3Wide::append_changed_indices(Color                                    p
             const Bitboard mask = pawn_pair_bb(a) & (unchanged | u);
             const Color    aCol = (pawnsB & a) ? BLACK : WHITE;
             for (Bitboard pb = pawnsB & mask; pb;)
-                push(make_index(perspective, aCol, a, pop_lsb(pb), BLACK, ksq));
+                push(aCol, a, pop_lsb(pb), BLACK);
             for (Bitboard pw = pawnsW & mask; pw;)
-                push(make_index(perspective, aCol, a, pop_lsb(pw), WHITE, ksq));
+                push(aCol, a, pop_lsb(pw), WHITE);
         }
     };
 #endif
@@ -166,6 +183,17 @@ void PP_3Wide::append_changed_indices(Color                                    p
     generate(whiteAfter & ~whiteBefore, blackAfter & ~blackBefore, whiteAfter, blackAfter, added);
     generate(whiteBefore & ~whiteAfter, blackBefore & ~blackAfter, whiteBefore, blackBefore,
              removed);
+}
+
+void PP_3Wide::append_changed_indices(Color                                    perspective,
+                                      Square                                   ksq,
+                                      const DiffType&                          diff,
+                                      IndexList&                               removed,
+                                      IndexList&                               added,
+                                      const ThreatWeightType*                  prefetchBase,
+                                      IndexType                                prefetchStride) {
+    append_changed_indices_impl<1>(perspective, {ksq}, diff, {&removed}, {&added}, prefetchBase,
+                                    prefetchStride);
 }
 
 void PP_3Wide::append_changed_indices_both(Square                  white_ksq,
@@ -177,62 +205,9 @@ void PP_3Wide::append_changed_indices_both(Square                  white_ksq,
                                            IndexList&              black_added,
                                            const ThreatWeightType* prefetchBase,
                                            IndexType               prefetchStride) {
-
-#ifdef USE_AVX512ICL
-    append_changed_indices(WHITE, white_ksq, diff, white_removed, white_added, prefetchBase,
-                           prefetchStride);
-    append_changed_indices(BLACK, black_ksq, diff, black_removed, black_added, prefetchBase,
-                           prefetchStride);
-#else
-    const Bitboard whiteBefore = diff.before[WHITE];
-    const Bitboard blackBefore = diff.before[BLACK];
-    const Bitboard whiteAfter  = diff.after[WHITE];
-    const Bitboard blackAfter  = diff.after[BLACK];
-
-    if (whiteBefore == whiteAfter && blackBefore == blackAfter)
-        return;
-
-    auto generate = [&](Bitboard updatedW, Bitboard updatedB, Bitboard pawnsW, Bitboard pawnsB,
-                        IndexList& white_out, IndexList& black_out) {
-        auto push = [&](Color color, Square from, Square to, Color pairedColor) {
-            const IndexType white_index =
-              make_index(WHITE, color, from, to, pairedColor, white_ksq);
-            const IndexType black_index =
-              make_index(BLACK, color, from, to, pairedColor, black_ksq);
-
-            if (prefetchBase)
-            {
-                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
-                  reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(prefetchBase)
-                                                + uintptr_t(white_index) * prefetchStride));
-                prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(
-                  reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(prefetchBase)
-                                                + uintptr_t(black_index) * prefetchStride));
-            }
-
-            white_out.push_back(white_index);
-            black_out.push_back(black_index);
-        };
-
-        const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
-        for (Bitboard updated = updatedW | updatedB; updated;)
-        {
-            const Square   from  = pop_lsb(updated);
-            const Bitboard mask  = pawn_pair_bb(from) & (unchanged | updated);
-            const Color    color = (pawnsB & from) ? BLACK : WHITE;
-
-            for (Bitboard paired = pawnsB & mask; paired;)
-                push(color, from, pop_lsb(paired), BLACK);
-            for (Bitboard paired = pawnsW & mask; paired;)
-                push(color, from, pop_lsb(paired), WHITE);
-        }
-    };
-
-    generate(whiteAfter & ~whiteBefore, blackAfter & ~blackBefore, whiteAfter, blackAfter,
-             white_added, black_added);
-    generate(whiteBefore & ~whiteAfter, blackBefore & ~blackAfter, whiteBefore, blackBefore,
-             white_removed, black_removed);
-#endif
+    append_changed_indices_impl<2>(WHITE, {white_ksq, black_ksq}, diff,
+                                    {&white_removed, &black_removed}, {&white_added, &black_added},
+                                    prefetchBase, prefetchStride);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features
