@@ -912,7 +912,7 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
     ThreatFeatureSet::IndexList active;
     ThreatFeatureSet::append_active_indices(perspective, pos, active);
-    PairFeatureSet::append_active_indices(perspective, pos, active);
+    const auto& pawnEntry = cache.pawn_entry(perspective, pos, featureTransformer);
 
     accumulator.computed[perspective] = true;
 
@@ -930,6 +930,8 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         acc = apply_threat_features<+1>(j, acc, active, featureTransformer);
 
+        if (pawnEntry.featureCount)
+            acc = apply<+1>(j, acc, pawnEntry.accumulation.data());
         store_tile(j, accumulator.accumulation[perspective].data(), acc);
     }
 
@@ -944,10 +946,49 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         psqt = apply_psqt<+1>(j, psqt, active, featureTransformer.threatAndPpPsqtWeights.data());
 
+        if (pawnEntry.featureCount)
+            psqt = apply<+1>(j, psqt, pawnEntry.psqtAccumulation.data());
         store_psqt(j, accumulator.psqtAccumulation[perspective].data(), psqt);
     }
 }
 
+}
+
+const AccumulatorCaches::PawnEntry& AccumulatorCaches::pawn_entry(
+  Color perspective, const Position& pos, const FeatureTransformer& featureTransformer) {
+    const Square ksq = pos.square<KING>(perspective);
+    auto&        entry =
+      pawnEntries[pos.pawn_key() & (PawnCacheSize / 4 - 1)][perspective][(int(ksq) >> 2) & 1];
+    const Bitboard white = pos.pieces(WHITE, PAWN);
+    const Bitboard black = pos.pieces(BLACK, PAWN);
+    if (entry.pawns[WHITE] == white && entry.pawns[BLACK] == black)
+        return entry;
+
+    // Comparing actual bitboards makes both hits and collisions exact. The old
+    // entry remains a useful starting point even when its pawn hash differs.
+    DirtyPawnPairs            diff{{entry.pawns[WHITE], entry.pawns[BLACK]}, {white, black}};
+    PairFeatureSet::IndexList removed, added;
+    PairFeatureSet::append_changed_indices(perspective, ksq, diff, removed, added,
+                                           featureTransformer.threatAndPpWeights.data(),
+                                           Dimensions);
+    for (IndexType j = 0; j < Dimensions; increment_index(j))
+    {
+        auto acc = load_tile(j, entry.accumulation.data());
+        acc      = apply_threat_features<-1>(j, acc, removed, featureTransformer);
+        acc      = apply_threat_features<+1>(j, acc, added, featureTransformer);
+        store_tile(j, entry.accumulation.data(), acc);
+    }
+    for (IndexType j = 0; j < PSQTBuckets; increment_psqt_index(j))
+    {
+        auto psqt = load_psqt(j, entry.psqtAccumulation.data());
+        psqt = apply_psqt<-1>(j, psqt, removed, featureTransformer.threatAndPpPsqtWeights.data());
+        psqt = apply_psqt<+1>(j, psqt, added, featureTransformer.threatAndPpPsqtWeights.data());
+        store_psqt(j, entry.psqtAccumulation.data(), psqt);
+    }
+    entry.featureCount = u16(entry.featureCount + added.size() - removed.size());
+    entry.pawns[WHITE] = white;
+    entry.pawns[BLACK] = black;
+    return entry;
 }
 
 }

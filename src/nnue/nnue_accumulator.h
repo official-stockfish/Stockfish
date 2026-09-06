@@ -76,16 +76,35 @@ struct AccumulatorCaches {
         }
     };
 
+    // Total number of cached perspective/mirror accumulations.
+    static constexpr usize PawnCacheSize = 64;
+
+    struct alignas(CacheLineSize) PawnEntry {
+        std::array<i16, L1>            accumulation;
+        std::array<i32, PSQTBuckets>   psqtAccumulation;
+        std::array<Bitboard, COLOR_NB> pawns;
+        u16                            featureCount;
+    };
+
+    const PawnEntry& pawn_entry(Color                     perspective,
+                                const Position&           pos,
+                                const FeatureTransformer& featureTransformer);
+
     template<typename Network>
     void clear(const Network& network) {
         for (auto& entries1D : entries)
             for (auto& entry : entries1D)
                 entry.clear(network.featureTransformer.biases);
+        std::memset(pawnEntries.data(), 0, sizeof(pawnEntries));
     }
 
     std::array<Entry, COLOR_NB>& operator[](Square sq) { return entries[sq]; }
 
     std::array<std::array<Entry, COLOR_NB>, SQUARE_NB> entries;
+
+    // Fixed perspective/mirror lanes make pawn bitboards sufficient hit tags.
+    static_assert(PawnCacheSize >= 4 && (PawnCacheSize & (PawnCacheSize - 1)) == 0);
+    std::array<std::array<std::array<PawnEntry, 2>, COLOR_NB>, PawnCacheSize / 4> pawnEntries;
 };
 
 
