@@ -259,18 +259,6 @@ inline constexpr auto PseudoAttacks = []() constexpr {
     return attacks;
 }();
 
-inline constexpr auto PawnPushOrAttacks = []() constexpr {
-    std::array<std::array<Bitboard, SQUARE_NB>, COLOR_NB> attacks{};
-
-    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-    {
-        attacks[WHITE][s1] = pawn_single_push_bb(WHITE, square_bb(s1)) | PseudoAttacks[WHITE][s1];
-        attacks[BLACK][s1] = pawn_single_push_bb(BLACK, square_bb(s1)) | PseudoAttacks[BLACK][s1];
-    }
-
-    return attacks;
-}();
-
 // Returns the pseudo attacks of the given piece type
 // assuming an empty board.
 template<PieceType Pt>
