@@ -26,6 +26,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace {
@@ -381,7 +382,98 @@ const std::vector<std::vector<std::string>> BenchmarkPositions = {
 
 namespace Stockfish::Benchmark {
 
-// Builds a list of UCI commands to be run by bench. There
+struct BenchCommandStream: ICommandStream {
+    std::vector<std::string>     prologue_;
+    std::vector<std::string>     fens_;
+    std::optional<std::ifstream> fileSource_;
+    std::string                  go_;
+
+    size_t i_       = 0;
+    bool   needsGo_ = false;
+
+    BenchCommandStream(std::vector<std::string>     prologue,
+                       std::vector<std::string>     fens,
+                       std::optional<std::ifstream> fileSource,
+                       std::string                  go) :
+        prologue_(std::move(prologue)),
+        fens_(std::move(fens)),
+        fileSource_(std::move(fileSource)),
+        go_(std::move(go)) {}
+
+    virtual size_t numFens() {
+        auto isFen = [](const std::string& s) { return s.find("setoption") == std::string::npos; };
+
+        if (fileSource_)
+        {
+            std::string line;
+            size_t      count = 0;
+            while (std::getline(*fileSource_, line))
+                count += !line.empty() && isFen(line);
+            reset();
+            return count;
+        }
+        else
+        {
+            return std::count_if(fens_.begin(), fens_.end(), isFen);
+        }
+    }
+
+    virtual void reset() {
+        if (fileSource_)
+        {
+            fileSource_->clear();
+            fileSource_->seekg(0, std::ios::beg);
+        }
+        i_       = 0;
+        needsGo_ = false;
+    }
+
+    virtual bool next(std::string& s) {
+        if (i_ < prologue_.size())
+        {
+            s = prologue_[i_++];
+            return true;
+        }
+
+        if (needsGo_)
+        {  // 'go' after position set
+            s        = go_;
+            needsGo_ = false;
+            return true;
+        }
+
+        std::string nextFen;
+        if (fileSource_.has_value())
+        {
+            // Get non-empty line from the file
+            while (std::getline(*fileSource_, nextFen))
+                if (!nextFen.empty())
+                    break;
+        }
+        else
+        {
+            size_t j = i_++ - prologue_.size();
+            nextFen  = j < fens_.size() ? fens_[j] : "";
+        }
+
+        if (nextFen.empty())
+            return false;
+
+        if (nextFen.find("setoption") != std::string::npos)
+        {
+            // Forward setoption calls
+            s = std::move(nextFen);
+        }
+        else
+        {
+            s        = "position fen " + nextFen;
+            needsGo_ = true;
+        }
+        return true;
+    }
+};
+
+// Returns a stream of UCI commands to be run by bench. There
 // are five parameters: TT size in MB, number of search threads that
 // should be used, the limit value spent for each position, a file name
 // where to look for positions in FEN format, and the type of the limit:
@@ -392,9 +484,9 @@ namespace Stockfish::Benchmark {
 // bench 64 1 100000 default nodes  : search default positions for 100K nodes each
 // bench 64 4 5000 current movetime : search current position with 4 threads for 5 sec
 // bench 16 1 5 blah perft          : run a perft 5 on positions in file "blah"
-std::vector<std::string> setup_bench(const std::string& currentFen, std::istream& is) {
+std::unique_ptr<ICommandStream> setup_bench(const std::string& currentFen, std::istream& is) {
 
-    std::vector<std::string> fens, list;
+    std::vector<std::string> fens, prologue;
     std::string              go, token;
 
     // Assign default values to missing arguments
@@ -403,6 +495,8 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
     std::string limit     = (is >> token) ? token : "13";
     std::string fenFile   = (is >> token) ? token : "default";
     std::string limitType = (is >> token) ? token : "depth";
+
+    std::optional<std::ifstream> fileSource;
 
     go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
@@ -414,7 +508,6 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 
     else
     {
-        std::string   fen;
         std::ifstream file(fenFile);
 
         if (!file.is_open())
@@ -423,28 +516,35 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
             exit(EXIT_FAILURE);
         }
 
-        while (getline(file, fen))
-            if (!fen.empty())
-                fens.push_back(fen);
-
-        file.close();
+        fileSource = std::move(file);
     }
 
-    list.emplace_back("setoption name Threads value " + threads);
-    list.emplace_back("setoption name Hash value " + ttSize);
-    list.emplace_back("ucinewgame");
+    prologue.emplace_back("setoption name Threads value " + threads);
+    prologue.emplace_back("setoption name Hash value " + ttSize);
+    prologue.emplace_back("ucinewgame");
 
-    for (const std::string& fen : fens)
-        if (fen.find("setoption") != std::string::npos)
-            list.emplace_back(fen);
-        else
-        {
-            list.emplace_back("position fen " + fen);
-            list.emplace_back(go);
-        }
-
-    return list;
+    return std::make_unique<BenchCommandStream>(prologue, fens, std::move(fileSource), go);
 }
+
+struct VectorCommandStream: ICommandStream {
+    std::vector<std::string> cmds_{};
+    size_t                   numFens_{};
+    size_t                   i_ = 0;
+
+    VectorCommandStream(std::vector<std::string> cmds, size_t numFens) :
+        cmds_(std::move(cmds)),
+        numFens_(numFens) {}
+
+    virtual bool next(std::string& s) {
+        if (i_ >= cmds_.size())
+            return false;
+        s = cmds_[i_++];
+        return true;
+    }
+
+    virtual void   reset() { i_ = 0; }
+    virtual size_t numFens() { return numFens_; }
+};
 
 BenchmarkSetup setup_benchmark(std::istream& is) {
     // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
@@ -512,17 +612,23 @@ BenchmarkSetup setup_benchmark(std::istream& is) {
 
     float timeScaleFactor = static_cast<float>(desiredTimeS * 1000) / totalTime;
 
+    std::vector<std::string> commands;
+    size_t                   numFens = 0;
+
     for (const auto& game : BenchmarkPositions)
     {
-        setup.commands.emplace_back("ucinewgame");
+        commands.emplace_back("ucinewgame");
         int ply = 1;
         for (const std::string& fen : game)
         {
-            setup.commands.emplace_back("position fen " + fen);
+            commands.emplace_back("position fen " + fen);
             const int correctedTime = static_cast<int>(getCorrectedTime(ply++) * timeScaleFactor);
-            setup.commands.emplace_back("go movetime " + std::to_string(correctedTime));
+            commands.emplace_back("go movetime " + std::to_string(correctedTime));
+            numFens++;
         }
     }
+
+    setup.commandStream = std::make_unique<VectorCommandStream>(std::move(commands), numFens);
 
     return setup;
 }

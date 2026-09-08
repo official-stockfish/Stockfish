@@ -256,14 +256,14 @@ void UCIEngine::bench(std::istream& args) {
         on_update_full(i, options["UCI_ShowWDL"]);
     });
 
-    std::vector<std::string> list = Benchmark::setup_bench(engine.fen(), args);
+    std::string cmd;
+    auto        list = Benchmark::setup_bench(engine.fen(), args);
 
-    num = count_if(list.begin(), list.end(),
-                   [](const std::string& s) { return s.find("go ") == 0 || s.find("eval") == 0; });
+    num = list->numFens();
 
     TimePoint elapsed = now();
 
-    for (const auto& cmd : list)
+    while (list->next(cmd))
     {
         std::istringstream is(cmd);
         is >> token;
@@ -318,7 +318,7 @@ void UCIEngine::benchmark(std::istream& args) {
     // Probably not very important for a test this long, but include for completeness and sanity.
     static constexpr int NUM_WARMUP_POSITIONS = 3;
 
-    std::string token;
+    std::string cmd, token;
     u64         cnt = 1;
 
     engine.set_on_update_full([](const auto&) {});
@@ -329,8 +329,7 @@ void UCIEngine::benchmark(std::istream& args) {
 
     Benchmark::BenchmarkSetup setup = Benchmark::setup_benchmark(args);
 
-    const auto numGoCommands = count_if(setup.commands.begin(), setup.commands.end(),
-                                        [](const std::string& s) { return s.find("go ") == 0; });
+    const auto numGoCommands = setup.commandStream->numFens();
 
 
     // Set options once at the start.
@@ -342,7 +341,7 @@ void UCIEngine::benchmark(std::istream& args) {
     setoption(ss);
 
     // Warmup
-    for (const auto& cmd : setup.commands)
+    while (setup.commandStream->next(cmd))
     {
         std::istringstream is(cmd);
         is >> token;
@@ -368,6 +367,8 @@ void UCIEngine::benchmark(std::istream& args) {
         if (cnt > NUM_WARMUP_POSITIONS)
             break;
     }
+
+    setup.commandStream->reset();
 
     std::cerr << "\n";
 
@@ -410,7 +411,7 @@ void UCIEngine::benchmark(std::istream& args) {
           nodes += nodesSearched;
       });
 
-    for (const auto& cmd : setup.commands)
+    while (setup.commandStream->next(cmd))
     {
         std::istringstream is(cmd);
         is >> token;

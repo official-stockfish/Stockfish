@@ -20,19 +20,29 @@
 #define BENCHMARK_H_INCLUDED
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace Stockfish::Benchmark {
 
-std::vector<std::string> setup_bench(const std::string&, std::istream&);
+struct ICommandStream {
+    // Returns true if more commands are forthcoming
+    virtual bool   next(std::string& cmd) = 0;
+    virtual void   reset()                = 0;
+    virtual size_t numFens()              = 0;
+
+    virtual ~ICommandStream() {};
+};
+
+std::unique_ptr<ICommandStream> setup_bench(const std::string&, std::istream&);
 
 struct BenchmarkSetup {
-    int                      ttSize;
-    int                      threads;
-    std::vector<std::string> commands;
-    std::string              originalInvocation;
-    std::string              filledInvocation;
+    int                             ttSize;
+    int                             threads;
+    std::unique_ptr<ICommandStream> commandStream;
+    std::string                     originalInvocation;
+    std::string                     filledInvocation;
 };
 
 BenchmarkSetup setup_benchmark(std::istream&);
