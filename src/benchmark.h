@@ -21,11 +21,14 @@
 
 #include <iosfwd>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace Stockfish::Benchmark {
 
-std::vector<std::string> setup_bench(const std::string&, std::istream&);
+// Bench input accepts either one FEN per line, or a "setoption" UCI command per line.
+// The returned list contains the initialization and input; the goCmd is parsed from the args.
+std::tuple<std::vector<std::string>, std::string> setup_bench(const std::string&, std::istream& args);
 
 struct BenchmarkSetup {
     int                      ttSize;
