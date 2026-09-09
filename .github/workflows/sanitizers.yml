@@ -39,9 +39,9 @@ jobs:
             make_option: ""
             cxx_extra_flags: ""
             instrumented_option: none
-          - name: Run with glibcxx assertions
+          - name: Run with glibcxx assertions and trapv
             make_option: ""
-            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS
+            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS -ftrapv
             instrumented_option: none
     defaults:
       run:
