@@ -230,8 +230,6 @@ constexpr Bitboard pseudo_attacks(PieceType pt, Square sq) {
     case PieceType::ROOK :
     case PieceType::BISHOP :
         return sliding_attack(pt, sq, 0);
-    case PieceType::QUEEN :
-        return sliding_attack(PieceType::ROOK, sq, 0) | sliding_attack(PieceType::BISHOP, sq, 0);
     case PieceType::KNIGHT :
         return knight_attack(sq);
     case PieceType::KING :
