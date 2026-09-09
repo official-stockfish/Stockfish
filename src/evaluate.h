@@ -43,11 +43,18 @@ class AccumulatorStack;
 
 std::string trace(Position& pos, const Eval::NNUE::Network& network);
 
+// The main function for the outside world. It returns a static evaluation
+// of the position for the side to move perspective.
 Value evaluate(const NNUE::Network&           network,
                const Position&                pos,
                Eval::NNUE::AccumulatorStack&  accumulators,
                Eval::NNUE::AccumulatorCaches& caches,
                int                            optimism);
+
+// Returns the material difference for the side to move.
+// Divide by PawnValue to get a vaguely traditional estimate
+int simple_eval(const Position& pos);
+
 }  // namespace Eval
 
 }  // namespace Stockfish
