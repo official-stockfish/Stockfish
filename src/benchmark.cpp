@@ -392,10 +392,12 @@ namespace Stockfish::Benchmark {
 // bench 64 1 100000 default nodes  : search default positions for 100K nodes each
 // bench 64 4 5000 current movetime : search current position with 4 threads for 5 sec
 // bench 16 1 5 blah perft          : run a perft 5 on positions in file "blah"
-std::vector<std::string> setup_bench(const std::string& currentFen, std::istream& is) {
+//
+// The return values are the list of commands-or-FENs and the go command to be looped.
+std::tuple<std::vector<std::string>, std::string> setup_bench(const std::string& currentFen, std::istream& is) {
 
-    std::vector<std::string> fens, list;
-    std::string              go, token;
+    std::vector<std::string> list;
+    std::string              goCmd, token;
 
     // Assign default values to missing arguments
     std::string ttSize    = (is >> token) ? token : "16";
@@ -404,13 +406,16 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
     std::string fenFile   = (is >> token) ? token : "default";
     std::string limitType = (is >> token) ? token : "depth";
 
-    go = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
+    list.emplace_back("setoption name Threads value " + threads);
+    list.emplace_back("setoption name Hash value " + ttSize);
+    list.emplace_back("ucinewgame");
+    goCmd = limitType == "eval" ? "eval" : "go " + limitType + " " + limit;
 
     if (fenFile == "default")
-        fens = Defaults;
+        list.insert(list.end(), Defaults.begin(), Defaults.end());
 
     else if (fenFile == "current")
-        fens.push_back(currentFen);
+        list.push_back(currentFen);
 
     else
     {
@@ -425,25 +430,12 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 
         while (getline(file, fen))
             if (!fen.empty())
-                fens.push_back(fen);
+                list.push_back(fen);
 
         file.close();
     }
 
-    list.emplace_back("setoption name Threads value " + threads);
-    list.emplace_back("setoption name Hash value " + ttSize);
-    list.emplace_back("ucinewgame");
-
-    for (const std::string& fen : fens)
-        if (fen.find("setoption") != std::string::npos)
-            list.emplace_back(fen);
-        else
-        {
-            list.emplace_back("position fen " + fen);
-            list.emplace_back(go);
-        }
-
-    return list;
+    return {list, goCmd};
 }
 
 BenchmarkSetup setup_benchmark(std::istream& is) {

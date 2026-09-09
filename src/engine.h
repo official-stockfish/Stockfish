@@ -67,7 +67,7 @@ class Engine {
     std::variant<u64, PositionSetError> perft(const std::string& fen, Depth depth, bool isChess960);
 
     // non blocking call to start searching
-    void go(Search::LimitsType&);
+    void go(const Search::LimitsType&);
     // non blocking call to stop searching
     void stop();
 
