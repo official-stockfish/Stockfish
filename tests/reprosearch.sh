@@ -1,6 +1,8 @@
 #!/bin/bash
 # verify reproducible search
 
+set -o pipefail
+
 error()
 {
   echo "reprosearch testing failed on line $1"
@@ -52,7 +54,7 @@ do
   echo "reprosearch testing with $nodes nodes"
 
   # each line should appear exactly an even number of times
-  expect repeat.exp $nodes 2>&1 | grep -o "nodes [0-9]*" | sort | uniq -c | awk '{if ($1%2!=0) exit(1)}'
+  expect repeat.exp $nodes 2>&1 | grep '^info ' | grep -o "nodes [0-9]*" | sort | uniq -c | awk '{if ($1%2!=0) exit(1)}'
 
 done
 
