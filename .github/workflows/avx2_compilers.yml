@@ -14,21 +14,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: gcc-10, comp: gcc, cxx: g++, image: "gcc:10" }
-          - { name: gcc-11, comp: gcc, cxx: g++, image: "gcc:11" }
+          - { name: gcc-10, comp: gcc, cxx: g++, image: "gcc:10-bookworm" }
+          - { name: gcc-11, comp: gcc, cxx: g++, image: "gcc:11-bookworm" }
           - { name: gcc-12, comp: gcc, cxx: g++, image: "gcc:12" }
           - { name: gcc-13, comp: gcc, cxx: g++, image: "gcc:13" }
           - { name: gcc-14, comp: gcc, cxx: g++, image: "gcc:14" }
           - { name: gcc-15, comp: gcc, cxx: g++, image: "gcc:15" }
 
-          # Using silkeh/clang for older versions
-          - { name: clang-11, comp: clang, cxx: clang++, image: "silkeh/clang:11", is_clang: true, ver: "11" }
-          - { name: clang-12, comp: clang, cxx: clang++, image: "silkeh/clang:12", is_clang: true, ver: "12" }
-          - { name: clang-13, comp: clang, cxx: clang++, image: "silkeh/clang:13", is_clang: true, ver: "13" }
-          - { name: clang-14, comp: clang, cxx: clang++, image: "silkeh/clang:14", is_clang: true, ver: "14" }
-          - { name: clang-15, comp: clang, cxx: clang++, image: "silkeh/clang:15", is_clang: true, ver: "15" }
-          - { name: clang-16, comp: clang, cxx: clang++, image: "silkeh/clang:16", is_clang: true, ver: "16" }
-          - { name: clang-17, comp: clang, cxx: clang++, image: "silkeh/clang:17", is_clang: true, ver: "17" }
+          # Older Clang releases without Bookworm images use Bullseye.
+          - { name: clang-11, comp: clang, cxx: clang++, image: "silkeh/clang:11-bullseye", is_clang: true, ver: "11" }
+          - { name: clang-12, comp: clang, cxx: clang++, image: "silkeh/clang:12-bullseye", is_clang: true, ver: "12" }
+          - { name: clang-13, comp: clang, cxx: clang++, image: "silkeh/clang:13-bullseye", is_clang: true, ver: "13" }
+          - { name: clang-14, comp: clang, cxx: clang++, image: "silkeh/clang:14-bullseye", is_clang: true, ver: "14" }
+          - { name: clang-15, comp: clang, cxx: clang++, image: "silkeh/clang:15-bullseye", is_clang: true, ver: "15" }
+          - { name: clang-16, comp: clang, cxx: clang++, image: "silkeh/clang:16-bookworm", is_clang: true, ver: "16" }
+          - { name: clang-17, comp: clang, cxx: clang++, image: "silkeh/clang:17-bookworm", is_clang: true, ver: "17" }
 
           - { name: clang-18, comp: clang, cxx: clang++-18, image: "ubuntu:rolling", is_clang: true, ver: "18" }
           - { name: clang-19, comp: clang, cxx: clang++-19, image: "ubuntu:rolling", is_clang: true, ver: "19" }
@@ -41,11 +41,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if grep -q "buster" /etc/os-release; then
-            echo "Debian Buster detected. Switching to archive repositories..."
-            echo "deb http://archive.debian.org/debian buster main contrib non-free" > /etc/apt/sources.list
-            echo "deb http://archive.debian.org/debian-security buster/updates main contrib non-free" >> /etc/apt/sources.list
+          if grep -q "ID=debian" /etc/os-release; then
+            . /etc/os-release
+            case "${VERSION_CODENAME:-}" in
+              buster)
+                echo "Debian Buster detected. Switching to archive repositories..."
+                rm -f /etc/apt/sources.list.d/debian.sources
+                cat > /etc/apt/sources.list << EOF
+          deb http://archive.debian.org/debian buster main contrib non-free
+          deb http://archive.debian.org/debian-security buster/updates main contrib non-free
+          EOF
+                ;;
+              bullseye)
+                echo "Debian Bullseye detected. Disabling repository expiry checks..."
+                ;;
+            esac
             echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99-ignore-valid-until
+            export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
           fi
 
           apt-get update
