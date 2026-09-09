@@ -391,7 +391,6 @@ bool Search::Worker::iterative_deepening() {
                 // effective increment for every four searchAgain steps (see issue #2717).
                 Depth adjustedDepth =
                   std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
-                rootDelta = beta - alpha;
                 bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
                 // Bring the best move to the front. It is critical that sorting
@@ -1160,9 +1159,11 @@ moves_loop:  // When in check, search starts here
         // Calculate new depth for this move
         newDepth = depth - 1;
 
-        int delta = beta - alpha;
+        int r = reduction(improving, depth, moveCount);
 
-        int r = reduction(improving, depth, moveCount, delta);
+        // Decrease reduction for PvNodes
+        if (PvNode)
+            r -= 512;
 
         // Increase reduction for ttPv nodes
         // (*Scaler) Larger values scale well.
@@ -1890,9 +1891,9 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     return bestValue;
 }
 
-int Search::Worker::reduction(bool i, Depth d, int mn, int delta) const {
+int Search::Worker::reduction(bool i, Depth d, int mn) const {
     int reductionScale = reductions[d] * reductions[mn];
-    return reductionScale - delta * 577 / rootDelta + !i * reductionScale * 197 / 512 + 982;
+    return reductionScale + !i * reductionScale * 197 / 512 + 948;
 }
 
 // elapsed() returns the time elapsed since the search started. If the
