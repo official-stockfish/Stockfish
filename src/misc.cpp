@@ -343,27 +343,33 @@ std::array<DebugExtremes, MaxDebugSlots> extremes;
 
 }  // namespace
 
-void dbg_hit_on(bool cond, int slot) {
+bool dbg_hit_on(bool cond, int slot) {
 
     ++hit.at(slot)[0];
     if (cond)
         ++hit.at(slot)[1];
+
+    return cond;
 }
 
-void dbg_mean_of(i64 value, int slot) {
+i64 dbg_mean_of(i64 value, int slot) {
 
     ++mean.at(slot)[0];
     mean.at(slot)[1] += value;
+
+    return value;
 }
 
-void dbg_stdev_of(i64 value, int slot) {
+i64 dbg_stdev_of(i64 value, int slot) {
 
     ++stdev.at(slot)[0];
     stdev.at(slot)[1] += value;
     stdev.at(slot)[2] += value * value;
+
+    return value;
 }
 
-void dbg_extremes_of(i64 value, int slot) {
+i64 dbg_extremes_of(i64 value, int slot) {
     ++extremes.at(slot)[0];
 
     i64 current_max = extremes.at(slot)[1].load();
@@ -373,6 +379,8 @@ void dbg_extremes_of(i64 value, int slot) {
     i64 current_min = extremes.at(slot)[2].load();
     while (current_min > value && !extremes.at(slot)[2].compare_exchange_weak(current_min, value))
     {}
+
+    return value;
 }
 
 void dbg_correl_of(i64 value1, i64 value2, int slot) {
