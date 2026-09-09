@@ -161,12 +161,12 @@ bool is_shuffling(Move move, Stack* const ss, const Position& pos) {
 
 }  // namespace
 
-Search::Worker::Worker(SharedState&                    sharedState,
-                       std::unique_ptr<ISearchManager> sm,
-                       usize                           threadId,
-                       usize                           numaThreadId,
-                       usize                           numaTotalThreads,
-                       NumaReplicatedAccessToken       token) :
+Search::Worker::Worker(SharedState&                   sharedState,
+                       std::unique_ptr<SearchManager> sm,
+                       usize                          threadId,
+                       usize                          numaThreadId,
+                       usize                          numaTotalThreads,
+                       NumaReplicatedAccessToken      token) :
     // Unpack the SharedState struct into member variables
     sharedHistory(sharedState.sharedHistories.at(token.get_numa_index())),
     continuationHistory(sharedHistory.continuationHistory()),

@@ -46,12 +46,12 @@ namespace Stockfish {
 
 // Constructor launches the thread and waits until it goes to sleep
 // in idle_loop(). Note that 'searching' and 'exit' should be already set.
-Thread::Thread(Search::SharedState&                    sharedState,
-               std::unique_ptr<Search::ISearchManager> sm,
-               usize                                   n,
-               usize                                   numaN,
-               usize                                   totalNumaCount,
-               OptionalThreadToNumaNodeBinder          binder) :
+Thread::Thread(Search::SharedState&                   sharedState,
+               std::unique_ptr<Search::SearchManager> sm,
+               usize                                  n,
+               usize                                  numaN,
+               usize                                  totalNumaCount,
+               OptionalThreadToNumaNodeBinder         binder) :
     idx(n),
     idxInNuma(numaN),
     totalNuma(totalNumaCount),
@@ -227,10 +227,8 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
             const usize     threadId      = threads.size();
             const NumaIndex numaId        = doBindThreads ? boundThreadToNumaNode[threadId] : 0;
             auto            create_thread = [&]() {
-                auto manager = threadId == 0
-                                          ? std::unique_ptr<Search::ISearchManager>(
-                                   std::make_unique<Search::SearchManager>(updateContext))
-                                          : std::make_unique<Search::NullSearchManager>();
+                auto manager =
+                  threadId == 0 ? std::make_unique<Search::SearchManager>(updateContext) : nullptr;
 
                 // When not binding threads we want to force all access to happen
                 // from the same NUMA node, because in case of NUMA replicated memory

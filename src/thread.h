@@ -73,7 +73,7 @@ class OptionalThreadToNumaNodeBinder {
 class Thread {
    public:
     Thread(Search::SharedState&,
-           std::unique_ptr<Search::ISearchManager>,
+           std::unique_ptr<Search::SearchManager>,
            usize,
            usize,
            usize,
