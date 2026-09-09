@@ -321,6 +321,7 @@ bool Search::Worker::iterative_deepening() {
     multiPV = std::min(multiPV, rootMoves.size());
 
     int  searchAgainCounter = 0;
+    int  failHighRecovery   = 0;
     bool uciPvSent          = false;
 
     lowPlyHistory.fill(102);
@@ -385,12 +386,14 @@ bool Search::Worker::iterative_deepening() {
             // Start with a small aspiration window and, in the case of a fail
             // high/low, enlarge the window progressively.
             int failedHighCnt = 0;
+            if (!pvIdx)
+                failHighRecovery = std::max(0, failHighRecovery - 2);
             while (true)
             {
                 // Adjust the effective depth searched, but ensure at least one
                 // effective increment for every four searchAgain steps (see issue #2717).
                 Depth adjustedDepth =
-                  std::max(1, rootDepth - failedHighCnt - 3 * (searchAgainCounter + 1) / 4);
+                  std::max(1, rootDepth - failedHighCnt - failHighRecovery - 3 * (searchAgainCounter + 1) / 4);
                 rootDelta = beta - alpha;
                 bestValue = search<Root>(rootPos, ss, alpha, beta, adjustedDepth, false);
 
@@ -439,6 +442,10 @@ bool Search::Worker::iterative_deepening() {
 
                 assert(alpha >= -VALUE_INFINITE && beta <= VALUE_INFINITE);
             }
+
+            // Gradually increase depth after reduced depth search
+            if (failedHighCnt > 0 && !pvIdx)
+                failHighRecovery = (failedHighCnt + 1) / 2 + 2;
 
             if (threads.stop && pvIdx)
             {
