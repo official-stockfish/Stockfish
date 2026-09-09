@@ -23,6 +23,7 @@
 #include <cmath>
 
 #include "search.h"
+#include "types.h"
 #include "ucioption.h"
 
 namespace Stockfish {
@@ -129,6 +130,20 @@ void TimeManagement::init(Search::LimitsType& limits,
     {
         optScale = std::min((0.88 + ply / 116.4) / mtg, 0.88 * limits.time[us] / timeLeft);
         maxScale = 1.3 + 0.11 * mtg;
+    }
+
+    // Decrease time usage if behind in time.
+    // This is skipped in two cases:
+    // - if the nodestime option is used we can't calculate the opponent nodes budget in a deterministic way.
+    // - if we use a cyclic time management (like 40/10) calculating time advantage for the last move (movestogo = 1)
+    //   can be vastly off, because if the opponent had done his last move before us his time budget includes already
+    //   the next cycle time increment but our not. This leads to a unnecessary big decrease in time usage which favors blunders.
+    // Warning: don't remove this conditions.
+    if (!useNodesTime && limits.movestogo != 1)
+    {
+        double timeAdvantage =
+          (limits.time[us] - limits.time[~us]) / (1.0 + limits.time[us] + limits.time[~us]);
+        optScale *= 1 + 0.9 * std::min(timeAdvantage, 0.0);
     }
 
     // Limit the maximum possible time for this move
