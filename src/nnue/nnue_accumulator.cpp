@@ -910,9 +910,9 @@ void update_accumulator_refresh_cache(Color                     perspective,
     entry.pieceBB = pos.pieces();
     entry.pieces  = pos.piece_array();
 
-    ThreatFeatureSet::IndexList active;
-    ThreatFeatureSet::append_active_indices(perspective, pos, active);
-    PairFeatureSet::append_active_indices(perspective, pos, active);
+    ThreatFeatureSet::IndexList activeThreats;
+    ThreatFeatureSet::append_active_indices(perspective, pos, activeThreats);
+    const auto& ppEntry = cache.pp_entry(perspective, pos, featureTransformer);
 
     accumulator.computed[perspective] = true;
 
@@ -928,8 +928,11 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         store_tile(j, &entry.accumulation[0], acc);
 
-        acc = apply_threat_features<+1>(j, acc, active, featureTransformer);
+        acc = apply_threat_features<+1>(j, acc, activeThreats, featureTransformer);
 
+        // Avoid loading and adding a zero vector when no PP features are active.
+        if (ppEntry.featureCount)
+            acc = apply<+1>(j, acc, ppEntry.accumulation.data());
         store_tile(j, accumulator.accumulation[perspective].data(), acc);
     }
 
@@ -942,12 +945,54 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
         store_psqt(j, entry.psqtAccumulation.data(), psqt);
 
-        psqt = apply_psqt<+1>(j, psqt, active, featureTransformer.threatAndPpPsqtWeights.data());
+        psqt =
+          apply_psqt<+1>(j, psqt, activeThreats, featureTransformer.threatAndPpPsqtWeights.data());
 
+        if (ppEntry.featureCount)
+            psqt = apply<+1>(j, psqt, ppEntry.psqtAccumulation.data());
         store_psqt(j, accumulator.psqtAccumulation[perspective].data(), psqt);
     }
 }
 
+}
+
+const AccumulatorCaches::PpEntry& AccumulatorCaches::pp_entry(
+  Color perspective, const Position& pos, const FeatureTransformer& featureTransformer) {
+    const Square ksq        = pos.square<KING>(perspective);
+    const usize  bucket     = pos.pawn_key() & (PpCacheBuckets - 1);
+    const bool   kingMirror = file_of(ksq) >= FILE_E;
+    auto&        entry      = ppEntries[bucket][perspective][kingMirror];
+
+    const Bitboard whitePawns = pos.pieces(WHITE, PAWN);
+    const Bitboard blackPawns = pos.pieces(BLACK, PAWN);
+    if (entry.pawns[WHITE] == whitePawns && entry.pawns[BLACK] == blackPawns)
+        return entry;
+
+    // Comparing actual bitboards makes both hits and collisions exact. The old
+    // entry remains a useful starting point even when its pawn hash differs.
+    DirtyPawnPairs diff{{entry.pawns[WHITE], entry.pawns[BLACK]}, {whitePawns, blackPawns}};
+    PairFeatureSet::IndexList removed, added;
+    PairFeatureSet::append_changed_indices(perspective, ksq, diff, removed, added,
+                                           featureTransformer.threatAndPpWeights.data(),
+                                           Dimensions);
+    for (IndexType j = 0; j < Dimensions; increment_index(j))
+    {
+        auto acc = load_tile(j, entry.accumulation.data());
+        acc      = apply_threat_features<-1>(j, acc, removed, featureTransformer);
+        acc      = apply_threat_features<+1>(j, acc, added, featureTransformer);
+        store_tile(j, entry.accumulation.data(), acc);
+    }
+    for (IndexType j = 0; j < PSQTBuckets; increment_psqt_index(j))
+    {
+        auto psqt = load_psqt(j, entry.psqtAccumulation.data());
+        psqt = apply_psqt<-1>(j, psqt, removed, featureTransformer.threatAndPpPsqtWeights.data());
+        psqt = apply_psqt<+1>(j, psqt, added, featureTransformer.threatAndPpPsqtWeights.data());
+        store_psqt(j, entry.psqtAccumulation.data(), psqt);
+    }
+    entry.featureCount = u16(entry.featureCount + added.size() - removed.size());
+    entry.pawns[WHITE] = whitePawns;
+    entry.pawns[BLACK] = blackPawns;
+    return entry;
 }
 
 }
