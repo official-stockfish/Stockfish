@@ -102,6 +102,16 @@ class TestCLI(metaclass=OrderedClassMembers):
         self.stockfish = Stockfish("go perft 4".split(" "), True)
         assert self.stockfish.process.returncode == 0
 
+    def test_go_perft_zero(self):
+        self.stockfish = Stockfish("go perft 0".split(" "), True)
+        assert self.stockfish.process.returncode != 0
+        assert "Invalid argument for 'perft'" in self.stockfish.process.stdout
+
+    def test_go_perft_negative(self):
+        self.stockfish = Stockfish("go perft -1".split(" "), True)
+        assert self.stockfish.process.returncode != 0
+        assert "Invalid argument for 'perft'" in self.stockfish.process.stdout
+
     def test_go_movetime_1000(self):
         self.stockfish = Stockfish("go movetime 1000".split(" "), True)
         assert self.stockfish.process.returncode == 0
