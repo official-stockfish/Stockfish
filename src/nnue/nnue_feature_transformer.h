@@ -341,8 +341,17 @@ class FeatureTransformer {
                                                   23, 25, 27, 29, 31);
                 vec_t result = wasm_u8x16_shr(merged, 1);
     #else
+        #if defined(USE_AVX2) && !defined(USE_AVX512)
+                // Saturating packing clips both vectors to [0, 255] at once.
+                // Placing each byte in the high half of a word and shifting
+                // right by one multiplies the clipped value by 128.
+                const vec_t clipped0 = _mm256_packus_epi16(acc0a, acc0b);
+                const vec_t sum0a    = _mm256_srli_epi16(_mm256_unpacklo_epi8(Zero, clipped0), 1);
+                const vec_t sum0b    = _mm256_srli_epi16(_mm256_unpackhi_epi8(Zero, clipped0), 1);
+        #else
                 vec_t sum0a = vec_slli_16(vec_max_16(vec_min_16(acc0a, FtMax), Zero), shift);
                 vec_t sum0b = vec_slli_16(vec_max_16(vec_min_16(acc0b, FtMax), Zero), shift);
+        #endif
                 vec_t sum1a = vec_min_16(acc1a, FtMax);
                 vec_t sum1b = vec_min_16(acc1b, FtMax);
 
