@@ -81,14 +81,16 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
       }));
 
     options.add(  //
-      "Threads", Option(1, 1, MaxThreads, [this](const Option&) {
-          resize_threads();
+      "Threads", Option(1, 1, MaxThreads, [this](const Option& o) {
+          if ( dirty || threads.num_threads() != usize(o) )
+              resize_threads();
           return thread_allocation_information_as_string();
       }));
 
     options.add(  //
       "Hash", Option(16, 1, MaxHashMB, [this](const Option& o) {
-          set_tt_size(o);
+          if ( dirty || tt.size() != usize(o) )
+              set_tt_size(o);
           return std::nullopt;
       }));
 
@@ -138,9 +140,8 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
           return std::nullopt;
       }));
 
-    threads.clear();
-    threads.ensure_network_replicated();
     resize_threads();
+    dirty = false;
 }
 
 std::variant<u64, PositionSetError>
@@ -151,6 +152,7 @@ Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
 }
 
 void Engine::go(Search::LimitsType& limits) {
+    dirty = true;
     assert(limits.perft == 0);
     verify_network();
 
@@ -161,11 +163,15 @@ void Engine::stop() { threads.stop = true; }
 void Engine::search_clear() {
     wait_for_search_finished();
 
-    tt.clear(threads);
-    threads.clear();
-
     // TODO: does not work with multiple instances
     Tablebases::init(options["SyzygyPath"]);  // Free mapped files
+
+    if (!dirty) return;
+
+    tt.clear(threads); // initializes TT
+    threads.clear(); // initializes histories
+
+    dirty = false;
 }
 
 void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {
@@ -190,7 +196,7 @@ void Engine::set_on_verify_network(std::function<void(std::string_view)>&& f) {
     onVerifyNetwork = std::move(f);
 }
 
-void Engine::wait_for_search_finished() { threads.main_thread()->wait_for_search_finished(); }
+void Engine::wait_for_search_finished() const { threads.main_thread()->wait_for_search_finished(); }
 
 std::optional<PositionSetError> Engine::set_position(const std::string&              fen,
                                                      const std::vector<std::string>& moves) {
@@ -251,6 +257,7 @@ void Engine::resize_threads() {
 
     // Reallocate the hash with the new threadpool size
     set_tt_size(options["Hash"]);
+    dirty = false; // threads.set clears histories, set_tt_size clears tt
     threads.ensure_network_replicated();
 }
 

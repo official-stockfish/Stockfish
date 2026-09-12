@@ -2137,6 +2137,17 @@ void SearchManager::check_time(Search::Worker& worker) {
         worker.threads.stop = true;
 }
 
+void SearchManager::clear() {
+    // These two affect the time taken on the first move of a game:
+    bestPreviousAverageScore = VALUE_INFINITE;
+    previousTimeReduction    = 0.85;
+
+    callsCnt           = 0;
+    bestPreviousScore  = VALUE_INFINITE;
+    originalTimeAdjust = -1;
+    tm.clear();
+}
+
 // Used to correct and extend PVs for moves that have a TB (but not a mate) score.
 // Keeps the search based PV for as long as it is verified to maintain the game
 // outcome, truncates afterwards. Finally, extends to mate the PV, providing a

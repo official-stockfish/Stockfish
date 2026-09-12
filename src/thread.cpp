@@ -37,7 +37,6 @@
 #include "movegen.h"
 #include "search.h"
 #include "syzygy/tbprobe.h"
-#include "timeman.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
@@ -222,6 +221,8 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
         auto threadsPerNode = counts;
         counts.clear();
 
+        assert(threads.size() == 0);
+
         while (threads.size() < requested)
         {
             const usize     threadId      = threads.size();
@@ -238,8 +239,8 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
                                                        : OptionalThreadToNumaNodeBinder(numaId);
 
                 threads.emplace_back(std::make_unique<Thread>(sharedState, std::move(manager),
-                                                                         threadId, counts[numaId]++,
-                                                                         threadsPerNode[numaId], binder));
+                                                              threadId, counts[numaId]++,
+                                                              threadsPerNode[numaId], binder));
             };
 
             // Ensure the worker thread inherits the intended NUMA affinity at creation.
@@ -249,8 +250,7 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
                 create_thread();
         }
 
-        clear();
-
+        main_manager()->clear();
         main_thread()->wait_for_search_finished();
     }
 }
@@ -267,14 +267,7 @@ void ThreadPool::clear() {
     for (auto&& th : threads)
         th->wait_for_search_finished();
 
-    // These two affect the time taken on the first move of a game:
-    main_manager()->bestPreviousAverageScore = VALUE_INFINITE;
-    main_manager()->previousTimeReduction    = 0.85;
-
-    main_manager()->callsCnt           = 0;
-    main_manager()->bestPreviousScore  = VALUE_INFINITE;
-    main_manager()->originalTimeAdjust = -1;
-    main_manager()->tm.clear();
+    main_manager()->clear();
 }
 
 void ThreadPool::run_on_thread(usize threadId, std::function<void()> f) {
