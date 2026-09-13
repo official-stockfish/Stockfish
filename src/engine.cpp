@@ -138,6 +138,14 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
           return std::nullopt;
       }));
 
+    // Winibar (practical / human layer; default off)
+    options.add("Winibar", Option(false));
+    options.add("WinibarDepth", Option(1, 0, 8));
+    options.add("WinibarTopK", Option(8, 1, 64));
+    options.add("WinibarHorizon", Option(2, 1, 8));
+    options.add("WinibarTrapDrop", Option(100, 10, 1000));
+    options.add("WinibarPerfBudgetMs", Option(50, 1, 5000));
+
     threads.clear();
     threads.ensure_network_replicated();
     resize_threads();

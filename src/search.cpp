@@ -261,6 +261,10 @@ void Search::Worker::start_searching() {
         ponder = UCIEngine::move(bestThread->rootMoves[0].pv[1], rootPos.is_chess960());
 
     auto bestmove = UCIEngine::move(bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
+
+    // Winibar practical layer (post-search, optional). Does not alter bestmove.
+    bestThread->winibar_analyze_and_emit();
+
     main_manager()->updates.onBestmove(bestmove, ponder);
 }
 

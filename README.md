@@ -44,23 +44,27 @@ See also the Stockfish [documentation][wiki-usage-link] for further usage help.
 
 ## Winibar Extension
 
-**Winibar** is a fork of Stockfish that enhances the evaluation bar with
-human-realistic metrics. Inspired by the WINIMAX algorithm, Winibar recognizes
-that not all lost positions are equal: some are technically decisive but still
-offer practical chances, while others are dead-lost.  
+**Winibar** is a Stockfish fork that adds an optional **practical / human layer**
+after normal search. Stockfish remains the theoretical engine (NNUE and classical
+search are unchanged). When enabled, Winibar inspects top replies with shallow
+probes and emits human-oriented metrics inspired by WINIMAX.
 
-Key additions:
-- 🎯 **Human Defensibility Index (HDI)** – how resilient a position is against human play  
-- ⚡ **Trap Density** – proportion of replies that are immediate blunders  
-- 🔀 **Volatility** – swing potential and tactical sharpness  
-- 🔄 **Practical Save Probability (Psave)** – estimated chance that the weaker side can hold  
+### v0 (MVP) behavior
 
-These signals combine into a **more human-friendly evaluation bar**, designed
-to help players and researchers understand *practical chances* beyond the raw
-centipawn score.
+- Default: `Winibar` UCI option is **false** (no behavior change).
+- When `Winibar=true`, after search completes Winibar prints one info line:
+  `info string Winibar HDI=... Psave=... S=... N=... T=... V=... C=... D=... E=...`
+- Metrics (v0): safe-move count **S**, considered replies **N**, trap density **T**,
+  volatility **V**, comeback **C**, distance-to-collapse **D**, completeness **E**,
+  composite **HDI**, and **Psave** with equiprobable human replies `P_human(m)=1/N`.
+- UCI options: `Winibar`, `WinibarDepth`, `WinibarTopK`, `WinibarHorizon`,
+  `WinibarTrapDrop`, `WinibarPerfBudgetMs` (time budget; may return partial results).
 
-> Academic background: the concept builds on the WINIMAX algorithm introduced in  
-> *H.A. Raboanary, T.H. Raboanary, J.A. Raboanary, “Towards Optimal Play Fanorona,” AFRICON 2015*:contentReference[oaicite:0]{index=0}.
+v0 does **not** change move choice, does **not** replace the evaluation bar in GUIs
+by itself, and uses engineering-default HDI weights.
+
+> Academic background: the concept builds on the WINIMAX algorithm introduced in
+> *H.A. Raboanary, T.H. Raboanary, J.A. Raboanary, “Towards Optimal Play Fanorona,” AFRICON 2015*.
 
 ### Cite this work
 

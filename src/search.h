@@ -59,6 +59,15 @@ class Network;
 }
 
 namespace Search {
+class Worker;
+}
+
+namespace Winibar {
+struct Metrics;
+struct Access;  // friend gateway for post-search Winibar probes
+}
+
+namespace Search {
 
 // syzygy_extend_pv() may lead to PVs longer than MAX_PLY
 struct RootPVMoves: public std::vector<Move> {
@@ -328,6 +337,9 @@ class Worker {
 
     void ensure_network_replicated();
 
+    // Winibar post-search practical metrics (no-op unless UCI Winibar=true)
+    void winibar_analyze_and_emit();
+
     // Public because they need to be updatable by the stats
     ButterflyHistory mainHistory;
     LowPlyHistory    lowPlyHistory;
@@ -409,6 +421,7 @@ class Worker {
 
     friend class Stockfish::ThreadPool;
     friend class SearchManager;
+    friend struct Winibar::Access;
 };
 
 struct ConthistBonus {
