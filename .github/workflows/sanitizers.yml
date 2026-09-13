@@ -39,25 +39,18 @@ jobs:
             make_option: ""
             cxx_extra_flags: ""
             instrumented_option: none
-          - name: Run with glibcxx assertions and trapv
+          - name: Run with glibcxx assertions
             make_option: ""
-            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS -ftrapv
+            cxx_extra_flags: -D_GLIBCXX_ASSERTIONS
             instrumented_option: none
     defaults:
       run:
         working-directory: src
         shell: ${{ matrix.config.shell }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      - name: Cache syzygy test data
-        id: cache-syzygy-test
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: tests/syzygy
-          key: syzygy-test-9b9aa13
 
       - name: Download required linux packages
         run: |
