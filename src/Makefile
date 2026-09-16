@@ -975,7 +975,7 @@ ifeq ($(debug),no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 		ifeq ($(gccisclang),)
-			CXXFLAGS += -flto -flto-partition=one
+			CXXFLAGS += -flto -flto-partition=balanced
 			LDFLAGS += $(CXXFLAGS) -flto=jobserver
 		else
 			CXXFLAGS += -flto=full
