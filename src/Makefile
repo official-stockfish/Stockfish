@@ -975,6 +975,16 @@ ifeq ($(debug),no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 		ifeq ($(gccisclang),)
+
+			GCC_VERSION := $(shell $(CC) -dumpversion)
+			GCC_MAJOR := $(shell echo $(GCC_VERSION) | cut -f1 -d.)
+			GCC_BAD_VER := $(shell expr $(GCC_MAJOR) \<= 13)
+
+			ifeq ($(GCC_BAD_VER), 1)
+				$(error xxxxx)
+			else
+			endif
+
 			ifeq ($(UNIVERSAL_BUILD),true)
 				CXXFLAGS += -flto -flto-partition=one
 			else
