@@ -684,6 +684,7 @@ ifeq ($(COMP),gcc)
 		profile_use = clang-profile-use
 		CXXFLAGS += -fconstexpr-steps=500000000
 	else
+		gccmajorv := $(shell $(CXX) -dumpversion 2>/dev/null)
 		CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone -fconstexpr-ops-limit=500000000
 	endif
 else ifeq ($(COMP),mingw)
@@ -975,17 +976,12 @@ ifeq ($(debug),no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 		ifeq ($(gccisclang),)
-
-			GCC_VERSION := $(shell $(CC) -dumpversion)
-			GCC_MAJOR := $(shell echo $(GCC_VERSION) | cut -f1 -d.)
-			GCC_BAD_VER := $(shell expr $(GCC_MAJOR) \<= 13)
-
-			ifeq ($(GCC_BAD_VER), 1)
-				$(error xxxxx)
-			else
-			endif
-
+			# lto-partition=balanced is much faster on multi-core systems and
+			# has not been observed to reduce performance for gcc > 13.
+			# It is however not compatible with universal builds.
 			ifeq ($(UNIVERSAL_BUILD),true)
+				CXXFLAGS += -flto -flto-partition=one
+			else ifeq ($(shell test "$(gccmajorv)" -le 13 2>/dev/null && echo true),true)
 				CXXFLAGS += -flto -flto-partition=one
 			else
 				CXXFLAGS += -flto -flto-partition=balanced
