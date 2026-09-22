@@ -150,7 +150,7 @@ Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
     return Benchmark::perft(fen, depth, isChess960);
 }
 
-void Engine::go(Search::LimitsType& limits) {
+void Engine::go(const Search::LimitsType& limits) {
     assert(limits.perft == 0);
     verify_network();
 

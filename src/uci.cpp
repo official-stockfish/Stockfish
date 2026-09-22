@@ -256,10 +256,15 @@ void UCIEngine::bench(std::istream& args) {
         on_update_full(i, options["UCI_ShowWDL"]);
     });
 
-    std::vector<std::string> list = Benchmark::setup_bench(engine.fen(), args);
+    auto [list, goCmd] = Benchmark::setup_bench(engine.fen(), args);
+
+    const bool eval = goCmd.find("eval") != std::string::npos;
+    std::istringstream go(goCmd);
+    const Search::LimitsType limits = eval ? Search::LimitsType() : parse_limits(go);
 
     num = count_if(list.begin(), list.end(),
-                   [](const std::string& s) { return s.find("go ") == 0 || s.find("eval") == 0; });
+                   [](const std::string& s) { return    s.find("setoption")  == std::string::npos
+                                                     && s.find("ucinewgame") == std::string::npos; });
 
     TimePoint elapsed = now();
 
@@ -268,14 +273,23 @@ void UCIEngine::bench(std::istream& args) {
         std::istringstream is(cmd);
         is >> token;
 
-        if (token == "go" || token == "eval")
+        if (token == "setoption")
+            setoption(is);
+        else if (token == "ucinewgame")
         {
+            engine.search_clear();  // search_clear may take a while
+            elapsed = now();
+        }
+        else // non-options are assumed to be FENs
+        {
+            std::istringstream fenCmd("fen " + is.str());
+            position(fenCmd);
+
             std::cerr << "\nPosition: " << cnt++ << '/' << num << " (" << engine.fen() << ")"
                       << std::endl;
-            if (token == "go")
-            {
-                Search::LimitsType limits = parse_limits(is);
 
+            if (!eval)
+            {
                 if (limits.perft)
                     nodesSearched = perft(limits);
                 else
@@ -289,15 +303,6 @@ void UCIEngine::bench(std::istream& args) {
             }
             else
                 engine.trace_eval();
-        }
-        else if (token == "setoption")
-            setoption(is);
-        else if (token == "position")
-            position(is);
-        else if (token == "ucinewgame")
-        {
-            engine.search_clear();  // search_clear may take a while
-            elapsed = now();
         }
     }
 
