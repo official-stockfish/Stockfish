@@ -595,8 +595,13 @@ ifeq ($(COMP),clang)
 	endif
 endif
 
+ifneq ($(MACOSX_VERSION_MIN),)
+	mac_target_flags := -mmacosx-version-min=$(MACOSX_VERSION_MIN)
+else
+	mac_target_flags :=
+endif
+
 ifeq ($(TARGET_KERNEL),Darwin)
-	mac_target_flags := -mmacosx-version-min=10.15
 	ifneq ($(arch),any)
 		mac_target_flags += -arch $(arch)
 	endif
