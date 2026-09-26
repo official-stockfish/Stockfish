@@ -979,7 +979,7 @@ ifeq ($(debug),no)
 			# lto-partition=balanced is much faster on multi-core systems and
 			# has not been observed to reduce performance for gcc > 13.
 			# It is however not compatible with universal builds.
-			ifeq ($(UNIVERSAL_BUILD),true)
+			ifeq ($(UNIVERSAL_SLICE),true)
 				CXXFLAGS += -flto -flto-partition=one
 			else ifeq ($(shell test "$(gccmajorv)" -le 13 2>/dev/null && echo true),true)
 				CXXFLAGS += -flto -flto-partition=one
@@ -1522,7 +1522,7 @@ $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 $(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL)
 	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
 	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
-	        ARCH=$* CXX=$(CXX) COMP=$(COMP) \
+		        ARCH=$* CXX=$(CXX) COMP=$(COMP) UNIVERSAL_SLICE=true \
 	        NNUE_EMBED_OBJ=$(NNUE_EMBED_OBJ)
 ifeq ($(TARGET_KERNEL),Darwin)
 # Rename the initializer section
