@@ -814,15 +814,17 @@ bool Position::gives_check(Move m) const {
 // moves should be filtered out before this function is called.
 // If a pointer to the TT table is passed, the entry for the new position
 // will be prefetched, and likewise for shared history.
-void Position::do_move(Move                      m,
-                       StateInfo&                newSt,
-                       bool                      givesCheck,
-                       Dirties&                  dirties,
-                       const TranspositionTable* tt      = nullptr,
-                       const SharedHistories*    history = nullptr) {
+template<bool TrackDirties>
+void Position::do_move_impl(Move                      m,
+                            StateInfo&                newSt,
+                            bool                      givesCheck,
+                            Dirties*                  dirties,
+                            const TranspositionTable* tt,
+                            const SharedHistories*    history) {
 
     assert(m.is_ok());
     assert(&newSt != st);
+    assert(TrackDirties == (dirties != nullptr));
 
     Key k = st->key ^ Zobrist::side;
 
@@ -839,9 +841,14 @@ void Position::do_move(Move                      m,
     ++st->rule50;
     ++st->pliesFromNull;
 
-    auto& dpps = dirties.dirtyPawnPairs;
-    auto& dts  = dirties.dirtyThreats;
-    auto& dp   = dirties.dirtyPiece;
+    // The NNUE dirty state is only needed by callers that evaluate the
+    // resulting position. When it is not tracked, the expensive dirty threats
+    // bookkeeping is compiled out and the cheap fields are written to locals.
+    DirtyPiece          localDp;
+    DirtyPawnPairs      localDpps;
+    DirtyThreats* const dts  = TrackDirties ? &dirties->dirtyThreats : nullptr;
+    auto&               dp   = TrackDirties ? dirties->dirtyPiece : localDp;
+    auto&               dpps = TrackDirties ? dirties->dirtyPawnPairs : localDpps;
 
     dpps.before[WHITE] = pieces(WHITE, PAWN);
     dpps.before[BLACK] = pieces(BLACK, PAWN);
@@ -868,7 +875,7 @@ void Position::do_move(Move                      m,
         assert(captured == make_piece(us, ROOK));
 
         Square rfrom, rto;
-        do_castling<true>(us, from, to, rfrom, rto, &dts, &dp);
+        do_castling<true>(us, from, to, rfrom, rto, dts, &dp);
 
         k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
         st->nonPawnKey[us] ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
@@ -893,7 +900,7 @@ void Position::do_move(Move                      m,
                 assert(piece_on(capsq) == make_piece(them, PAWN));
 
                 // Update board and piece lists in ep case, normal captures are updated later
-                remove_piece(capsq, &dts);
+                remove_piece(capsq, dts);
             }
 
             st->pawnKey ^= Zobrist::psq[captured][capsq];
@@ -1027,15 +1034,15 @@ void Position::do_move(Move                      m,
 
         if (captured && m.type_of() != EN_PASSANT)
         {
-            remove_piece(from, &dts);
-            swap_piece(to, toPc, &dts);
+            remove_piece(from, dts);
+            swap_piece(to, toPc, dts);
         }
         else if (pc == toPc)
-            move_piece(from, to, &dts);
+            move_piece(from, to, dts);
         else
         {
-            remove_piece(from, &dts);
-            put_piece(toPc, to, &dts);
+            remove_piece(from, dts);
+            put_piece(toPc, to, dts);
         }
     }
 
@@ -1079,6 +1086,13 @@ void Position::do_move(Move                      m,
     assert(dp.from != SQ_NONE);
     assert(!(dp.add_sq != SQ_NONE) ^ (m.type_of() == PROMOTION || m.type_of() == CASTLING));
 }
+
+
+// Explicit template instantiations
+template void Position::do_move_impl<true>(
+  Move, StateInfo&, bool, Dirties*, const TranspositionTable*, const SharedHistories*);
+template void Position::do_move_impl<false>(
+  Move, StateInfo&, bool, Dirties*, const TranspositionTable*, const SharedHistories*);
 
 
 // Unmakes a move. When it returns, the position should

@@ -24,7 +24,6 @@
 #include <deque>
 #include <iosfwd>
 #include <memory>
-#include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -143,13 +142,16 @@ class Position {
     Piece captured_piece() const;
 
     // Doing and undoing moves
-    void do_move(Move m, StateInfo& newSt, const TranspositionTable* tt);
     void do_move(Move                      m,
                  StateInfo&                newSt,
                  bool                      givesCheck,
                  Dirties&                  dirties,
                  const TranspositionTable* tt,
-                 const SharedHistories*    worker);
+                 const SharedHistories*    history);
+    // Lightweight variant for callers that never evaluate the resulting
+    // position incrementally: perft, TT move verification, PV walking, TB
+    // probing, position setup. No NNUE dirty state is tracked.
+    void do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr);
     void undo_move(Move m);
     void do_null_move(StateInfo& newSt);
     void undo_null_move();
@@ -214,6 +216,13 @@ class Position {
                      DirtyPiece* const   dp  = nullptr);
     template<bool AfterMove = false>
     Key adjust_key50(Key k) const;
+    template<bool TrackDirties>
+    void do_move_impl(Move                      m,
+                      StateInfo&                newSt,
+                      bool                      givesCheck,
+                      Dirties*                  dirties,
+                      const TranspositionTable* tt,
+                      const SharedHistories*    history);
 
     // Data members
     std::array<Piece, SQUARE_NB>        board;
@@ -228,7 +237,6 @@ class Position {
     int        gamePly;
     Color      sideToMove;
     bool       chess960;
-    Dirties    scratchDirties;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -434,10 +442,17 @@ inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
         update_piece_threats<false>(pc, true, s, dts);
 }
 
-inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
-    new (&scratchDirties.dirtyThreats) DirtyThreats;
-    new (&scratchDirties.dirtyPawnPairs) DirtyPawnPairs;
-    do_move(m, newSt, gives_check(m), scratchDirties, tt, nullptr);
+inline void Position::do_move(Move                      m,
+                              StateInfo&                newSt,
+                              bool                      givesCheck,
+                              Dirties&                  dirties,
+                              const TranspositionTable* tt,
+                              const SharedHistories*    history) {
+    do_move_impl<true>(m, newSt, givesCheck, &dirties, tt, history);
+}
+
+inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt) {
+    do_move_impl<false>(m, newSt, gives_check(m), nullptr, tt, nullptr);
 }
 
 inline StateInfo* Position::state() const { return st; }
