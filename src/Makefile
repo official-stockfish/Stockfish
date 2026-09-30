@@ -684,6 +684,7 @@ ifeq ($(COMP),gcc)
 		profile_use = clang-profile-use
 		CXXFLAGS += -fconstexpr-steps=500000000
 	else
+		gccmajorv := $(shell $(CXX) -dumpversion 2>/dev/null)
 		CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone -fconstexpr-ops-limit=500000000
 	endif
 else ifeq ($(COMP),mingw)
@@ -975,7 +976,16 @@ ifeq ($(debug),no)
 # GCC on some systems.
 	else ifeq ($(comp),gcc)
 		ifeq ($(gccisclang),)
-			CXXFLAGS += -flto -flto-partition=one
+			# lto-partition=balanced is much faster on multi-core systems and
+			# has not been observed to reduce performance for gcc > 13.
+			# It is however not compatible with universal builds.
+			ifeq ($(UNIVERSAL_SLICE),true)
+				CXXFLAGS += -flto -flto-partition=one
+			else ifeq ($(shell test "$(gccmajorv)" -le 13 2>/dev/null && echo true),true)
+				CXXFLAGS += -flto -flto-partition=one
+			else
+				CXXFLAGS += -flto -flto-partition=balanced
+			endif
 			LDFLAGS += $(CXXFLAGS) -flto=jobserver
 		else
 			CXXFLAGS += -flto=full
@@ -1512,7 +1522,7 @@ $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 $(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL)
 	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
 	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
-	        ARCH=$* CXX=$(CXX) COMP=$(COMP) \
+		        ARCH=$* CXX=$(CXX) COMP=$(COMP) UNIVERSAL_SLICE=true \
 	        NNUE_EMBED_OBJ=$(NNUE_EMBED_OBJ)
 ifeq ($(TARGET_KERNEL),Darwin)
 # Rename the initializer section
