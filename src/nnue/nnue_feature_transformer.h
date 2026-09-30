@@ -93,17 +93,12 @@ class FeatureTransformer {
     static constexpr IndexType InputDimensions       = PsqDimensions + ThreatAndPpDimensions;
     static constexpr IndexType OutputDimensions      = HalfDimensions;
     static constexpr IndexType ThreatWeightSize      = ThreatInputDimensions * HalfDimensions;
-    static constexpr IndexType ThreatPsqtWeightSize  = ThreatInputDimensions * PSQTBuckets;
     static constexpr IndexType PairWeightSize        = PairInputDimensions * HalfDimensions;
-    static constexpr IndexType PairPsqtWeightSize    = PairInputDimensions * PSQTBuckets;
     static constexpr IndexType ThreatAndPpWeightSize = ThreatAndPpDimensions * HalfDimensions;
-    static constexpr IndexType ThreatAndPpPsqtSize   = ThreatAndPpDimensions * PSQTBuckets;
 
     using BiasesArray            = std::array<BiasType, HalfDimensions>;
     using WeightArray            = std::array<WeightType, HalfDimensions * PsqDimensions>;
     using ThreatAndPpWeightArray = std::array<ThreatWeightType, ThreatAndPpWeightSize>;
-    using PsqtWeightArray        = std::array<PSQTWeightType, PSQTBuckets * PsqDimensions>;
-    using ThreatAndPpPsqtArray   = std::array<PSQTWeightType, ThreatAndPpPsqtSize>;
 
     // Size of forward propagation buffer
     static constexpr usize BufferSize = OutputDimensions * sizeof(OutputType);
@@ -163,21 +158,15 @@ class FeatureTransformer {
 
     ThreatWeightType* threatWeightData() { return threatAndPpWeights.data(); }
     ThreatWeightType* pawnPairWeightData() { return threatWeightData() + ThreatWeightSize; }
-    PSQTWeightType*   threatPsqtData() { return threatAndPpPsqtWeights.data(); }
-    PSQTWeightType*   pawnPairPsqtData() { return threatPsqtData() + ThreatPsqtWeightSize; }
-
 
     // Read network parameters
     bool read_parameters(std::istream& stream) {
         read_leb_128(stream, biases);
 
         read_little_endian(stream, threatWeightData(), ThreatWeightSize);
-        read_leb_128(stream, threatPsqtData(), ThreatPsqtWeightSize);
         read_little_endian(stream, pawnPairWeightData(), PairWeightSize);
-        read_leb_128(stream, pawnPairPsqtData(), PairPsqtWeightSize);
 
         read_leb_128(stream, weights);
-        read_leb_128(stream, psqtWeights);
 
         permute_weights();
 
@@ -192,14 +181,10 @@ class FeatureTransformer {
 
         write_leb_128<BiasType>(stream, copy->biases);
 
-
         write_little_endian(stream, copy->threatWeightData(), ThreatWeightSize);
-        write_leb_128(stream, copy->threatPsqtData(), ThreatPsqtWeightSize);
         write_little_endian(stream, copy->pawnPairWeightData(), PairWeightSize);
-        write_leb_128(stream, copy->pawnPairPsqtData(), PairPsqtWeightSize);
 
         write_leb_128<WeightType>(stream, copy->weights);
-        write_leb_128<PSQTWeightType>(stream, copy->psqtWeights);
 
         return !stream.fail();
     }
@@ -209,10 +194,8 @@ class FeatureTransformer {
 
         hash_combine(h, get_raw_data_hash(biases));
         hash_combine(h, get_raw_data_hash(weights));
-        hash_combine(h, get_raw_data_hash(psqtWeights));
 
         hash_combine(h, get_raw_data_hash(threatAndPpWeights));
-        hash_combine(h, get_raw_data_hash(threatAndPpPsqtWeights));
 
         hash_combine(h, get_hash_value());
 
@@ -220,27 +203,19 @@ class FeatureTransformer {
     }
 
     // Convert input features
-    i32 transform(const Position&                             pos,
-                  AccumulatorStack&                           accumulatorStack,
-                  AccumulatorCaches&                          cache,
-                  OutputType*                                 output,
-                  int                                         bucket,
-                  [[maybe_unused]] NNZInfo<OutputDimensions>& nnzInfo) const {
+    void transform(const Position&                             pos,
+                   AccumulatorStack&                           accumulatorStack,
+                   AccumulatorCaches&                          cache,
+                   OutputType*                                 output,
+                   [[maybe_unused]] NNZInfo<OutputDimensions>& nnzInfo) const {
         accumulatorStack.evaluate(pos, *this, cache);
         const auto& accumulatorState = accumulatorStack.latest();
 
-        const Color perspectives[2]  = {pos.side_to_move(), ~pos.side_to_move()};
-        const auto& psqtAccumulation = accumulatorState.psqtAccumulation;
-        const auto  psqt =
-          (psqtAccumulation[perspectives[0]][bucket] - psqtAccumulation[perspectives[1]][bucket])
-          / 2;
-
-        const auto& accumulation = accumulatorState.accumulation;
+        const Color perspectives[2] = {pos.side_to_move(), ~pos.side_to_move()};
+        const auto& accumulation    = accumulatorState.accumulation;
 
         for (IndexType p = 0; p < 2; ++p)
             transform_perspective(accumulation[perspectives[p]], output, p, nnzInfo);
-
-        return psqt;
     }
 
    private:
@@ -423,8 +398,6 @@ class FeatureTransformer {
     static_assert(PairFeatureSet::IndexBase == ThreatFeatureSet::Dimensions);
 
     alignas(CacheLineSize) ThreatAndPpWeightArray threatAndPpWeights;
-    alignas(CacheLineSize) PsqtWeightArray psqtWeights;
-    alignas(CacheLineSize) ThreatAndPpPsqtArray threatAndPpPsqtWeights;
 };
 
 }  // namespace Stockfish::Eval::NNUE

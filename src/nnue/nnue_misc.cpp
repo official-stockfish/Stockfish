@@ -54,8 +54,7 @@ void format_cp_aligned_dot(Value v, std::stringstream& stream, const Position& p
 }
 
 
-// Returns a string with the value of each piece on a board,
-// and a table for (PSQT, Layers) values bucket by bucket.
+// Returns a string with the table for evaluation values bucket by bucket.
 std::string
 trace(Position& pos, const Eval::NNUE::Network& network, Eval::NNUE::AccumulatorCaches& caches) {
 
@@ -68,30 +67,21 @@ trace(Position& pos, const Eval::NNUE::Network& network, Eval::NNUE::Accumulator
 
     ss << "NNUE network contributions (Normalized, "
        << (pos.side_to_move() == WHITE ? "White to move)" : "Black to move)") << std::endl
-       << "+------------+------------+------------+------------+\n"
-       << "|   Bucket   |  Material  | Positional |   Total    |\n"
-       << "|            |   (PSQT)   |  (Layers)  |            |\n"
-       << "+------------+------------+------------+------------+\n";
+       << "+------------+------------+\n"
+       << "|   Bucket   | Evaluation |\n"
+       << "+------------+------------+\n";
 
     for (usize bucket = 0; bucket < LayerStacks; ++bucket)
     {
-        ss << "|  " << bucket << "        "  //
-           << " |  ";
-        format_cp_aligned_dot(t.psqt[bucket], ss, pos);
-        ss << "  "  //
-           << " |  ";
+        ss << "|  " << bucket << "         |  ";
         format_cp_aligned_dot(t.positional[bucket], ss, pos);
-        ss << "  "  //
-           << " |  ";
-        format_cp_aligned_dot(t.psqt[bucket] + t.positional[bucket], ss, pos);
-        ss << "  "  //
-           << " |";
+        ss << "   |";
         if (bucket == t.correctBucket)
             ss << " <-- this bucket is used";
         ss << '\n';
     }
 
-    ss << "+------------+------------+------------+------------+\n";
+    ss << "+------------+------------+\n";
 
     return ss.str();
 }
