@@ -316,7 +316,6 @@ class Worker {
     Worker(
       SharedState&, std::unique_ptr<SearchManager>, usize, usize, usize, NumaReplicatedAccessToken);
 
-    // Called at instantiation to initialize reductions tables.
     // Reset histories, usually before a new game.
     void clear();
 
@@ -393,9 +392,6 @@ class Worker {
 
     usize                     threadIdx, numaThreadIdx, numaTotal;
     NumaReplicatedAccessToken numaAccessToken;
-
-    // Reductions lookup table initialized at startup
-    std::array<int, MAX_MOVES> reductions;  // [depth or moveNumber]
 
     // The main thread has a SearchManager, the others have a nullptr
     std::unique_ptr<SearchManager> manager;
