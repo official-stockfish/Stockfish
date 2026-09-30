@@ -304,6 +304,10 @@ inline __m128i vec_convert_8_16(u64 x) {
 
 #endif
 
+#ifdef VECTOR
+static_assert(MaxChunkSize == sizeof(vec_t), "MaxChunkSize must equal one vector.");
+#endif
+
 #if defined(USE_AVX512)
 
 [[maybe_unused]] static int m512_hadd(__m512i sum, int bias) {
