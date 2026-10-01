@@ -31,16 +31,19 @@ namespace Stockfish::Eval::NNUE::Features {
 
 class PP_3Wide {
    public:
-    static constexpr u32 HashValue = 0x86f2b1ddu;
+    static constexpr u32 HashValue = 0x19c262b9u;
 
-    static constexpr IndexType PawnIds    = COLOR_NB * 48;
-    static constexpr IndexType Dimensions = PawnIds * (PawnIds - 1) / 2;
+    static constexpr IndexType PawnIds = COLOR_NB * 48;
+    // File-major pawn IDs differ by at most 23 on the same or adjacent files.
+    // Reserve 23 slots per lower ID; the last reachable pair is (94, 95).
+    static constexpr IndexType Dimensions = 23 * (PawnIds - 2) + 1;
 
     // Pawn pair feature indices are concatenated to threats, so this must equal ThreatFeatureSet::Dimensions;
     // see nnue_feature_transformer.h
     static constexpr IndexType IndexBase = 59808;
-    using IndexList                      = ValueList<u16, 256>;
-    using DiffType                       = DirtyPawnPairs;
+    static_assert(IndexBase + Dimensions <= 65536);
+    using IndexList = ValueList<u16, 256>;
+    using DiffType  = DirtyPawnPairs;
 
     static IndexType make_index(
       Color perspective, Color color, Square from, Square to, Color pairedColor, Square ksq);

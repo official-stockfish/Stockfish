@@ -19,6 +19,7 @@
 #include "pp_3wide.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 
@@ -31,18 +32,31 @@
 
 namespace Stockfish::Eval::NNUE::Features {
 
+// Each file contains six ranks of friendly pawns, then six of enemy pawns.
+// The first color's 64-byte table also supplies all SIMD square IDs.
+alignas(64) constexpr auto PawnIdTBL = [] {
+    std::array<std::array<u8, SQUARE_NB>, COLOR_NB> ids{};
+    for (unsigned color = 0; color < COLOR_NB; ++color)
+        for (unsigned square = SQ_A2; square <= SQ_H7; ++square)
+            ids[color][square] = u8(12 * (square & 7) + (square >> 3) - 1 + 6 * color);
+    return ids;
+}();
+
 constexpr IndexType make_pawn_id(Color color, Square square) {
     assert(square >= SQ_A2 && square <= SQ_H7);
-    return 48 * int(color) + square - SQ_A2;
+    return PawnIdTBL[color][square];
 }
 
 #ifdef USE_AVX512ICL
 static inline __m256i pp_idx_epi16(__m256i a, __m256i b) {
-    const __m256i hi   = _mm256_max_epu16(a, b);
-    const __m256i lo   = _mm256_min_epu16(a, b);
-    const __m256i prod = _mm256_mullo_epi16(hi, _mm256_sub_epi16(hi, _mm256_set1_epi16(1)));
-    return _mm256_add_epi16(_mm256_add_epi16(_mm256_srli_epi16(prod, 1), lo),
-                            _mm256_set1_epi16(i16(PP_3Wide::IndexBase)));
+    const __m256i hi     = _mm256_max_epu16(a, b);
+    const __m256i lo     = _mm256_min_epu16(a, b);
+    const __m256i packed = _mm256_or_si256(lo, _mm256_slli_epi16(hi, 8));
+    // Unsigned pawn-ID bytes times signed coefficients (22, 1) give 22*lo+hi.
+    // IDs are at most 95, so the signed saturating intermediate cannot overflow.
+    // This avoids compilers expanding multiplication by 22 into shifts and adds.
+    const __m256i sum = _mm256_maddubs_epi16(packed, _mm256_set1_epi16(0x0116));
+    return _mm256_add_epi16(sum, _mm256_set1_epi16(i16(PP_3Wide::IndexBase - 1)));
 }
 #endif
 
@@ -63,7 +77,9 @@ sf_always_inline IndexType PP_3Wide::make_index(
     const IndexType hi  = std::max(idA, idB);
     const IndexType lo  = std::min(idA, idB);
 
-    return hi * (hi - 1) / 2 + lo + IndexBase;
+    // 23*lo + (hi-lo-1) occupies a unique slot in the lower ID's band.
+    assert(hi > lo && hi - lo <= 23);
+    return 22 * lo + hi - 1 + IndexBase;
 }
 
 void PP_3Wide::append_active_indices(Color perspective, const Position& pos, IndexList& active) {
@@ -112,14 +128,15 @@ void PP_3Wide::append_changed_indices(Color                                    p
     const u8      orientation = u8(FullThreats::OrientTBL[ksq]) ^ u8(56 * perspective);
     const __m512i iota        = AllSquares;
     const __m512i adjusted =
-      _mm512_sub_epi8(_mm512_xor_si512(iota, _mm512_set1_epi8(orientation)), _mm512_set1_epi8(8));
+      _mm512_permutexvar_epi8(_mm512_xor_si512(iota, _mm512_set1_epi8(orientation)),
+                              _mm512_load_si512(PawnIdTBL[WHITE].data()));
 
     auto generate = [&](Bitboard updatedW, Bitboard updatedB, Bitboard pawnsW, Bitboard pawnsB,
                         IndexList& out) {
         const Bitboard friendly = perspective == WHITE ? pawnsW : pawnsB;
         const Bitboard enemy    = perspective == WHITE ? pawnsB : pawnsW;
         const __m512i  ids      = _mm512_mask_blend_epi8(
-          friendly, _mm512_add_epi8(adjusted, _mm512_set1_epi8(48)), adjusted);
+          friendly, _mm512_add_epi8(adjusted, _mm512_set1_epi8(6)), adjusted);
 
         const Bitboard unchanged = (pawnsW | pawnsB) & ~(updatedW | updatedB);
         for (Bitboard u = updatedW | updatedB; u;)
@@ -130,9 +147,9 @@ void PP_3Wide::append_changed_indices(Color                                    p
             if (!n)
                 continue;
 
-            const u16     colorOff = (enemy & a) ? 48 : 0;
-            const u16     aId      = u16(((u8(a) ^ orientation) - 8) + colorOff);
-            const __m256i pids     = _mm256_cvtepu8_epi16(
+            const Color   color = (enemy & a) ? BLACK : WHITE;
+            const u16     aId   = u16(make_pawn_id(color, Square(u8(a) ^ orientation)));
+            const __m256i pids  = _mm256_cvtepu8_epi16(
               _mm512_castsi512_si128(_mm512_maskz_compress_epi8(partners, ids)));
             const __m256i feats = pp_idx_epi16(_mm256_set1_epi16(aId), pids);
 
