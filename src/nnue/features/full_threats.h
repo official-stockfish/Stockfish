@@ -67,8 +67,9 @@ class FullThreats {
 
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 256;
-    using IndexList                                = ValueList<u16, MaxActiveDimensions>;
-    using DiffType                                 = DirtyThreats;
+    // These lists also carry king-bucketed PP indices, which exceed 65535.
+    using IndexList = ValueList<u32, MaxActiveDimensions>;
+    using DiffType  = DirtyThreats;
 
     static IndexType
     make_index(Color perspective, Piece attkr, Square from, Square to, Piece attkd, Square ksq);

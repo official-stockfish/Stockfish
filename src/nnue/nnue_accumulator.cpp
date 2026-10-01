@@ -130,6 +130,8 @@ void AccumulatorStack::evaluate_side(Color                     perspective,
             && accumulators[size - 2].computed[perspective]
             && pos.count<ALL_PIECES>() >= MIN_PC_COUNT_HYBRID
             && ((int(dirtyPiece.from) & 0b100) == (int(dirtyPiece.to) & 0b100))
+            && PairFeatureSet::king_bucket(perspective, dirtyPiece.from)
+                 == PairFeatureSet::king_bucket(perspective, dirtyPiece.to)
             && dirtyPiece.add_sq == SQ_NONE  // excludes castling
         )
         {

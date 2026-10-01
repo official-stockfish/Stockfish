@@ -31,15 +31,37 @@ namespace Stockfish::Eval::NNUE::Features {
 
 class PP_3Wide {
    public:
-    static constexpr u32 HashValue = 0x86f2b1ddu;
+    static constexpr u32 HashValue = 0x65f06aebu;
 
-    static constexpr IndexType PawnIds    = COLOR_NB * 48;
-    static constexpr IndexType Dimensions = PawnIds * (PawnIds - 1) / 2;
+    static constexpr IndexType PawnIds = COLOR_NB * 48;
+    // File-major pawn IDs differ by at most 23 on the same or adjacent files.
+    // Reserve 23 slots per lower ID; the last reachable pair is (94, 95).
+    static constexpr IndexType FeaturesPerBucket = 23 * (PawnIds - 2) + 1;
+    static constexpr IndexType KingBucketCount   = 8;
+    static constexpr IndexType Dimensions        = FeaturesPerBucket * KingBucketCount;
+
+    // Buckets are relative to the perspective, with files mirrored onto a-d.
+    // clang-format off
+    static constexpr u8 KingBuckets[SQUARE_NB] = {
+        0, 1, 2, 3, 3, 2, 1, 0,
+        4, 4, 5, 5, 5, 5, 4, 4,
+        6, 6, 6, 6, 6, 6, 6, 6,
+        6, 6, 6, 6, 6, 6, 6, 6,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7,
+    };
+    // clang-format on
+
+    static constexpr IndexType king_bucket(Color perspective, Square ksq) {
+        return KingBuckets[int(ksq) ^ (56 * int(perspective))];
+    }
 
     // Pawn pair feature indices are concatenated to threats, so this must equal ThreatFeatureSet::Dimensions;
     // see nnue_feature_transformer.h
     static constexpr IndexType IndexBase = 59808;
-    using IndexList                      = ValueList<u16, 256>;
+    using IndexList                      = ValueList<u32, 256>;
     using DiffType                       = DirtyPawnPairs;
 
     static IndexType make_index(
