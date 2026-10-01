@@ -565,7 +565,7 @@ std::string UCIEngine::format_score(const Score& s) {
     constexpr int TB_CP = 20000;
     const auto    format =
       overload{[](Score::Mate mate) -> std::string {
-                   auto m = (mate.plies > 0 ? (mate.plies + 1) : mate.plies) / 2;
+                   auto m = (mate.plies + (mate.plies > 0)) / 2;
                    return std::string("mate ") + std::to_string(m);
                },
                [](Score::Tablebase tb) -> std::string {
