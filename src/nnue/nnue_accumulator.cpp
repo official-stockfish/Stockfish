@@ -333,6 +333,10 @@ sf_always_inline Tile apply_threat_features(IndexType                          j
     {
         auto* column =
           reinterpret_cast<const vec_i8_t*>(&ft.threatAndPpWeights[list[i] * Dimensions + j]);
+    #if defined(USE_NEON) && defined(__GNUC__) && !defined(__clang__)
+        // Materialize the column base so GCC can pair weight loads.
+        asm("" : "+r"(column));
+    #endif
     #ifdef USE_NEON
         for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
         {
@@ -378,6 +382,10 @@ sf_always_inline Tile apply_threat_features(IndexType                          j
 template<int sign>
 sf_always_inline Tile apply(IndexType j, Tile acc, const i16* data) {
     const auto* column = reinterpret_cast<const vec_t*>(data + j);
+    #if defined(USE_NEON) && defined(__GNUC__) && !defined(__clang__)
+    // Materialize the column base so GCC can pair weight loads.
+    asm("" : "+r"(column));
+    #endif
     for (IndexType k = 0; k < Tiling::NumRegs; ++k)
         if constexpr (sign == +1)
             acc[k] = vec_add_16(acc[k], column[k]);
