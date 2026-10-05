@@ -931,11 +931,11 @@ Value Search::Worker::search(
                     return ttData.value;
             }
         }
-        // Case B: No cutoff, but depth was sufficient. Compare the aspiration window to the bound.
-        else if (ttData.bound != BOUND_EXACT
-                 && (ttData.bound & (ttData.value >= beta ? BOUND_UPPER : BOUND_LOWER))
-                 && depth > 5)
+        // Case B: No cutoff, but depth was sufficient, so the bound points the wrong way.
+        else if (depth > 5)
         {
+            assert(!(ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER)));
+
             // If such a mismatch is the only reason cutoff failed, the TT entry is now useless
             ttWriter.penalize(1);
         }
@@ -1629,8 +1629,10 @@ moves_loop:  // When in check, search starts here
     }
 
     // Bonus for prior capture countermove that caused the fail low
-    else if (priorCapture && prevSq != SQ_NONE)
+    else if (prevSq != SQ_NONE)
     {
+        assert(priorCapture);
+
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
         captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 892;
@@ -1772,8 +1774,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         // Stand pat. Return immediately if static value is at least beta
         if (bestValue >= beta)
         {
-            if (!is_decisive(bestValue))
-                bestValue = (441 * bestValue + 583 * beta) / 1024;
+            assert(!is_decisive(bestValue));
+            bestValue = (441 * bestValue + 583 * beta) / 1024;
 
             if (!ss->ttHit)
                 ttWriter.write(posKey, VALUE_NONE, false, BOUND_LOWER, DEPTH_UNSEARCHED,
