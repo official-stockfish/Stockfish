@@ -74,14 +74,16 @@ struct AccumulatorCaches {
 
     template<typename Network>
     void clear(const Network& network) {
-        for (auto& entries1D : entries)
-            for (auto& entry : entries1D)
-                entry.clear(network.featureTransformer.biases);
+        for (auto& entries2D : entries)
+            for (auto& entries1D : entries2D)
+                for (auto& entry : entries1D)
+                    entry.clear(network.featureTransformer.biases);
     }
 
-    std::array<Entry, COLOR_NB>& operator[](Square sq) { return entries[sq]; }
+    auto& operator[](bool opponent_has_queen) { return entries[opponent_has_queen ? 1 : 0]; }
+    const auto& operator[](bool opponent_has_queen) const { return entries[opponent_has_queen ? 1 : 0]; }
 
-    std::array<std::array<Entry, COLOR_NB>, SQUARE_NB> entries;
+    std::array<std::array<std::array<Entry, COLOR_NB>, SQUARE_NB>, 2> entries;
 };
 
 

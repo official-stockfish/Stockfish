@@ -78,11 +78,15 @@ class Network {
     void load_external(const std::filesystem::path&, const std::filesystem::path&, EvalFile&);
     void load_internal(EvalFile&);
 
-   private:
-    void initialize();
-
     bool                       save(std::ostream&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
+
+    // Hash value of evaluation function structure
+    static constexpr u32 hash =
+      FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
+
+   private:
+    void initialize();
 
     bool read_header(std::istream&, u32*, std::string*) const;
     bool write_header(std::ostream&, u32, const std::string&) const;
@@ -98,13 +102,11 @@ class Network {
 
     bool initialized = false;
 
-    // Hash value of evaluation function structure
-    static constexpr u32 hash =
-      FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
-
     friend struct AccumulatorCaches;
 };
 
+std::string generate_random_network_stream(std::uint64_t seed = 42);
+bool verify_nnue_roundtrip(std::ostream& os);
 
 }  // namespace Stockfish::Eval::NNUE
 
