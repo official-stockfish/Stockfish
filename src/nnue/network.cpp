@@ -37,6 +37,7 @@
 #include "../movegen.h"
 #include "../position.h"
 #include "../types.h"
+#include "inflate.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 #include "nnue_misc.h"
@@ -69,6 +70,37 @@ namespace Stockfish::Eval::NNUE {
 namespace fs = std::filesystem;
 
 namespace Detail {
+
+// Buffer for an in-memory stream supporting seeking
+class MemoryBuffer: public std::basic_streambuf<char> {
+   public:
+    MemoryBuffer(char* p, usize n) {
+        setg(p, p, p + n);
+        setp(p, p + n);
+    }
+
+   protected:
+    pos_type seekoff(off_type off, std::ios_base::seekdir dir,
+                     std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override {
+        (void)which;
+        char* new_gptr = gptr();
+        if (dir == std::ios_base::cur)
+            new_gptr += off;
+        else if (dir == std::ios_base::beg)
+            new_gptr = eback() + off;
+        else if (dir == std::ios_base::end)
+            new_gptr = egptr() + off;
+        if (new_gptr < eback() || new_gptr > egptr())
+            return pos_type(off_type(-1));
+        setg(eback(), new_gptr, egptr());
+        return pos_type(gptr() - eback());
+    }
+
+    pos_type seekpos(pos_type sp,
+                     std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override {
+        return seekoff(off_type(sp), std::ios_base::beg, which);
+    }
+};
 
 // Read evaluation function parameters
 template<typename T>
@@ -251,22 +283,13 @@ void Network::load_external(const fs::path& dir, const fs::path& evalfilePath, E
 
 
 void Network::load_internal(EvalFile& evalFile) {
-    // C++ way to prepare a buffer for a memory stream
-    class MemoryBuffer: public std::basic_streambuf<char> {
-       public:
-        MemoryBuffer(char* p, usize n) {
-            setg(p, p, p + n);
-            setp(p, p + n);
-        }
-    };
-
 #ifdef UNIVERSAL_BINARY_MACOS_X86_SLICE
     if (gEmbeddedNNUEData == nullptr)  // failed embedded load
         return;
 #endif
 
-    MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
-                        usize(gEmbeddedNNUESize));
+    Detail::MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
+                                usize(gEmbeddedNNUESize));
 
     std::istream stream(&buffer);
     auto         description = load(stream);
@@ -350,14 +373,45 @@ bool Network::read_parameters(std::istream& stream, std::string& netDescription)
         return false;
     if (hashValue != Network::hash)
         return false;
-    if (!Detail::read_parameters(stream, featureTransformer))
-        return false;
-    for (usize i = 0; i < LayerStacks; ++i)
-    {
-        if (!Detail::read_parameters(stream, network[i]))
+
+    auto read_layers = [this](std::istream& s) {
+        if (!Detail::read_parameters(s, featureTransformer))
             return false;
+        for (usize i = 0; i < LayerStacks; ++i)
+        {
+            if (!Detail::read_parameters(s, network[i]))
+                return false;
+        }
+        return s && s.peek() == std::ios::traits_type::eof();
+    };
+
+    char magic[ZlibMagicStringSize];
+    stream.read(magic, ZlibMagicStringSize);
+    if (stream.gcount() == ZlibMagicStringSize
+        && strncmp(ZlibMagicString, magic, ZlibMagicStringSize) == 0)
+    {
+        u32 uncompressedSize = read_little_endian<u32>(stream);
+        u32 compressedSize   = read_little_endian<u32>(stream);
+        if (!stream || uncompressedSize == 0 || compressedSize == 0)
+            return false;
+
+        std::vector<char> compressedData(compressedSize);
+        stream.read(compressedData.data(), compressedSize);
+        if (usize(stream.gcount()) != compressedSize)
+            return false;
+
+        std::vector<char> uncompressedData(uncompressedSize);
+        if (!decompress_zlib(compressedData.data(), compressedSize,
+                             uncompressedData.data(), uncompressedSize))
+            return false;
+
+        Detail::MemoryBuffer memBuf(uncompressedData.data(), uncompressedSize);
+        std::istream memStream(&memBuf);
+        return read_layers(memStream);
     }
-    return stream && stream.peek() == std::ios::traits_type::eof();
+
+    stream.seekg(-std::streamoff(stream.gcount()), std::ios::cur);
+    return read_layers(stream);
 }
 
 
@@ -388,12 +442,12 @@ std::string generate_random_network_stream(std::uint64_t seed) {
     // 2. Feature Transformer
     write_little_endian<u32>(ss, FeatureTransformer::get_hash_value());
 
-    // biases (LEB128 of 1024 i16)
+    // biases (raw i16)
     std::vector<BiasType> biases(FeatureTransformer::OutputDimensions);
     std::uniform_int_distribution<int> dist_bias(-200, 200);
     for (auto& b : biases)
         b = static_cast<BiasType>(dist_bias(rng));
-    write_leb_128(ss, biases.data(), biases.size());
+    write_little_endian(ss, biases.data(), biases.size());
 
     // threat and pair weights (raw i8)
     std::vector<ThreatWeightType> threatWeights(FeatureTransformer::ThreatWeightSize);
