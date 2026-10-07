@@ -152,6 +152,13 @@ struct NetworkArchitecture {
         hash_combine(h, get_hash_value());
         return h;
     }
+
+    template<typename RNG>
+    void initialize_random_weights(RNG& rng) {
+        fc_0.initialize_random_weights(rng);
+        fc_1.initialize_random_weights(rng);
+        fc_2.initialize_random_weights(rng);
+    }
 };
 
 }  // namespace Stockfish::Eval::NNUE

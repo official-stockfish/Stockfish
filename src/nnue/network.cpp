@@ -428,123 +428,74 @@ bool Network::write_parameters(std::ostream& stream, const std::string& netDescr
     return bool(stream);
 }
 
-std::string generate_random_network_stream(std::uint64_t seed) {
+void Network::initialize_random_weights(std::uint64_t seed) {
     std::mt19937_64 rng(seed);
-    std::ostringstream ss(std::ios::binary);
-
-    // 1. Header
-    write_little_endian<u32>(ss, Version);
-    write_little_endian<u32>(ss, Network::hash);
-    std::string desc = "Random Network";
-    write_little_endian<u32>(ss, u32(desc.size()));
-    ss.write(desc.data(), desc.size());
-
-    // 2. Feature Transformer
-    write_little_endian<u32>(ss, FeatureTransformer::get_hash_value());
-
-    // biases (raw i16)
-    std::vector<BiasType> biases(FeatureTransformer::OutputDimensions);
-    std::uniform_int_distribution<int> dist_bias(-200, 200);
-    for (auto& b : biases)
-        b = static_cast<BiasType>(dist_bias(rng));
-    write_little_endian(ss, biases.data(), biases.size());
-
-    // threat and pair weights (raw i8)
-    std::vector<ThreatWeightType> threatWeights(FeatureTransformer::ThreatWeightSize);
-    std::uniform_int_distribution<int> dist_i8(-120, 120);
-    for (auto& w : threatWeights)
-        w = static_cast<ThreatWeightType>(dist_i8(rng));
-    write_little_endian(ss, threatWeights.data(), threatWeights.size());
-
-    std::vector<ThreatWeightType> pairWeights(FeatureTransformer::PairWeightSize);
-    for (auto& w : pairWeights)
-        w = static_cast<ThreatWeightType>(dist_i8(rng));
-    write_little_endian(ss, pairWeights.data(), pairWeights.size());
-
-    // weights (raw i8)
-    std::vector<WeightType> weights(FeatureTransformer::OutputDimensions * FeatureTransformer::PsqDimensions);
-    for (auto& w : weights)
-        w = static_cast<WeightType>(dist_i8(rng));
-    write_little_endian(ss, weights.data(), weights.size());
-
-    // 3. 32 LayerStacks
-    for (usize b = 0; b < LayerStacks; ++b)
-    {
-        write_little_endian<u32>(ss, NetworkArchitecture::get_hash_value());
-
-        // fc_0: 32 i32 biases, 32 * 1024 i8 weights
-        std::uniform_int_distribution<int> dist_fc0_bias(-1000, 1000);
-        for (int i = 0; i < 32; ++i)
-            write_little_endian<i32>(ss, dist_fc0_bias(rng));
-        for (int i = 0; i < 32 * 1024; ++i)
-            write_little_endian<i8>(ss, static_cast<i8>(dist_i8(rng)));
-
-        // fc_1: 32 i32 biases, 32 * 64 i8 weights
-        for (int i = 0; i < 32; ++i)
-            write_little_endian<i32>(ss, dist_fc0_bias(rng));
-        for (int i = 0; i < 32 * 64; ++i)
-            write_little_endian<i8>(ss, static_cast<i8>(dist_i8(rng)));
-
-        // fc_2: 1 i32 bias, 1 * 128 (padded) i8 weights
-        write_little_endian<i32>(ss, dist_fc0_bias(rng));
-        for (int i = 0; i < 1 * 128; ++i)
-            write_little_endian<i8>(ss, static_cast<i8>(dist_i8(rng)));
-    }
-
-    return ss.str();
+    featureTransformer.initialize_random_weights(rng);
+    for (auto& stack : network)
+        stack.initialize_random_weights(rng);
+    initialized = true;
 }
 
-bool verify_nnue_roundtrip(std::ostream& os) {
+bool verify_nnue(std::ostream& os) {
     os << "Testing NNUE serialization round-trip..." << std::endl;
 
-    // 1. Generate random net stream
-    std::string bytes1 = generate_random_network_stream(12345);
-
-    // 2. Load into net1
+    // 1. Initialize net1 in memory with random weights
     auto net1 = std::make_unique<Network>();
-    std::istringstream iss1(bytes1, std::ios::binary);
-    auto desc1 = net1->load(iss1);
-    if (!desc1.has_value())
-    {
-        os << "FAILED: net1 failed to load random stream!" << std::endl;
-        return false;
-    }
+    net1->initialize_random_weights(12345);
+    const usize hash1 = net1->get_content_hash();
 
-    // 3. Save net1 to ss2
-    std::ostringstream ss2(std::ios::binary);
-    if (!net1->save(ss2, *desc1))
+    // 2. Save net1 to ss1
+    std::ostringstream ss1(std::ios::binary);
+    if (!net1->save(ss1, "Synthetic Verification Network"))
     {
         os << "FAILED: net1 failed to save!" << std::endl;
         return false;
     }
-    std::string bytes2 = ss2.str();
+    const std::string bytes1 = ss1.str();
+
+    // 3. Load into net2 from ss1
+    auto net2 = std::make_unique<Network>();
+    std::istringstream iss1(bytes1, std::ios::binary);
+    auto desc2 = net2->load(iss1);
+    if (!desc2.has_value())
+    {
+        os << "FAILED: net2 failed to load bytes1!" << std::endl;
+        return false;
+    }
+
+    if (net2->get_content_hash() != hash1)
+    {
+        os << "FAILED: net2 content hash mismatch!" << std::endl;
+        return false;
+    }
+
+    // 4. Save net2 to ss2
+    std::ostringstream ss2(std::ios::binary);
+    if (!net2->save(ss2, *desc2))
+    {
+        os << "FAILED: net2 failed to save!" << std::endl;
+        return false;
+    }
+    const std::string bytes2 = ss2.str();
     if (bytes1 != bytes2)
     {
         os << "FAILED: bytes1 != bytes2 (length " << bytes1.size() << " vs " << bytes2.size() << ")" << std::endl;
         return false;
     }
 
-    // 4. Load into net2 from ss2
-    auto net2 = std::make_unique<Network>();
+    // 5. Load into net3 from ss2
+    auto net3 = std::make_unique<Network>();
     std::istringstream iss2(bytes2, std::ios::binary);
-    auto desc2 = net2->load(iss2);
-    if (!desc2.has_value())
+    auto desc3 = net3->load(iss2);
+    if (!desc3.has_value())
     {
-        os << "FAILED: net2 failed to load!" << std::endl;
+        os << "FAILED: net3 failed to load bytes2!" << std::endl;
         return false;
     }
 
-    // 5. Save net2 to ss3
-    std::ostringstream ss3(std::ios::binary);
-    if (!net2->save(ss3, *desc2))
+    if (net3->get_content_hash() != hash1)
     {
-        os << "FAILED: net2 failed to save!" << std::endl;
-        return false;
-    }
-    std::string bytes3 = ss3.str();
-    if (bytes2 != bytes3)
-    {
-        os << "FAILED: bytes2 != bytes3 (length " << bytes2.size() << " vs " << bytes3.size() << ")" << std::endl;
+        os << "FAILED: net3 content hash mismatch!" << std::endl;
         return false;
     }
 

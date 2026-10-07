@@ -174,22 +174,11 @@ void UCIEngine::loop() {
 
             engine.save_network(file);
         }
-        else if (token == "test_roundtrip" || token == "test_nnue")
+        else if (token == "test_nnue")
         {
-            bool ok = Eval::NNUE::verify_nnue_roundtrip(sync_cout);
+            bool ok = Eval::NNUE::verify_nnue(sync_cout);
             if (!ok)
                 sync_cout << "NNUE verification FAILED" << sync_endl;
-        }
-        else if (token == "export_random_net")
-        {
-            std::string filename;
-            if (is >> filename)
-            {
-                std::ofstream f(path_from_utf8(filename), std::ios::binary);
-                std::string s = Eval::NNUE::generate_random_network_stream(42);
-                f.write(s.data(), s.size());
-                sync_cout << "Random net exported to " << filename << sync_endl;
-            }
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout

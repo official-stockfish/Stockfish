@@ -202,6 +202,19 @@ class FeatureTransformer {
         return h;
     }
 
+    template<typename RNG>
+    void initialize_random_weights(RNG& rng) {
+        std::uniform_int_distribution<int> dist_bias(-200, 200);
+        std::uniform_int_distribution<int> dist_i8(-127, 127);
+        for (auto& b : biases)
+            b = static_cast<BiasType>(dist_bias(rng));
+        for (auto& w : threatAndPpWeights)
+            w = static_cast<ThreatWeightType>(dist_i8(rng));
+        for (auto& w : weights)
+            w = static_cast<WeightType>(dist_i8(rng));
+        permute_weights();
+    }
+
     // Convert input features
     void transform(const Position&                             pos,
                    AccumulatorStack&                           accumulatorStack,

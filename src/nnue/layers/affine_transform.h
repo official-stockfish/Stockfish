@@ -203,6 +203,16 @@ class AffineTransform {
         return h;
     }
 
+    template<typename RNG>
+    void initialize_random_weights(RNG& rng) {
+        std::uniform_int_distribution<int> dist_i8(-127, 127);
+        std::uniform_int_distribution<int> dist_bias(-10000, 10000);
+        for (auto& b : biases)
+            b = static_cast<BiasType>(dist_bias(rng));
+        for (auto& w : weights)
+            w = static_cast<WeightType>(dist_i8(rng));
+    }
+
     // Forward propagation
     void propagate(const InputType* input, OutputType* output) const {
 

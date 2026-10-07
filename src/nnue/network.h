@@ -81,6 +81,8 @@ class Network {
     bool                       save(std::ostream&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
 
+    void initialize_random_weights(std::uint64_t seed = 42);
+
     // Hash value of evaluation function structure
     static constexpr u32 hash =
       FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
@@ -105,8 +107,7 @@ class Network {
     friend struct AccumulatorCaches;
 };
 
-std::string generate_random_network_stream(std::uint64_t seed = 42);
-bool verify_nnue_roundtrip(std::ostream& os);
+bool verify_nnue(std::ostream& os);
 
 }  // namespace Stockfish::Eval::NNUE
 
