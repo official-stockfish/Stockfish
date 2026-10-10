@@ -856,6 +856,12 @@ def parse_args():
     parser.add_argument(
         "--none", action="store_true", help="Run without any testing options"
     )
+    parser.add_argument(
+        "--test-suite",
+        choices=["all", "general", "nnue"],
+        default="all",
+        help="Which test suite to run: general, nnue, or all (default)",
+    )
     parser.add_argument("stockfish_path", type=str, help="Path to Stockfish binary")
 
     return parser.parse_args()
@@ -864,26 +870,39 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    EPD.create_bench_epd()
-    Syzygy.download_syzygy()
+    general_suites = [
+        TestCLI,
+        TestInteractive,
+        TestSyzygy,
+        TestEnPassantSanitization,
+        TestInvalidFEN,
+        TestInvalidOptions,
+        TestBenchFile,
+    ]
+    nnue_suites = [TestNNUE]
+
+    if args.test_suite == "general":
+        suites = general_suites
+    elif args.test_suite == "nnue":
+        suites = nnue_suites
+    else:
+        suites = general_suites + nnue_suites
+
+    has_syzygy = any(s is TestSyzygy for s in suites)
+    has_bench = any(s is TestBenchFile for s in suites)
+
+    if has_bench:
+        EPD.create_bench_epd()
+    if has_syzygy:
+        Syzygy.download_syzygy()
 
     framework = MiniTestFramework()
 
     # Each test suite will be run inside a temporary directory
-    framework.run(
-        [
-            TestCLI,
-            TestInteractive,
-            TestSyzygy,
-            TestEnPassantSanitization,
-            TestInvalidFEN,
-            TestInvalidOptions,
-            TestBenchFile,
-            TestNNUE,
-        ]
-    )
+    framework.run(suites)
 
-    EPD.delete_bench_epd()
+    if has_bench:
+        EPD.delete_bench_epd()
 
     if framework.has_failed():
         sys.exit(1)
