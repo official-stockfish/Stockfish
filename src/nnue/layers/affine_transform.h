@@ -23,6 +23,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <random>
 
 #include "../../memory.h"
 #include "../nnue_common.h"

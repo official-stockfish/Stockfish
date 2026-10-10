@@ -26,6 +26,7 @@
 #include <cstring>
 #include <iosfwd>
 #include <iterator>
+#include <random>
 
 #include "../position.h"
 #include "../types.h"

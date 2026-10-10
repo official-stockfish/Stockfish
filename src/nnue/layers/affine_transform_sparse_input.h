@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <random>
 
 #include "../../bitboard.h"
 #include "../../memory.h"
