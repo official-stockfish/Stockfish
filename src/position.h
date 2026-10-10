@@ -62,6 +62,7 @@ struct StateInfo {
     Bitboard   blockersForKing[COLOR_NB];
     Bitboard   pinners[COLOR_NB];
     Bitboard   checkSquares[PIECE_TYPE_NB];
+    Bitboard   threats[PIECE_TYPE_NB];
     Piece      capturedPiece;
     int        repetition;
 };
@@ -128,14 +129,12 @@ class Position {
     // Attacks to/from a given square
     Bitboard attackers_to(Square s) const;
     Bitboard attackers_to(Square s, Bitboard occupied) const;
-    bool     attackers_to_exist(Square s, Bitboard occupied, Color c) const;
     void     update_slider_blockers(Color c) const;
-    template<PieceType Pt>
-    Bitboard attacks_by(Color c) const;
+    Bitboard xattacks_by(PieceType pt, Color c, Bitboard occupied) const;
+    Bitboard threats_by(PieceType pt) const;
 
     // Properties of moves
     bool  legal(Move m) const;
-    bool  pseudo_legal(const Move m) const;
     bool  capture(Move m) const;
     bool  capture_stage(Move m) const;
     bool  gives_check(Move m) const;
@@ -194,7 +193,7 @@ class Position {
     void set_castling_right(Color c, Square rfrom);
     Key  compute_material_key() const;
     void set_state() const;
-    void set_check_info() const;
+    void set_extra_bitboards() const;
 
     // Other helpers
     template<bool ComputeRay = true>
@@ -292,21 +291,23 @@ inline Square Position::castling_rook_square(CastlingRights cr) const {
 
 inline Bitboard Position::attackers_to(Square s) const { return attackers_to(s, pieces()); }
 
-template<PieceType Pt>
-inline Bitboard Position::attacks_by(Color c) const {
+// includes X-ray attacks through the king of color ~c
+inline Bitboard Position::xattacks_by(PieceType pt, Color c, Bitboard occupied) const {
 
-    if constexpr (Pt == PAWN)
+    if (pt == PAWN)
         return c == WHITE ? pawn_attacks_bb<WHITE>(pieces(WHITE, PAWN))
                           : pawn_attacks_bb<BLACK>(pieces(BLACK, PAWN));
     else
     {
         Bitboard threats   = 0;
-        Bitboard attackers = pieces(c, Pt);
+        Bitboard attackers = pieces(c, pt);
         while (attackers)
-            threats |= Attacks::attacks_bb(Pt, pop_lsb(attackers), pieces());
+            threats |= Attacks::attacks_bb(pt, pop_lsb(attackers), occupied);
         return threats;
     }
 }
+
+inline Bitboard Position::threats_by(PieceType pt) const { return st->threats[pt]; }
 
 inline Bitboard Position::checkers() const { return st->checkersBB; }
 

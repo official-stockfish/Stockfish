@@ -269,6 +269,8 @@ enum Direction : i8 {
     NORTH_WEST = NORTH + WEST
 };
 
+inline constexpr Direction operator-(Direction dir) { return Direction(-i8(dir)); }
+
 enum File : u8 {
     FILE_A,
     FILE_B,

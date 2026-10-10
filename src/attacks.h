@@ -171,21 +171,37 @@ const Magic& magic(Square s, PieceType pt);
 
 extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard RayPassBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard inverse_RayPassBB[SQUARE_NB][SQUARE_NB];
+extern Bitboard DiagBB[SQUARE_NB];
+extern Bitboard AntiDiagBB[SQUARE_NB];
 
+// horizontal/vertical/diagonal line passing through s1 and s2
 inline Bitboard line_bb(Square s1, Square s2) {
     assert(is_ok(s1) && is_ok(s2));
     return LineBB[s1][s2];
 }
 
+// horizontal/vertical/diagonal line segment from s1 to s2,
+// excluding s1 but including s2
 inline Bitboard between_bb(Square s1, Square s2) {
     assert(is_ok(s1) && is_ok(s2));
     return BetweenBB[s1][s2];
 }
 
+// ray going from s1 to s2 and past, excluding s1
 inline Bitboard ray_pass_bb(Square s1, Square s2) {
     assert(is_ok(s1) && is_ok(s2));
-    return RayPassBB[s1][s2];
+    return inverse_RayPassBB[s2][s1];
+}
+
+inline Bitboard diag_bb(Square s) {
+    assert(is_ok(s));
+    return DiagBB[s];
+}
+
+inline Bitboard antidiag_bb(Square s) {
+    assert(is_ok(s));
+    return AntiDiagBB[s];
 }
 
 // Returns the bitboard of target square for the given step
