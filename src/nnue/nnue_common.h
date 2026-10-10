@@ -72,8 +72,6 @@ constexpr int HiddenOneVal    = 128;
 // Size of cache line (in bytes)
 constexpr usize CacheLineSize = 64;
 
-constexpr char  ZlibMagicString[]   = "COMPRESSED_ZLIB";
-constexpr usize ZlibMagicStringSize = sizeof(ZlibMagicString) - 1;
 
 // SIMD width (in bytes)
 #if defined(USE_AVX2)

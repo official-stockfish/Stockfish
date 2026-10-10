@@ -37,7 +37,6 @@
 #include "../movegen.h"
 #include "../position.h"
 #include "../types.h"
-#include "inflate.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 #include "nnue_misc.h"
@@ -374,44 +373,14 @@ bool Network::read_parameters(std::istream& stream, std::string& netDescription)
     if (hashValue != Network::hash)
         return false;
 
-    auto read_layers = [this](std::istream& s) {
-        if (!Detail::read_parameters(s, featureTransformer))
-            return false;
-        for (usize i = 0; i < LayerStacks; ++i)
-        {
-            if (!Detail::read_parameters(s, network[i]))
-                return false;
-        }
-        return s && s.peek() == std::ios::traits_type::eof();
-    };
-
-    char magic[ZlibMagicStringSize];
-    stream.read(magic, ZlibMagicStringSize);
-    if (stream.gcount() == ZlibMagicStringSize
-        && strncmp(ZlibMagicString, magic, ZlibMagicStringSize) == 0)
+    if (!Detail::read_parameters(stream, featureTransformer))
+        return false;
+    for (usize i = 0; i < LayerStacks; ++i)
     {
-        u32 uncompressedSize = read_little_endian<u32>(stream);
-        u32 compressedSize   = read_little_endian<u32>(stream);
-        if (!stream || uncompressedSize == 0 || compressedSize == 0)
+        if (!Detail::read_parameters(stream, network[i]))
             return false;
-
-        std::vector<char> compressedData(compressedSize);
-        stream.read(compressedData.data(), compressedSize);
-        if (usize(stream.gcount()) != compressedSize)
-            return false;
-
-        std::vector<char> uncompressedData(uncompressedSize);
-        if (!decompress_zlib(compressedData.data(), compressedSize,
-                             uncompressedData.data(), uncompressedSize))
-            return false;
-
-        Detail::MemoryBuffer memBuf(uncompressedData.data(), uncompressedSize);
-        std::istream memStream(&memBuf);
-        return read_layers(memStream);
     }
-
-    stream.seekg(-std::streamoff(stream.gcount()), std::ios::cur);
-    return read_layers(stream);
+    return stream && stream.peek() == std::ios::traits_type::eof();
 }
 
 
