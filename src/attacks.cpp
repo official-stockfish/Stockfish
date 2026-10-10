@@ -153,10 +153,8 @@ void init_magics(PieceType pt, Bitboard table[], Magic magics[][2]) {
     }
 }
 
-    #if !defined(USE_DUAL_HYPERBOLA_QUINT) && !defined(USE_HYPERBOLA_QUINT)
-static std::array<Bitboard, 0x19000> RookTable;
-static std::array<Bitboard, 0x1480>  BishopTable;
-    #endif
+    std::array<Bitboard, 0x19000> RookTable;
+    std::array<Bitboard, 0x1480>  BishopTable;
 }
 
 #endif
