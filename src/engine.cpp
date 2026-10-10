@@ -303,6 +303,13 @@ void Engine::save_network(const std::optional<std::filesystem::path>& file) {
       [&file, this](NN::Network& network_) { network_.save(networkFile, file); });
 }
 
+void Engine::initialize_random_network(std::uint64_t seed) {
+    network.modify_and_replicate(
+      [seed](NN::Network& network_) { network_.initialize_random_weights(seed); });
+    threads.clear();
+    threads.ensure_network_replicated();
+}
+
 // utility functions
 
 void Engine::trace_eval() const {

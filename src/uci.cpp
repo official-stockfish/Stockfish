@@ -174,11 +174,12 @@ void UCIEngine::loop() {
 
             engine.save_network(file);
         }
-        else if (token == "test_nnue")
+        else if (token == "init_random_net")
         {
-            bool ok = Eval::NNUE::verify_nnue(sync_cout);
-            if (!ok)
-                sync_cout << "NNUE verification FAILED" << sync_endl;
+            std::uint64_t seed = 42;
+            is >> seed;
+            engine.initialize_random_network(seed);
+            sync_cout << "Initialized random network with seed " << seed << sync_endl;
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout

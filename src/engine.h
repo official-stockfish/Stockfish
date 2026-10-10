@@ -98,6 +98,7 @@ class Engine {
     std::unique_ptr<Eval::NNUE::Network> get_default_network();
     void                                 load_network(const std::filesystem::path& file);
     void save_network(const std::optional<std::filesystem::path>& file);
+    void initialize_random_network(std::uint64_t seed);
 
     // utility functions
 

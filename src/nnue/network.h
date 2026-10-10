@@ -107,8 +107,6 @@ class Network {
     friend struct AccumulatorCaches;
 };
 
-bool verify_nnue(std::ostream& os);
-
 }  // namespace Stockfish::Eval::NNUE
 
 template<>
