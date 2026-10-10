@@ -540,9 +540,7 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
     auto it = std::find_if(vec.begin(), vec.end(), pred);
 
     if (it != vec.end())
-    {
         std::rotate(vec.begin(), it, it + 1);
-    }
 }
 }
 

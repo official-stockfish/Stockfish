@@ -316,7 +316,6 @@ class Worker {
     Worker(
       SharedState&, std::unique_ptr<SearchManager>, usize, usize, usize, NumaReplicatedAccessToken);
 
-    // Called at instantiation to initialize reductions tables.
     // Reset histories, usually before a new game.
     void clear();
 
@@ -362,7 +361,7 @@ class Worker {
     template<NodeType nodeType>
     Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta);
 
-    int reduction(bool i, Depth d, int mn, int delta) const;
+    int reduction(bool i, Depth d, int mn) const;
 
     // Pointer to the search manager, only allowed to be called by the main thread
     SearchManager* main_manager() const {
@@ -387,15 +386,11 @@ class Worker {
     StateInfo rootState;
     RootMoves rootMoves;
     Depth     rootDepth;
-    Value     rootDelta;
 
     PVMoves lastIterationIdxPV;
 
     usize                     threadIdx, numaThreadIdx, numaTotal;
     NumaReplicatedAccessToken numaAccessToken;
-
-    // Reductions lookup table initialized at startup
-    std::array<int, MAX_MOVES> reductions;  // [depth or moveNumber]
 
     // The main thread has a SearchManager, the others have a nullptr
     std::unique_ptr<SearchManager> manager;
