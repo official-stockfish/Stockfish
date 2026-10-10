@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <random>
 
 #include "../../bitboard.h"
 #include "../../memory.h"
@@ -115,6 +116,16 @@ class AffineTransformSparseInput {
         hash_combine(h, get_raw_data_hash(weights));
         hash_combine(h, get_hash_value(0));
         return h;
+    }
+
+    template<typename RNG>
+    void initialize_random_weights(RNG& rng) {
+        std::uniform_int_distribution<int> dist_i8(-127, 127);
+        std::uniform_int_distribution<int> dist_bias(-10000, 10000);
+        for (auto& b : biases)
+            b = static_cast<BiasType>(dist_bias(rng));
+        for (auto& w : weights)
+            w = static_cast<WeightType>(dist_i8(rng));
     }
 
     // Forward propagation

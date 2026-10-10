@@ -16,10 +16,10 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features HalfKAv2_hm of NNUE evaluation function
+//Definition of input features K32Q2 of NNUE evaluation function
 
-#ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
-#define NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
+#ifndef NNUE_FEATURES_K32Q2_H_INCLUDED
+#define NNUE_FEATURES_K32Q2_H_INCLUDED
 
 #include "../../misc.h"
 #include "../../types.h"
@@ -27,9 +27,9 @@
 
 namespace Stockfish::Eval::NNUE::Features {
 
-// Feature HalfKAv2_hm: Combination of the position of own king and the
-// position of pieces. Position mirrored such that king is always on e..h files.
-class HalfKAv2_hm {
+// Feature K32Q2: Combination of the position of own king (32 buckets), opponent queen presence (2 states),
+// and piece-square positions. Position mirrored such that king is always on e..h files.
+class K32Q2 {
 
     // Unique number for each piece type on each square
     enum {
@@ -58,13 +58,13 @@ class HalfKAv2_hm {
 
    public:
     // Hash value embedded in the evaluation file
-    static constexpr u32 HashValue = 0x7f234cb8u;
+    static constexpr u32 HashValue = 0x32b5e284u;
 
-    // Number of feature dimensions
+    // Number of feature dimensions (45,056 piece-squares)
     static constexpr IndexType Dimensions =
-      static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB) / 2;
+      static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB);
 
-#define B(v) (v * PS_NB)
+#define B(v) (v * 2 * PS_NB)
     // clang-format off
     static constexpr IndexType KingBuckets[SQUARE_NB] = {
         B(28), B(29), B(30), B(31), B(31), B(30), B(29), B(28),
@@ -105,17 +105,17 @@ class HalfKAv2_hm {
                               Bitboard                            addedBB,
                               Color                               perspective,
                               Square                              ksq,
+                              bool                                opponent_has_queen,
                               IndexList&                          removed,
                               IndexList&                          added);
 #endif
 
     // Index of a feature for a given king position and another piece on some square
-
-    static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
+    static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq, bool opponent_has_queen);
 
     // Get a list of indices for recently changed features
     static void append_changed_indices(
-      Color perspective, Square ksq, const DiffType& diff, IndexList& removed, IndexList& added);
+      Color perspective, Square ksq, const DiffType& diff, bool opponent_has_queen, IndexList& removed, IndexList& added);
 
     // Returns whether the change stored in this DirtyPiece means
     // that a full accumulator refresh is required.
@@ -124,4 +124,4 @@ class HalfKAv2_hm {
 
 }  // namespace Stockfish::Eval::NNUE::Features
 
-#endif  // #ifndef NNUE_FEATURES_HALF_KA_V2_HM_H_INCLUDED
+#endif  // #ifndef NNUE_FEATURES_K32Q2_H_INCLUDED

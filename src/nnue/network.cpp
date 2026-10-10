@@ -20,12 +20,13 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <random>
 #include <type_traits>
 #include <vector>
-#include <filesystem>
 
 #define INCBIN_SILENCE_BITCODE_WARNING
 #include "../incbin/incbin.h"
@@ -67,6 +68,37 @@ namespace fs = std::filesystem;
 
 namespace Detail {
 
+// Buffer for an in-memory stream supporting seeking
+class MemoryBuffer: public std::basic_streambuf<char> {
+   public:
+    MemoryBuffer(char* p, usize n) {
+        setg(p, p, p + n);
+        setp(p, p + n);
+    }
+
+   protected:
+    pos_type seekoff(off_type off, std::ios_base::seekdir dir,
+                     std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override {
+        (void)which;
+        char* new_gptr = gptr();
+        if (dir == std::ios_base::cur)
+            new_gptr += off;
+        else if (dir == std::ios_base::beg)
+            new_gptr = eback() + off;
+        else if (dir == std::ios_base::end)
+            new_gptr = egptr() + off;
+        if (new_gptr < eback() || new_gptr > egptr())
+            return pos_type(off_type(-1));
+        setg(eback(), new_gptr, egptr());
+        return pos_type(gptr() - eback());
+    }
+
+    pos_type seekpos(pos_type sp,
+                     std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override {
+        return seekoff(off_type(sp), std::ios_base::beg, which);
+    }
+};
+
 // Read evaluation function parameters
 template<typename T>
 bool read_parameters(std::istream& stream, T& reference) {
@@ -98,6 +130,13 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
 
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
+
+    if (evalfilePath == "<random>")
+    {
+        initialize_random_weights(12345);
+        evalFile.current = evalfilePath;
+        return;
+    }
 
     if (evalFile.current != evalfilePath && evalfilePath == evalFile.defaultName)
         load_internal(evalFile);
@@ -150,7 +189,11 @@ Value Network::evaluate(const Position&    pos,
 
     NNZInfo<L1> nnzInfo;
 
-    const int bucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    const int   pc_bucket    = (pos.count<ALL_PIECES>() - 1) / 4;
+    const Color stm          = pos.side_to_move();
+    const int   queen_bucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
+    const int   bucket       = pc_bucket * 4 + queen_bucket;
+
     featureTransformer.transform(pos, accumulatorStack, cache, transformedFeatures, nnzInfo);
     const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
     return static_cast<Value>(positional / OutputScale);
@@ -210,16 +253,21 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
+    const int   pc_bucket    = (pos.count<ALL_PIECES>() - 1) / 4;
+    const Color stm          = pos.side_to_move();
+    const int   queen_bucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
+    const int   bucket       = pc_bucket * 4 + queen_bucket;
+
     NnueEvalTrace t{};
-    t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    t.correctBucket = bucket;
 
     NNZInfo<L1> nnzInfo;
     featureTransformer.transform(pos, accumulatorStack, cache, transformedFeatures, nnzInfo);
 
-    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
+    for (IndexType b = 0; b < LayerStacks; ++b)
     {
-        const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
-        t.positional[bucket]  = static_cast<Value>(positional / OutputScale);
+        const auto positional = network[b].propagate(transformedFeatures, nnzInfo);
+        t.positional[b]       = static_cast<Value>(positional / OutputScale);
     }
 
     return t;
@@ -239,22 +287,13 @@ void Network::load_external(const fs::path& dir, const fs::path& evalfilePath, E
 
 
 void Network::load_internal(EvalFile& evalFile) {
-    // C++ way to prepare a buffer for a memory stream
-    class MemoryBuffer: public std::basic_streambuf<char> {
-       public:
-        MemoryBuffer(char* p, usize n) {
-            setg(p, p, p + n);
-            setp(p, p + n);
-        }
-    };
-
 #ifdef UNIVERSAL_BINARY_MACOS_X86_SLICE
     if (gEmbeddedNNUEData == nullptr)  // failed embedded load
         return;
 #endif
 
-    MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
-                        usize(gEmbeddedNNUESize));
+    Detail::MemoryBuffer buffer(const_cast<char*>(reinterpret_cast<const char*>(gEmbeddedNNUEData)),
+                                usize(gEmbeddedNNUESize));
 
     std::istream stream(&buffer);
     auto         description = load(stream);
@@ -338,6 +377,7 @@ bool Network::read_parameters(std::istream& stream, std::string& netDescription)
         return false;
     if (hashValue != Network::hash)
         return false;
+
     if (!Detail::read_parameters(stream, featureTransformer))
         return false;
     for (usize i = 0; i < LayerStacks; ++i)
@@ -360,6 +400,14 @@ bool Network::write_parameters(std::ostream& stream, const std::string& netDescr
             return false;
     }
     return bool(stream);
+}
+
+void Network::initialize_random_weights(std::uint64_t seed) {
+    std::mt19937_64 rng(seed);
+    featureTransformer.initialize_random_weights(rng);
+    for (auto& stack : network)
+        stack.initialize_random_weights(rng);
+    initialized = true;
 }
 
 }  // namespace Stockfish::Eval::NNUE

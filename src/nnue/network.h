@@ -19,16 +19,17 @@
 #ifndef NETWORK_H_INCLUDED
 #define NETWORK_H_INCLUDED
 
+#include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <filesystem>
 
-#include "../types.h"
 #include "../misc.h"
+#include "../types.h"
 #include "nnue_architecture.h"
 #include "nnue_feature_transformer.h"
 #include "nnue_misc.h"
@@ -78,11 +79,17 @@ class Network {
     void load_external(const std::filesystem::path&, const std::filesystem::path&, EvalFile&);
     void load_internal(EvalFile&);
 
-   private:
-    void initialize();
-
     bool                       save(std::ostream&, const std::string&) const;
     std::optional<std::string> load(std::istream&);
+
+    void initialize_random_weights(std::uint64_t seed = 42);
+
+    // Hash value of evaluation function structure
+    static constexpr u32 hash =
+      FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
+
+   private:
+    void initialize();
 
     bool read_header(std::istream&, u32*, std::string*) const;
     bool write_header(std::ostream&, u32, const std::string&) const;
@@ -98,13 +105,8 @@ class Network {
 
     bool initialized = false;
 
-    // Hash value of evaluation function structure
-    static constexpr u32 hash =
-      FeatureTransformer::get_hash_value() ^ NetworkArchitecture::get_hash_value();
-
     friend struct AccumulatorCaches;
 };
-
 
 }  // namespace Stockfish::Eval::NNUE
 
