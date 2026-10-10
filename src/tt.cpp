@@ -199,6 +199,11 @@ void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
     clear(threads);
 }
 
+// Returns the size of the transposition table, measured in megabytes
+usize TranspositionTable::size() {
+    assert(clusterCount * sizeof(Cluster) % (1024 * 1024) == 0);
+    return clusterCount * sizeof(Cluster) / (1024 * 1024);
+}
 
 // Initializes the entire transposition table to zero, in a multi-threaded way
 void TranspositionTable::clear(ThreadPool& threads) {
