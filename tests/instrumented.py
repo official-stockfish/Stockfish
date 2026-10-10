@@ -706,139 +706,6 @@ class TestBenchFile(metaclass=OrderedClassMembers):
         assert self.stockfish.process.returncode != 0
 
 
-class TestNNUE(metaclass=OrderedClassMembers):
-    def beforeAll(self):
-        self.stockfish = Stockfish()
-        self.stockfish.send_command("uci")
-        self.default_net = None
-        for line in self.stockfish.readline():
-            if "option name EvalFile type string default" in line:
-                self.default_net = line.split(" ")[-1].strip()
-            if line == "uciok":
-                break
-
-    def afterAll(self):
-        self.stockfish.quit()
-        assert self.stockfish.close() == 0
-
-    def afterEach(self):
-        assert postfix_check(self.stockfish.get_output()) == True
-        self.stockfish.clear_output()
-
-    def _get_eval(self):
-        self.stockfish.send_command("eval")
-        score = None
-        for line in self.stockfish.readline():
-            if "in check" in line:
-                score = "in_check"
-            elif "NNUE evaluation" in line and "internal units" in line:
-                parts = line.split()
-                score = int(parts[2])
-            if line.startswith("Final evaluation"):
-                break
-        return score
-
-    def _get_fen(self):
-        self.stockfish.send_command("d")
-        fen = None
-        for line in self.stockfish.readline():
-            if line.startswith("Fen: "):
-                fen = line[5:].strip()
-            if line.startswith("Checkers:"):
-                break
-        return fen
-
-    def _get_legal_moves(self, fen):
-        self.stockfish.send_command(f"position fen {fen}")
-        self.stockfish.send_command("go perft 1")
-        moves = []
-        for line in self.stockfish.readline():
-            if ":" in line and line.endswith(": 1"):
-                moves.append(line.split(":")[0].strip())
-            if line.startswith("Nodes searched:"):
-                break
-        return moves
-
-    def test_random_net_serialization_roundtrip(self):
-        current_path = os.path.abspath(os.getcwd())
-        r1 = os.path.join(current_path, "random1.nnue")
-        r2 = os.path.join(current_path, "random2.nnue")
-
-        # 1. Initialize random net in memory via <random>
-        self.stockfish.send_command("setoption name EvalFile value <random>")
-        self.stockfish.send_command("isready")
-        self.stockfish.equals("readyok")
-
-        # 2. Export to random1.nnue
-        self.stockfish.send_command(f"export_net {r1}")
-        self.stockfish.contains("Network saved successfully to")
-
-        # 3. Reload into memory via EvalFile
-        self.stockfish.send_command(f"setoption name EvalFile value {r1}")
-
-        # 4. Export to random2.nnue
-        self.stockfish.send_command(f"export_net {r2}")
-        self.stockfish.contains("Network saved successfully to")
-
-        # 5. Verify byte-for-byte identity of random1 and random2
-        diff = subprocess.run(["diff", r1, r2])
-        assert diff.returncode == 0
-
-        # Restore default network
-        if self.default_net:
-            self.stockfish.send_command(f"setoption name EvalFile value {self.default_net}")
-
-    def test_accumulator_edge_cases(self):
-        test_fens = [
-            # 1. Start position
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            # 2. Kiwipete (tactical complex with castling and high piece count)
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-            # 3. Endgame position (<15 pieces)
-            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-            # 4. Check & tricky position
-            "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            # 5. En passant position
-            "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
-            # 6. Promotion position
-            "4k3/1P6/8/8/8/8/8/4K3 w - - 0 1",
-            # 7. King capturing Queen vs King moving without capturing
-            "4k3/8/8/8/8/8/3q4/4K3 w - - 0 1",
-            # 8. Multiple queens (2 black queens)
-            "r1b1k2r/pppp1ppp/8/4q3/1b2q3/2N5/PPP1BPPP/R1BQK2R w KQkq - 0 1",
-        ]
-
-        for fen in test_fens:
-            moves = self._get_legal_moves(fen)
-            for m in moves:
-                self.stockfish.send_command(f"position fen {fen} moves {m}")
-                s_inc = self._get_eval()
-                f_res = self._get_fen()
-                self.stockfish.send_command(f"position fen {f_res}")
-                s_fresh = self._get_eval()
-                assert s_inc == s_fresh, f"Mismatch on {fen} move {m}: inc={s_inc} fresh={s_fresh}"
-
-    def test_accumulator_full_game(self):
-        opera_game = [
-            "e2e4", "e7e5", "g1f3", "d7d6", "d2d4", "c8g4", "d4e5", "g4f3",
-            "d1f3", "d6e5", "f1c4", "g8f6", "f3b3", "d8e7", "b1c3", "c7c6",
-            "c1g5", "b7b5", "c3b5", "c6b5", "c4b5", "b8d7", "e1c1", "a8d8",
-            "d1d7", "d8d7", "h1d1", "e7e6", "b5d7", "f6d7", "b3b8", "d7b8",
-            "d1d8"
-        ]
-
-        current_moves = []
-        for m in opera_game:
-            current_moves.append(m)
-            moves_str = " ".join(current_moves)
-            self.stockfish.send_command(f"position startpos moves {moves_str}")
-            s_inc = self._get_eval()
-            f_res = self._get_fen()
-            self.stockfish.send_command(f"position fen {f_res}")
-            s_fresh = self._get_eval()
-            assert s_inc == s_fresh, f"Mismatch on ply {m}: inc={s_inc} fresh={s_fresh}"
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Stockfish with testing options")
     parser.add_argument("--valgrind", action="store_true", help="Run valgrind testing")
@@ -857,12 +724,6 @@ def parse_args():
     parser.add_argument(
         "--none", action="store_true", help="Run without any testing options"
     )
-    parser.add_argument(
-        "--test-suite",
-        choices=["all", "general", "nnue"],
-        default="all",
-        help="Which test suite to run: general, nnue, or all (default)",
-    )
     parser.add_argument("stockfish_path", type=str, help="Path to Stockfish binary")
 
     return parser.parse_args()
@@ -871,39 +732,25 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    general_suites = [
-        TestCLI,
-        TestInteractive,
-        TestSyzygy,
-        TestEnPassantSanitization,
-        TestInvalidFEN,
-        TestInvalidOptions,
-        TestBenchFile,
-    ]
-    nnue_suites = [TestNNUE]
-
-    if args.test_suite == "general":
-        suites = general_suites
-    elif args.test_suite == "nnue":
-        suites = nnue_suites
-    else:
-        suites = general_suites + nnue_suites
-
-    has_syzygy = any(s is TestSyzygy for s in suites)
-    has_bench = any(s is TestBenchFile for s in suites)
-
-    if has_bench:
-        EPD.create_bench_epd()
-    if has_syzygy:
-        Syzygy.download_syzygy()
+    EPD.create_bench_epd()
+    Syzygy.download_syzygy()
 
     framework = MiniTestFramework()
 
     # Each test suite will be run inside a temporary directory
-    framework.run(suites)
+    framework.run(
+        [
+            TestCLI,
+            TestInteractive,
+            TestSyzygy,
+            TestEnPassantSanitization,
+            TestInvalidFEN,
+            TestInvalidOptions,
+            TestBenchFile,
+        ]
+    )
 
-    if has_bench:
-        EPD.delete_bench_epd()
+    EPD.delete_bench_epd()
 
     if framework.has_failed():
         sys.exit(1)

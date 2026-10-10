@@ -19,8 +19,8 @@
 #ifndef ENGINE_H_INCLUDED
 #define ENGINE_H_INCLUDED
 
-#include <filesystem>
 #include <functional>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
@@ -30,8 +30,8 @@
 #include <variant>
 #include <vector>
 
-#include "history.h"
 #include "misc.h"
+#include "history.h"
 #include "nnue/network.h"
 #include "nnue/nnue_misc.h"
 #include "numa.h"
