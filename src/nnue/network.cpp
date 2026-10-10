@@ -20,21 +20,19 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <random>
 #include <type_traits>
 #include <vector>
-#include <filesystem>
-#include <random>
-#include <sstream>
 
 #define INCBIN_SILENCE_BITCODE_WARNING
 #include "../incbin/incbin.h"
 
 #include "../evaluate.h"
 #include "../misc.h"
-#include "../movegen.h"
 #include "../position.h"
 #include "../types.h"
 #include "nnue_architecture.h"
@@ -132,6 +130,13 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
 
     if (evalfilePath.empty())
         evalfilePath = evalFile.defaultName;
+
+    if (evalfilePath == "<random>")
+    {
+        initialize_random_weights(12345);
+        evalFile.current = evalfilePath;
+        return;
+    }
 
     if (evalFile.current != evalfilePath && evalfilePath == evalFile.defaultName)
         load_internal(evalFile);

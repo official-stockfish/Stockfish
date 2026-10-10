@@ -19,8 +19,8 @@
 #ifndef ENGINE_H_INCLUDED
 #define ENGINE_H_INCLUDED
 
-#include <functional>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -30,8 +30,8 @@
 #include <variant>
 #include <vector>
 
-#include "misc.h"
 #include "history.h"
+#include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_misc.h"
 #include "numa.h"
@@ -98,7 +98,6 @@ class Engine {
     std::unique_ptr<Eval::NNUE::Network> get_default_network();
     void                                 load_network(const std::filesystem::path& file);
     void save_network(const std::optional<std::filesystem::path>& file);
-    void initialize_random_network(std::uint64_t seed);
 
     // utility functions
 

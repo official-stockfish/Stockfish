@@ -23,12 +23,11 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <iterator>
 #include <optional>
-#include <fstream>
 #include <sstream>
 #include <string_view>
-#include <filesystem>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -42,7 +41,6 @@
 #include "search.h"
 #include "types.h"
 #include "ucioption.h"
-#include "nnue/network.h"
 
 namespace Stockfish {
 
@@ -173,13 +171,6 @@ void UCIEngine::loop() {
                 file = path_from_utf8(filename);
 
             engine.save_network(file);
-        }
-        else if (token == "init_random_net")
-        {
-            std::uint64_t seed = 42;
-            is >> seed;
-            engine.initialize_random_network(seed);
-            sync_cout << "Initialized random network with seed " << seed << sync_endl;
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout

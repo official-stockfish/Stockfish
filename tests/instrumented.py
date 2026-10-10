@@ -764,9 +764,10 @@ class TestNNUE(metaclass=OrderedClassMembers):
         r1 = os.path.join(current_path, "random1.nnue")
         r2 = os.path.join(current_path, "random2.nnue")
 
-        # 1. Initialize random net in memory
-        self.stockfish.send_command("init_random_net 12345")
-        self.stockfish.contains("Initialized random network with seed 12345")
+        # 1. Initialize random net in memory via <random>
+        self.stockfish.send_command("setoption name EvalFile value <random>")
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
 
         # 2. Export to random1.nnue
         self.stockfish.send_command(f"export_net {r1}")
