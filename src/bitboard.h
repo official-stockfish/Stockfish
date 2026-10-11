@@ -98,7 +98,6 @@ constexpr Bitboard file_bb(File f) { return FileABB << f; }
 
 constexpr Bitboard file_bb(Square s) { return file_bb(file_of(s)); }
 
-
 // Moves a bitboard one or two steps as specified by the direction D
 inline constexpr Bitboard shift(Bitboard b, Direction dir) {
     return dir == NORTH         ? b << 8
