@@ -386,6 +386,7 @@ class Worker {
     StateInfo rootState;
     RootMoves rootMoves;
     Depth     rootDepth;
+    bool      seekMate = false;
 
     PVMoves lastIterationIdxPV;
 
