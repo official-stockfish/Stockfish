@@ -170,7 +170,7 @@ void UCIEngine::loop() {
             if (is >> filename)
                 file = path_from_utf8(filename);
 
-            engine.save_network(file);
+            apply_idle([&] { engine.save_network(file); });
         }
         else if (token == "--help" || token == "help" || token == "--license" || token == "license")
             sync_cout
@@ -480,9 +480,14 @@ void UCIEngine::benchmark(std::istream& args) {
     init_search_update_listeners();
 }
 
-void UCIEngine::setoption(std::istringstream& is) {
+void UCIEngine::apply_idle(const std::function<void()>& mutate) {
+    engine.stop();
     engine.wait_for_search_finished();
-    engine.get_options().setoption(is);
+    mutate();
+}
+
+void UCIEngine::setoption(std::istringstream& is) {
+    apply_idle([&] { engine.get_options().setoption(is); });
 }
 
 u64 UCIEngine::perft(const Search::LimitsType& limits) {
