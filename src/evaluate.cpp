@@ -63,17 +63,17 @@ Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
     // Normalize the raw evaluations to [-1024, 1024] to measure their correlation.
     int se_norm   = (se * 1024) / (std::abs(se) + 1024);
     int nnue_norm = (nnue * 1024) / (std::abs(nnue) + 1024);
-    // When NNUE and material agree (positive alignment), the position is straightforward;
-    // otherwise (negative alignment) it involves complex compensation. In a representative
-    // sample, alignment averages -1 or so, i.e. it is well-centered in [-2048, 2048].
-    int alignment = (se_norm * nnue_norm) / 512;
+    // When NNUE and material agree (positive correlation), the position is straightforward;
+    // otherwise (negative correlation) it involves complex compensation. In a representative
+    // sample, correl averages -1 or so, i.e. it is well-centered in [-2048, 2048].
+    int correl = (se_norm * nnue_norm) / 512;
 
-    // When winning, we favor easy positions, and vice versa
-    int base_eval = nnue + (nnue * alignment) / 65536 + (optimism * alignment) / 16384;
+    // When winning, we boost easy positions, and vice versa
+    int v = nnue + (nnue * correl) / 65536 + (optimism * correl) / 16384;
 
     // Scale the combined evaluation by total material
     int material = 521 * pos.count<PAWN>() + pos.non_pawn_material();
-    int v        = base_eval * i64(90649 + material) / 90649;
+    v += i64(material) * v / 90649;
 
     // Damp down the evaluation linearly when shuffling
     v -= v * pos.rule50_count() / 189;
