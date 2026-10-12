@@ -626,6 +626,42 @@ class TestInvalidFEN(metaclass=OrderedClassMembers):
         self._expect_critical("9/8/8/8/8/8/8/8 w - - 0 1")
 
 
+class TestNonStrictPosition(metaclass=OrderedClassMembers):
+    # With UCI_StrictPosition disabled, a malformed `position` command must not
+    # terminate the process: it warns and keeps the previous, searchable position.
+    def beforeAll(self):
+        self.stockfish = Stockfish()
+        self.stockfish.send_command("setoption name UCI_StrictPosition value false")
+
+    def afterAll(self):
+        self.stockfish.quit()
+        assert self.stockfish.close() == 0
+
+    def afterEach(self):
+        assert postfix_check(self.stockfish.get_output()) == True
+        self.stockfish.clear_output()
+
+    def test_invalid_fen_keeps_previous_position(self):
+        self.stockfish.send_command("position fen 8/8/8/8/8/8/8/8 w - - 0 1")
+        self.stockfish.expect("*WARNING:*")
+
+        # Engine still answers and still holds the previous (start) position.
+        self.stockfish.send_command("d")
+        self.stockfish.expect_for_line_matching(
+            "Fen*", "*rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1*"
+        )
+
+    def test_engine_usable_after_invalid_fen(self):
+        self.stockfish.send_command("position fen 8/8/8/8/8/8/8/8 w - - 0 1")
+        self.stockfish.expect("*WARNING:*")
+
+        self.stockfish.send_command("isready")
+        self.stockfish.equals("readyok")
+
+        self.stockfish.send_command("go depth 5")
+        self.stockfish.expect("bestmove *")
+
+
 class TestInvalidOptions(metaclass=OrderedClassMembers):
     def beforeAll(self):
         self.stockfish = Stockfish()
@@ -745,6 +781,7 @@ if __name__ == "__main__":
             TestSyzygy,
             TestEnPassantSanitization,
             TestInvalidFEN,
+            TestNonStrictPosition,
             TestInvalidOptions,
             TestBenchFile,
         ]

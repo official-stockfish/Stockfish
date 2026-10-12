@@ -518,10 +518,26 @@ void UCIEngine::position(std::istringstream& is) {
         moves.push_back(token);
     }
 
+    // Remember the current, well-defined position so it can be restored if the
+    // new one is rejected while strict validation is disabled.
+    const std::string previousFen = engine.fen();
+
     auto err = engine.set_position(fen, moves);
     if (err.has_value())
     {
-        terminate_on_critical_error(err->what());
+        // Strict validation (default): abort as documented since Stockfish 19.
+        if (engine_options()["UCI_StrictPosition"])
+            terminate_on_critical_error(err->what());
+
+        // Non-strict mode: report the problem but keep the engine alive and
+        // usable. Position::set() clears the board before validating, so the
+        // previous position is restored to leave the engine in a well-defined
+        // and searchable state.
+        sync_cout << "info string WARNING: Command `" << currentCmd
+                  << "` failed. Reason: " << err->what() << ". Keeping previous position."
+                  << sync_endl;
+
+        engine.set_position(previousFen, {});
     }
 }
 
