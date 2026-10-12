@@ -23,7 +23,6 @@
 #include <array>
 #include <cstdint>
 #include <initializer_list>
-#include <utility>
 
 #include "../../attacks.h"
 #include "../../bitboard.h"
@@ -43,79 +42,34 @@ constexpr std::array<Piece, 12> AllPieces = {
   B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
 };
 
-template<PieceType PT>
-constexpr auto make_piece_indices_type() {
-    static_assert(PT != PieceType::PAWN);
-
-    std::array<std::array<u8, SQUARE_NB>, SQUARE_NB> out{};
-
-    for (Square from = SQ_A1; from <= SQ_H8; ++from)
-    {
-        Bitboard attacks = Attacks::PseudoAttacks[PT][from];
-
-        for (Square to = SQ_A1; to <= SQ_H8; ++to)
-        {
-            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
-    }
-
-    return out;
-}
-
-template<Piece P>
-constexpr auto make_piece_indices_piece() {
-    static_assert(type_of(P) == PieceType::PAWN);
-
-    std::array<std::array<u8, SQUARE_NB>, SQUARE_NB> out{};
-
-    constexpr Color C = color_of(P);
-
-    for (Square from = SQ_A1; from <= SQ_H8; ++from)
-    {
-        Bitboard attacks = Attacks::PseudoAttacks[C][from];
-
-        for (Square to = SQ_A1; to <= SQ_H8; ++to)
-        {
-            out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
-    }
-
-    return out;
-}
-
 constexpr auto index_lut2_array() {
-    constexpr auto KNIGHT_ATTACKS = make_piece_indices_type<PieceType::KNIGHT>();
-    constexpr auto BISHOP_ATTACKS = make_piece_indices_type<PieceType::BISHOP>();
-    constexpr auto ROOK_ATTACKS   = make_piece_indices_type<PieceType::ROOK>();
-    constexpr auto QUEEN_ATTACKS  = make_piece_indices_type<PieceType::QUEEN>();
-    constexpr auto KING_ATTACKS   = make_piece_indices_type<PieceType::KING>();
+    std::array<std::array<std::array<u16, SQUARE_NB>, SQUARE_NB>, PIECE_TYPE_NB> indices{};
 
-    std::array<std::array<std::array<u8, SQUARE_NB>, SQUARE_NB>, PIECE_NB> indices{};
+    for (PieceType pt : {PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING})
+    {
+        u16 offset = 0;
+        for (Square from = SQ_A1; from <= SQ_H8; ++from)
+        {
+            for (Square to = SQ_A1; to <= SQ_H8; ++to)
+            {
+                Bitboard attacks      = (pt != PAWN) ? Attacks::PseudoAttacks[pt][from]
+                                      : (to < from)  ? Attacks::PseudoAttacks[BLACK][from]
+                                                     : Attacks::PseudoAttacks[WHITE][from];
+                indices[pt][from][to] = offset + constexpr_popcount(((1ULL << to) - 1) & attacks);
+            }
 
-    indices[W_PAWN] = make_piece_indices_piece<W_PAWN>();
-    indices[B_PAWN] = make_piece_indices_piece<B_PAWN>();
-
-    indices[W_KNIGHT] = KNIGHT_ATTACKS;
-    indices[B_KNIGHT] = KNIGHT_ATTACKS;
-
-    indices[W_BISHOP] = BISHOP_ATTACKS;
-    indices[B_BISHOP] = BISHOP_ATTACKS;
-
-    indices[W_ROOK] = ROOK_ATTACKS;
-    indices[B_ROOK] = ROOK_ATTACKS;
-
-    indices[W_QUEEN] = QUEEN_ATTACKS;
-    indices[B_QUEEN] = QUEEN_ATTACKS;
-
-    indices[W_KING] = KING_ATTACKS;
-    indices[B_KING] = KING_ATTACKS;
+            if (pt != PAWN)
+                offset += constexpr_popcount(Attacks::PseudoAttacks[pt][from]);
+            else if (from >= SQ_A2 && from <= SQ_H7)
+                offset += constexpr_popcount(Attacks::PseudoAttacks[WHITE][from]);
+        }
+    }
 
     return indices;
 }
 
 constexpr auto init_threat_offsets() {
-    std::array<HelperOffsets, PIECE_NB>                    indices{};
-    std::array<std::array<IndexType, SQUARE_NB>, PIECE_NB> offsets{};
+    std::array<HelperOffsets, PIECE_NB> indices{};
 
     int cumulativeOffset = 0;
     for (Piece piece : AllPieces)
@@ -125,8 +79,6 @@ constexpr auto init_threat_offsets() {
 
         for (Square from = SQ_A1; from <= SQ_H8; ++from)
         {
-            offsets[pieceIdx][from] = cumulativePieceOffset;
-
             if (type_of(piece) != PAWN)
             {
                 Bitboard attacks = Attacks::PseudoAttacks[type_of(piece)][from];
@@ -146,12 +98,10 @@ constexpr auto init_threat_offsets() {
         cumulativeOffset += numValidTargets[pieceIdx] * cumulativePieceOffset;
     }
 
-    return std::pair{indices, offsets};
+    return indices;
 }
 
-constexpr auto helper_offsets = init_threat_offsets().first;
-// Lookup array for indexing threats
-constexpr auto offsets = init_threat_offsets().second;
+constexpr auto helper_offsets = init_threat_offsets();
 
 constexpr auto init_index_luts() {
     std::array<std::array<std::array<u32, 2>, PIECE_NB>, PIECE_NB> indices{};
@@ -180,13 +130,16 @@ constexpr auto init_index_luts() {
     return indices;
 }
 
-// The final index is calculated from summing data found in these two LUTs, as well
-// as offsets[attacker][from]
+// The final index is calculated from summing data found in these two LUTs
+struct alignas(64) ThreatLUTs {
+    // [attacker][attacked][from < to]
+    std::array<std::array<std::array<u32, 2>, PIECE_NB>, PIECE_NB> lut1 = init_index_luts();
+    // [pt][from][to]
+    std::array<std::array<std::array<u16, SQUARE_NB>, SQUARE_NB>, PIECE_TYPE_NB> lut2 =
+      index_lut2_array();
+};
 
-// [attacker][attacked][from < to]
-constexpr auto index_lut1 = init_index_luts();
-// [attacker][from][to]
-constexpr auto index_lut2 = index_lut2_array();
+constexpr ThreatLUTs threat_luts{};
 
 // Index of a feature for a given king position and another piece on some square
 sf_always_inline IndexType FullThreats::make_index(
@@ -199,9 +152,8 @@ sf_always_inline IndexType FullThreats::make_index(
     unsigned attacker_oriented = attacker ^ swap;
     unsigned attacked_oriented = attacked ^ swap;
 
-    return index_lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
-         + offsets[attacker_oriented][from_oriented]
-         + index_lut2[attacker_oriented][from_oriented][to_oriented];
+    return threat_luts.lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+         + threat_luts.lut2[type_of(attacker)][from_oriented][to_oriented];
 }
 
 // Get a list of indices for active features in ascending order
@@ -265,22 +217,28 @@ void FullThreats::append_changed_indices(Color                   perspective,
                                          IndexList&              added,
                                          const ThreatWeightType* prefetchBase,
                                          IndexType               prefetchStride) {
+    const unsigned orient    = u8(OrientTBL[ksq]) ^ (56 * perspective);
+    const unsigned pair_swap = 0x88 * perspective;
+    const auto*    lut1_flat = &threat_luts.lut1[0][0];
 
     for (const auto& dirty : diff.list)
     {
-        auto attacker = dirty.pc();
-        auto attacked = dirty.threatened_pc();
-        auto from     = dirty.pc_sq();
-        auto to       = dirty.threatened_sq();
-        auto add      = dirty.add();
+        const u32      raw   = dirty.raw();
+        const unsigned from  = u8(raw) ^ orient;
+        const unsigned to    = u8(raw >> 8) ^ orient;
+        const unsigned pair  = u8(raw >> 16);
+        const auto&    plut2 = threat_luts.lut2[(pair >> 4) & 7];
 
-        auto&           insert = add ? added : removed;
-        const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
+        const IndexType index = lut1_flat[pair ^ pair_swap][from < to] + plut2[from][to];
 
         if (prefetchBase)
             prefetch<PrefetchRw::READ, PrefetchLoc::LOW>(reinterpret_cast<const void*>(
               reinterpret_cast<uintptr_t>(prefetchBase) + uintptr_t(index) * prefetchStride));
-        insert.push_back_if_lt(index, Dimensions);
+
+        if (raw >> 31)
+            added.push_back_if_lt(index, Dimensions);
+        else
+            removed.push_back_if_lt(index, Dimensions);
     }
 }
 
@@ -293,20 +251,25 @@ void FullThreats::append_changed_indices_both(Square                  white_ksq,
                                               IndexList&              black_added,
                                               const ThreatWeightType* prefetchBase,
                                               IndexType               prefetchStride) {
+    const unsigned w_orient  = u8(OrientTBL[white_ksq]);
+    const unsigned b_orient  = u8(OrientTBL[black_ksq]) ^ 56;
+    const auto*    lut1_flat = &threat_luts.lut1[0][0];
 
     for (const auto& dirty : diff.list)
     {
-        const Piece  attacker = dirty.pc();
-        const Piece  attacked = dirty.threatened_pc();
-        const Square from     = dirty.pc_sq();
-        const Square to       = dirty.threatened_sq();
-        const bool   add      = dirty.add();
+        const u32      raw   = dirty.raw();
+        const unsigned from  = u8(raw);
+        const unsigned to    = u8(raw >> 8);
+        const unsigned pair  = u8(raw >> 16);
+        const auto&    plut2 = threat_luts.lut2[(pair >> 4) & 7];
 
-        auto& white_insert = add ? white_added : white_removed;
-        auto& black_insert = add ? black_added : black_removed;
+        const unsigned  w_from      = from ^ w_orient;
+        const unsigned  w_to        = to ^ w_orient;
+        const IndexType white_index = lut1_flat[pair][w_from < w_to] + plut2[w_from][w_to];
 
-        const IndexType white_index = make_index(WHITE, attacker, from, to, attacked, white_ksq);
-        const IndexType black_index = make_index(BLACK, attacker, from, to, attacked, black_ksq);
+        const unsigned  b_from      = from ^ b_orient;
+        const unsigned  b_to        = to ^ b_orient;
+        const IndexType black_index = lut1_flat[pair ^ 0x88][b_from < b_to] + plut2[b_from][b_to];
 
         if (prefetchBase)
         {
@@ -316,8 +279,16 @@ void FullThreats::append_changed_indices_both(Square                  white_ksq,
               reinterpret_cast<uintptr_t>(prefetchBase) + uintptr_t(black_index) * prefetchStride));
         }
 
-        white_insert.push_back_if_lt(white_index, Dimensions);
-        black_insert.push_back_if_lt(black_index, Dimensions);
+        if (raw >> 31)
+        {
+            white_added.push_back_if_lt(white_index, Dimensions);
+            black_added.push_back_if_lt(black_index, Dimensions);
+        }
+        else
+        {
+            white_removed.push_back_if_lt(white_index, Dimensions);
+            black_removed.push_back_if_lt(black_index, Dimensions);
+        }
     }
 }
 
