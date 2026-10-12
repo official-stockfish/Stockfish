@@ -463,7 +463,7 @@ void Position::set_castling_right(Color c, Square rfrom) {
 }
 
 
-// Sets pinners, where stm can give check and squares threatened by ~stm
+// Sets pinners and squares where stm can give check
 void Position::set_extra_bitboards() const {
 
     update_slider_blockers(WHITE);
@@ -478,14 +478,20 @@ void Position::set_extra_bitboards() const {
     st->checkSquares[ROOK]   = rookAttacks;
     st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
     st->checkSquares[KING]   = 0;
+}
 
-    Bitboard occ            = pieces() ^ square<KING>(sideToMove);
-    st->threats[ALL_PIECES] = st->threats[PAWN]    = xattacks_by(PAWN, ~sideToMove, occ);
-    st->threats[ALL_PIECES] |= st->threats[KNIGHT] = xattacks_by(KNIGHT, ~sideToMove, occ);
-    st->threats[ALL_PIECES] |= st->threats[BISHOP] = xattacks_by(BISHOP, ~sideToMove, occ);
-    st->threats[ALL_PIECES] |= st->threats[ROOK]   = xattacks_by(ROOK, ~sideToMove, occ);
-    st->threats[ALL_PIECES] |= st->threats[QUEEN]  = xattacks_by(QUEEN, ~sideToMove, occ);
-    st->threats[ALL_PIECES] |= st->threats[KING]   = xattacks_by(KING, ~sideToMove, occ);
+void Position::update_threats() const {
+
+    const Color    us   = sideToMove;
+    const Color    them = ~us;
+    const Bitboard occ  = pieces() ^ pieces(us, KING);
+
+    Bitboard allTh = st->threats[PAWN] = xattacks_by(PAWN, them, occ);
+    allTh |= st->threats[KNIGHT]       = xattacks_by(KNIGHT, them, occ);
+    allTh |= st->threats[BISHOP]       = xattacks_by(BISHOP, them, occ);
+    allTh |= st->threats[ROOK]         = xattacks_by(ROOK, them, occ);
+    allTh |= xattacks_by(QUEEN, them, occ) | attacks_bb(KING, square<KING>(them));
+    st->threats[ALL_PIECES] = allTh;
 }
 
 
@@ -658,6 +664,17 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
          | (attacks_bb(KNIGHT, s) & pieces(KNIGHT)) | (attacks_bb(KING, s) & pieces(KING));
 }
 
+bool Position::attackers_to_exist(Square s, Bitboard occupied, Color c) const {
+
+    if ((attacks_bb(PAWN, s, ~c) & pieces(c, PAWN)) || (attacks_bb(KNIGHT, s) & pieces(c, KNIGHT))
+        || (attacks_bb(KING, s) & pieces(c, KING)))
+        return true;
+
+    const auto [bishopAttacks, rookAttacks] = both_attacks_bb(s, occupied);
+    return ((bishopAttacks & pieces(BISHOP, QUEEN)) | (rookAttacks & pieces(ROOK, QUEEN)))
+         & pieces(c);
+}
+
 // Takes a random move and tests whether the move is legal. It is used to validate moves
 // from TT that can be corrupted due to SMP concurrent access or hash position key aliasing.
 bool Position::legal(Move m) const {
@@ -723,7 +740,7 @@ bool Position::legal(Move m) const {
     else
         // If the moving piece is a king, check whether the destination square is
         // attacked by the opponent.
-        return !(to & threats_by(ALL_PIECES));
+        return !attackers_to_exist(to, pieces() ^ from, ~us);
 }
 
 
