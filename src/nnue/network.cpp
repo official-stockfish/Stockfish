@@ -150,7 +150,11 @@ Value Network::evaluate(const Position&    pos,
 
     NNZInfo<L1> nnzInfo;
 
-    const int bucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    const int   pcBucket    = (pos.count<ALL_PIECES>() - 1) / 4;
+    const Color stm         = pos.side_to_move();
+    const int   queenBucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
+    const int   bucket      = pcBucket * 4 + queenBucket;
+
     featureTransformer.transform(pos, accumulatorStack, cache, transformedFeatures, nnzInfo);
     const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
     return static_cast<Value>(positional / OutputScale);
@@ -210,16 +214,21 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
+    const int   pcBucket    = (pos.count<ALL_PIECES>() - 1) / 4;
+    const Color stm         = pos.side_to_move();
+    const int   queenBucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
+    const int   bucket      = pcBucket * 4 + queenBucket;
+
     NnueEvalTrace t{};
-    t.correctBucket = (pos.count<ALL_PIECES>() - 1) / 4;
+    t.correctBucket = bucket;
 
     NNZInfo<L1> nnzInfo;
     featureTransformer.transform(pos, accumulatorStack, cache, transformedFeatures, nnzInfo);
 
-    for (IndexType bucket = 0; bucket < LayerStacks; ++bucket)
+    for (IndexType b = 0; b < LayerStacks; ++b)
     {
-        const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
-        t.positional[bucket]  = static_cast<Value>(positional / OutputScale);
+        const auto positional = network[b].propagate(transformedFeatures, nnzInfo);
+        t.positional[b]       = static_cast<Value>(positional / OutputScale);
     }
 
     return t;
