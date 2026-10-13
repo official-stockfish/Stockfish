@@ -222,7 +222,11 @@ Search::LimitsType UCIEngine::parse_limits(std::istream& is) {
         else if (token == "mate")
             is >> limits.mate;
         else if (token == "perft")
+        {
             is >> limits.perft;
+            if (limits.perft <= 0)
+                is.setstate(std::ios::failbit);
+        }
         else if (token == "infinite")
             limits.infinite = 1;
         else if (token == "ponder")
