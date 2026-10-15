@@ -85,6 +85,9 @@ class TranspositionTable {
    public:
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
+    // Allocated size in mebibytes, or zero before the first allocation.
+    usize size_mb() const;
+
     // Set TT size in MiB
     void resize(usize mbSize, ThreadPool& threads);
 
@@ -114,8 +117,8 @@ class TranspositionTable {
    private:
     friend struct TTEntry;
 
-    usize    clusterCount;
-    Cluster* table = nullptr;
+    usize    clusterCount = 0;
+    Cluster* table        = nullptr;
 
     u8 generation8 = 0;
 };

@@ -174,6 +174,10 @@ struct Cluster {
 
 static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 
+static constexpr usize BytesPerMb = 1024 * 1024;
+
+usize TranspositionTable::size_mb() const { return clusterCount * sizeof(Cluster) / BytesPerMb; }
+
 
 // Sets the size of the transposition table, measured in megabytes.
 // Transposition table consists of clusters and each cluster consists
@@ -181,7 +185,7 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 void TranspositionTable::resize(usize mbSize, ThreadPool& threads) {
     aligned_large_pages_free(table);
 
-    clusterCount  = mbSize * 1024 * 1024 / sizeof(Cluster);
+    clusterCount  = mbSize * BytesPerMb / sizeof(Cluster);
     usize ttBytes = clusterCount * sizeof(Cluster);
 
     // Request 1GB pages if we'd get at least eight per NUMA node, to avoid
