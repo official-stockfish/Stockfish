@@ -66,8 +66,9 @@ class FullThreats {
     // clang-format on
 
     // Maximum number of simultaneously active features.
-    using IndexList = ValueList<u16, 256>;
-    using DiffType  = DirtyThreats;
+    static constexpr IndexType MaxActiveDimensions = 256;
+    using IndexList                                = ValueList<u16, MaxActiveDimensions>;
+    using DiffType                                 = DirtyThreats;
 
     static IndexType
     make_index(Color perspective, Piece attkr, Square from, Square to, Piece attkd, Square ksq);
