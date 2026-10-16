@@ -213,11 +213,9 @@ void TranspositionTable::clear(ThreadPool& threads) {
     // To promote good NUMA distribution (esp. with huge pages), we permute
     // threads so that all threads in a NUMA node clear a contiguous region.
     if (threadToNuma.size() == threadCount)
-    {
         std::stable_sort(order.begin(), order.end(), [&threadToNuma](usize t1, usize t2) {
             return threadToNuma.at(t1) < threadToNuma.at(t2);
         });
-    }
 
     for (usize i = 0; i < threadCount; ++i)
     {
