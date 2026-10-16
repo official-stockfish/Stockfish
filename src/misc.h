@@ -96,14 +96,12 @@ void prefetch(const void*) {}
 
 constexpr int get_intel_hint(PrefetchRw rw, PrefetchLoc loc) {
     if (rw == PrefetchRw::WRITE)
-    {
     #ifdef _MM_HINT_ET0
         return _MM_HINT_ET0;
     #else
         // Fallback when write-prefetch hint is not available: use T0
         return _MM_HINT_T0;
     #endif
-    }
     switch (loc)
     {
     case PrefetchLoc::NONE :
@@ -317,12 +315,10 @@ class MultiArray {
         static_assert(Detail::is_strictly_assignable_v<T, U>,
                       "Cannot assign fill value to entry type");
         for (auto& ele : data_)
-        {
             if constexpr (sizeof...(Sizes) == 0)
                 ele = v;
             else
                 ele.fill(v);
-        }
     }
 
     constexpr void swap(MultiArray<T, Size, Sizes...>& other) noexcept { data_.swap(other.data_); }

@@ -106,9 +106,7 @@ inline std::string getExecutablePathHash() {
 #elif defined(__APPLE__)
     u32 size = sizeof(executable_path);
     if (_NSGetExecutablePath(executable_path, &size) == 0)
-    {
         path_length = std::strlen(executable_path);
-    }
 
 #elif defined(__sun)  // Solaris
     const char* path = getexecname();
@@ -122,9 +120,7 @@ inline std::string getExecutablePathHash() {
     usize size   = sizeof(executable_path);
     int   mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     if (sysctl(mib, 4, executable_path, &size, NULL, 0) == 0)
-    {
         path_length = std::strlen(executable_path);
-    }
 
 #elif defined(__NetBSD__) || defined(__DragonFly__)
     ssize_t len = readlink("/proc/curproc/exe", executable_path, sizeof(executable_path) - 1);
@@ -160,9 +156,7 @@ inline std::string GetLastErrorAsString(DWORD error) {
     //Get the error message ID, if any.
     DWORD errorMessageID = error;
     if (errorMessageID == 0)
-    {
         return std::string();  //No error message has been recorded
-    }
 
     LPSTR messageBuffer = nullptr;
 
@@ -299,10 +293,8 @@ class SharedMemoryBackend {
 
         // Fallback to normal allocation if no large pages available.
         if (!hMapFile)
-        {
             hMapFile = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,
                                           static_cast<DWORD>(total_size), shm_name.c_str());
-        }
 
         if (!hMapFile)
         {
@@ -542,21 +534,15 @@ struct SystemWideSharedConstant {
 
         // hash name and make sure it is not longer than SF_MAX_SEM_NAME_LEN
         if (shm_name.size() > SF_MAX_SEM_NAME_LEN)
-        {
             shm_name = shm_name.substr(0, SF_MAX_SEM_NAME_LEN - 1);
-        }
 #endif
 
         SharedMemoryBackend<T> shm_backend(shm_name, value);
 
         if (shm_backend.is_valid())
-        {
             backend = std::move(shm_backend);
-        }
         else
-        {
             backend = SharedMemoryBackendFallback<T>(shm_name, value);
-        }
     }
 
     SystemWideSharedConstant(const SystemWideSharedConstant&)            = delete;
@@ -580,13 +566,9 @@ struct SystemWideSharedConstant {
         return std::visit(
           [](const auto& end) -> SystemWideSharedConstantAllocationStatus {
               if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
-              {
                   return SystemWideSharedConstantAllocationStatus::NoAllocation;
-              }
               else
-              {
                   return end.get_status();
-              }
           },
           backend);
     }
@@ -595,13 +577,9 @@ struct SystemWideSharedConstant {
         return std::visit(
           [](const auto& end) -> std::optional<std::string> {
               if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
-              {
                   return std::nullopt;
-              }
               else
-              {
                   return end.get_error_message();
-              }
           },
           backend);
     }
@@ -611,13 +589,9 @@ struct SystemWideSharedConstant {
         return std::visit(
           [](const auto& end) -> void* {
               if constexpr (std::is_same_v<std::decay_t<decltype(end)>, std::monostate>)
-              {
                   return nullptr;
-              }
               else
-              {
                   return end.get();
-              }
           },
           backend);
     }

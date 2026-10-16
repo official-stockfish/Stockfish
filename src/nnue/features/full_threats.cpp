@@ -54,9 +54,7 @@ constexpr auto make_piece_indices_type() {
         Bitboard attacks = Attacks::PseudoAttacks[PT][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
-        {
             out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
     }
 
     return out;
@@ -75,9 +73,7 @@ constexpr auto make_piece_indices_piece() {
         Bitboard attacks = Attacks::PseudoAttacks[C][from];
 
         for (Square to = SQ_A1; to <= SQ_H8; ++to)
-        {
             out[from][to] = constexpr_popcount(((1ULL << to) - 1) & attacks);
-        }
     }
 
     return out;
