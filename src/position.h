@@ -130,8 +130,10 @@ class Position {
     Bitboard attackers_to(Square s) const;
     Bitboard attackers_to(Square s, Bitboard occupied) const;
     void     update_slider_blockers(Color c) const;
+    bool     attackers_to_exist(Square s, Bitboard occupied, Color c) const;
     Bitboard xattacks_by(PieceType pt, Color c, Bitboard occupied) const;
     Bitboard threats_by(PieceType pt) const;
+    void     update_threats() const;
 
     // Properties of moves
     bool  legal(Move m) const;

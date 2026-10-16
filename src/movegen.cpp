@@ -250,25 +250,43 @@ Move* generate_all(const Position& pos, Move* moveList, Color us) {
         moveList = generate_moves<QUEEN>(pos, moveList, target, us);
     }
 
-    if constexpr (Type == EVASIONS)
-        target = ~pos.pieces(us);
-
-    target &= ~pos.threats_by(ALL_PIECES);
-
-    Bitboard b = Attacks::attacks_bb(KING, ksq) & target;
-    moveList   = splat_moves(moveList, ksq, b);
-
-    if (Type == QUIETS && pos.can_castle(us & ANY_CASTLING))
+    if constexpr (Type == QUIETS)
     {
-        for (CastlingRights cr : {us & KING_SIDE, us & QUEEN_SIDE})
-        {
-            Square rookSquare = pos.castling_rook_square(cr);
-            Square to         = relative_square(us, rookSquare > ksq ? SQ_G1 : SQ_C1);
+        pos.update_threats();
+        target &= ~pos.threats_by(ALL_PIECES);
 
-            if (!pos.castling_impeded(cr) && pos.can_castle(cr)
-                && !(Attacks::between_bb(ksq, to) & pos.threats_by(ALL_PIECES))
-                && !(pos.blockers_for_king(us) & rookSquare))
-                *moveList++ = Move::make<CASTLING>(ksq, rookSquare);
+        Bitboard b = Attacks::attacks_bb(KING, ksq) & target;
+        moveList   = splat_moves(moveList, ksq, b);
+
+        if (pos.can_castle(us & ANY_CASTLING))
+        {
+            for (CastlingRights cr : {us & KING_SIDE, us & QUEEN_SIDE})
+            {
+                Square rookSquare = pos.castling_rook_square(cr);
+                Square to         = relative_square(us, rookSquare > ksq ? SQ_G1 : SQ_C1);
+
+                if (!pos.castling_impeded(cr) && pos.can_castle(cr)
+                    && !(Attacks::between_bb(ksq, to) & pos.threats_by(ALL_PIECES))
+                    && !(pos.blockers_for_king(us) & rookSquare))
+                    *moveList++ = Move::make<CASTLING>(ksq, rookSquare);
+            }
+        }
+    }
+    else
+    {
+        if constexpr (Type == EVASIONS)
+            target = ~pos.pieces(us);
+
+        Bitboard b = Attacks::attacks_bb(KING, ksq) & target;
+        if (b)
+        {
+            const Bitboard occ = pos.pieces() ^ ksq;
+            while (b)
+            {
+                Square to = pop_lsb(b);
+                if (!pos.attackers_to_exist(to, occ, ~us))
+                    *moveList++ = Move(ksq, to);
+            }
         }
     }
 
