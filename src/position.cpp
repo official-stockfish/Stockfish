@@ -463,7 +463,8 @@ void Position::set_castling_right(Color c, Square rfrom) {
 }
 
 
-// Sets pinners, where stm can give check and squares threatened by ~stm
+// Sets pinners and where stm can give check. Squares threatened by ~stm are
+// computed lazily by compute_threats().
 void Position::set_extra_bitboards() const {
 
     update_slider_blockers(WHITE);
@@ -478,6 +479,12 @@ void Position::set_extra_bitboards() const {
     st->checkSquares[ROOK]   = rookAttacks;
     st->checkSquares[QUEEN]  = st->checkSquares[BISHOP] | st->checkSquares[ROOK];
     st->checkSquares[KING]   = 0;
+
+    st->threats[ALL_PIECES] = 0;
+}
+
+
+void Position::compute_threats() const {
 
     Bitboard occ            = pieces() ^ square<KING>(sideToMove);
     st->threats[ALL_PIECES] = st->threats[PAWN]    = xattacks_by(PAWN, ~sideToMove, occ);
