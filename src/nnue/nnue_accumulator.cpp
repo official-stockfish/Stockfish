@@ -260,7 +260,7 @@ template<int sign>
 sf_always_inline Tile apply(IndexType j, Tile acc, const i16* data) {
     static_assert(sign == 1 || sign == -1);
     usize      vl       = __riscv_vsetvl_e16m8(Dimensions - j);
-    vint16m8_t data_vec = __riscv_vle16_v_i16m8(data + j, vl);
+    vint16m8_t data_vec = __riscv_vle16_v_i16m8(data, vl);
     if constexpr (sign == +1)
         acc = __riscv_vadd_vv_i16m8(acc, data_vec, vl);
     else
@@ -272,7 +272,7 @@ template<int sign>
 sf_always_inline Tile apply_feature_single(IndexType j, Tile acc, const i8* data) {
     static_assert(sign == 1 || sign == -1);
     usize     vl         = __riscv_vsetvl_e16m8(Dimensions - j);
-    vint8m4_t weight_vec = __riscv_vle8_v_i8m4(data + j, vl);
+    vint8m4_t weight_vec = __riscv_vle8_v_i8m4(data, vl);
     if constexpr (sign == +1)
         acc = __riscv_vwadd_wv_i16m8(acc, weight_vec, vl);
     else
@@ -325,8 +325,8 @@ sf_always_inline void store_tile(IndexType j, i16* dest, Tile acc) {
 sf_always_inline void increment_index(IndexType& j) { j += Tiling::TileHeight; }
 
 template<int sign>
-sf_always_inline Tile apply(IndexType j, Tile acc, const i16* data) {
-    const auto* column = reinterpret_cast<const vec_t*>(data + j);
+sf_always_inline Tile apply([[maybe_unused]] IndexType j, Tile acc, const i16* data) {
+    const auto* column = reinterpret_cast<const vec_t*>(data);
     for (IndexType k = 0; k < Tiling::NumRegs; ++k)
         if constexpr (sign == +1)
             acc[k] = vec_add_16(acc[k], column[k]);
@@ -336,9 +336,9 @@ sf_always_inline Tile apply(IndexType j, Tile acc, const i16* data) {
 }
 
 template<int sign>
-sf_always_inline Tile apply_feature_single(IndexType j, Tile acc, const i8* data) {
+sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile acc, const i8* data) {
     static_assert(sign == 1 || sign == -1);
-    auto* column = reinterpret_cast<const vec_i8_t*>(data + j);
+    auto* column = reinterpret_cast<const vec_i8_t*>(data);
     #ifdef USE_NEON
     for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
     {
@@ -387,19 +387,20 @@ sf_always_inline Tile apply_psq_features(IndexType                       j,
                                          const PSQFeatureSet::IndexList& list,
                                          const FeatureTransformer&       ft) {
     static_assert(sign == 1 || sign == -1);
+    const auto* weights = &ft.weights[j];
     if constexpr (Incremental)
     {
         assert(list.size() == 1 || list.size() == 2);
         // Use the loop below for scalar builds to avoid spurious GCC uninitialized warnings.
 #if defined(VECTOR) || defined(USE_RVV)
-        acc = apply_feature_single<sign>(j, acc, &ft.weights[list[0] * Dimensions]);
+        acc = apply_feature_single<sign>(j, acc, &weights[usize(list[0]) * Dimensions]);
         if (list.size() > 1)
-            acc = apply_feature_single<sign>(j, acc, &ft.weights[list[1] * Dimensions]);
+            acc = apply_feature_single<sign>(j, acc, &weights[usize(list[1]) * Dimensions]);
         return acc;
 #endif
     }
     for (int i = 0; i < list.ssize(); ++i)
-        acc = apply_feature_single<sign>(j, acc, &ft.weights[list[i] * Dimensions]);
+        acc = apply_feature_single<sign>(j, acc, &weights[usize(list[i]) * Dimensions]);
     return acc;
 }
 
@@ -409,9 +410,11 @@ sf_always_inline Tile apply_threat_features(IndexType                          j
                                             const ThreatFeatureSet::IndexList& list,
                                             const FeatureTransformer&          ft) {
     static_assert(sign == 1 || sign == -1);
+
+    const auto* weights = &ft.threatAndPpWeights[j];
     for (int i = 0; i < list.ssize(); ++i)
         acc = apply_feature_single<sign>(
-          j, acc, reinterpret_cast<const i8*>(&ft.threatAndPpWeights[list[i] * Dimensions]));
+          j, acc, reinterpret_cast<const i8*>(&weights[usize(list[i]) * Dimensions]));
     return acc;
 }
 
@@ -749,11 +752,11 @@ void update_accumulator_hybrid(Color                     perspective,
         store_tile(j, newEntry.accumulation.data(), acc);
 
         // adding the old accumulator adds (most of) the threats and pp weights that we need
-        acc = apply<1>(j, acc, fromAcc.data());
+        acc = apply<1>(j, acc, &fromAcc[j]);
         // But we have added a whole bunch of psq weights for the wrong king bucket which
         // we need to remove
         // first we remove the cached psq accumulation for the old king position...
-        acc = apply<-1>(j, acc, oldEntry.accumulation.data());
+        acc = apply<-1>(j, acc, &oldEntry.accumulation[j]);
 
         // ... then we adjust
         acc = apply_psq_features<+1>(j, acc, oldRemove, featureTransformer);
