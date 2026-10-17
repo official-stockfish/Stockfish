@@ -27,9 +27,7 @@
 
 namespace Stockfish {
 
-namespace {
-
-enum Stages {
+enum Stages : int {
     TT = 0,
     FIRST_STAGE_INIT = 1,
 
@@ -38,14 +36,14 @@ enum Stages {
     BAD_CAPTURE,
     BAD_QUIET,
 
-    EVASION_INIT,
-
     QSEARCH,
 
     EVASION,
 
     PROBCUT,
 };
+
+namespace {
 
 #ifdef USE_AVX512
 // Load the Move, and the ExtMove value, into all lanes of 512-bit registers
@@ -164,12 +162,12 @@ MovePicker::MovePicker(const Position&              p,
     if (pos.checkers())
     {
         first_stage = EVASION;
-        stage = TT + !(ttm && pos.legal(ttm));
+        stage = ttm && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
     }
     else
     {
         first_stage = depth > 0 ? GOOD_CAPTURE : QSEARCH;
-        stage = TT + !(ttm && pos.legal(ttm));
+        stage = ttm && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
     }
 }
 
@@ -183,16 +181,18 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
     assert(!pos.checkers());
 
     first_stage = PROBCUT;
-    stage = TT + !(ttm && pos.capture_stage(ttm) && pos.legal(ttm));
+    stage = ttm && pos.capture_stage(ttm) && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
 }
 
 // Assigns a numerical value to each move in a list, used for sorting.
 // Captures are ordered by Most Valuable Victim (MVV), preferring captures
 // with a good history. Quiet moves are ordered using the history tables.
 template<GenType Type>
-ExtMove* MovePicker::score(const MoveList<Type>& ml) {
+ExtMove* MovePicker::generate_and_score() {
 
     static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
+
+    MoveList<Type> ml(pos);
 
     Color us = pos.side_to_move();
 
@@ -285,20 +285,16 @@ dispatch:
     {
 
     case TT :
-        stage++;
+        stage = FIRST_STAGE_INIT;
         return ttMove;
 
     case FIRST_STAGE_INIT :
         if (first_stage == EVASION) {
-            MoveList<EVASIONS> ml(pos);
-
             cur    = moves;
-            endCur = score<EVASIONS>(ml);
+            endCur = generate_and_score<EVASIONS>();
         } else {
-            MoveList<CAPTURES> ml(pos);
-
             cur = endBadCaptures = moves;
-            endCur = score<CAPTURES>(ml);
+            endCur = generate_and_score<CAPTURES>();
         }
         partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
 
@@ -314,28 +310,27 @@ dispatch:
             }))
             return *(cur - 1);
 
+    // initialize quiet moves
         if (!skipQuiets)
         {
-            MoveList<QUIETS> ml(pos);
-
             cur = endBadCaptures;
-            endCur = endQuiets = score<QUIETS>(ml);
+            endCur = endQuiets = generate_and_score<QUIETS>();
 
             partial_insertion_sort(cur, endCur, -3560 * depth);
-        }
 
-        ++stage;
-        [[fallthrough]];
+            stage = GOOD_QUIET;
+            [[fallthrough]];
 
     case GOOD_QUIET :
-        if (!skipQuiets && select([&]() { return cur->value > goodQuietThreshold; }))
-            return *(cur - 1);
+            if (!skipQuiets && select([&]() { return cur->value > goodQuietThreshold; }))
+                return *(cur - 1);
+        }
 
         // Prepare the pointers to loop over the bad captures
         cur    = moves;
         endCur = endBadCaptures;
 
-        ++stage;
+        stage = BAD_CAPTURE;
         [[fallthrough]];
 
     case BAD_CAPTURE :
@@ -345,7 +340,7 @@ dispatch:
         // Prepare the pointers to loop over quiets again
         endCur = endQuiets;
 
-        ++stage;
+        stage = BAD_QUIET;
         [[fallthrough]];
 
     case BAD_QUIET :

@@ -27,6 +27,8 @@ namespace Stockfish {
 
 class Position;
 
+enum Stages : int;
+
 // The MovePicker class is used to pick one legal move at a time from the
 // current position. The most important method is next_move(), which emits one
 // new legal move on every call, until there are no moves left, when
@@ -55,7 +57,7 @@ class MovePicker {
     template<typename Pred>
     Move select(Pred);
     template<GenType T>
-    ExtMove* score(const MoveList<T>&);
+    ExtMove* generate_and_score();
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
@@ -65,8 +67,8 @@ class MovePicker {
     const SharedHistories*       sharedHistory;
     Move                         ttMove;
     ExtMove *                    cur, *endCur, *endBadCaptures, *endQuiets;
-    int                          stage;
-    int                          first_stage;
+    Stages                       stage;
+    Stages                       first_stage;
     int                          threshold;
     Depth                        depth;
     int                          ply;
