@@ -370,12 +370,6 @@ sf_always_inline Tile apply_feature_single(IndexType j, Tile acc, const i8* data
         }
     }
     #elif defined(USE_PAIRED_WIDENING_ADD)
-    // The weight rows are stored in WideningPairOrder (see nnue_feature_transformer.h):
-    // one full vector of int8 weights holds the lanes of acc[k] and acc[k + 1], so a
-    // plain sign extension would yield the lanes in the wrong order for vectors wider
-    // than 128 bits. Unpacking the vector against zeros (zeros first) instead puts each
-    // weight in the high byte of its int16 lane, and the arithmetic shift sign-extends
-    // it; unpacking as (weight, zero) would only zero-extend the signed weights.
     static_assert(Tiling::NumRegs % 2 == 0);
     const vec_t zero = vec_zero();
     for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
@@ -406,10 +400,6 @@ sf_always_inline Tile apply_feature_single(IndexType j, Tile acc, const i8* data
 
     #if defined(USE_PAIRED_WIDENING_ADD)
 
-// Adds (or subtracts) two int8 weight rows at once. Interleaving the bytes of
-// the two rows and multiplying the pairs by 1 with maddubs sums them straight
-// into int16 lanes, which needs one shuffle per two rows instead of one
-// sign-extension per row (both are shuffle-port bound on x86).
 template<int sign>
 sf_always_inline Tile apply_feature_pair(IndexType j, Tile acc, const i8* data0, const i8* data1) {
     static_assert(sign == 1 || sign == -1);
