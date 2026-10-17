@@ -35,7 +35,6 @@ enum Stages {
     MAIN_TT,
     CAPTURE_INIT,
     GOOD_CAPTURE,
-    QUIET_INIT,
     GOOD_QUIET,
     BAD_CAPTURE,
     BAD_QUIET,
@@ -315,10 +314,6 @@ top:
             }))
             return *(cur - 1);
 
-        ++stage;
-        [[fallthrough]];
-
-    case QUIET_INIT :
         if (!skipQuiets)
         {
             MoveList<QUIETS> ml(pos);
