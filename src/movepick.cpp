@@ -27,9 +27,9 @@
 
 namespace Stockfish {
 
-enum Stages : int {
+enum Stages : i8 {
     TT = 0,
-    FIRST_STAGE_INIT = 1,
+    INIT_FIRST_STAGE = 1,
 
     GOOD_CAPTURE,
     GOOD_QUIET,
@@ -159,15 +159,11 @@ MovePicker::MovePicker(const Position&              p,
     ply(pl) {
 
     if (pos.checkers())
-    {
         first_stage = EVASION;
-        stage = ttm && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
-    }
     else
-    {
         first_stage = depth > 0 ? GOOD_CAPTURE : QSEARCH;
-        stage = ttm && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
-    }
+
+    stage = ttm && pos.legal(ttm) ? TT : INIT_FIRST_STAGE;
 }
 
 // MovePicker constructor for ProbCut: we generate captures with Static Exchange
@@ -177,10 +173,11 @@ MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceTo
     captureHistory(cph),
     ttMove(ttm),
     threshold(th) {
+
     assert(!pos.checkers());
 
     first_stage = PROBCUT;
-    stage = ttm && pos.capture_stage(ttm) && pos.legal(ttm) ? TT : FIRST_STAGE_INIT;
+    stage = ttm && pos.capture_stage(ttm) && pos.legal(ttm) ? TT : INIT_FIRST_STAGE;
 }
 
 // Assigns a numerical value to each move in a list, used for sorting.
@@ -190,8 +187,6 @@ template<GenType Type>
 ExtMove* MovePicker::generate_and_score() {
 
     static_assert(Type == CAPTURES || Type == QUIETS || Type == EVASIONS, "Wrong type");
-
-    MoveList<Type> ml(pos);
 
     Color us = pos.side_to_move();
 
@@ -205,6 +200,8 @@ ExtMove* MovePicker::generate_and_score() {
         threatByLesser[QUEEN] = pos.threats_by(ROOK) | threatByLesser[ROOK];
         threatByLesser[KING]  = 0;
     }
+
+    MoveList<Type> ml(pos); // move generation
 
     ExtMove* it = cur;
     for (auto move : ml)
@@ -284,10 +281,10 @@ dispatch:
     {
 
     case TT :
-        stage = FIRST_STAGE_INIT;
+        stage = INIT_FIRST_STAGE;
         return ttMove;
 
-    case FIRST_STAGE_INIT :
+    case INIT_FIRST_STAGE :
         if (first_stage == EVASION) {
             cur    = moves;
             endCur = generate_and_score<EVASIONS>();
@@ -309,10 +306,11 @@ dispatch:
             }))
             return *(cur - 1);
 
-        beginQuiets = endBadMoves;
-    // initialize quiet moves
+        endBadCaptures = endBadMoves;
+
         if (!skipQuiets)
         {
+            // initialize quiet moves
             cur = endBadMoves;
             endCur = generate_and_score<QUIETS>();
 
@@ -354,13 +352,10 @@ dispatch:
 
 void MovePicker::skip_quiet_moves() {
     skipQuiets = true;
-    if (stage == GOOD_QUIET || stage == BAD_MOVES)
+    if (stage == BAD_MOVES || stage == GOOD_QUIET)
     {
-        // if we're in GOOD_QUIET: will cause GOOD_QUIET to abort
-        // if we're in BAD_MOVES: dicards bad quiet moves
-        endCur = beginQuiets;
-        // if we're in GOOD_QUIET: discards bad quiet moves (no-op if we're in BAD_MOVES)
-        endBadMoves = beginQuiets;
+        endCur = endBadCaptures; // discards any quiet moves in the current stage
+        endBadMoves = endBadCaptures; // discards bad quiet moves
     }
 }
 

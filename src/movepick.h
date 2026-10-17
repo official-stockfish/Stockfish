@@ -27,7 +27,7 @@ namespace Stockfish {
 
 class Position;
 
-enum Stages : int;
+enum Stages : i8;
 
 // The MovePicker class is used to pick one legal move at a time from the
 // current position. The most important method is next_move(), which emits one
@@ -66,7 +66,7 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const SharedHistories*       sharedHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endCur, *endBadMoves, *beginQuiets;
+    ExtMove                      *cur, *endCur, *endBadCaptures, *endBadMoves;
     Stages                       stage;
     Stages                       first_stage;
     int                          threshold;
