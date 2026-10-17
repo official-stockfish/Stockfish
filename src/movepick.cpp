@@ -28,8 +28,8 @@
 namespace Stockfish {
 
 enum Stages : i8 {
-    TT = 0,
-    INIT_FIRST_STAGE = 1,
+    TT,
+    INIT_FIRST_STAGE,
 
     GOOD_CAPTURE,
     GOOD_QUIET,
@@ -285,13 +285,13 @@ dispatch:
         return ttMove;
 
     case INIT_FIRST_STAGE :
-        if (first_stage == EVASION) {
-            cur    = moves;
+        cur = endBadMoves = moves;
+
+        if (first_stage == EVASION)
             endCur = generate_and_score<EVASIONS>();
-        } else {
-            cur = endBadMoves = moves;
+        else
             endCur = generate_and_score<CAPTURES>();
-        }
+
         partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
 
         stage = first_stage;
