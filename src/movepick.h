@@ -66,7 +66,7 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const SharedHistories*       sharedHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endCur, *endBadCaptures, *endQuiets;
+    ExtMove *                    cur, *endCur, *endBadMoves, *beginQuiets;
     Stages                       stage;
     Stages                       first_stage;
     int                          threshold;

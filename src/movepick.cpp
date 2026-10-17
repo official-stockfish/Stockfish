@@ -33,8 +33,7 @@ enum Stages : int {
 
     GOOD_CAPTURE,
     GOOD_QUIET,
-    BAD_CAPTURE,
-    BAD_QUIET,
+    BAD_MOVES,
 
     QSEARCH,
 
@@ -293,7 +292,7 @@ dispatch:
             cur    = moves;
             endCur = generate_and_score<EVASIONS>();
         } else {
-            cur = endBadCaptures = moves;
+            cur = endBadMoves = moves;
             endCur = generate_and_score<CAPTURES>();
         }
         partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
@@ -305,16 +304,17 @@ dispatch:
         if (select([&]() {
                 if (pos.see_ge(*cur, -cur->value / 18))
                     return true;
-                *endBadCaptures++ = *cur;
+                *endBadMoves++ = *cur;
                 return false;
             }))
             return *(cur - 1);
 
+        beginQuiets = endBadMoves;
     // initialize quiet moves
         if (!skipQuiets)
         {
-            cur = endBadCaptures;
-            endCur = endQuiets = generate_and_score<QUIETS>();
+            cur = endBadMoves;
+            endCur = generate_and_score<QUIETS>();
 
             partial_insertion_sort(cur, endCur, -3560 * depth);
 
@@ -322,33 +322,23 @@ dispatch:
             [[fallthrough]];
 
     case GOOD_QUIET :
-            if (!skipQuiets && select([&]() { return cur->value > goodQuietThreshold; }))
+            if (select([&]() {
+                    if (cur->value > goodQuietThreshold)
+                        return true;
+                    *endBadMoves++ = *cur;
+                    return false;
+                }))
                 return *(cur - 1);
         }
 
         // Prepare the pointers to loop over the bad captures
         cur    = moves;
-        endCur = endBadCaptures;
+        endCur = endBadMoves;
 
-        stage = BAD_CAPTURE;
+        stage = BAD_MOVES;
         [[fallthrough]];
 
-    case BAD_CAPTURE :
-        if (select([]() { return true; }))
-            return *(cur - 1);
-
-        // Prepare the pointers to loop over quiets again
-        endCur = endQuiets;
-
-        stage = BAD_QUIET;
-        [[fallthrough]];
-
-    case BAD_QUIET :
-        if (!skipQuiets)
-            return select([&]() { return cur->value <= goodQuietThreshold; });
-
-        return Move::none();
-
+    case BAD_MOVES :
     case QSEARCH :
     case EVASION :
         return select([]() { return true; });
@@ -362,6 +352,16 @@ dispatch:
     }
 }
 
-void MovePicker::skip_quiet_moves() { skipQuiets = true; }
+void MovePicker::skip_quiet_moves() {
+    skipQuiets = true;
+    if (stage == GOOD_QUIET || stage == BAD_MOVES)
+    {
+        // if we're in GOOD_QUIET: will cause GOOD_QUIET to abort
+        // if we're in BAD_MOVES: dicards bad quiet moves
+        endCur = beginQuiets;
+        // if we're in GOOD_QUIET: discards bad quiet moves (no-op if we're in BAD_MOVES)
+        endBadMoves = beginQuiets;
+    }
+}
 
 }  // namespace Stockfish
