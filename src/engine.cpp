@@ -240,11 +240,16 @@ bool Engine::set_numa_config_from_option(const std::string& o) {
 
 void Engine::resize_threads() {
     threads.wait_for_search_finished();
+    const bool threadsSpannedNumaNodes = threads.numa_nodes() > 1;
     threads.set(numaContext.get_numa_config(), {options, threads, tt, sharedHists, network},
                 updateContext);
 
-    // Reallocate the hash with the new threadpool size
-    set_tt_size(options["Hash"]);
+    const usize hashMb = options["Hash"];
+    const bool  ttLayoutDependsOnThreads =
+      threadsSpannedNumaNodes || numaContext.get_numa_config().requires_memory_replication();
+
+    if (tt.size_mb() != hashMb || ttLayoutDependsOnThreads)
+        set_tt_size(hashMb);
     threads.ensure_network_replicated();
 }
 
