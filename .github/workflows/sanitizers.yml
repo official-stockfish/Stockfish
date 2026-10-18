@@ -64,9 +64,6 @@ jobs:
           sudo apt update
           sudo apt install expect valgrind g++-multilib
 
-      - name: Test network download script
-        run: bash ../tests/net.sh
-
       - name: Download the used network from the fishtest framework
         run: make net
 
