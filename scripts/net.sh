@@ -74,7 +74,7 @@ fetch_network() {
   return 1
 }
 
-fetch_network EvalFileDefaultName
+fetch_network EvalFileDefaultName || exit 1
 
 if [ "$1" = "0" ]; then
     DUMP_FILE=universal/network_dump.inc
