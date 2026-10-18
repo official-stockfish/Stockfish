@@ -100,8 +100,9 @@ struct TTEntry {
 static constexpr int ClusterSize = 3;
 
 struct Cluster {
-    RelaxedAtomic<u16> keys[ClusterSize];
-    char    padding[2];  // Pad to 32 bytes
+    // RelaxedAtomic<u16> keys[ClusterSize];
+    // char    padding[2];  // Pad to 32 bytes
+    RelaxedAtomic<u64> keys;
     TTEntry entry[ClusterSize];
 };
 
@@ -110,25 +111,30 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 // Populates the TTEntry and its key with a new node's data, possibly overwriting
 // an old position. The update is non-atomic and can be racy. We convert external
 // types to internal bitfields.
+constexpr u64 MASK21 = (1ULL << 21) - 1;
 void TTWriter::write(
   Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 curr_generation) {
 
-    auto& key16 = cluster->keys[index];
+    // auto& key16 = cluster->keys[index];
+    u64 keys = cluster->keys;
+    const auto key21 = keys >> 21 * index & MASK21;
     auto& entry = cluster->entry[index];
 
     // Preserve the old ttmove if we don't have a new one
-    if (m || u16(k) != key16)
+    if (m || (k & MASK21) != key21)
         entry.move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || u16(k) != key16 || d - DEPTH_NONE + 2 * pv > entry.depth8 - 4
+    if (b == BOUND_EXACT || (k & MASK21) != key21 || d - DEPTH_NONE + 2 * pv > entry.depth8 - 4
         || entry.relative_age(curr_generation))
     {
         assert(d > DEPTH_NONE);
         assert(d - DEPTH_NONE < 256);
         assert(curr_generation <= GENERATION_MASK);  // TT::new_search() plays nice
 
-        key16           = u16(k);
+        keys &= ~(MASK21 << (21 * index));
+        keys |= (k & MASK21) << (21 * index);
+        cluster->keys = keys;
         entry.depth8    = u8(d - DEPTH_NONE);
         entry.genBound8 = u8(curr_generation | b << BOUND_SHIFT | u8(pv) << PV_SHIFT);
         entry.value16   = i16(v);
@@ -266,18 +272,17 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 
     Cluster* const cluster = get_cluster(key);
     auto& tte = cluster->entry;
-    const u16 key16 = u16(key);  // Use the low 16 bits as key inside the cluster
+    const u64 key21 = key & MASK21;  // Use the low 21 bits as key inside the cluster
 
-    constexpr u64 KeyLsb = 0x0001'0001'0001ULL;
-    constexpr u64 KeyMsb = 0x8000'8000'8000ULL;
-    u64 keys;
-    std::memcpy(&keys, cluster->keys, 8);
-    const u64 keyXors = (keys ^ (KeyLsb * key16));
+    constexpr u64 KeyLsb = 1ULL | (1ULL << 21) | (1ULL << 42);
+    constexpr u64 KeyMsb = KeyLsb << 20;
+    u64 keys = cluster->keys;
+    const u64 keyXors = (keys ^ (KeyLsb * key21));
     const u64 matches = (keyXors - KeyLsb) & ~keyXors & KeyMsb;
 
     if (matches)
     {
-        const int i = int(lsb(matches)) / 16;
+        const int i = int(lsb(matches)) / 21;
         // This gap is the main place for read races.
         // After `read()` completes that copy is final, but may be self-inconsistent.
         return {tte[i].is_occupied(), tte[i].read(), TTWriter(cluster, i)};
