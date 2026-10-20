@@ -5,6 +5,7 @@ import subprocess
 import pathlib
 import os
 import fnmatch
+import filecmp
 
 from testing import (
     EPD,
@@ -424,6 +425,23 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command("position startpos")
         self.stockfish.send_command("go depth 5")
         self.stockfish.starts_with("bestmove")
+
+    def test_failed_nnue_load_recovery(self):
+        with open("verify.nnue", "rb") as source:
+            header = source.read(12)
+            description_size = int.from_bytes(header[8:12], "little")
+            prefix = header + source.read(description_size + 4)
+
+        # Keep valid headers, overwrite part of the biases, then end the file.
+        with open("broken.nnue", "wb") as target:
+            target.write(prefix + bytes(1024))
+
+        self.stockfish.send_command("setoption name EvalFile value broken.nnue")
+        self.stockfish.send_command("setoption name EvalFile value verify.nnue")
+        self.stockfish.send_command("export_net recovered.nnue")
+        self.stockfish.starts_with("Network saved successfully")
+
+        assert filecmp.cmp("verify.nnue", "recovered.nnue", shallow=False)
 
     def test_multipv_setting(self):
         self.stockfish.send_command("setoption name MultiPV value 4")

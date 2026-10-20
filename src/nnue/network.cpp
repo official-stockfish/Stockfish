@@ -107,6 +107,10 @@ void Network::load(const fs::path& rootDirectory, fs::path evalfilePath, EvalFil
         if (evalFile.current != evalfilePath)
             load_external(directory, evalfilePath, evalFile);
     }
+
+    // A failed load may have overwritten some of the previous network's parameters.
+    if (evalFile.current != evalfilePath)
+        evalFile.current.reset();
 }
 
 bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& filename) const {
