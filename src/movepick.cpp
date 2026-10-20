@@ -346,7 +346,7 @@ dispatch:
 
     default:
         assert(false);
-        __builtin_unreachable();
+        sf_unreachable();
     }
 }
 
