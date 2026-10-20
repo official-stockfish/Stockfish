@@ -104,7 +104,7 @@ constexpr auto init_threat_offsets() {
 constexpr auto helper_offsets = init_threat_offsets();
 
 constexpr auto init_index_luts() {
-    std::array<std::array<std::array<u32, 2>, PIECE_NB>, PIECE_NB> indices{};
+    std::array<std::array<u32, 2>, PIECE_NB * PIECE_NB> indices{};
 
     for (Piece attacker : AllPieces)
     {
@@ -120,9 +120,10 @@ constexpr auto init_index_luts() {
                               + (color_of(attacked) * (numValidTargets[attacker] / 2) + map)
                                   * helper_offsets[attacker].cumulativePieceOffset;
 
-            bool excluded                  = map < 0;
-            indices[attacker][attacked][0] = excluded ? FullThreats::Dimensions : feature;
-            indices[attacker][attacked][1] =
+            bool excluded = map < 0;
+            indices[attacker * PIECE_NB + attacked][0] =
+              excluded ? FullThreats::Dimensions : feature;
+            indices[attacker * PIECE_NB + attacked][1] =
               excluded || semi_excluded ? FullThreats::Dimensions : feature;
         }
     }
@@ -132,8 +133,8 @@ constexpr auto init_index_luts() {
 
 // The final index is calculated from summing data found in these two LUTs
 struct alignas(64) ThreatLUTs {
-    // [attacker][attacked][from < to]
-    std::array<std::array<std::array<u32, 2>, PIECE_NB>, PIECE_NB> lut1 = init_index_luts();
+    // [attacker * PIECE_NB + attacked][from < to]
+    std::array<std::array<u32, 2>, PIECE_NB * PIECE_NB> lut1 = init_index_luts();
     // [pt][from][to]
     std::array<std::array<std::array<u16, SQUARE_NB>, SQUARE_NB>, PIECE_TYPE_NB> lut2 =
       index_lut2_array();
@@ -148,11 +149,9 @@ sf_always_inline IndexType FullThreats::make_index(
     unsigned from_oriented = u8(from) ^ orientation;
     unsigned to_oriented   = u8(to) ^ orientation;
 
-    i8       swap              = 8 * perspective;
-    unsigned attacker_oriented = attacker ^ swap;
-    unsigned attacked_oriented = attacked ^ swap;
+    const unsigned pair = ((unsigned(attacker) << 4) | unsigned(attacked)) ^ (0x88 * perspective);
 
-    return threat_luts.lut1[attacker_oriented][attacked_oriented][from_oriented < to_oriented]
+    return threat_luts.lut1[pair][from_oriented < to_oriented]
          + threat_luts.lut2[type_of(attacker)][from_oriented][to_oriented];
 }
 
@@ -219,7 +218,7 @@ void FullThreats::append_changed_indices(Color                   perspective,
                                          IndexType               prefetchStride) {
     const unsigned orient    = u8(OrientTBL[ksq]) ^ (56 * perspective);
     const unsigned pair_swap = 0x88 * perspective;
-    const auto*    lut1_flat = &threat_luts.lut1[0][0];
+    const auto*    lut1_flat = threat_luts.lut1.data();
 
     for (const auto& dirty : diff.list)
     {
@@ -253,7 +252,7 @@ void FullThreats::append_changed_indices_both(Square                  white_ksq,
                                               IndexType               prefetchStride) {
     const unsigned w_orient  = u8(OrientTBL[white_ksq]);
     const unsigned b_orient  = u8(OrientTBL[black_ksq]) ^ 56;
-    const auto*    lut1_flat = &threat_luts.lut1[0][0];
+    const auto*    lut1_flat = threat_luts.lut1.data();
 
     for (const auto& dirty : diff.list)
     {
