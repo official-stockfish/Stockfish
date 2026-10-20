@@ -612,7 +612,7 @@ bool Search::Worker::iterative_deepening() {
 
             if (rootMoves.size() == 1)
                 // Cap used time to 0.5s for a better viewer experience
-                totalTime = std::min(500.0, totalTime);
+                totalTime = std::min(500.0 * std::max(limits.npmsec, TimePoint(1)), totalTime);
 
             auto elapsedTime = elapsed();
 
