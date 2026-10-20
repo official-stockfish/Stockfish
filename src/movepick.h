@@ -20,6 +20,7 @@
 #define MOVEPICK_H_INCLUDED
 
 #include "history.h"
+#include "misc.h"
 #include "movegen.h"
 #include "types.h"
 
