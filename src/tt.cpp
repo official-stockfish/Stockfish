@@ -98,10 +98,11 @@ struct TTEntry {
 // prefetched when possible.
 
 static constexpr int ClusterSize = 3;
+static constexpr int KeyBits = 21;
 
 struct Cluster {
-    // RelaxedAtomic<u16> keys[ClusterSize];
-    // char    padding[2];  // Pad to 32 bytes
+    // keys contains the low 21 bits of the Zobrist keys of the 3 TT entries in this cluster,
+    // packed together into 63 bits of an u64
     RelaxedAtomic<u64> keys;
     TTEntry entry[ClusterSize];
 };
@@ -111,13 +112,12 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 // Populates the TTEntry and its key with a new node's data, possibly overwriting
 // an old position. The update is non-atomic and can be racy. We convert external
 // types to internal bitfields.
-constexpr u64 MASK21 = (1ULL << 21) - 1;
+constexpr u64 MASK21 = (1ULL << KeyBits) - 1;
 void TTWriter::write(
   Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 curr_generation) {
 
-    // auto& key16 = cluster->keys[index];
     u64 keys = cluster->keys;
-    const auto key21 = keys >> 21 * index & MASK21;
+    const auto key21 = keys >> KeyBits * index & MASK21;
     auto& entry = cluster->entry[index];
 
     // Preserve the old ttmove if we don't have a new one
@@ -132,8 +132,8 @@ void TTWriter::write(
         assert(d - DEPTH_NONE < 256);
         assert(curr_generation <= GENERATION_MASK);  // TT::new_search() plays nice
 
-        keys &= ~(MASK21 << (21 * index));
-        keys |= (k & MASK21) << (21 * index);
+        keys &= ~(MASK21 << (KeyBits * index));
+        keys |= (k & MASK21) << (KeyBits * index);
         cluster->keys = keys;
         entry.depth8    = u8(d - DEPTH_NONE);
         entry.genBound8 = u8(curr_generation | b << BOUND_SHIFT | u8(pv) << PV_SHIFT);
@@ -274,15 +274,18 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
     auto& tte = cluster->entry;
     const u64 key21 = key & MASK21;  // Use the low 21 bits as key inside the cluster
 
-    constexpr u64 KeyLsb = 1ULL | (1ULL << 21) | (1ULL << 42);
+    constexpr u64 KeyLsb = 1ULL | (1ULL << KeyBits) | (1ULL << 2 * KeyBits);
     constexpr u64 KeyMsb = KeyLsb << 20;
     u64 keys = cluster->keys;
     const u64 keyXors = (keys ^ (KeyLsb * key21));
+    // this bit twiddling trick will produce a one in the first (=least significant) bit of
+    // the first 21bit block matching key21. The bits before that first matching block will
+    // be all zeros, but after the first matching block there could be garbage.
     const u64 matches = (keyXors - KeyLsb) & ~keyXors & KeyMsb;
 
     if (matches)
     {
-        const int i = int(lsb(matches)) / 21;
+        const int i = int(lsb(matches)) / KeyBits;
         // This gap is the main place for read races.
         // After `read()` completes that copy is final, but may be self-inconsistent.
         return {tte[i].is_occupied(), tte[i].read(), TTWriter(cluster, i)};

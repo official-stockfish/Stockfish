@@ -28,7 +28,6 @@
 namespace Stockfish {
 
 class ThreadPool;
-struct TTEntry;
 struct Cluster;
 
 // There is only one global hash table for the engine and all its threads.
