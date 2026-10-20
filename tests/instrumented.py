@@ -431,10 +431,11 @@ class TestInteractive(metaclass=OrderedClassMembers):
             header = source.read(12)
             description_size = int.from_bytes(header[8:12], "little")
             prefix = header + source.read(description_size + 4)
+            corrupted = bytes(value ^ 0xFF for value in source.read(1024))
 
         # Keep valid headers, overwrite part of the biases, then end the file.
         with open("broken.nnue", "wb") as target:
-            target.write(prefix + bytes(1024))
+            target.write(prefix + corrupted)
 
         self.stockfish.send_command("setoption name EvalFile value broken.nnue")
         self.stockfish.send_command("setoption name EvalFile value verify.nnue")
