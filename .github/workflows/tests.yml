@@ -297,6 +297,10 @@ jobs:
           make -j4 ARCH=x86-64 build
           ../tests/signature.sh $benchref
 
+      - name: Verify Syzygy reset lifecycle
+        if: matrix.config.name == 'Ubuntu 22.04 GCC'
+        run: python3 ../tests/syzygy_lifecycle.py ./stockfish
+
       - name: Test general-64 build
         if: matrix.config.run_64bit_tests
         run: |
