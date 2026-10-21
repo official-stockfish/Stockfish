@@ -69,12 +69,12 @@ const Option& OptionsMap::operator[](const std::string& name) const {
 void OptionsMap::add(const std::string& name, const Option& option) {
     if (!options_map.count(name))
     {
-        static usize insert_order = 0;
+        const usize insert_order = options_map.size();
 
         options_map[name] = option;
 
         options_map[name].parent = this;
-        options_map[name].idx    = insert_order++;
+        options_map[name].idx    = insert_order;
     }
     else
     {
