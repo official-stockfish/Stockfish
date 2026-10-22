@@ -253,7 +253,8 @@ void Search::Worker::start_searching() {
     Skill   skill =
       Skill(options["Skill Level"], options["UCI_LimitStrength"] ? int(options["UCI_Elo"]) : 0);
 
-    if (!limits.depth && !skill.enabled())
+    // With Aggression enabled the main thread makes the final root choice
+    if (!limits.depth && !skill.enabled() && int(options["Aggression"]) == 0)
         bestThread = threads.get_best_thread()->worker.get();
 
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
@@ -329,6 +330,11 @@ bool Search::Worker::iterative_deepening() {
     // use behind-the-scenes to retrieve a set of possible moves.
     if (skill.enabled())
         multiPV = std::max(multiPV, usize(4));
+
+    // Aggression needs several candidate lines with scores to choose from
+    const int aggression = skill.enabled() ? 0 : int(options["Aggression"]);
+    if (aggression > 0)
+        multiPV = std::max(multiPV, usize(6));
 
     multiPV = std::min(multiPV, rootMoves.size());
 
@@ -646,6 +652,17 @@ bool Search::Worker::iterative_deepening() {
         std::swap(rootMoves[0],
                   *std::find(rootMoves.begin(), rootMoves.end(),
                              skill.best ? skill.best : skill.pick_best(rootMoves, multiPV)));
+
+    // If Aggression is enabled, possibly replace the best move with a sharper one
+    if (aggression > 0 && rootMoves.size() > 1)
+    {
+        Move m = pick_aggressive(multiPV, aggression);
+        if (m != Move::none() && m != rootMoves[0].pv[0])
+        {
+            std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(), m));
+            uciPvSent = false;  // make sure the PV of the chosen move gets printed
+        }
+    }
 
     return uciPvSent;
 }
@@ -2126,6 +2143,88 @@ Move Skill::pick_best(const RootMoves& rootMoves, usize multiPV) {
     }
 
     return best;
+}
+
+// Aggressive root move choice. Among the MultiPV lines whose score is within a
+// margin of the best one, prefer the move that poses the most problems: checks,
+// sacrifices, attacks on the enemy king and positions where the opponent has few
+// legal replies. Nothing outside the margin is ever considered, so the engine
+// keeps its strength while steering towards complications. Returns the chosen
+// move, or Move::none() to keep the best move unchanged.
+Move Search::Worker::pick_aggressive(usize multiPV, int aggression) {
+
+    const Value best = rootMoves[0].score;
+
+    // Never gamble with a forced win/loss, or when the best score is unknown
+    if (best == -VALUE_INFINITE || is_decisive(best))
+        return Move::none();
+
+    // Allowed loss in score, up to about 1.3 pawns at maximum aggression. When
+    // already clearly winning we shrink it, a won game is not worth risking.
+    int margin = aggression * PawnValue / 160;
+    if (best > 3 * PawnValue)
+        margin /= 4;
+    else if (best > 2 * PawnValue)
+        margin /= 2;
+
+    if (margin <= 0)
+        return Move::none();
+
+    const Color us    = rootPos.side_to_move();
+    const Color them  = ~us;
+    const Square eKsq = rootPos.square<KING>(them);
+    const Bitboard ring = Attacks::attacks_bb(KING, eKsq) | square_bb(eKsq);
+
+    Move bestMove  = Move::none();
+    int  bestTotal = -VALUE_INFINITE;
+
+    for (usize i = 0; i < multiPV; ++i)
+    {
+        const RootMove& rm = rootMoves[i];
+        if (rm.score == -VALUE_INFINITE || (i > 0 && rm.is_inexact()))
+            continue;
+
+        if (rm.score < best - margin || is_decisive(rm.score))
+            continue;
+
+        const Move m = rm.pv[0];
+
+        // Points are in hundredths of a pawn
+        int points = 0;
+
+        if (rootPos.gives_check(m))
+            points += 12;
+
+        // Giving up material, or a losing exchange, to keep the initiative
+        if (!rootPos.see_ge(m, 0))
+            points += 15;
+
+        StateInfo st;
+        rootPos.do_move(m, st, &tt);
+
+        // Few legal replies means the opponent has to find the only moves
+        const int replies = int(MoveList<ALL>(rootPos).size());
+        points += std::clamp(25 - replies, 0, 25);
+
+        // Our pieces bearing on the squares around the enemy king
+        int attackers = 0;
+        Bitboard b    = ring;
+        while (b)
+            attackers += popcount(rootPos.attackers_to(pop_lsb(b)) & rootPos.pieces(us));
+        points += 2 * std::min(attackers, 12);
+
+        rootPos.undo_move(m);
+
+        const int total = rm.score + points * PawnValue / 100 * aggression / 100;
+
+        if (total > bestTotal)
+        {
+            bestTotal = total;
+            bestMove  = m;
+        }
+    }
+
+    return bestMove;
 }
 
 // Function to detect when we are out of available time and stop the search,

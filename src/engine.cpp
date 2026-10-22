@@ -106,6 +106,10 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
 
     options.add("Skill Level", Option(20, 0, 20));
 
+    // 0 = stock behaviour, higher values prefer sharper, more complicated moves
+    // among those that are close in score to the best one.
+    options.add("Aggression", Option(0, 0, 100));
+
     options.add("Move Overhead", Option(10, 0, 5000));
 
     options.add("nodestime", Option(0, 0, 10000));

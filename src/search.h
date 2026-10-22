@@ -341,6 +341,10 @@ class Worker {
    private:
     bool iterative_deepening();
 
+    // Root move choice used when the Aggression option is enabled: among the
+    // MultiPV lines close in score to the best, prefer the most testing one.
+    Move pick_aggressive(usize multiPV, int aggression);
+
     void do_move(Position& pos, const Move move, StateInfo& st, Stack* const ss);
     void do_move(Position&    pos,
                  const Move   move,
