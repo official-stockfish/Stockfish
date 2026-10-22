@@ -69,7 +69,7 @@ Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
     int correl = (se_norm * nnue_norm) / 512;
 
     // When winning, we boost easy positions, and vice versa
-    int v = nnue + (nnue * correl) / 65536 + (optimism * correl) / 16384;
+    int v = nnue + (nnue + optimism) * correl / 65536;
 
     // Scale the combined evaluation by total material
     int material = 521 * pos.count<PAWN>() + pos.non_pawn_material();
