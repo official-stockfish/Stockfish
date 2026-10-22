@@ -425,6 +425,32 @@ sf_always_inline Tile apply_feature_pair(IndexType j, Tile acc, const i8* data0,
     return acc;
 }
 
+        #if defined(USE_AVX512) || defined(USE_AVX2)
+
+// Widens one or two psq rows into the int16 lanes of registers k and k + 1.
+template<usize Count>
+sf_always_inline void widen_psq_rows(
+  const std::array<const i8*, Count>& rows, IndexType j, IndexType k, vec_t& lo, vec_t& hi) {
+    static_assert(Count == 1 || Count == 2);
+    static_assert(Tiling::NumRegs % 2 == 0);
+    const vec_t w0 = vec_load(reinterpret_cast<const vec_t*>(rows[0] + j) + k / 2);
+    if constexpr (Count == 2)
+    {
+        const vec_t ones = vec_set_8(1);
+        const vec_t w1   = vec_load(reinterpret_cast<const vec_t*>(rows[1] + j) + k / 2);
+        lo               = vec_maddubs_16(ones, vec_unpacklo_8(w0, w1));
+        hi               = vec_maddubs_16(ones, vec_unpackhi_8(w0, w1));
+    }
+    else
+    {
+        const vec_t zero = vec_zero();
+        lo               = vec_srai_16(vec_unpacklo_8(zero, w0), 8);
+        hi               = vec_srai_16(vec_unpackhi_8(zero, w0), 8);
+    }
+}
+
+        #endif
+
     #endif
 
 #endif
@@ -467,10 +493,25 @@ class WeightRows {
     int       count = 0;
 };
 
-using PsqWeightRows = WeightRows<PSQFeatureSet::MaxActiveDimensions>;
+using PsqWeightRows    = WeightRows<PSQFeatureSet::MaxActiveDimensions>;
+using ThreatWeightRows = WeightRows<ThreatFeatureSet::MaxActiveDimensions>;
 using AllWeightRows =
   WeightRows<PSQFeatureSet::MaxActiveDimensions + ThreatFeatureSet::MaxActiveDimensions>;
 
+template<int sign, usize Count>
+sf_always_inline Tile
+apply_psq_rows([[maybe_unused]] IndexType j, Tile acc, const std::array<const i8*, Count>& rows) {
+    static_assert(sign == 1 || sign == -1);
+#if defined(USE_PAIRED_WIDENING_ADD)
+    if constexpr (Count == 2)
+        return apply_feature_pair<sign>(j, acc, rows[0], rows[1]);
+#endif
+    for (const auto* row : rows)
+        acc = apply_feature_single<sign>(j, acc, row);
+    return acc;
+}
+
+template<int RemovedCount, int AddedCount>
 void apply_combined(Color                              perspective,
                     const FeatureTransformer&          featureTransformer,
                     const AccumulatorState&            from,
@@ -480,13 +521,20 @@ void apply_combined(Color                              perspective,
                     const ThreatFeatureSet::IndexList& thrAdded,
                     const ThreatFeatureSet::IndexList& thrRemoved) {
 
+    static_assert(RemovedCount == 1 || RemovedCount == 2);
+    static_assert(AddedCount == 1 || AddedCount == 2);
     const auto& fromAcc = from.accumulation[perspective];
     auto&       toAcc   = to.accumulation[perspective];
 
-    AllWeightRows removed, added;
-    removed.append_psq(psqRemoved, featureTransformer);
+    std::array<const i8*, RemovedCount> removedWeights;
+    std::array<const i8*, AddedCount>   addedWeights;
+    for (int i = 0; i < RemovedCount; ++i)
+        removedWeights[i] = &featureTransformer.weights[usize(psqRemoved[i]) * Dimensions];
+    for (int i = 0; i < AddedCount; ++i)
+        addedWeights[i] = &featureTransformer.weights[usize(psqAdded[i]) * Dimensions];
+
+    ThreatWeightRows removed, added;
     removed.append_threat(thrRemoved, featureTransformer);
-    added.append_psq(psqAdded, featureTransformer);
     added.append_threat(thrAdded, featureTransformer);
 
     Tile acc;
@@ -495,11 +543,60 @@ void apply_combined(Color                              perspective,
     {
         acc = load_tile(j, fromAcc.data());
 
+#if defined(USE_PAIRED_WIDENING_ADD) && (defined(USE_AVX512) || defined(USE_AVX2))
+        // Keep the tile in registers, including the four-feature case.
+    #if defined(__GNUC__) || defined(__clang__)
+        #pragma GCC unroll 16
+    #endif
+        for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
+        {
+            vec_t lo, hi;
+            widen_psq_rows(removedWeights, j, k, lo, hi);
+            acc[k]     = vec_sub_16(acc[k], lo);
+            acc[k + 1] = vec_sub_16(acc[k + 1], hi);
+            widen_psq_rows(addedWeights, j, k, lo, hi);
+            acc[k]     = vec_add_16(acc[k], lo);
+            acc[k + 1] = vec_add_16(acc[k + 1], hi);
+        }
+#else
+        acc = apply_psq_rows<-1>(j, acc, removedWeights);
+        acc = apply_psq_rows<+1>(j, acc, addedWeights);
+#endif
+
         acc = removed.apply<-1>(j, acc);
         acc = added.apply<+1>(j, acc);
 
         store_tile(j, toAcc.data(), acc);
     }
+}
+
+void apply_combined(Color                              perspective,
+                    const FeatureTransformer&          featureTransformer,
+                    const AccumulatorState&            from,
+                    AccumulatorState&                  to,
+                    const PSQFeatureSet::IndexList&    psqAdded,
+                    const PSQFeatureSet::IndexList&    psqRemoved,
+                    const ThreatFeatureSet::IndexList& thrAdded,
+                    const ThreatFeatureSet::IndexList& thrRemoved) {
+    assert(psqRemoved.size() == 1 || psqRemoved.size() == 2);
+    assert(psqAdded.size() == 1 || psqAdded.size() == 2);
+
+    // Dispatch once; feature counts and row addresses stay fixed across tiles.
+    if (psqRemoved.size() == 1)
+    {
+        if (psqAdded.size() == 1)
+            apply_combined<1, 1>(perspective, featureTransformer, from, to, psqAdded, psqRemoved,
+                                 thrAdded, thrRemoved);
+        else
+            apply_combined<1, 2>(perspective, featureTransformer, from, to, psqAdded, psqRemoved,
+                                 thrAdded, thrRemoved);
+    }
+    else if (psqAdded.size() == 1)
+        apply_combined<2, 1>(perspective, featureTransformer, from, to, psqAdded, psqRemoved,
+                             thrAdded, thrRemoved);
+    else
+        apply_combined<2, 2>(perspective, featureTransformer, from, to, psqAdded, psqRemoved,
+                             thrAdded, thrRemoved);
 }
 
 template<bool Forward>
