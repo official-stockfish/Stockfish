@@ -55,15 +55,6 @@ namespace Stockfish::Eval::NNUE::SIMD {
     #define USE_PAIR_ACTIVATIONS
 #endif
 
-// On x86 with SSSE3 or better, two int8 weight rows can be widened and summed
-// into int16 lanes with one unpack + one maddubs (against a vector of ones)
-// instead of one sign-extension per row. See apply_feature_pair() in
-// nnue_accumulator.cpp and FeatureTransformer::WideningPairOrder.
-// Not used on wasm: emscripten emulates maddubs with several instructions.
-#if defined(USE_SSSE3) && !defined(__wasm__)
-    #define USE_PAIRED_WIDENING_ADD
-#endif
-
 // If vector instructions are enabled, we update and refresh the
 // accumulator tile by tile such that each tile fits in the CPU's
 // vector registers.
@@ -83,13 +74,8 @@ using vec_i8_t = __m256i;
     #define vec_max_16(a, b) _mm512_max_epi16(a, b)
     #define vec_min_16(a, b) _mm512_min_epi16(a, b)
     #define vec_slli_16(a, b) _mm512_slli_epi16(a, b)
-    #define vec_srai_16(a, b) _mm512_srai_epi16(a, b)
     // Inverse permuted at load time
     #define vec_packus_16(a, b) _mm512_packus_epi16(a, b)
-    #define vec_set_8(a) _mm512_set1_epi8(a)
-    #define vec_unpacklo_8(a, b) _mm512_unpacklo_epi8(a, b)
-    #define vec_unpackhi_8(a, b) _mm512_unpackhi_epi8(a, b)
-    #define vec_maddubs_16(a, b) _mm512_maddubs_epi16(a, b)
 
     #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
 
@@ -110,13 +96,8 @@ using vec_i8_t = __m128i;
     #define vec_max_16(a, b) _mm256_max_epi16(a, b)
     #define vec_min_16(a, b) _mm256_min_epi16(a, b)
     #define vec_slli_16(a, b) _mm256_slli_epi16(a, b)
-    #define vec_srai_16(a, b) _mm256_srai_epi16(a, b)
     // Inverse permuted at load time
     #define vec_packus_16(a, b) _mm256_packus_epi16(a, b)
-    #define vec_set_8(a) _mm256_set1_epi8(a)
-    #define vec_unpacklo_8(a, b) _mm256_unpacklo_epi8(a, b)
-    #define vec_unpackhi_8(a, b) _mm256_unpackhi_epi8(a, b)
-    #define vec_maddubs_16(a, b) _mm256_maddubs_epi16(a, b)
 
     #define vec_nnz(a) \
         _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
@@ -137,14 +118,9 @@ using vec_i8_t = u64;
     #define vec_max_16(a, b) _mm_max_epi16(a, b)
     #define vec_min_16(a, b) _mm_min_epi16(a, b)
     #define vec_slli_16(a, b) _mm_slli_epi16(a, b)
-    #define vec_srai_16(a, b) _mm_srai_epi16(a, b)
     #define vec_packus_16(a, b) _mm_packus_epi16(a, b)
-    #define vec_set_8(a) _mm_set1_epi8(a)
-    #define vec_unpacklo_8(a, b) _mm_unpacklo_epi8(a, b)
-    #define vec_unpackhi_8(a, b) _mm_unpackhi_epi8(a, b)
 
     #ifdef USE_SSSE3
-        #define vec_maddubs_16(a, b) _mm_maddubs_epi16(a, b)
         #define vec_nnz(a) \
             _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a, _mm_setzero_si128())))
     #endif
