@@ -679,7 +679,7 @@ void Search::Worker::do_move(Position&    pos,
     ++nodes;
 
     Dirties& dirties = accumulatorStack.push();
-    pos.do_move(move, st, givesCheck, dirties, &tt, &sharedHistory);
+    pos.do_move(move, st, givesCheck, dirties, &sharedHistory);
 
     if (ss != nullptr)
     {
@@ -2382,7 +2382,7 @@ bool RootMove::extract_ponder_from_tt(const TranspositionTable& tt, Position& po
     assert(pv.size() == 1 && pv[0] != Move::none());
 
     StateInfo st;
-    pos.do_move(pv[0], st, &tt);
+    pos.do_move(pv[0], st);
 
     if (!pos.is_draw(1))
     {
