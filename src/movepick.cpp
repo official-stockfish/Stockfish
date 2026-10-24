@@ -19,6 +19,7 @@
 #include "movepick.h"
 
 #include <cassert>
+#include <cstring>
 #include <limits>
 #include <utility>
 
@@ -104,23 +105,81 @@ struct MoveSorter {
         write(8, _mm512_setr_epi32(8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31));
     }
 };
+#elif defined(USE_AVX2)
+// Sorts up to 4 * Regs moves, four whole ExtMoves per 256-bit register. The value
+// is the high half of each 64-bit lane, so blendv_pd can select on a 32-bit compare.
+template<int Regs>
+struct MoveSorter {
+    static constexpr int MAX_ELEMENTS = 4 * Regs;
+    __m256i              sorted[Regs];
+
+    static __m256i splat(const ExtMove& m) {
+        static_assert(sizeof(ExtMove) == 8);
+        i64 raw;
+        std::memcpy(&raw, &m, sizeof(raw));
+        return _mm256_set1_epi64x(raw);
+    }
+
+    static __m256i lanes_with_value(int v) { return _mm256_set1_epi64x(i64(u64(u32(v)) << 32)); }
+
+    explicit MoveSorter(const ExtMove& first) {
+        // Unused lanes hold INT_MIN, so they sort less than any other move
+        const __m256i empty = lanes_with_value(std::numeric_limits<int>::min());
+        for (auto& r : sorted)
+            r = empty;
+        sorted[0] = _mm256_blend_epi32(empty, splat(first), 0x03);
+    }
+
+    void insert(const ExtMove& m) {
+        assert(m.value != std::numeric_limits<int>::min());
+        const __m256i x = splat(m);
+
+        // A lane before the first slot never moves, so it is fed INT_MAX
+        __m256i carry = lanes_with_value(std::numeric_limits<int>::max());
+
+        for (int i = 0; i < Regs; ++i)
+        {
+            // Every lane shifted up by one, with the top lane of the previous register in lane 0
+            const __m256i rot     = _mm256_permute4x64_epi64(sorted[i], _MM_SHUFFLE(2, 1, 0, 3));
+            const __m256i shifted = _mm256_blend_epi32(rot, carry, 0x03);
+            carry                 = rot;
+
+            // Lanes at or past the insertion point take x, lanes past it take their left neighbour
+            const __m256d atOrPast = _mm256_castsi256_pd(_mm256_cmpgt_epi32(x, sorted[i]));
+            const __m256d past     = _mm256_castsi256_pd(_mm256_cmpgt_epi32(x, shifted));
+
+            __m256d r = _mm256_castsi256_pd(sorted[i]);
+            r         = _mm256_blendv_pd(r, _mm256_castsi256_pd(x), atOrPast);
+            r         = _mm256_blendv_pd(r, _mm256_castsi256_pd(shifted), past);
+            sorted[i] = _mm256_castpd_si256(r);
+        }
+    }
+
+    void write_sorted(ExtMove* moves, isize count) const {
+        assert(count <= MAX_ELEMENTS);
+        const __m256i lane = _mm256_setr_epi64x(0, 1, 2, 3);
+
+        for (int i = 0; i < Regs && count > 4 * i; ++i)
+        {
+            const __m256i mask = _mm256_cmpgt_epi64(_mm256_set1_epi64x(count - 4 * i), lane);
+            _mm256_maskstore_epi64(reinterpret_cast<long long*>(moves + 4 * i), mask, sorted[i]);
+        }
+    }
+};
 #endif
 
-// Sort moves in descending order up to and including a given limit.
-// The order of moves smaller than the limit is left unspecified.
-void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
-    ExtMove *sortedEnd = begin, *p = begin + 1;
-
-#ifdef USE_AVX512
-    if (begin == end)
-        return;
-
-    MoveSorter sorter(*begin);
+#if defined(USE_AVX512) || defined(USE_AVX2)
+// Sorts the moves at or above the limit while they fit in the sorter. On return
+// p is the first move left for the scalar loop.
+template<typename Sorter>
+void simd_insertion_sort(
+  ExtMove* begin, ExtMove* end, int limit, ExtMove*& sortedEnd, ExtMove*& p) {
+    Sorter sorter(*begin);
     for (; p < end; ++p)
     {
         if (p->value >= limit)
         {
-            if (sortedEnd - begin + 1 >= MoveSorter::MAX_ELEMENTS)  // sorter full
+            if (sortedEnd - begin + 1 >= Sorter::MAX_ELEMENTS)  // sorter full
                 break;
 
             sorter.insert(*p);
@@ -128,6 +187,29 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
         }
     }
     sorter.write_sorted(begin, sortedEnd - begin + 1);
+}
+#endif
+
+// Sort moves in descending order up to and including a given limit.
+// The order of moves smaller than the limit is left unspecified.
+void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
+    ExtMove *sortedEnd = begin, *p = begin + 1;
+
+#if defined(USE_AVX512) || defined(USE_AVX2)
+    if (end - begin <= 1)
+        return;
+
+    #ifdef USE_AVX512
+    simd_insertion_sort<MoveSorter>(begin, end, limit, sortedEnd, p);
+    #else
+    // Short lists, mostly captures, use a smaller sorter
+    if (end - begin <= 4)
+        simd_insertion_sort<MoveSorter<1>>(begin, end, limit, sortedEnd, p);
+    else if (end - begin <= 8)
+        simd_insertion_sort<MoveSorter<2>>(begin, end, limit, sortedEnd, p);
+    else
+        simd_insertion_sort<MoveSorter<4>>(begin, end, limit, sortedEnd, p);
+    #endif
     // Use scalar implementation for any remaining elements
 #endif
 
