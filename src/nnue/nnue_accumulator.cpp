@@ -372,8 +372,8 @@ sf_always_inline Tile apply_feature_single(IndexType j, Tile acc, const i8* data
     #elif defined(USE_PAIRED_WIDENING_ADD)
     static_assert(Tiling::NumRegs % 2 == 0);
     const vec_t zero = vec_zero();
-        #if defined(__clang__) && defined(USE_AVX512)
-            #pragma clang loop unroll(full)
+        #if defined(__GNUC__) || defined(__clang__)
+            #pragma GCC unroll(Tiling::NumRegs / 2)
         #endif
     for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
     {
@@ -408,8 +408,8 @@ sf_always_inline Tile apply_feature_pair(IndexType j, Tile acc, const i8* data0,
     static_assert(sign == 1 || sign == -1);
     static_assert(Tiling::NumRegs % 2 == 0);
     const vec_t ones = vec_set_8(1);
-        #if defined(__clang__) && defined(USE_AVX512)
-            #pragma clang loop unroll(full)
+        #if defined(__GNUC__) || defined(__clang__)
+            #pragma GCC unroll(Tiling::NumRegs / 2)
         #endif
     for (IndexType k = 0; k < Tiling::NumRegs; k += 2)
     {
