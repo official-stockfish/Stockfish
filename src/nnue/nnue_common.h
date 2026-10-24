@@ -29,6 +29,7 @@
 #include <type_traits>
 
 #include "../misc.h"
+#include "../types.h"
 
 #if defined(USE_AVX2)
     #include <immintrin.h>
@@ -71,6 +72,21 @@ constexpr int HiddenOneVal    = 128;
 
 // Size of cache line (in bytes)
 constexpr usize CacheLineSize = 64;
+
+// clang-format off
+// Orient a square according to perspective
+// Reflect kings on files a..d, so that it lands on e..h
+alignas(CacheLineSize) inline constexpr u8 OrientTBL[SQUARE_NB] = {
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+    SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
+};
+// clang-format on
 
 
 // SIMD width (in bytes)

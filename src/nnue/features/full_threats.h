@@ -37,24 +37,12 @@ static constexpr int numValidTargets[PIECE_NB] = {0, 4, 10, 8, 8, 10, 0, 0,
 class FullThreats {
    public:
     // Hash value embedded in the evaluation file
-    static constexpr u32 HashValue = 0x2e6b9d04u;
+    static constexpr u32 HashValue = 0x2c41eaeau;
 
     // Number of feature dimensions
     static constexpr IndexType Dimensions = 59808;
 
     // clang-format off
-    // Orient a square according to perspective (rotates by 180 for black)
-    static constexpr i8 OrientTBL[SQUARE_NB] = {
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-        SQ_A1, SQ_A1, SQ_A1, SQ_A1, SQ_H1, SQ_H1, SQ_H1, SQ_H1,
-    };
-
     static constexpr int map[PIECE_TYPE_NB-2][PIECE_TYPE_NB-2] = {
       {-1,  0, -1,  1, -1, -1},
       { 0,  1,  2,  3,  4, -1},

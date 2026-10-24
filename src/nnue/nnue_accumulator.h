@@ -27,6 +27,7 @@
 
 #include "../types.h"
 #include "../misc.h"
+#include "features/k32h3.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 
@@ -80,16 +81,17 @@ struct AccumulatorCaches {
                     entry.clear(network.featureTransformer.biases);
     }
 
-    auto&       operator[](bool opponentHasQueen) { return entries[opponentHasQueen ? 1 : 0]; }
-    const auto& operator[](bool opponentHasQueen) const {
-        return entries[opponentHasQueen ? 1 : 0];
-    }
+    auto&       operator[](int psqBlock) { return entries[psqBlock]; }
+    const auto& operator[](int psqBlock) const { return entries[psqBlock]; }
 
-    std::array<std::array<std::array<Entry, COLOR_NB>, SQUARE_NB>, 2> entries;
+    std::array<std::array<std::array<Entry, COLOR_NB>, SQUARE_NB>, Features::K32H3::NumBlocks>
+      entries;
 };
 
 
-struct AccumulatorState: public Accumulator, Dirties {};
+struct AccumulatorState: public Accumulator, Dirties {
+    PSQFeatureSet::BlockState blockBefore;
+};
 
 class AccumulatorStack {
    public:
@@ -98,7 +100,7 @@ class AccumulatorStack {
     [[nodiscard]] const AccumulatorState& latest() const noexcept;
 
     void     reset() noexcept;
-    Dirties& push() noexcept;
+    Dirties& push(const Position& pos) noexcept;
     void     pop() noexcept;
 
     void evaluate(const Position&           pos,
@@ -116,7 +118,8 @@ class AccumulatorStack {
                        [[maybe_unused]] AccumulatorCaches& cache,
                        usize                               last_usable_accum) noexcept;
 
-    [[nodiscard]] usize find_last_usable_accumulator(Color perspective) const noexcept;
+    [[nodiscard]] usize find_last_usable_accumulator(Color           perspective,
+                                                     const Position& pos) const noexcept;
 
     void forward_update_incremental(Color                     perspective,
                                     const Position&           pos,
