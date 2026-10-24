@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Definition of layer ClippedReLU of NNUE evaluation function
+// Definition of layer SqrClippedReLU of NNUE evaluation function
 
 #ifndef NNUE_LAYERS_SQR_CLIPPED_RELU_H_INCLUDED
 #define NNUE_LAYERS_SQR_CLIPPED_RELU_H_INCLUDED
@@ -74,7 +74,7 @@ class SqrClippedReLU {
     // by AffineTransform::get_weight_index_scrambled().
     void propagate_pair(const InputType* input, OutputType* squared, OutputType* clipped) const {
         static_assert(WeightScaleBitsLocal >= 5 && WeightScaleBitsLocal <= 8,
-                      "SqrClippedReLU only support WeightScaleBitsLocal between 5 and 8");
+                      "SqrClippedReLU only supports WeightScaleBitsLocal between 5 and 8");
         static_assert(InputDimensions % 32 == 0,
                       "propagate_pair() needs a tail path if L2/L3 change to multiple of 16");
 
@@ -139,7 +139,7 @@ class SqrClippedReLU {
     // Forward propagation
     void propagate(const InputType* input, OutputType* output) const {
         static_assert(WeightScaleBitsLocal >= 5 && WeightScaleBitsLocal <= 8,
-                      "SqrClippedReLU only support WeightScaleBitsLocal between 5 and 8");
+                      "SqrClippedReLU only supports WeightScaleBitsLocal between 5 and 8");
         // After squaring we need to shift by WeightScaleBitsLocal * 2 + 7
         // MulHi strips the lower 16 bits (i.e. shift by 16) so we need to shift out the remaining.
         [[maybe_unused]] constexpr int SimdShiftAmount = WeightScaleBitsLocal * 2 + 7 - 16;

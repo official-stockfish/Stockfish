@@ -34,7 +34,7 @@
 namespace Stockfish {
 
 
-// TTEntry struct is the 10 bytes transposition table entry, defined as:
+// TTEntry struct is the 10-byte transposition table entry, defined as:
 //
 // key        16 bit
 // depth       8 bit

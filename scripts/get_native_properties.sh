@@ -54,7 +54,7 @@ get_flags() {
 }
 
 # Populate $flags from the RISC-V isa string; split the single-letter
-# base (e.g., rv64imafdcv), and  keep multi-letter extensions.
+# base (e.g., rv64imafdcv), and keep multi-letter extensions.
 get_riscv_flags() {
 	if [ -r "$cpuinfo_path" ]; then
 		isa=$(awk -F: '/^isa[ \t]*:/{print $2; exit}' "$cpuinfo_path" 2>/dev/null)

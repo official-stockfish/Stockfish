@@ -191,7 +191,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
    4) En passant target square (in algebraic notation). If there's no en passant
       target square, this is "-". If a pawn has just made a 2-square move, this
-      is the position "behind" the pawn. Following X-FEN standard, this is recorded
+      is the position "behind" the pawn. Following the X-FEN standard, this is recorded
       only if there is a pawn in position to make an en passant capture, and if
       there really is a pawn that might have advanced two squares.
 
@@ -399,7 +399,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             Bitboard occ    = pieces() ^ target ^ st->epSquare;
 
             // En passant square will be considered only if
-            // a) side to move have a pawn threatening epSquare
+            // a) side to move has a pawn threatening epSquare
             // b) there is an enemy pawn in front of epSquare
             // c) there is no piece on epSquare or behind epSquare
             enpassant = pawns && target
