@@ -20,12 +20,15 @@
 #define MOVEPICK_H_INCLUDED
 
 #include "history.h"
+#include "misc.h"
 #include "movegen.h"
 #include "types.h"
 
 namespace Stockfish {
 
 class Position;
+
+enum Stages : i8;
 
 // The MovePicker class is used to pick one legal move at a time from the
 // current position. The most important method is next_move(), which emits one
@@ -55,7 +58,7 @@ class MovePicker {
     template<typename Pred>
     Move select(Pred);
     template<GenType T>
-    ExtMove* score(const MoveList<T>&);
+    ExtMove* generate_and_score();
 
     const Position&              pos;
     const ButterflyHistory*      mainHistory;
@@ -64,8 +67,9 @@ class MovePicker {
     const PieceToHistory**       continuationHistory;
     const SharedHistories*       sharedHistory;
     Move                         ttMove;
-    ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated;
-    int                          stage;
+    ExtMove *                    cur, *endCur, *endBadCaptures, *endBadMoves;
+    Stages                       stage;
+    Stages                       first_stage;
     int                          threshold;
     Depth                        depth;
     int                          ply;
