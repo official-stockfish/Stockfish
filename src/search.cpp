@@ -93,13 +93,12 @@ const std::array<int, MAX_MOVES> reductions = [] {
 // optimized for require verifications at longer time controls.
 
 int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
-    const Color us     = pos.side_to_move();
     const auto  m      = (ss - 1)->currentMove;
     const auto& shared = w.sharedHistory;
-    const int   pcv    = shared.pawn_correction_entry(pos)[us].pawn;
-    const int   micv   = shared.minor_piece_correction_entry(pos)[us].minor;
-    const int   wnpcv  = shared.nonpawn_correction_entry<WHITE>(pos)[us].nonPawnWhite;
-    const int   bnpcv  = shared.nonpawn_correction_entry<BLACK>(pos)[us].nonPawnBlack;
+    const int   pcv    = shared.pawn_correction_entry(pos).pawn;
+    const int   micv   = shared.minor_piece_correction_entry(pos).minor;
+    const int   wnpcv  = shared.nonpawn_correction_entry<WHITE>(pos).nonPawnWhite;
+    const int   bnpcv  = shared.nonpawn_correction_entry<BLACK>(pos).nonPawnBlack;
     const int   cntcv =
       m.is_ok()
           ? 7885
@@ -122,15 +121,14 @@ void update_correction_history(const Position& pos,
                                Search::Worker& workerThread,
                                const int       bonus) {
     const Move  m  = (ss - 1)->currentMove;
-    const Color us = pos.side_to_move();
 
     constexpr int nonPawnWeight = 186;
     auto&         shared        = workerThread.sharedHistory;
 
-    shared.pawn_correction_entry(pos)[us].pawn << bonus;
-    shared.minor_piece_correction_entry(pos)[us].minor << bonus * 150 / 128;
-    shared.nonpawn_correction_entry<WHITE>(pos)[us].nonPawnWhite << bonus * nonPawnWeight / 128;
-    shared.nonpawn_correction_entry<BLACK>(pos)[us].nonPawnBlack << bonus * nonPawnWeight / 128;
+    shared.pawn_correction_entry(pos).pawn << bonus;
+    shared.minor_piece_correction_entry(pos).minor << bonus * 150 / 128;
+    shared.nonpawn_correction_entry<WHITE>(pos).nonPawnWhite << bonus * nonPawnWeight / 128;
+    shared.nonpawn_correction_entry<BLACK>(pos).nonPawnBlack << bonus * nonPawnWeight / 128;
 
     if (m.is_ok())
     {
