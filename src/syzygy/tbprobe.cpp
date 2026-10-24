@@ -1208,7 +1208,7 @@ u8* set_sizes(PairsData* d, u8* data, const u8* end) {
     const usize symlenSize = number<u16, LittleEndian>(data);
     data += sizeof(u16);
 
-    if (!fits(data, symlenSize, sizeof(LR), end))
+    if (symlenSize > SymCount || !fits(data, symlenSize, sizeof(LR), end))
         return nullptr;
 
     d->btreeBuf.assign(SymCount, LR{{0x00, 0xF0, 0xFF}});
