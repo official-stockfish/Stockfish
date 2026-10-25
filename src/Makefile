@@ -1133,7 +1133,7 @@ profile-build: net config-sanity objclean profileclean
 endif
 
 # Default network filename, read from evaluate.h's EvalFileDefaultName.
-macos-lipo: NNUE_NET = $(shell grep -oE 'nn-[0-9a-f]+\.nnue' $(CURDIR)/evaluate.h | head -1)
+macos-lipo: NNUE_NET = $(shell grep -oE 'nn-[0-9a-f]+\.nnue' evaluate.h | head -1)
 macos-lipo:
 	@echo ""
 	@echo "Step 1/4. Building x86-64 slice (network shared from Apple-silicon slice) ..."
@@ -1238,8 +1238,8 @@ profileclean:
 universalclean:
 # On Windows "ln -s" to a directory makes a native directory symlink that rm
 # cannot unlink; rmdir unlinks it without following it. No-op elsewhere.
-	@find $(TEMP_DIR) -type l -exec rmdir {} + 2>/dev/null || true
-	@rm -rf $(TEMP_DIR)
+	@find "$(TEMP_DIR)" -type l -exec rmdir {} + 2>/dev/null || true
+	@rm -rf "$(TEMP_DIR)"
 	@rm -f universal/network_dump.inc
 
 # evaluation network (nnue)
@@ -1326,8 +1326,10 @@ config-sanity: net
 	 test "$(comp)" = "clang" || test "$(comp)" = "armv7a-linux-androideabi16-clang" || \
 	 test "$(comp)" = "aarch64-linux-android21-clang")
 
+ifeq ($(UNIVERSAL_BUILD),false)
 $(EXE): $(OBJS)
 	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+endif
 
 %.o: %.cpp
 	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS)) -c -o $@ $<
@@ -1394,12 +1396,12 @@ endif
 #   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
 #   make -j ARCH=arm64-universal build
 
-TEMP_DIR             := $(CURDIR)/temp_builds
-UNIVERSAL_EXE        := $(CURDIR)/$(EXE)
+TEMP_DIR             := temp_builds
+UNIVERSAL_EXE        := $(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
 
-UNIVERSAL_SRC_DIR    := $(CURDIR)/universal
+UNIVERSAL_SRC_DIR    := universal
 NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
 NET_SENTINEL         := $(TEMP_DIR)/.net-done
 
@@ -1469,7 +1471,8 @@ endif
 
 EMBED_DIR_SUPPORTED := $(shell echo 'int main(){}' | $(CXX) -x c++ --embed-dir=. -o /dev/null -c - 2>/dev/null && echo 1 || echo 0)
 ifeq ($(EMBED_DIR_SUPPORTED),1)
-  EMBED_DIR = --embed-dir=$(CURDIR)
+  EMBED_DIR = --embed-dir=.
+  ARCH_EMBED_DIR = --embed-dir=../..
 endif
 
 # macos-lipo sets MACOS_X86_SLICE=1 when building the x86-64 slice so that the
@@ -1479,7 +1482,7 @@ ifeq ($(MACOS_X86_SLICE),1)
   SLICE_DEF := -DUNIVERSAL_BINARY_MACOS_X86_SLICE
 endif
 
-arch-cxxflags   = $(EMBED_DIR) -DStockfish=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY $(SLICE_DEF) \
+arch-cxxflags   = $(ARCH_EMBED_DIR) -DStockfish=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY $(SLICE_DEF) \
                   $(call arch-defmain,$(1)) -Wno-c++26-extensions -Wno-c23-extensions
 
 UOBJ_TGT ?= universal-object-pgo
@@ -1500,7 +1503,7 @@ $(TEMP_DIR):
 
 # Download nnue files once in src/ (reused by every sub-arch via --embed-dir).
 $(NET_SENTINEL): | $(TEMP_DIR)
-	@cd $(CURDIR) && $(SHELL) ../scripts/net.sh $(EMBED_DIR_SUPPORTED)
+	@cd "$(CURDIR)" && $(SHELL) ../scripts/net.sh $(EMBED_DIR_SUPPORTED)
 	@touch $@
 
 $(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) | $(TEMP_DIR)
@@ -1513,7 +1516,7 @@ $(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_ENTRY_SRC) | $(TEMP_DIR)
 $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 	@rm -rf $(TEMP_DIR)/$*
 	@mkdir -p $(TEMP_DIR)/$*
-	@$(foreach f,$(TRACKED_TOP),ln -s $(CURDIR)/$(f) $(TEMP_DIR)/$*/$(f);)
+	@$(foreach f,$(TRACKED_TOP),ln -s ../../$(f) $(TEMP_DIR)/$*/$(f);)
 	@touch $@
 
 # Per-arch stockfish.o
@@ -1521,9 +1524,9 @@ $(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
 
 $(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL)
 	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
-	    $(MAKE) -C $(TEMP_DIR)/$* $(UOBJ_TGT) \
-		        ARCH=$* CXX=$(CXX) COMP=$(COMP) UNIVERSAL_SLICE=true \
-	        NNUE_EMBED_OBJ=$(NNUE_EMBED_OBJ)
+	    $(MAKE) -C "$(TEMP_DIR)/$*" $(UOBJ_TGT) \
+		        ARCH=$* CXX="$(CXX)" COMP=$(COMP) UNIVERSAL_SLICE=true \
+	        NNUE_EMBED_OBJ=../nnue_embed.o
 ifeq ($(TARGET_KERNEL),Darwin)
 # Rename the initializer section
 	ld -r -rename_section __DATA __mod_init_func __DATA $(call arch-mac-section,$*) $@ -o $@.tmp
