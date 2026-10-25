@@ -94,7 +94,7 @@ namespace Stockfish {
 // have changed if it wasn't locked by the OS. Ideally we would hash the executable
 // but it's not really that important at this point.
 // If the path is longer than 4095 bytes the hash will be computed from an unspecified
-// amount of bytes of the path; in particular it can a hash of an empty string.
+// amount of bytes of the path; in particular it can be a hash of an empty string.
 
 inline std::string getExecutablePathHash() {
     char  executable_path[4096] = {0};
@@ -157,26 +157,26 @@ enum class SystemWideSharedConstantAllocationStatus {
 #if defined(_WIN32)
 
 inline std::string GetLastErrorAsString(DWORD error) {
-    //Get the error message ID, if any.
+    // Get the error message ID, if any.
     DWORD errorMessageID = error;
     if (errorMessageID == 0)
     {
-        return std::string();  //No error message has been recorded
+        return std::string();  // No error message has been recorded
     }
 
     LPSTR messageBuffer = nullptr;
 
-    //Ask Win32 to give us the string version of that message ID.
-    //The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
+    // Ask Win32 to give us the string version of that message ID.
+    // The parameters we pass in tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
     usize size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
                                   | FORMAT_MESSAGE_IGNORE_INSERTS,
                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                                 (LPSTR) &messageBuffer, 0, NULL);
 
-    //Copy the error message into a std::string.
+    // Copy the error message into a std::string.
     std::string message(messageBuffer, size);
 
-    //Free the Win32's string's buffer.
+    // Free the Win32's string's buffer.
     LocalFree(messageBuffer);
 
     return message;

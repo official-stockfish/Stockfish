@@ -204,8 +204,8 @@ struct LR {
         Right
     };
 
-    u8 lr[3];  // The first 12 bits is the left-hand symbol, the second 12
-               // bits is the right-hand symbol. If the symbol has length 1,
+    u8 lr[3];  // The first 12 bits are the left-hand symbol, the second 12
+               // bits are the right-hand symbol. If the symbol has length 1,
                // then the left-hand symbol is the stored value.
     template<Side S>
     Sym get() {
@@ -228,7 +228,7 @@ bool fits(const u8* p, u64 count, u64 stride, const u8* end) {
     return count == 0 || stride <= room / count;
 }
 
-// Tablebases data layout is structured as following:
+// Tablebases data layout is structured as follows:
 //
 //  TBFile:   memory maps/unmaps the physical .rtbw and .rtbz files
 //  TBTable:  one object for each file with corresponding indexing information

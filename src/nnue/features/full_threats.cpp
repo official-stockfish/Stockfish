@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features FullThreats of NNUE evaluation function
+// Definition of input features FullThreats of NNUE evaluation function
 
 #include "full_threats.h"
 

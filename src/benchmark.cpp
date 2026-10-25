@@ -445,8 +445,8 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
 }
 
 BenchmarkSetup setup_benchmark(std::istream& is) {
-    // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used all positions
-    // for the current sequence have been searched.
+    // TT_SIZE_PER_THREAD is chosen such that roughly half of the hash is used when searching
+    // all positions in the current sequence.
     static constexpr int TT_SIZE_PER_THREAD = 128;
 
     static constexpr int DEFAULT_DURATION_S = 150;

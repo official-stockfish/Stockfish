@@ -75,7 +75,7 @@ struct SetRange {
 // And the values update, including post update function call, will be done only
 // once, after the engine receives the last UCI option, that is the one defined
 // and created as the last one, so the GUI should send the options in the same
-// order in which have been defined.
+// order in which they have been defined.
 
 class Tune {
 

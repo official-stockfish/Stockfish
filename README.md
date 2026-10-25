@@ -87,7 +87,7 @@ about the codebase and how to improve it.
 
 ## Compiling Stockfish
 
-Stockfish has support for 32 or 64-bit CPUs, certain hardware instructions,
+Stockfish has support for 32- or 64-bit CPUs, certain hardware instructions,
 big-endian machines such as Power PC, and other platforms.
 
 On Unix-like systems, it should be easy to compile Stockfish directly from the

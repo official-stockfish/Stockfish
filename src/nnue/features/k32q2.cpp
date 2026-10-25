@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features K32Q2 of NNUE evaluation function
+// Definition of input features K32Q2 of NNUE evaluation function
 
 #include "k32q2.h"
 

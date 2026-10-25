@@ -146,8 +146,9 @@ void TimeManagement::init(Search::LimitsType& limits,
     // - if the nodestime option is used we can't calculate the opponent nodes budget in a deterministic way.
     // - if we use a cyclic time management (like 40/10) calculating time advantage for the last move (movestogo = 1)
     //   can be vastly off, because if the opponent had done his last move before us his time budget includes already
-    //   the next cycle time increment but our not. This leads to a unnecessary big decrease in time usage which favors blunders.
-    // Warning: don't remove this conditions.
+    //   the next cycle time increment but ours does not. This leads to an unnecessarily
+    //   large decrease in time usage, which favors blunders.
+    // Warning: don't remove these conditions.
     if (!useNodesTime && limits.movestogo != 1)
     {
         double timeAdvantage =

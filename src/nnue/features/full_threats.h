@@ -13,7 +13,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features Full_Threats of NNUE evaluation function
+// Definition of input features Full_Threats of NNUE evaluation function
 
 #ifndef NNUE_FEATURES_FULL_THREATS_INCLUDED
 #define NNUE_FEATURES_FULL_THREATS_INCLUDED
