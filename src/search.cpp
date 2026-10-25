@@ -669,7 +669,7 @@ void Search::Worker::do_move(Position&    pos,
     // prefetch_key() does not model castling, en passant or promotion exactly.
     // The correction-history prefetches also approximate castling and promotion.
     // For these rare moves the prefetches land on unused lines.
-    prefetch(tt.first_entry(pos.prefetch_key(move)));
+    prefetch(tt.get_cluster(pos.prefetch_key(move)));
 
     if (ss != nullptr)
     {
