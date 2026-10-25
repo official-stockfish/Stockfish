@@ -348,6 +348,9 @@ bool Search::Worker::iterative_deepening() {
     {
         rootDepth++;
 
+        // Do not tune these values. They are not intended for playing strength.
+        int seekMateThreshold = 750 + 220000 / (rootDepth * rootDepth);
+
         // Signal the start of a new iteration
         if (mainThread)
             uciPvSent = false;
@@ -388,8 +391,10 @@ bool Search::Worker::iterative_deepening() {
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
-            // Do not tune these values. They are not intended for playing strength.
-            seekMate = std::abs(rootMoves[pvIdx].score) >= 750 + 220000 / (rootDepth * rootDepth);
+            // For multiPV we use previousScore because score is often -VALUE_INFINITE
+            Value seekMateScore = pvIdx ? rootMoves[pvIdx].previousScore : rootMoves[pvIdx].score;
+            seekMate =
+              seekMateScore != -VALUE_INFINITE && std::abs(seekMateScore) >= seekMateThreshold;
 
             // Adjust optimism based on root move's averageScore
             optimism[us]  = 114 * avg / (std::abs(avg) + 85);
