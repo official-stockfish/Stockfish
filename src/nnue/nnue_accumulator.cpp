@@ -145,76 +145,77 @@ void AccumulatorStack::evaluate_side(Color                     perspective,
                                      AccumulatorCaches&        cache,
                                      usize                     last_usable_accum) noexcept {
 
-    constexpr int MIN_PC_COUNT_HYBRID = 15;
-
     if (accumulators[last_usable_accum].computed[perspective])
         forward_update_incremental(perspective, pos, featureTransformer, last_usable_accum);
 
-    else
+    else if (!update_hybrid(perspective, pos, featureTransformer, cache, last_usable_accum))
     {
-        // The move at last_usable_accum requires a refresh. If it is a king move
-        // within the same half of the board and/or a change of the opponent's
-        // queen presence, the threat and pawn-pair features keep their
-        // orientation, so they can be reused from an earlier accumulator.
-        const usize trigger = last_usable_accum;
-
-        if (trigger > 0 && pos.count<ALL_PIECES>() >= MIN_PC_COUNT_HYBRID)
-        {
-            const auto&  dirtyPiece = accumulators[trigger].dirtyPiece;
-            const Square ksq        = pos.square<KING>(perspective);
-            const Square oldKsq =
-              dirtyPiece.pc == make_piece(perspective, KING) ? dirtyPiece.from : ksq;
-
-            // A later change of queen presence would itself require a refresh, so only
-            // the trigger move can have changed it
-            const Piece opponentQueen    = make_piece(~perspective, QUEEN);
-            const bool  opponentHasQueen = bool(pos.pieces(~perspective, QUEEN));
-            const int   oldOpponentQueenCnt =
-              pos.count<QUEEN>(~perspective)
-              + (dirtyPiece.remove_sq != SQ_NONE && dirtyPiece.remove_pc == opponentQueen)
-              - (dirtyPiece.add_sq != SQ_NONE && dirtyPiece.add_pc == opponentQueen);
-            const bool oldOpponentHasQueen = oldOpponentQueenCnt > 0;
-
-            if (((int(oldKsq) & 0b100) == (int(ksq) & 0b100))
-                && (oldKsq != ksq || oldOpponentHasQueen != opponentHasQueen))
-            {
-                // Find the last computed accumulator before the trigger move
-                usize prev = trigger - 1;
-                while (
-                  prev > 0 && !accumulators[prev].computed[perspective]
-                  && !PSQFeatureSet::requires_refresh(accumulators[prev].dirtyPiece, perspective))
-                    prev--;
-
-                if (accumulators[prev].computed[perspective])
-                {
-                    // Reconstruct the board after the trigger move
-                    auto     pieces  = pos.piece_array();
-                    Bitboard pieceBB = pos.pieces();
-                    for (usize i = size - 1; i > trigger; i--)
-                        undo_dirty_piece(accumulators[i].dirtyPiece, pieces, pieceBB);
-
-                    for (usize next = prev + 1; next < trigger; next++)
-                        update_accumulator_incremental<true>(
-                          perspective, featureTransformer, oldKsq, oldOpponentHasQueen,
-                          accumulators[next], accumulators[next - 1]);
-
-                    update_accumulator_hybrid(perspective, featureTransformer, pieces, pieceBB, ksq,
-                                              opponentHasQueen, oldKsq, oldOpponentHasQueen,
-                                              accumulators[trigger], accumulators[trigger - 1],
-                                              cache);
-
-                    for (usize next = trigger + 1; next < size; next++)
-                        update_accumulator_incremental<true>(perspective, featureTransformer, ksq,
-                                                             opponentHasQueen, accumulators[next],
-                                                             accumulators[next - 1]);
-                    return;
-                }
-            }
-        }
-
         update_accumulator_refresh_cache(perspective, featureTransformer, pos, mut_latest(), cache);
         backward_update_incremental(perspective, pos, featureTransformer, last_usable_accum);
     }
+}
+
+// The move at trigger requires a refresh. If it is a king move within the same
+// half of the board and/or a change of the opponent's queen presence, the threat
+// and pawn-pair features keep their orientation, so they can be reused from an
+// earlier accumulator. Returns false if a full refresh is needed instead.
+bool AccumulatorStack::update_hybrid(Color                     perspective,
+                                     const Position&           pos,
+                                     const FeatureTransformer& featureTransformer,
+                                     AccumulatorCaches&        cache,
+                                     usize                     trigger) noexcept {
+
+    constexpr int MIN_PC_COUNT_HYBRID = 15;
+
+    if (trigger == 0 || pos.count<ALL_PIECES>() < MIN_PC_COUNT_HYBRID)
+        return false;
+
+    const auto&  dirtyPiece = accumulators[trigger].dirtyPiece;
+    const Square ksq        = pos.square<KING>(perspective);
+    const Square oldKsq = dirtyPiece.pc == make_piece(perspective, KING) ? dirtyPiece.from : ksq;
+
+    // A later change of queen presence would itself require a refresh, so only
+    // the trigger move can have changed it
+    const Piece opponentQueen    = make_piece(~perspective, QUEEN);
+    const bool  opponentHasQueen = bool(pos.pieces(~perspective, QUEEN));
+    const int   oldOpponentQueenCnt =
+      pos.count<QUEEN>(~perspective)
+      + (dirtyPiece.remove_sq != SQ_NONE && dirtyPiece.remove_pc == opponentQueen)
+      - (dirtyPiece.add_sq != SQ_NONE && dirtyPiece.add_pc == opponentQueen);
+    const bool oldOpponentHasQueen = oldOpponentQueenCnt > 0;
+
+    if (((int(oldKsq) ^ int(ksq)) & FILE_E) != 0
+        || (oldKsq == ksq && oldOpponentHasQueen == opponentHasQueen))
+        return false;
+
+    // Find the last computed accumulator before the trigger move
+    usize prev = trigger - 1;
+    while (prev > 0 && !accumulators[prev].computed[perspective]
+           && !PSQFeatureSet::requires_refresh(accumulators[prev].dirtyPiece, perspective))
+        prev--;
+
+    if (!accumulators[prev].computed[perspective])
+        return false;
+
+    // Reconstruct the board after the trigger move
+    auto     pieces  = pos.piece_array();
+    Bitboard pieceBB = pos.pieces();
+    for (usize i = size - 1; i > trigger; i--)
+        undo_dirty_piece(accumulators[i].dirtyPiece, pieces, pieceBB);
+
+    for (usize next = prev + 1; next < trigger; next++)
+        update_accumulator_incremental<true>(perspective, featureTransformer, oldKsq,
+                                             oldOpponentHasQueen, accumulators[next],
+                                             accumulators[next - 1]);
+
+    update_accumulator_hybrid(perspective, featureTransformer, pieces, pieceBB, ksq,
+                              opponentHasQueen, oldKsq, oldOpponentHasQueen, accumulators[trigger],
+                              accumulators[trigger - 1], cache);
+
+    for (usize next = trigger + 1; next < size; next++)
+        update_accumulator_incremental<true>(perspective, featureTransformer, ksq, opponentHasQueen,
+                                             accumulators[next], accumulators[next - 1]);
+    return true;
 }
 
 // Find the earliest usable accumulator, this can either be a computed accumulator or the accumulator
@@ -864,7 +865,7 @@ void update_accumulator_hybrid(Color                               perspective,
                                AccumulatorState&                   target,
                                const AccumulatorState&             computed,
                                AccumulatorCaches&                  cache) {
-    assert((int(oldKsq) & 0b100) == (int(newKsq) & 0b100));
+    assert(((int(oldKsq) ^ int(newKsq)) & FILE_E) == 0);
     assert(oldKsq != newKsq || oldOpponentHasQueen != opponentHasQueen);
     assert(computed.computed[perspective]);
     assert(!target.computed[perspective]);

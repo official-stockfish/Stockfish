@@ -116,6 +116,12 @@ class AccumulatorStack {
                        [[maybe_unused]] AccumulatorCaches& cache,
                        usize                               last_usable_accum) noexcept;
 
+    bool update_hybrid(Color                     perspective,
+                       const Position&           pos,
+                       const FeatureTransformer& featureTransformer,
+                       AccumulatorCaches&        cache,
+                       usize                     trigger) noexcept;
+
     [[nodiscard]] usize find_last_usable_accumulator(Color perspective) const noexcept;
 
     void forward_update_incremental(Color                     perspective,
