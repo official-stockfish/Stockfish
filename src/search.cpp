@@ -391,10 +391,8 @@ bool Search::Worker::iterative_deepening() {
             alpha     = std::max(avg - delta, -VALUE_INFINITE);
             beta      = std::min(avg + delta, VALUE_INFINITE);
 
-            // For multiPV we use previousScore because score is often -VALUE_INFINITE
-            Value seekMateScore = pvIdx ? rootMoves[pvIdx].previousScore : rootMoves[pvIdx].score;
-            seekMate =
-              seekMateScore != -VALUE_INFINITE && std::abs(seekMateScore) >= seekMateThreshold;
+            seekMate = rootMoves[pvIdx].previousScore != -VALUE_INFINITE
+                    && std::abs(rootMoves[pvIdx].previousScore) >= seekMateThreshold;
 
             // Adjust optimism based on root move's averageScore
             optimism[us]  = 456 * avg / (std::abs(avg) + 85);
