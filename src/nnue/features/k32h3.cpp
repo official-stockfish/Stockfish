@@ -16,14 +16,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features K32Q2 of NNUE evaluation function
+//Definition of input features K32H3 of NNUE evaluation function
 
-#include "k32q2.h"
+#include "k32h3.h"
 
 #include <array>
-#include <initializer_list>
 
+#include "../../bitboard.h"
 #include "../../misc.h"
+#include "../../position.h"
 #include "../../types.h"
 #include "../nnue_common.h"
 
@@ -34,13 +35,12 @@
 namespace Stockfish::Eval::NNUE::Features {
 
 #if defined(USE_AVX512ICL)
-void K32Q2::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
+void K32H3::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
                           const std::array<Piece, SQUARE_NB>& newPieces,
                           Bitboard                            removedBB,
                           Bitboard                            addedBB,
                           Color                               perspective,
                           Square                              ksq,
-                          bool                                opponentHasQueen,
                           IndexList&                          removed,
                           IndexList&                          added) {
 
@@ -50,17 +50,17 @@ void K32Q2::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
     const __m512i vecOldPieces = _mm512_loadu_si512(oldPieces.data());
     const __m512i vecNewPieces = _mm512_loadu_si512(newPieces.data());
 
-    // PieceSquareIndex, KingBuckets, and queen offset are multiples of 64, while s and orient
-    // use only the low six bits. Therefore no carry crosses bit 6, and
-    // (s ^ orient) + psi[pc] + bucket + queen == s ^ (psi[pc] + bucket + queen + orient),
+    // PieceSquareIndex and KingBuckets are multiples of 64, while s and orient use only the low
+    // six bits. Therefore no carry crosses bit 6, and
+    // (s ^ orient) + psi[pc] + kingBucket == s ^ (psi[pc] + kingBucket + orient),
     // allowing the orientation to be folded into the per-piece lookup offset.
-    const u16     flip        = 56 * perspective;
-    const u16     orient      = u16(OrientTBL[ksq]) ^ flip;
-    const u16     queenOffset = opponentHasQueen ? PS_NB : 0;
+    const u16     flip       = 56 * perspective;
+    const u16     orient     = u16(OrientTBL[ksq]) ^ flip;
+    const u16     kingBucket = u16(KingBuckets[int(ksq) ^ flip]);
     const __m512i psi =
       _mm512_castsi256_si512(_mm256_loadu_si256((const __m256i*) PieceSquareIndex[perspective]));
-    const __m512i psi_plus_offset = _mm512_add_epi16(
-      psi, _mm512_set1_epi16(u16(KingBuckets[int(ksq) ^ flip] + queenOffset + orient)));
+    const __m512i psi_plus_offset =
+      _mm512_add_epi16(psi, _mm512_set1_epi16(u16(kingBucket + orient)));
 
     __m512i removed_squares = _mm512_maskz_compress_epi8(removedBB, AllSquares);
     __m512i added_squares   = _mm512_maskz_compress_epi8(addedBB, AllSquares);
@@ -82,61 +82,57 @@ void K32Q2::write_indices(const std::array<Piece, SQUARE_NB>& oldPieces,
 }
 #endif
 
-// Index of a feature for a given king position and another piece on some square
+// Index of a feature within its block for a given king position and another piece on
+// some square
 
-IndexType
-K32Q2::make_index(Color perspective, Square s, Piece pc, Square ksq, bool opponentHasQueen) {
+IndexType K32H3::make_index(Color perspective, Square s, Piece pc, Square ksq) {
     alignas(64) static constexpr auto offsets = [] {
-        std::array<std::array<u16, PIECE_NB>, 2 * COLOR_NB * SQUARE_NB> table{};
-        for (bool q : {false, true})
-            for (int c = 0; c < COLOR_NB; ++c)
-                for (int sq = 0; sq < SQUARE_NB; ++sq)
-                {
-                    const u16 flip        = 56 * c;
-                    const u16 orient      = u16(OrientTBL[sq]) ^ flip;
-                    const u16 queenOffset = q ? PS_NB : 0;
-                    for (int pieceIndex = 0; pieceIndex < PIECE_NB; ++pieceIndex)
-                        table[(int(q) * COLOR_NB + c) * SQUARE_NB + sq][pieceIndex] =
-                          PieceSquareIndex[c][pieceIndex] + KingBuckets[sq ^ flip] + queenOffset
-                          + orient;
-                }
+        std::array<std::array<u16, PIECE_NB>, COLOR_NB * SQUARE_NB> table{};
+        for (int c = 0; c < COLOR_NB; ++c)
+            for (int sq = 0; sq < SQUARE_NB; ++sq)
+            {
+                const u16 flip       = 56 * c;
+                const u16 orient     = u16(OrientTBL[sq]) ^ flip;
+                const u16 kingBucket = u16(KingBuckets[sq ^ flip]);
+                for (int pieceIndex = 0; pieceIndex < PIECE_NB; ++pieceIndex)
+                    table[c * SQUARE_NB + sq][pieceIndex] =
+                      PieceSquareIndex[c][pieceIndex] + kingBucket + orient;
+            }
         return table;
     }();
 
-    return IndexType(s)
-         ^ offsets[(int(opponentHasQueen) * COLOR_NB + perspective) * SQUARE_NB + ksq][pc];
+    return IndexType(s) ^ offsets[perspective * SQUARE_NB + ksq][pc];
 }
 
 // Get a list of indices for recently changed features
 
-void K32Q2::append_changed_indices(Color           perspective,
-                                   Square          ksq,
-                                   const DiffType& diff,
-                                   bool            opponentHasQueen,
-                                   IndexList&      removed,
-                                   IndexList&      added) {
-    removed.push_back(make_index(perspective, diff.from, diff.pc, ksq, opponentHasQueen));
+void K32H3::append_changed_indices(
+  Color perspective, Square ksq, const DiffType& diff, IndexList& removed, IndexList& added) {
+    removed.push_back(make_index(perspective, diff.from, diff.pc, ksq));
     if (diff.to != SQ_NONE)
-        added.push_back(make_index(perspective, diff.to, diff.pc, ksq, opponentHasQueen));
+        added.push_back(make_index(perspective, diff.to, diff.pc, ksq));
 
     if (diff.remove_sq != SQ_NONE)
-        removed.push_back(
-          make_index(perspective, diff.remove_sq, diff.remove_pc, ksq, opponentHasQueen));
+        removed.push_back(make_index(perspective, diff.remove_sq, diff.remove_pc, ksq));
 
     if (diff.add_sq != SQ_NONE)
-        added.push_back(make_index(perspective, diff.add_sq, diff.add_pc, ksq, opponentHasQueen));
+        added.push_back(make_index(perspective, diff.add_sq, diff.add_pc, ksq));
 }
 
-bool K32Q2::requires_refresh(const DiffType& diff, Color perspective) {
-    if (diff.pc == make_piece(perspective, KING))
-        return true;
+int K32H3::block(const Position& pos, Color perspective) {
+    return block(block_state(pos), perspective);
+}
 
-    Color opponent = ~perspective;
-    if ((diff.remove_sq != SQ_NONE && diff.remove_pc == make_piece(opponent, QUEEN))
-        || (diff.add_sq != SQ_NONE && diff.add_pc == make_piece(opponent, QUEEN)))
-        return true;
+K32H3::BlockState K32H3::block_state(const Position& pos) {
+    return {{pos.count<QUEEN>(WHITE), pos.count<QUEEN>(BLACK)}, popcount(pos.pieces(ROOK, QUEEN))};
+}
 
-    return false;
+bool K32H3::requires_refresh(const DiffType&   diff,
+                             Color             perspective,
+                             const BlockState& before,
+                             const BlockState& after) {
+    return diff.pc == make_piece(perspective, KING)
+        || block(before, perspective) != block(after, perspective);
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

@@ -31,7 +31,7 @@ namespace Stockfish::Eval::NNUE::Features {
 
 class PP_3Wide {
    public:
-    static constexpr u32 HashValue = 0x86f2b1ddu;
+    static constexpr u32 HashValue = 0x5c80fa69u;
 
     static constexpr IndexType PawnIds    = COLOR_NB * 48;
     static constexpr IndexType Dimensions = PawnIds * (PawnIds - 1) / 2;

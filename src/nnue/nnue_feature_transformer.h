@@ -239,6 +239,10 @@ class FeatureTransformer {
         return h;
     }
 
+    const WeightType* psq_weights(int block) const {
+        return &weights[usize(PSQFeatureSet::block_offset(block)) * HalfDimensions];
+    }
+
     // Convert input features
     void transform(const Position&                             pos,
                    AccumulatorStack&                           accumulatorStack,

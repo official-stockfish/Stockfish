@@ -16,20 +16,24 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Definition of input features K32Q2 of NNUE evaluation function
+//Definition of input features K32H3 of NNUE evaluation function
 
-#ifndef NNUE_FEATURES_K32Q2_H_INCLUDED
-#define NNUE_FEATURES_K32Q2_H_INCLUDED
+#ifndef NNUE_FEATURES_K32H3_H_INCLUDED
+#define NNUE_FEATURES_K32H3_H_INCLUDED
 
 #include "../../misc.h"
 #include "../../types.h"
 #include "../nnue_common.h"
 
+namespace Stockfish {
+class Position;
+}
+
 namespace Stockfish::Eval::NNUE::Features {
 
-// Feature K32Q2: Combination of the position of own king (32 buckets), opponent queen presence (2 states),
+// Feature K32H3: Combination of the position of own king (32 buckets), a piece-square block (3 states)
 // and piece-square positions. Position mirrored such that king is always on e..h files.
-class K32Q2 {
+class K32H3 {
 
     // Unique number for each piece type on each square
     enum {
@@ -58,13 +62,37 @@ class K32Q2 {
 
    public:
     // Hash value embedded in the evaluation file
-    static constexpr u32 HashValue = 0x32b5e284u;
+    static constexpr u32 HashValue = 0xab005cefu;
 
-    // Number of feature dimensions (45,056 piece-squares)
-    static constexpr IndexType Dimensions =
-      static_cast<IndexType>(SQUARE_NB) * static_cast<IndexType>(PS_NB);
+    // Piece-square block of a perspective, in order of increasing heavy material:
+    //   0: no rook or queen on the board,
+    //   1: some rook or queen on the board, but the opponent has no queen,
+    //   2: the opponent has a queen.
+    static constexpr int NumBlocks = 3;
 
-#define B(v) (v * 2 * PS_NB)
+    struct BlockState {
+        int queens[COLOR_NB];
+        int rooksAndQueens;
+    };
+
+    static constexpr int block(const BlockState& m, Color perspective) {
+        return m.queens[~perspective] ? 2 : m.rooksAndQueens > 0;
+    }
+    static int        block(const Position& pos, Color perspective);
+    static BlockState block_state(const Position& pos);
+
+    // Number of features per block (22,528 piece-squares)
+    static constexpr IndexType BlockDimensions =
+      static_cast<IndexType>(SQUARE_NB / 2) * static_cast<IndexType>(PS_NB);
+
+    static constexpr IndexType block_offset(int block) {
+        return IndexType(block) * BlockDimensions;
+    }
+
+    // Number of feature dimensions (67,584 piece-squares)
+    static constexpr IndexType Dimensions = NumBlocks * BlockDimensions;
+
+#define B(v) (v * PS_NB)
     // clang-format off
     static constexpr IndexType KingBuckets[SQUARE_NB] = {
         B(28), B(29), B(30), B(31), B(31), B(30), B(29), B(28),
@@ -78,19 +106,6 @@ class K32Q2 {
     };
     // clang-format on
 #undef B
-    // clang-format off
-    // Orient a square according to perspective (rotates by 180 for black)
-    static constexpr IndexType OrientTBL[SQUARE_NB] = {
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1,
-        SQ_H1, SQ_H1, SQ_H1, SQ_H1, SQ_A1, SQ_A1, SQ_A1, SQ_A1 ,
-    };
-    // clang-format on
 
     // Maximum number of simultaneously active features.
     static constexpr IndexType MaxActiveDimensions = 32;
@@ -105,28 +120,26 @@ class K32Q2 {
                               Bitboard                            addedBB,
                               Color                               perspective,
                               Square                              ksq,
-                              bool                                opponentHasQueen,
                               IndexList&                          removed,
                               IndexList&                          added);
 #endif
 
-    // Index of a feature for a given king position and another piece on some square
-    static IndexType
-    make_index(Color perspective, Square s, Piece pc, Square ksq, bool opponentHasQueen);
+    // Index of a feature within its block for a given king position and another piece
+    // on some square
+    static IndexType make_index(Color perspective, Square s, Piece pc, Square ksq);
 
     // Get a list of indices for recently changed features
-    static void append_changed_indices(Color           perspective,
-                                       Square          ksq,
-                                       const DiffType& diff,
-                                       bool            opponentHasQueen,
-                                       IndexList&      removed,
-                                       IndexList&      added);
+    static void append_changed_indices(
+      Color perspective, Square ksq, const DiffType& diff, IndexList& removed, IndexList& added);
 
-    // Returns whether the change stored in this DirtyPiece means
-    // that a full accumulator refresh is required.
-    static bool requires_refresh(const DiffType& diff, Color perspective);
+    // Returns whether the change stored in this DirtyPiece means that a full
+    // accumulator refresh is required
+    static bool requires_refresh(const DiffType&   diff,
+                                 Color             perspective,
+                                 const BlockState& before,
+                                 const BlockState& after);
 };
 
 }  // namespace Stockfish::Eval::NNUE::Features
 
-#endif  // #ifndef NNUE_FEATURES_K32Q2_H_INCLUDED
+#endif  // #ifndef NNUE_FEATURES_K32H3_H_INCLUDED

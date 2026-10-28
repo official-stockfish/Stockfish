@@ -22,7 +22,6 @@
 #include <cassert>
 #include <cstdint>
 
-#include "full_threats.h"
 #include "../../bitboard.h"
 #include "../../misc.h"
 #include "../../position.h"
@@ -48,7 +47,7 @@ static inline __m256i pp_idx_epi16(__m256i a, __m256i b) {
 
 sf_always_inline IndexType PP_3Wide::make_index(
   Color perspective, Color color, Square from, Square to, Color pairedColor, Square ksq) {
-    const i8 orientation   = FullThreats::OrientTBL[ksq] ^ (56 * perspective);
+    const i8 orientation   = OrientTBL[ksq] ^ (56 * perspective);
     unsigned from_oriented = u8(from) ^ orientation;
     unsigned to_oriented   = u8(to) ^ orientation;
 
@@ -109,7 +108,7 @@ void PP_3Wide::append_changed_indices(Color                                    p
         return;
 
 #ifdef USE_AVX512ICL
-    const u8      orientation = u8(FullThreats::OrientTBL[ksq]) ^ u8(56 * perspective);
+    const u8      orientation = OrientTBL[ksq] ^ u8(56 * perspective);
     const __m512i iota        = AllSquares;
     const __m512i adjusted =
       _mm512_sub_epi8(_mm512_xor_si512(iota, _mm512_set1_epi8(orientation)), _mm512_set1_epi8(8));
