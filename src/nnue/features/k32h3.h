@@ -21,6 +21,8 @@
 #ifndef NNUE_FEATURES_K32H3_H_INCLUDED
 #define NNUE_FEATURES_K32H3_H_INCLUDED
 
+#include <array>
+
 #include "../../misc.h"
 #include "../../types.h"
 #include "../nnue_common.h"
@@ -70,14 +72,9 @@ class K32H3 {
     //   2: the opponent has a queen.
     static constexpr int NumBlocks = 3;
 
-    struct BlockState {
-        int queens[COLOR_NB];
-        int rooksAndQueens;
-    };
+    // Block of each perspective
+    using BlockState = std::array<u8, COLOR_NB>;
 
-    static constexpr int block(const BlockState& m, Color perspective) {
-        return m.queens[~perspective] ? 2 : m.rooksAndQueens > 0;
-    }
     static int        block(const Position& pos, Color perspective);
     static BlockState block_state(const Position& pos);
 
@@ -134,10 +131,8 @@ class K32H3 {
 
     // Returns whether the change stored in this DirtyPiece means that a full
     // accumulator refresh is required
-    static bool requires_refresh(const DiffType&   diff,
-                                 Color             perspective,
-                                 const BlockState& before,
-                                 const BlockState& after);
+    static bool
+    requires_refresh(const DiffType& diff, Color perspective, int blockBefore, int blockAfter);
 };
 
 }  // namespace Stockfish::Eval::NNUE::Features
