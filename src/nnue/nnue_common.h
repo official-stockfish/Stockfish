@@ -89,23 +89,6 @@ alignas(CacheLineSize) inline constexpr u8 OrientTBL[SQUARE_NB] = {
 // clang-format on
 
 
-// SIMD width (in bytes)
-#if defined(USE_AVX2)
-constexpr usize SimdWidth = 32;
-
-#elif defined(USE_LASX)
-constexpr usize SimdWidth = 32;
-
-#elif defined(USE_SSE2)
-constexpr usize SimdWidth = 16;
-
-#elif defined(USE_NEON)
-constexpr usize SimdWidth = 16;
-
-#elif defined(USE_LSX)
-constexpr usize SimdWidth = 16;
-#endif
-
 constexpr usize MaxSimdWidth = 32;
 
 // Type of input feature after conversion

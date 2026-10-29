@@ -103,7 +103,7 @@ class ClippedReLU {
         constexpr IndexType Start = NumChunks * 16;
 
     #elif defined(USE_NEON)
-        constexpr IndexType    NumChunks = InputDimensions / (SimdWidth / 2);
+        constexpr IndexType    NumChunks = InputDimensions / 8;
         const SIMD::vec_i8x8_t Zero      = {0};
         const auto             in        = reinterpret_cast<const SIMD::vec_i32x4_t*>(input);
         const auto             out       = reinterpret_cast<SIMD::vec_i8x8_t*>(output);
@@ -115,7 +115,7 @@ class ClippedReLU {
             pack[1]         = vqshrn_n_s32(in[i * 2 + 1], WeightScaleBitsLocal);
             out[i]          = vmax_s8(vqmovn_s16(shifted), Zero);
         }
-        constexpr IndexType Start = NumChunks * (SimdWidth / 2);
+        constexpr IndexType Start = NumChunks * 8;
 
     #elif defined(USE_LASX)
         constexpr IndexType NumChunks = InputDimensions / 32;
