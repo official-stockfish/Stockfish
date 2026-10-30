@@ -19,7 +19,9 @@
 #include "movepick.h"
 
 #include <cassert>
+#include <iterator>
 #include <limits>
+#include <algorithm>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -98,37 +100,24 @@ struct MoveSorter {
 // Sort moves in descending order up to and including a given limit.
 // The order of moves smaller than the limit is left unspecified.
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
-    ExtMove *sortedEnd = begin, *p = begin + 1;
-
-#ifdef USE_AVX512
-    if (begin == end)
+    const ssize_t distance = std::distance(begin, end);
+    if (distance <= 1)
         return;
-
-    MoveSorter sorter(*begin);
-    for (; p < end; ++p)
+    end = std::partition(begin, end, [limit](const ExtMove& m) { return m.value >= limit; });
+#ifdef USE_AVX512
+    for (ssize_t i = 0; i < distance; i += MoveSorter::MAX_ELEMENTS)
     {
-        if (p->value >= limit)
-        {
-            if (sortedEnd - begin + 1 >= MoveSorter::MAX_ELEMENTS)  // sorter full
-                break;
-
+        ExtMove*   b = begin + i;
+        ExtMove*   e = std::min(b + MoveSorter::MAX_ELEMENTS, end);
+        MoveSorter sorter(*b);
+        for (ExtMove* p = b + 1; p < e; ++p)
             sorter.insert(*p);
-            *p = *++sortedEnd;
-        }
+        sorter.write_sorted(b, e - b);
     }
-    sorter.write_sorted(begin, sortedEnd - begin + 1);
-    // Use scalar implementation for any remaining elements
+    if (distance > MoveSorter::MAX_ELEMENTS)
 #endif
-
-    for (; p < end; ++p)
-        if (p->value >= limit)
-        {
-            ExtMove tmp = *p, *q;
-            *p          = *++sortedEnd;
-            for (q = sortedEnd; q != begin && *(q - 1) < tmp; --q)
-                *q = *(q - 1);
-            *q = tmp;
-        }
+        std::stable_sort(begin, end,
+                         [](const ExtMove& a, const ExtMove& b) { return a.value > b.value; });
 }
 
 }  // namespace
