@@ -22,15 +22,13 @@
 
 #include <array>
 
-#include "../../bitboard.h"
+#if defined(USE_AVX512ICL)
+    #include "../../bitboard.h"
+#endif
 #include "../../misc.h"
 #include "../../position.h"
 #include "../../types.h"
 #include "../nnue_common.h"
-
-#if defined(USE_AVX512ICL)
-    #include "../../bitboard.h"
-#endif
 
 namespace Stockfish::Eval::NNUE::Features {
 
@@ -120,19 +118,18 @@ void K32H3::append_changed_indices(
 }
 
 int K32H3::block(const Position& pos, Color perspective) {
-    return block(block_state(pos), perspective);
+    return pos.count<QUEEN>(~perspective) ? 2 : bool(pos.pieces(ROOK, QUEEN));
 }
 
 K32H3::BlockState K32H3::block_state(const Position& pos) {
-    return {{pos.count<QUEEN>(WHITE), pos.count<QUEEN>(BLACK)}, popcount(pos.pieces(ROOK, QUEEN))};
+    return {u8(block(pos, WHITE)), u8(block(pos, BLACK))};
 }
 
-bool K32H3::requires_refresh(const DiffType&   diff,
-                             Color             perspective,
-                             const BlockState& before,
-                             const BlockState& after) {
-    return diff.pc == make_piece(perspective, KING)
-        || block(before, perspective) != block(after, perspective);
+bool K32H3::requires_refresh(const DiffType& diff,
+                             Color           perspective,
+                             int             blockBefore,
+                             int             blockAfter) {
+    return diff.pc == make_piece(perspective, KING) || blockBefore != blockAfter;
 }
 
 }  // namespace Stockfish::Eval::NNUE::Features

@@ -126,11 +126,9 @@ void AccumulatorStack::evaluate_side(Color                     perspective,
     else
     {
         const auto& dirtyPiece = latest().dirtyPiece;
-        const auto  after      = PSQFeatureSet::block_state(pos);
-        const auto& before     = latest().blockBefore;
 
         if (dirtyPiece.pc == make_piece(perspective, KING)
-            && PSQFeatureSet::block(before, perspective) == PSQFeatureSet::block(after, perspective)
+            && latest().blockBefore[perspective] == PSQFeatureSet::block(pos, perspective)
             && accumulators[size - 2].computed[perspective]
             && pos.count<ALL_PIECES>() >= MIN_PC_COUNT_HYBRID
             && ((int(dirtyPiece.from) & 0b100) == (int(dirtyPiece.to) & 0b100))
@@ -147,12 +145,12 @@ void AccumulatorStack::evaluate_side(Color                     perspective,
 }
 
 // Find the earliest usable accumulator, this can either be a computed accumulator or the accumulator
-// state just before a change that requires full refresh.
+// state just after a change that requires full refresh.
 usize AccumulatorStack::find_last_usable_accumulator(Color           perspective,
                                                      const Position& pos) const noexcept {
 
-    // Backtrack psq block changes
-    auto after = PSQFeatureSet::block_state(pos);
+    // All traversed states must use the current block.
+    const int psqBlock = PSQFeatureSet::block(pos, perspective);
 
     for (usize curr_idx = size - 1; curr_idx > 0; curr_idx--)
     {
@@ -160,14 +158,12 @@ usize AccumulatorStack::find_last_usable_accumulator(Color           perspective
             return curr_idx;
 
         const auto& dirtyPiece = accumulators[curr_idx].dirtyPiece;
-        const auto& before     = accumulators[curr_idx].blockBefore;
+        const int   before     = accumulators[curr_idx].blockBefore[perspective];
 
         // Threat feature set refreshes require a king move across the center, i.e.,
         // a subset of halfka refreshes
-        if (PSQFeatureSet::requires_refresh(dirtyPiece, perspective, before, after))
+        if (PSQFeatureSet::requires_refresh(dirtyPiece, perspective, before, psqBlock))
             return curr_idx;
-
-        after = before;
     }
 
     return 0;
@@ -543,11 +539,9 @@ void apply_combined(Color                              perspective,
     const auto& fromAcc = from.accumulation[perspective];
     auto&       toAcc   = to.accumulation[perspective];
 
-    Tile acc;
-
     for (IndexType j = 0; j < Dimensions; increment_index(j))
     {
-        acc = load_tile(j, fromAcc.data());
+        Tile acc = load_tile(j, fromAcc.data());
 
         acc = apply_combined_features<-1, true>(j, acc, psqRemoved, thrRemoved, featureTransformer,
                                                 psqWeights);
@@ -852,11 +846,9 @@ void update_accumulator_hybrid(Color                     perspective,
     const auto& fromAcc = computed.accumulation[perspective];
     auto&       toAcc   = target.accumulation[perspective];
 
-    Tile acc;
-
     for (IndexType j = 0; j < Dimensions; increment_index(j))
     {
-        acc = load_tile(j, newEntry.accumulation.data());
+        Tile acc = load_tile(j, newEntry.accumulation.data());
 
         acc = apply_psq_features<-1>(j, acc, newRemove, psqWeights);
         acc = apply_psq_features<+1>(j, acc, newAdd, psqWeights);
@@ -912,11 +904,9 @@ void update_accumulator_refresh_cache(Color                     perspective,
 
     accumulator.computed[perspective] = true;
 
-    Tile acc;
-
     for (IndexType j = 0; j < Dimensions; increment_index(j))
     {
-        acc = load_tile(j, entry.accumulation.data());
+        Tile acc = load_tile(j, entry.accumulation.data());
 
         acc = apply_psq_features<-1>(j, acc, removed, psqWeights);
         acc = apply_psq_features<+1>(j, acc, added, psqWeights);
