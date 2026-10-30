@@ -21,6 +21,10 @@
 #include <cassert>
 #include <limits>
 
+#if (USE_NEON >= 8)
+    #include <arm_neon.h>
+#endif
+
 #include "bitboard.h"
 #include "misc.h"
 #include "position.h"
@@ -92,6 +96,78 @@ struct MoveSorter {
         write(8, _mm512_setr_epi32(8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31));
     }
 };
+#elif (USE_NEON >= 8)
+// Sorts up to 16 moves, with their values and moves in four registers each.
+// NEON has no expand, so an insertion shifts every register by one lane and
+// selects, lane by lane, the old element, the new one, or the shifted one.
+struct MoveSorter {
+    static constexpr int MAX_ELEMENTS = 16;
+    static constexpr int NumRegs      = MAX_ELEMENTS / 4;
+    int32x4_t            sortedValues[NumRegs];
+    uint32x4_t           sortedMoves[NumRegs];
+
+    explicit MoveSorter(const ExtMove& first) {
+        // Set the uninitialized move values to INT_MIN, so that they sort less than any other move
+        for (int r = 0; r < NumRegs; ++r)
+        {
+            sortedValues[r] = vdupq_n_s32(std::numeric_limits<int>::min());
+            sortedMoves[r]  = vdupq_n_u32(0);
+        }
+        sortedValues[0] = vsetq_lane_s32(first.value, sortedValues[0], 0);
+        sortedMoves[0]  = vsetq_lane_u32(first.raw(), sortedMoves[0], 0);
+    }
+
+    void insert(const ExtMove& m) {
+        assert(m.value != std::numeric_limits<int>::min());
+        const int32x4_t  value = vdupq_n_s32(m.value);
+        const uint32x4_t move  = vdupq_n_u32(m.raw());
+
+        // The previous register's lanes, before this insertion
+        int32x4_t  prevValues = value;
+        uint32x4_t prevMoves  = move;
+        for (int r = 0; r < NumRegs; ++r)
+        {
+            // Each lane's predecessor, and the lanes from the insertion point on and
+            // after it. A lane is after it when its predecessor is from it on.
+            const int32x4_t  shiftedV = vextq_s32(prevValues, sortedValues[r], 3);
+            const uint32x4_t shiftedM = vextq_u32(prevMoves, sortedMoves[r], 3);
+            const uint32x4_t less     = vcltq_s32(sortedValues[r], value);
+            const uint32x4_t afterIns = vcltq_s32(shiftedV, value);
+            prevValues                = sortedValues[r];
+            prevMoves                 = sortedMoves[r];
+            sortedValues[r] =
+              vbslq_s32(less, vbslq_s32(afterIns, shiftedV, value), sortedValues[r]);
+            sortedMoves[r] = vbslq_u32(less, vbslq_u32(afterIns, shiftedM, move), sortedMoves[r]);
+        }
+    }
+
+    void write_sorted(ExtMove* moves, isize count) const {
+        static_assert(sizeof(ExtMove) == 8);
+        assert(count <= MAX_ELEMENTS);
+
+        // Interleave each move with its value to reassemble the ExtMoves, two per
+        // register, and store them a pair or a single move at a time
+        auto* out = reinterpret_cast<u32*>(moves);
+        for (int r = 0; r < NumRegs; ++r)
+        {
+            const uint32x4_t values  = vreinterpretq_u32_s32(sortedValues[r]);
+            const uint32x4_t pairs[] = {vzip1q_u32(sortedMoves[r], values),
+                                        vzip2q_u32(sortedMoves[r], values)};
+            for (int k = 0; k < 2; ++k)
+            {
+                const isize i = 4 * r + 2 * k;
+                if (i + 2 <= count)
+                    vst1q_u32(out + 2 * i, pairs[k]);
+                else
+                {
+                    if (i < count)
+                        vst1_u32(out + 2 * i, vget_low_u32(pairs[k]));
+                    return;
+                }
+            }
+        }
+    }
+};
 #endif
 
 
@@ -100,7 +176,7 @@ struct MoveSorter {
 void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
     ExtMove *sortedEnd = begin, *p = begin + 1;
 
-#ifdef USE_AVX512
+#if defined(USE_AVX512) || (USE_NEON >= 8)
     if (begin == end)
         return;
 
