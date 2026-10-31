@@ -440,8 +440,7 @@ inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
 
 inline void Position::do_move(Move m, StateInfo& newSt) {
     new (&scratchDirties.dirtyThreats) DirtyThreats;
-    new (&scratchDirties.dirtyPawnPairs) DirtyPawnPairs;
-    do_move(m, newSt, gives_check(m), scratchDirties, nullptr);
+    do_move(m, newSt, gives_check(m), scratchDirties);
 }
 
 inline StateInfo* Position::state() const { return st; }
