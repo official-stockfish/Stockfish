@@ -30,6 +30,7 @@
 #define INCBIN_SILENCE_BITCODE_WARNING
 #include "../incbin/incbin.h"
 
+#include "../bitboard.h"
 #include "../evaluate.h"
 #include "../misc.h"
 #include "../position.h"
