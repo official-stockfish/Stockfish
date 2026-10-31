@@ -90,6 +90,8 @@ class Network {
     bool read_parameters(std::istream&, std::string&);
     bool write_parameters(std::ostream&, const std::string&) const;
 
+    int layer_stack(const Position& pos) const;
+
     // Input feature converter
     FeatureTransformer featureTransformer;
 

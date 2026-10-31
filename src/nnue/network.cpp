@@ -138,6 +138,25 @@ bool Network::save(const EvalFile& evalFile, const std::optional<fs::path>& file
     return saved;
 }
 
+int Network::layer_stack(const Position& pos) const {
+    const Color stm    = pos.side_to_move();
+    const int   band   = (pos.count<ALL_PIECES>() - 1) / 4;
+    const int   queens = 2 * bool(pos.pieces(stm, QUEEN)) + bool(pos.pieces(~stm, QUEEN));
+
+    // Pawn layout: 0 if pawns stand on both board halves, 1 if on one half only, 2 if there are no pawns
+    constexpr Bitboard QueenSide = FileABB | FileBBB | FileCBB | FileDBB;
+    const Bitboard     pawns     = pos.pieces(PAWN);
+    const int          layout    = !pawns ? 2 : (pawns & QueenSide) && (pawns & ~QueenSide) ? 0 : 1;
+
+    // Officers are the pieces other than pawns and kings
+    const auto officers = [&](Color c) {
+        return popcount(pos.pieces(c) & ~pos.pieces(PAWN, KING));
+    };
+    const bool many = std::max(officers(WHITE), officers(BLACK)) >= 2;
+
+    return ((band * 4 + queens) * 3 + layout) * 2 + many;
+}
+
 Value Network::evaluate(const Position&    pos,
                         AccumulatorStack&  accumulatorStack,
                         AccumulatorCaches& cache) const {
@@ -150,10 +169,7 @@ Value Network::evaluate(const Position&    pos,
 
     NNZInfo<L1> nnzInfo;
 
-    const int   pcBucket    = (pos.count<ALL_PIECES>() - 1) / 4;
-    const Color stm         = pos.side_to_move();
-    const int   queenBucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
-    const int   bucket      = pcBucket * 4 + queenBucket;
+    const int bucket = layer_stack(pos);
 
     featureTransformer.transform(pos, accumulatorStack, cache, transformedFeatures, nnzInfo);
     const auto positional = network[bucket].propagate(transformedFeatures, nnzInfo);
@@ -214,10 +230,7 @@ NnueEvalTrace Network::trace_evaluate(const Position&    pos,
 
     ASSERT_ALIGNED(transformedFeatures, alignment);
 
-    const int   pcBucket    = (pos.count<ALL_PIECES>() - 1) / 4;
-    const Color stm         = pos.side_to_move();
-    const int   queenBucket = (pos.pieces(stm, QUEEN) ? 2 : 0) | (pos.pieces(~stm, QUEEN) ? 1 : 0);
-    const int   bucket      = pcBucket * 4 + queenBucket;
+    const int bucket = layer_stack(pos);
 
     NnueEvalTrace t{};
     t.correctBucket = bucket;
