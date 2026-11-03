@@ -68,18 +68,18 @@ class FullThreats {
     static void append_changed_indices(Color                   perspective,
                                        Square                  ksq,
                                        const DiffType&         diff,
-                                       IndexList&              removed,
-                                       IndexList&              added,
+                                       IndexList& RESTRICT     removed,
+                                       IndexList& RESTRICT     added,
                                        const ThreatWeightType* prefetchBase   = nullptr,
                                        IndexType               prefetchStride = 0);
 
     static void append_changed_indices_both(Square                  white_ksq,
                                             Square                  black_ksq,
                                             const DiffType&         diff,
-                                            IndexList&              white_removed,
-                                            IndexList&              white_added,
-                                            IndexList&              black_removed,
-                                            IndexList&              black_added,
+                                            IndexList& RESTRICT     white_removed,
+                                            IndexList& RESTRICT     white_added,
+                                            IndexList& RESTRICT     black_removed,
+                                            IndexList& RESTRICT     black_added,
                                             const ThreatWeightType* prefetchBase   = nullptr,
                                             IndexType               prefetchStride = 0);
 };

@@ -215,6 +215,12 @@ class ValueList {
         values_[size_] = value;
         size_ += (value < max);
     }
+    // pushes back u16(value) and increments size_ by bit 17 (value >> 17)
+    void push_back_flagged(u32 value) {
+        assert(size_ < MaxSize);
+        values_[size_] = T(value);
+        size_ += (value >> 17);
+    }
     const T* begin() const { return values_; }
     const T* end() const { return values_ + size_; }
     const T& operator[](int index) const { return values_[index]; }
