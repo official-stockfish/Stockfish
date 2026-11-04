@@ -46,8 +46,7 @@ std::string trace(Position& pos, const Eval::NNUE::Network& network);
 Value evaluate(const NNUE::Network&           network,
                const Position&                pos,
                Eval::NNUE::AccumulatorStack&  accumulators,
-               Eval::NNUE::AccumulatorCaches& caches,
-               int                            optimism);
+               Eval::NNUE::AccumulatorCaches& caches);
 }  // namespace Eval
 
 }  // namespace Stockfish

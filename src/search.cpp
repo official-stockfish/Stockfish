@@ -287,7 +287,6 @@ bool Search::Worker::iterative_deepening() {
     Value       lastBestMoveScore = -VALUE_INFINITE;
 
     Value  alpha, beta, bestValue;
-    Color  us            = rootPos.side_to_move();
     double timeReduction = 1, totBestMoveChanges = 0;
     int    delta, iterIdx                        = 0;
 
@@ -390,10 +389,6 @@ bool Search::Worker::iterative_deepening() {
 
             seekMate = rootMoves[pvIdx].previousScore != -VALUE_INFINITE
                     && std::abs(rootMoves[pvIdx].previousScore) >= seekMateThreshold;
-
-            // Adjust optimism based on root move's averageScore
-            optimism[us]  = 456 * avg / (std::abs(avg) + 85);
-            optimism[~us] = -optimism[us];
 
             // Start with a small aspiration window and, in the case of a fail
             // high/low, enlarge the window progressively.
@@ -1925,8 +1920,7 @@ TimePoint Search::Worker::elapsed() const {
 // Evaluate the current position of the game tree, from the point of view of
 // the side to move.
 Value Search::Worker::evaluate(const Position& pos) {
-    return Eval::evaluate(network[numaAccessToken], pos, accumulatorStack, refreshTable,
-                          optimism[pos.side_to_move()]);
+    return Eval::evaluate(network[numaAccessToken], pos, accumulatorStack, refreshTable);
 }
 
 namespace {
