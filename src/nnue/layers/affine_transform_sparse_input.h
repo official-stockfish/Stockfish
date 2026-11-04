@@ -185,15 +185,15 @@ class AffineTransformSparseInput {
 
         const outvec_t* biasvec = reinterpret_cast<const outvec_t*>(biases);
         outvec_t        acc[NumRegs];
-        for (IndexType k = 0; k < NumAccums; ++k)
-            acc[k] = biasvec[k];
+        UNROLLED_FOR(IndexType k = 0; k < NumAccums; ++k)
+        acc[k] = biasvec[k];
 
     #if defined(USE_AVXVNNI)
-        for (IndexType k = NumAccums; k < NumRegs; ++k)
-            acc[k] = vec_set_32(0);
+        UNROLLED_FOR(IndexType k = NumAccums; k < NumRegs; ++k)
+        acc[k] = vec_set_32(0);
     #elif defined(USE_NEON_DOTPROD)
-        for (IndexType k = NumAccums; k < NumRegs; ++k)
-            acc[k] = vdupq_n_s32(0);
+        UNROLLED_FOR(IndexType k = NumAccums; k < NumRegs; ++k)
+        acc[k] = vdupq_n_s32(0);
     #endif
 
         // convince GCC to not do weird pointer arithmetic in the following loops
@@ -220,8 +220,7 @@ class AffineTransformSparseInput {
               reinterpret_cast<const invec_t*>(&weights_cp[i1 * OutputDimensions * ChunkSize]);
             const auto col2 =
               reinterpret_cast<const invec_t*>(&weights_cp[i2 * OutputDimensions * ChunkSize]);
-            for (IndexType k = 0; k < NumAccums; ++k)
-            {
+            UNROLLED_FOR(IndexType k = 0; k < NumAccums; ++k) {
                 vec_add_dpbusd_32(acc[k], in0, col0[k]);
                 vec_add_dpbusd_32(acc[k + NumAccums], in1, col1[k]);
                 vec_add_dpbusd_32(acc[k + 2 * NumAccums], in2, col2[k]);
@@ -238,8 +237,8 @@ class AffineTransformSparseInput {
             const invec_t in = vec_load_32(input + i * sizeof(i32));
             const auto    col =
               reinterpret_cast<const invec_t*>(&weights_cp[i * OutputDimensions * ChunkSize]);
-            for (IndexType k = 0; k < NumAccums; ++k)
-                vec_add_dpbusd_32(acc[k], in, col[k]);
+            UNROLLED_FOR(IndexType k = 0; k < NumAccums; ++k)
+            vec_add_dpbusd_32(acc[k], in, col[k]);
         }
     #else
         static_assert(InputDimensions % 256 == 0);
@@ -286,8 +285,7 @@ class AffineTransformSparseInput {
                 const auto    col1 = reinterpret_cast<const invec_t*>(
                   &weights_base[i1 * OutputDimensions * ChunkSize]);
 
-                for (IndexType l = 0; l < NumAccums; ++l)
-                {
+                UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l) {
                     vec_add_dpbusd_32(acc[l], in0, col0[l]);
                     vec_add_dpbusd_32(acc[l + NumAccums], in1, col1[l]);
                 }
@@ -301,8 +299,8 @@ class AffineTransformSparseInput {
                     const invec_t in0  = vec_load_32(base_addr + i0 * sizeof(i32));
                     const auto    col0 = reinterpret_cast<const invec_t*>(
                       &weights_base[i0 * OutputDimensions * ChunkSize]);
-                    for (IndexType l = 0; l < NumAccums; ++l)
-                        vec_add_dpbusd_32(acc[l], in0, col0[l]);
+                    UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l)
+                    vec_add_dpbusd_32(acc[l], in0, col0[l]);
                     break;
                 }
 
@@ -315,8 +313,7 @@ class AffineTransformSparseInput {
                       &weights_base[i0 * OutputDimensions * ChunkSize]);
                     const auto col1 = reinterpret_cast<const invec_t*>(
                       &weights_base[i1 * OutputDimensions * ChunkSize]);
-                    for (IndexType l = 0; l < NumAccums; ++l)
-                    {
+                    UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l) {
                         vec_add_dpbusd_32(acc[l], in0, col0[l]);
                         vec_add_dpbusd_32(acc[l + NumAccums], in1, col1[l]);
                     }
@@ -333,8 +330,7 @@ class AffineTransformSparseInput {
                   &weights_base[i1 * OutputDimensions * ChunkSize]);
                 const auto col2 = reinterpret_cast<const invec_t*>(
                   &weights_base[i2 * OutputDimensions * ChunkSize]);
-                for (IndexType l = 0; l < NumAccums; ++l)
-                {
+                UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l) {
                     vec_add_dpbusd_32(acc[l], in0, col0[l]);
                     vec_add_dpbusd_32(acc[l + NumAccums], in1, col1[l]);
                     vec_add_dpbusd_32(acc[l + 2 * NumAccums], in2, col2[l]);
@@ -354,23 +350,23 @@ class AffineTransformSparseInput {
             #endif
 
                 const invec_t in = vec_load_32(input_addr);
-                for (IndexType l = 0; l < NumAccums; ++l)
-                    vec_add_dpbusd_32(acc[l], in, col[l]);
+                UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l)
+                vec_add_dpbusd_32(acc[l], in, col[l]);
             }
         #endif
         }
 
         #if defined(USE_AVXVNNI)
-        for (IndexType l = 0; l < NumAccums; ++l)
-            acc[l] = vec_add_32(acc[l], acc[l + NumAccums]);
+        UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l)
+        acc[l] = vec_add_32(acc[l], acc[l + NumAccums]);
         #elif defined(USE_NEON_DOTPROD)
-        for (IndexType l = 0; l < NumAccums; ++l)
-            acc[l] = vaddq_s32(vaddq_s32(acc[l], acc[l + NumAccums]), acc[l + 2 * NumAccums]);
+        UNROLLED_FOR(IndexType l = 0; l < NumAccums; ++l)
+        acc[l] = vaddq_s32(vaddq_s32(acc[l], acc[l + NumAccums]), acc[l + 2 * NumAccums]);
         #endif
     #endif
         outvec_t* outptr = reinterpret_cast<outvec_t*>(output);
-        for (IndexType k = 0; k < NumAccums; ++k)
-            outptr[k] = acc[k];
+        UNROLLED_FOR(IndexType k = 0; k < NumAccums; ++k)
+        outptr[k] = acc[k];
 
     #undef vec_set_32
     #undef vec_load_32
