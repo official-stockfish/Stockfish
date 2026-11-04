@@ -26,6 +26,7 @@ BreakStringLiterals: false
 ColumnLimit: 100
 ContinuationIndentWidth: 2
 Cpp11BracedListStyle: true
+ForEachMacros: [UNROLLED_FOR]
 IndentGotoLabels: false
 IndentPPDirectives: BeforeHash
 IndentWidth: 4
