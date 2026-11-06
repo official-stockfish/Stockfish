@@ -107,11 +107,11 @@ constexpr ThreatLUTs threat_luts = init_threat_luts();
 // Index of a feature for a given king position and another piece on some square
 sf_always_inline IndexType FullThreats::make_index(
   Color perspective, Piece attacker, Square from, Square to, Piece attacked, Square ksq) {
-    const i8 orientation   = OrientTBL[ksq] ^ (56 * perspective);
+    const u8 orientation   = OrientTBL[ksq] ^ (56 * perspective);
     unsigned from_oriented = u8(from) ^ orientation;
     unsigned to_oriented   = u8(to) ^ orientation;
 
-    i8       swap              = 8 * perspective;
+    const u8 swap              = 8 * perspective;
     unsigned attacker_oriented = attacker ^ swap;
     unsigned attacked_oriented = attacked ^ swap;
 

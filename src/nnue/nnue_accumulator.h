@@ -27,7 +27,6 @@
 
 #include "../types.h"
 #include "../misc.h"
-#include "features/k32h3.h"
 #include "nnue_architecture.h"
 #include "nnue_common.h"
 
@@ -84,7 +83,7 @@ struct AccumulatorCaches {
     auto&       operator[](int psqBlock) { return entries[psqBlock]; }
     const auto& operator[](int psqBlock) const { return entries[psqBlock]; }
 
-    std::array<std::array<std::array<Entry, COLOR_NB>, SQUARE_NB>, Features::K32H3::NumBlocks>
+    std::array<std::array<std::array<Entry, COLOR_NB>, SQUARE_NB>, PSQFeatureSet::NumBlocks>
       entries;
 };
 
