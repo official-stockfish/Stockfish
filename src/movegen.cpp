@@ -26,8 +26,6 @@
 #include "position.h"
 
 #if defined(USE_AVX512ICL)
-    #include <array>
-    #include <algorithm>
     #include <immintrin.h>
 #endif
 
@@ -226,12 +224,21 @@ Move* generate_moves(const Position& pos, Move* moveList, Bitboard target, Color
     return moveList;
 }
 
+}  // namespace
 
+
+// <CAPTURES>     Generates all legal captures plus queen promotions
+// <QUIETS>       Generates all legal non-captures and underpromotions
+// <EVASIONS>     Generates all legal check evasions
+//
+// Returns a pointer to the end of the move list.
 template<GenType Type>
-Move* generate_all(const Position& pos, Move* moveList, Color us) {
+Move* generate(const Position& pos, Move* moveList) {
 
-    static_assert(Type != ALL, "Unsupported type in generate_all()");
+    static_assert(Type != ALL, "Unsupported type in generate()");
+    assert((Type == EVASIONS) == bool(pos.checkers()));
 
+    const Color  us  = pos.side_to_move();
     const Square ksq = pos.square<KING>(us);
     Bitboard     target;
 
@@ -262,36 +269,19 @@ Move* generate_all(const Position& pos, Move* moveList, Color us) {
     {
         for (CastlingRights cr : {us & KING_SIDE, us & QUEEN_SIDE})
         {
+            if (!pos.can_castle(cr) || pos.castling_impeded(cr))
+                continue;
+
             Square rookSquare = pos.castling_rook_square(cr);
             Square to         = relative_square(us, rookSquare > ksq ? SQ_G1 : SQ_C1);
 
-            if (!pos.castling_impeded(cr) && pos.can_castle(cr)
-                && !(Attacks::between_bb(ksq, to) & pos.threats_by(ALL_PIECES))
+            if (!(Attacks::between_bb(ksq, to) & pos.threats_by(ALL_PIECES))
                 && !(pos.blockers_for_king(us) & rookSquare))
                 *moveList++ = Move::make<CASTLING>(ksq, rookSquare);
         }
     }
 
     return moveList;
-}
-
-}  // namespace
-
-
-// <CAPTURES>     Generates all legal captures plus queen promotions
-// <QUIETS>       Generates all legal non-captures and underpromotions
-// <EVASIONS>     Generates all legal check evasions
-//
-// Returns a pointer to the end of the move list.
-template<GenType Type>
-Move* generate(const Position& pos, Move* moveList) {
-
-    static_assert(Type != ALL, "Unsupported type in generate()");
-    assert((Type == EVASIONS) == bool(pos.checkers()));
-
-    Color us = pos.side_to_move();
-
-    return generate_all<Type>(pos, moveList, us);
 }
 
 // Explicit template instantiations

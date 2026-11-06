@@ -349,9 +349,7 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
                     break;
                 }
                 else if (pc == rook && rsq == SQ_NONE)
-                {
                     rsq = sq;
-                }
             }
         }
         else if (token >= 'A' && token <= 'H')
@@ -361,18 +359,13 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
                 rsq = rsqCandidate;
 
             // If the castling rights are available the king must always be between files 2 and 7 inclusive.
-            Square sq = relative_square(c, SQ_B1);
-            for (int i = 0; i < 6; ++i, ++sq)
-            {
-                if (piece_on(sq) == king)
-                    ksq = sq;
-            }
+            Square sq = square<KING>(c);
+            if (relative_rank(c, sq) == RANK_1 && file_of(sq) >= FILE_B && file_of(sq) <= FILE_G)
+                ksq = sq;
         }
         else
-        {
             return PositionSetError(std::string("Invalid FEN. Expected castling rights. Got: ")
                                     + std::string(1, token));
-        }
 
         // Only apply castling rights if they can be valid.
         if (ksq != SQ_NONE && rsq != SQ_NONE)
@@ -381,8 +374,8 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
 
     // 4. En passant square.
     // Ignore if square is invalid or not on side to move relative rank 6.
-    bool          enpassant = false, legalEP = false;
-    unsigned char col = '-', row;
+    bool          legalEP = false;
+    unsigned char col     = '-', row;
     ss >> col;
     if (col != '-')
     {
@@ -401,19 +394,20 @@ Position::set(const string& fenStr, bool isChess960, StateInfo* si) {
             // a) side to move have a pawn threatening epSquare
             // b) there is an enemy pawn in front of epSquare
             // c) there is no piece on epSquare or behind epSquare
-            enpassant = pawns && target
-                     && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
+            const bool enpassant =
+              pawns && target
+              && !(pieces() & (st->epSquare | (st->epSquare + pawn_push(sideToMove))));
 
             // If no pawn can execute the en passant capture without leaving the king in check, don't record the epSquare
-            while (pawns)
-                legalEP |= !(attackers_to(square<KING>(sideToMove), occ ^ pop_lsb(pawns))
-                             & pieces(~sideToMove) & ~target);
+            while (enpassant && pawns && !legalEP)
+                legalEP = !(attackers_to(square<KING>(sideToMove), occ ^ pop_lsb(pawns))
+                            & pieces(~sideToMove) & ~target);
         }
         else
             return PositionSetError("Invalid FEN. Invalid en-passant square.");
     }
 
-    if (!enpassant || !legalEP)
+    if (!legalEP)
         st->epSquare = SQ_NONE;
 
     // 5-6. Halfmove clock and fullmove number
@@ -985,9 +979,7 @@ void Position::do_move(
     // Move the piece. The tricky Chess960 castling is handled earlier
     if (m.type_of() != CASTLING)
     {
-        Piece toPc = pc;
-        if (m.type_of() == PROMOTION)
-            toPc = make_piece(us, m.promotion_type());
+        const Piece toPc = m.type_of() == PROMOTION ? make_piece(us, m.promotion_type()) : pc;
 
         if (captured && m.type_of() != EN_PASSANT)
         {
@@ -1272,13 +1264,13 @@ Key Position::prefetch_key(Move m) const {
 // Helper used to do/undo a castling move. This is a bit
 // tricky in Chess960 where from/to squares can overlap.
 template<bool Do>
-void Position::do_castling(Color               us,
-                           Square              from,
-                           Square&             to,
-                           Square&             rfrom,
-                           Square&             rto,
-                           DirtyThreats* const dts,
-                           DirtyPiece* const   dp) {
+void Position::do_castling(Color                              us,
+                           Square                             from,
+                           Square&                            to,
+                           Square&                            rfrom,
+                           Square&                            rto,
+                           DirtyThreats* const                dts,
+                           [[maybe_unused]] DirtyPiece* const dp) {
 
     bool kingSide = to > from;
     rfrom         = to;  // Castling is encoded as "king captures friendly rook"
@@ -1287,7 +1279,7 @@ void Position::do_castling(Color               us,
 
     assert(!Do || dp);
 
-    if (Do)
+    if constexpr (Do)
     {
         dp->to        = to;
         dp->remove_pc = dp->add_pc = make_piece(us, ROOK);
@@ -1310,7 +1302,8 @@ void Position::do_null_move(StateInfo& newSt) {
     assert(!checkers());
     assert(&newSt != st);
 
-    std::memcpy(&newSt, st, sizeof(StateInfo));
+    // Remaining fields are recomputed, invalidated or overwritten below.
+    std::memcpy(&newSt, st, offsetof(StateInfo, blockersForKing));
 
     newSt.previous = st;
     st             = &newSt;
@@ -1516,16 +1509,10 @@ bool Position::upcoming_repetition(int ply) const {
             Square s1   = move.from_sq();
             Square s2   = move.to_sq();
 
-            if (!((between_bb(s1, s2) ^ s2) & pieces()))
-            {
-                if (ply > i)
-                    return true;
-
-                // For nodes before or at the root, check that the move is a
-                // repetition rather than a move to the current position.
-                if (stp->repetition)
-                    return true;
-            }
+            // For nodes before or at the root, check that the move is a
+            // repetition rather than a move to the current position.
+            if (!((between_bb(s1, s2) ^ s2) & pieces()) && (ply > i || stp->repetition))
+                return true;
         }
     }
     return false;
@@ -1609,8 +1596,8 @@ bool Position::pos_is_ok() const {
         assert(0 && "pos_is_ok: Bitboards");
 
     for (PieceType p1 = PAWN; p1 <= KING; ++p1)
-        for (PieceType p2 = PAWN; p2 <= KING; ++p2)
-            if (p1 != p2 && (pieces(p1) & pieces(p2)))
+        for (PieceType p2 = PieceType(p1 + 1); p2 <= KING; ++p2)
+            if (pieces(p1) & pieces(p2))
                 assert(0 && "pos_is_ok: Bitboards");
 
     for (Piece pc : Pieces)

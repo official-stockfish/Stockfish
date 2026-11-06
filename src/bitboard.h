@@ -98,7 +98,7 @@ constexpr Bitboard file_bb(File f) { return FileABB << f; }
 
 constexpr Bitboard file_bb(Square s) { return file_bb(file_of(s)); }
 
-// Moves a bitboard one or two steps as specified by the direction D
+// Moves a bitboard one or two steps as specified by dir
 inline constexpr Bitboard shift(Bitboard b, Direction dir) {
     return dir == NORTH         ? b << 8
          : dir == SOUTH         ? b >> 8
@@ -207,11 +207,9 @@ inline Square lsb(Bitboard b) {
         _BitScanForward(&idx, i32(b));
         return Square(idx);
     }
-    else
-    {
-        _BitScanForward(&idx, i32(b >> 32));
-        return Square(idx + 32);
-    }
+
+    _BitScanForward(&idx, i32(b >> 32));
+    return Square(idx + 32);
     #endif
 #else  // Compiler is neither GCC nor MSVC compatible
     #error "Compiler not supported."
@@ -242,11 +240,9 @@ inline Square msb(Bitboard b) {
         _BitScanReverse(&idx, i32(b >> 32));
         return Square(idx + 32);
     }
-    else
-    {
-        _BitScanReverse(&idx, i32(b));
-        return Square(idx);
-    }
+
+    _BitScanReverse(&idx, i32(b));
+    return Square(idx);
     #endif
 #else  // Compiler is neither GCC nor MSVC compatible
     #error "Compiler not supported."
@@ -255,7 +251,7 @@ inline Square msb(Bitboard b) {
 
 // Returns the bitboard of the least significant
 // square of a non-zero bitboard. It is equivalent to square_bb(lsb(bb)).
-inline Bitboard least_significant_square_bb(Bitboard b) {
+constexpr Bitboard least_significant_square_bb(Bitboard b) {
     assert(b);
     return b & -b;
 }

@@ -93,10 +93,9 @@ using AtomicStats = MultiArray<StatsEntry<T, D, true>, Sizes...>;
 // the per-thread allocation count of T.
 template<typename T, int SizeMultiplier>
 struct DynStats {
-    explicit DynStats(usize s) {
-        size = s * SizeMultiplier;
-        data = make_unique_large_page<T[]>(size);
-    }
+    explicit DynStats(usize s) :
+        size(s * SizeMultiplier),
+        data(make_unique_large_page<T[]>(size)) {}
     // Sets all values in the range to 0
     void clear_range(int value, usize threadIdx, usize numaTotal) {
         usize start = u64(threadIdx) * size / numaTotal;
@@ -109,11 +108,11 @@ struct DynStats {
     usize get_size() const { return size; }
     T&    operator[](usize index) {
         assert(index < size);
-        return data.get()[index];
+        return data[index];
     }
     const T& operator[](usize index) const {
         assert(index < size);
-        return data.get()[index];
+        return data[index];
     }
 
    private:
