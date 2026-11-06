@@ -199,10 +199,8 @@ void ThreadPool::set(const NumaConfig&                           numaConfig,
         if (boundThreadToNumaNode.empty())
             counts[0] = requested;  // Pretend all threads are part of numa node 0
         else
-        {
             for (usize i = 0; i < boundThreadToNumaNode.size(); ++i)
                 counts[boundThreadToNumaNode[i]]++;
-        }
 
         sharedState.sharedHistories.clear();
         for (auto pair : counts)

@@ -147,9 +147,7 @@ struct TempRoot {
             auto proposed = std::string("/tmp/stockfish-") + std::to_string(getuid());
 
             if (mkdir(proposed.c_str(), 0700) == 0)
-            {
                 return {{proposed}};
-            }
 
             if (errno == EEXIST)
             {
@@ -157,9 +155,7 @@ struct TempRoot {
                 struct stat st;
                 if (lstat(proposed.c_str(), &st) == 0 && S_ISDIR(st.st_mode)
                     && st.st_uid == getuid() && (st.st_mode & 07777) == 0700)
-                {
                     return {{proposed}};
-                }
             }
 
             return std::nullopt;
@@ -376,10 +372,8 @@ class SharedMemory {
             }
         }
         else if (errno == ECONNREFUSED || errno == ENOENT)
-        {
             // Failed to connect, clean up dead peer
             unlink(their_path.c_str());
-        }
 
         return {};
     }
@@ -573,18 +567,14 @@ class SharedMemory {
             unlink(socket_path_.c_str());
             if (bind(server_fd.get(), reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1
                 || listen(server_fd.get(), 5) == -1)
-            {
                 return false;
-            }
 
             // Don't release the init lock until we've actually made a socket that
             // other fishes can use.
             server_thread_ = make_server_thread(std::move(memfd), std::move(shutdown_receiver),
                                                 std::move(server_fd));
             if (!server_thread_.joinable())
-            {
                 return false;
-            }
         }
 
         return true;

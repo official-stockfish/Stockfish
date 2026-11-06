@@ -213,10 +213,8 @@ inline WindowsAffinity get_process_affinity() {
                     const usize procGroupIndex = groupAffinities[i].Group;
 
                     for (usize j = 0; j < WIN_PROCESSOR_GROUP_SIZE; ++j)
-                    {
                         if (groupAffinities[i].Mask & (KAFFINITY(1) << j))
                             cpus.insert(procGroupIndex * WIN_PROCESSOR_GROUP_SIZE + j);
-                    }
                 }
 
                 affinity.newApi = std::move(cpus);
@@ -268,10 +266,8 @@ inline WindowsAffinity get_process_affinity() {
 
             const u64 mask = static_cast<u64>(proc);
             for (usize j = 0; j < WIN_PROCESSOR_GROUP_SIZE; ++j)
-            {
                 if (mask & (KAFFINITY(1) << j))
                     cpus.insert(procGroupIndex * WIN_PROCESSOR_GROUP_SIZE + j);
-            }
 
             affinity.oldApi = std::move(cpus);
         }
@@ -342,10 +338,8 @@ inline WindowsAffinity get_process_affinity() {
                         isAffinityFull = false;
 
                     for (usize j = 0; j < WIN_PROCESSOR_GROUP_SIZE; ++j)
-                    {
                         if (procCombined & (KAFFINITY(1) << j))
                             cpus.insert(procGroupIndex * WIN_PROCESSOR_GROUP_SIZE + j);
-                    }
                 }
 
                 // We have to detect the case where the affinity was not set,
@@ -607,31 +601,29 @@ class NumaConfig {
         //     be scheduled to processors on any other group.
         //
         // used to be guarded by if (STARTUP_USE_OLD_AFFINITY_API)
+        NumaConfig splitCfg = empty();
+
+        NumaIndex splitNodeIndex = 0;
+        for (const auto& cpus : cfg.nodes)
         {
-            NumaConfig splitCfg = empty();
+            if (cpus.empty())
+                continue;
 
-            NumaIndex splitNodeIndex = 0;
-            for (const auto& cpus : cfg.nodes)
+            usize lastProcGroupIndex = *(cpus.begin()) / WIN_PROCESSOR_GROUP_SIZE;
+            for (CpuIndex c : cpus)
             {
-                if (cpus.empty())
-                    continue;
-
-                usize lastProcGroupIndex = *(cpus.begin()) / WIN_PROCESSOR_GROUP_SIZE;
-                for (CpuIndex c : cpus)
+                const usize procGroupIndex = c / WIN_PROCESSOR_GROUP_SIZE;
+                if (procGroupIndex != lastProcGroupIndex)
                 {
-                    const usize procGroupIndex = c / WIN_PROCESSOR_GROUP_SIZE;
-                    if (procGroupIndex != lastProcGroupIndex)
-                    {
-                        splitNodeIndex += 1;
-                        lastProcGroupIndex = procGroupIndex;
-                    }
-                    splitCfg.add_cpu_to_node(splitNodeIndex, c);
+                    splitNodeIndex += 1;
+                    lastProcGroupIndex = procGroupIndex;
                 }
-                splitNodeIndex += 1;
+                splitCfg.add_cpu_to_node(splitNodeIndex, c);
             }
-
-            cfg = std::move(splitCfg);
+            splitNodeIndex += 1;
         }
+
+        cfg = std::move(splitCfg);
     #endif
 
 #endif
@@ -662,10 +654,8 @@ class NumaConfig {
             if (!indices.empty())
             {
                 for (auto idx : indices)
-                {
                     if (!cfg.add_cpu_to_node(n, CpuIndex(idx)))
                         return std::nullopt;
-                }
 
                 n += 1;
             }
@@ -1049,10 +1039,8 @@ class NumaConfig {
                 auto cfirst = str_to_size_t(std::string(parts[0]));
                 auto clast  = str_to_size_t(std::string(parts[1]));
                 if (cfirst.has_value() && clast.has_value() && *clast - *cfirst < MaxIndices)
-                {
                     for (usize c = *cfirst; c <= *clast; ++c)
                         indices.emplace_back(c);
-                }
             }
         }
 
@@ -1106,10 +1094,8 @@ class NumaConfig {
                 {
                     remove_whitespace(*cpuIdsStr);
                     for (usize c : indices_from_shortened_string(*cpuIdsStr))
-                    {
                         if (is_cpu_allowed(c))
                             cfg.add_cpu_to_node(n, c);
-                    }
                 }
             }
         }
@@ -1139,9 +1125,7 @@ class NumaConfig {
                                  + static_cast<CpuIndex>(number);
                 if (status != 0 && nodeNumber != std::numeric_limits<USHORT>::max()
                     && is_cpu_allowed(c))
-                {
                     cfg.add_cpu_to_node(nodeNumber, c);
-                }
             }
         }
 
