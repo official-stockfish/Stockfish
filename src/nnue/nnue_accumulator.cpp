@@ -345,6 +345,19 @@ sf_always_inline Tile apply([[maybe_unused]] IndexType j, Tile acc, const i16* d
     return acc;
 }
 
+    #if defined(USE_PAIRED_WIDENING_ADD)
+// The tile loops below walk all changed weight rows together, one tile at a time,
+// and the hardware prefetcher doesn't keep up with that many rows. Prefetch the
+// next tile of a row while its current tile is being added. Rows of only two
+// tiles (AVX-512) get no lead time from this and are faster without it.
+sf_always_inline void prefetch_next_tile(IndexType j, const i8* data) {
+    if constexpr (Dimensions / Tiling::TileHeight > 2)
+        if (j + Tiling::TileHeight < Dimensions)
+            for (IndexType k = 0; k < Tiling::TileHeight; k += CacheLineSize)
+                prefetch(data + Tiling::TileHeight + k);
+}
+    #endif
+
 template<int sign>
 sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile acc, const i8* data) {
     static_assert(sign == 1 || sign == -1);
@@ -381,6 +394,7 @@ sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile ac
     }
     #elif defined(USE_PAIRED_WIDENING_ADD)
     static_assert(Tiling::NumRegs % 2 == 0);
+    prefetch_next_tile(j, data);
     const vec_t zero = vec_zero();
         #if defined(__clang__)
             #pragma clang loop unroll(full)
@@ -416,9 +430,11 @@ sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile ac
     #if defined(USE_PAIRED_WIDENING_ADD)
 
 template<int sign>
-sf_always_inline Tile apply_feature_pair(Tile acc, const i8* data0, const i8* data1) {
+sf_always_inline Tile apply_feature_pair(IndexType j, Tile acc, const i8* data0, const i8* data1) {
     static_assert(sign == 1 || sign == -1);
     static_assert(Tiling::NumRegs % 2 == 0);
+    prefetch_next_tile(j, data0);
+    prefetch_next_tile(j, data1);
     const vec_t ones = vec_set_8(1);
         #if defined(__clang__)
             #pragma clang loop unroll(full)
@@ -460,7 +476,7 @@ apply_features(IndexType j, Tile acc, const u16* indices, int count, const i8* w
 #if defined(VECTOR) || defined(USE_RVV)
     #if defined(USE_PAIRED_WIDENING_ADD)
         if (count == 2)
-            return apply_feature_pair<sign>(acc, &weights[usize(indices[0]) * Dimensions],
+            return apply_feature_pair<sign>(j, acc, &weights[usize(indices[0]) * Dimensions],
                                             &weights[usize(indices[1]) * Dimensions]);
     #endif
         if (count > 0)
@@ -474,7 +490,7 @@ apply_features(IndexType j, Tile acc, const u16* indices, int count, const i8* w
     int i = 0;
 #if defined(USE_PAIRED_WIDENING_ADD)
     for (; i + 1 < count; i += 2)
-        acc = apply_feature_pair<sign>(acc, &weights[usize(indices[i]) * Dimensions],
+        acc = apply_feature_pair<sign>(j, acc, &weights[usize(indices[i]) * Dimensions],
                                        &weights[usize(indices[i + 1]) * Dimensions]);
 #endif
     for (; i < count; ++i)
@@ -524,7 +540,7 @@ sf_always_inline Tile apply_combined_features(IndexType                         
     acc = apply_features<sign, Incremental>(j, acc, psq.begin(), psqCount, psqWeights);
 #if defined(USE_PAIRED_WIDENING_ADD)
     if (thrBegin)
-        acc = apply_feature_pair<sign>(acc, &psqWeights[usize(psq[psqCount]) * Dimensions],
+        acc = apply_feature_pair<sign>(j, acc, &psqWeights[usize(psq[psqCount]) * Dimensions],
                                        &thrWeights[usize(thr[0]) * Dimensions]);
 #endif
     return apply_features<sign>(j, acc, thr.begin() + thrBegin, thr.ssize() - thrBegin, thrWeights);
