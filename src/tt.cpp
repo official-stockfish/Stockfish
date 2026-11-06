@@ -35,9 +35,8 @@
 namespace Stockfish {
 
 
-// TTEntry struct is the 10 bytes transposition table entry, defined as:
+// TTEntry struct is the 8 bytes transposition table entry, defined as:
 //
-// key        16 bit
 // depth       8 bit
 // pv node     1 bit
 // bound type  2 bit
@@ -46,8 +45,7 @@ namespace Stockfish {
 // value      16 bit
 // evaluation 16 bit
 //
-// These fields are in the same order as accessed by TT::probe(), since memory
-// is fastest sequentially. The store order in save() matches this order.
+// The 21-bit keys are packed separately in Cluster::keys.
 //
 // We use `bool(depth8)` as the cheap internal occupancy check, corresponding
 // to `depth == DEPTH_NONE` externally, so we offset the internal depth by DEPTH_NONE.
@@ -99,6 +97,7 @@ struct TTEntry {
 
 static constexpr int ClusterSize = 3;
 static constexpr int KeyBits     = 21;
+static constexpr u64 KeyMask     = (1ULL << KeyBits) - 1;
 
 struct Cluster {
     // keys contains the low 21 bits of the Zobrist keys of the 3 TT entries in this cluster,
@@ -112,29 +111,27 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 // Populates the TTEntry and its key with a new node's data, possibly overwriting
 // an old position. The update is non-atomic and can be racy. We convert external
 // types to internal bitfields.
-constexpr u64 MASK21 = (1ULL << KeyBits) - 1;
-void          TTWriter::write(
+void TTWriter::write(
   Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, u8 curr_generation) {
 
-    u64        keys  = cluster->keys;
-    const auto key21 = keys >> KeyBits * index & MASK21;
-    auto&      entry = cluster->entry[index];
+    const int shift   = KeyBits * index;
+    const u64 keys    = cluster->keys;
+    const u64 keyDiff = ((keys >> shift) ^ k) & KeyMask;
+    auto&     entry   = cluster->entry[index];
 
     // Preserve the old ttmove if we don't have a new one
-    if (m || (k & MASK21) != key21)
+    if (m || keyDiff)
         entry.move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || (k & MASK21) != key21 || d - DEPTH_NONE + 2 * pv > entry.depth8 - 4
+    if (b == BOUND_EXACT || keyDiff || d - DEPTH_NONE + 2 * pv > entry.depth8 - 4
         || entry.relative_age(curr_generation))
     {
         assert(d > DEPTH_NONE);
         assert(d - DEPTH_NONE < 256);
         assert(curr_generation <= GENERATION_MASK);  // TT::new_search() plays nice
 
-        keys &= ~(MASK21 << (KeyBits * index));
-        keys |= (k & MASK21) << (KeyBits * index);
-        cluster->keys   = keys;
+        cluster->keys   = keys ^ (keyDiff << shift);
         entry.depth8    = u8(d - DEPTH_NONE);
         entry.genBound8 = u8(curr_generation | b << BOUND_SHIFT | u8(pv) << PV_SHIFT);
         entry.value16   = i16(v);
@@ -272,31 +269,38 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 
     Cluster* const cluster = get_cluster(key);
     auto&          tte     = cluster->entry;
-    const u64      key21   = key & MASK21;  // Use the low 21 bits as key inside the cluster
+    const u64      key21   = key & KeyMask;  // Use the low 21 bits as key inside the cluster
 
     constexpr u64 KeyLsb  = 1ULL | (1ULL << KeyBits) | (1ULL << 2 * KeyBits);
-    constexpr u64 KeyMsb  = KeyLsb << 20;
-    u64           keys    = cluster->keys;
-    const u64     keyXors = (keys ^ (KeyLsb * key21));
-    // this bit twiddling trick will produce a one in the first (=least significant) bit of
+    constexpr u64 KeyMsb  = KeyLsb << (KeyBits - 1);
+    const u64     keys    = cluster->keys;
+    const u64     keyXors = keys ^ (KeyLsb * key21);
+    // This bit twiddling trick will produce a one in the last (=most significant) bit of
     // the first 21bit block matching key21. The bits before that first matching block will
     // be all zeros, but after the first matching block there could be garbage.
     const u64 matches = (keyXors - KeyLsb) & ~keyXors & KeyMsb;
 
     if (matches)
     {
-        const int i = int(lsb(matches)) / KeyBits;
+        static_assert(KeyBits == 21, "Index computation below assumes KeyBits == 21");
+        const int i = (int(lsb(matches)) >> 4) - 1;
         // This gap is the main place for read races.
         // After `read()` completes that copy is final, but may be self-inconsistent.
         return {tte[i].is_occupied(), tte[i].read(), TTWriter(cluster, i)};
     }
 
     // Find an entry to be replaced according to the replacement strategy
-    int replace = 0;
+    int replace      = 0;
+    int replaceValue = tte[0].depth8 - 8 * tte[0].relative_age(generation8);
     for (int i = 1; i < ClusterSize; ++i)
-        if (tte[replace].depth8 - 8 * tte[replace].relative_age(generation8)
-            > tte[i].depth8 - 8 * tte[i].relative_age(generation8))
-            replace = i;
+    {
+        const int value = tte[i].depth8 - 8 * tte[i].relative_age(generation8);
+        if (replaceValue > value)
+        {
+            replace      = i;
+            replaceValue = value;
+        }
+    }
 
     return {false, TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_NONE, BOUND_NONE, false},
             TTWriter(cluster, replace)};
