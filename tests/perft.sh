@@ -17,11 +17,14 @@ EXPECT_SCRIPT=$(mktemp)
 cat << 'EOF' > $EXPECT_SCRIPT
 #!/usr/bin/expect -f
 set timeout 120
-lassign [lrange $argv 0 4] pos depth result chess960 logfile
+lassign [lrange $argv 0 5] pos depth result chess960 logfile evalfile
 log_file -noappend $logfile
 spawn ./stockfish
 if {$chess960 == "true"} {
   send "setoption name UCI_Chess960 value true\n"
+}
+if {$evalfile != ""} {
+  send "setoption name EvalFile value $evalfile\n"
 }
 send "position $pos\ngo perft $depth\n"
 expect {
@@ -41,10 +44,11 @@ run_test() {
   local expected="$3"
   local chess960="$4"
   local tmp_file=$(mktemp)
+  local evalfile="${5:-}"
 
   echo -n "Testing depth $depth: ${pos:0:40}... "
 
-  if $EXPECT_SCRIPT "$pos" "$depth" "$expected" "$chess960" "$tmp_file" > /dev/null 2>&1; then
+  if $EXPECT_SCRIPT "$pos" "$depth" "$expected" "$chess960" "$tmp_file" "$evalfile" > /dev/null 2>&1; then
     echo "OK"
     rm -f "$tmp_file"
   else
@@ -59,6 +63,10 @@ run_test() {
 }
 
 # standard positions
+
+missing_net=$(mktemp)
+rm -f "$missing_net"
+run_test "startpos" 2 400 "false" "$missing_net"
 
 run_test "startpos" 7 3195901860 "false"
 run_test "fen r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -" 5 193690690 "false"

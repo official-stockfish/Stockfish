@@ -145,8 +145,6 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
 
 std::variant<u64, PositionSetError>
 Engine::perft(const std::string& fen, Depth depth, bool isChess960) {
-    verify_network();
-
     return Benchmark::perft(fen, depth, isChess960);
 }
 
