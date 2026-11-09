@@ -575,6 +575,14 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
     #define RESTRICT
 #endif
 
+#ifdef __clang__
+    #define UNROLLED_FOR(...) _Pragma("clang loop unroll(full)") for (__VA_ARGS__)
+#elif defined(__GNUC__)
+    #define UNROLLED_FOR(...) _Pragma("GCC unroll 32") for (__VA_ARGS__)
+#else
+    #define UNROLLED_FOR(...) for (__VA_ARGS__)
+#endif
+
 void set_console_utf8();
 
 }  // namespace Stockfish

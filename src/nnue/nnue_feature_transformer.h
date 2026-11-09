@@ -319,7 +319,7 @@ class FeatureTransformer {
         for (IndexType j = 0; j < NumOutputChunks; j += 2)
         {
             vec_t packed[2];
-            for (IndexType k = 0; k < 2; ++k)
+            UNROLLED_FOR (IndexType k = 0; k < 2; ++k)
             {
                 const IndexType i = (j + k) * 2;
 

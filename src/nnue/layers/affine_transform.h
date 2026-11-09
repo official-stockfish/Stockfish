@@ -264,9 +264,9 @@ class AffineTransform {
 
             const vec_t* biasvec = reinterpret_cast<const vec_t*>(biases);
             vec_t        acc[NumRegs];
-            for (IndexType k = 0; k < NumAccums; ++k)
+            UNROLLED_FOR (IndexType k = 0; k < NumAccums; ++k)
                 acc[k] = biasvec[k];
-            for (IndexType k = NumAccums; k < NumRegs; ++k)
+            UNROLLED_FOR (IndexType k = NumAccums; k < NumRegs; ++k)
                 acc[k] = vec_set_32(0);
 
             IndexType i = 0;
@@ -280,14 +280,14 @@ class AffineTransform {
                 const auto col1 =
                   reinterpret_cast<const vec_t*>(&weights[(i + 1) * OutputDimensions * 4]);
 
-                for (IndexType k = 0; k < NumAccums; ++k)
+                UNROLLED_FOR (IndexType k = 0; k < NumAccums; ++k)
                 {
                     vec_add_dpbusd_32(acc[k], in0, col0[k]);
                     vec_add_dpbusd_32(acc[k + NumAccums], in1, col1[k]);
                 }
             }
 
-            for (IndexType k = 0; k < NumAccums; ++k)
+            UNROLLED_FOR (IndexType k = 0; k < NumAccums; ++k)
         #if defined(USE_NEON_DOTPROD)
                 acc[k] = vaddq_s32(acc[k], acc[k + NumAccums]);
         #else
@@ -300,12 +300,12 @@ class AffineTransform {
                 const auto  col0 =
                   reinterpret_cast<const vec_t*>(&weights[i * OutputDimensions * 4]);
 
-                for (IndexType k = 0; k < NumAccums; ++k)
+                UNROLLED_FOR (IndexType k = 0; k < NumAccums; ++k)
                     vec_add_dpbusd_32(acc[k], in0, col0[k]);
             }
 
             vec_t* outptr = reinterpret_cast<vec_t*>(output);
-            for (IndexType k = 0; k < NumAccums; ++k)
+            UNROLLED_FOR (IndexType k = 0; k < NumAccums; ++k)
                 outptr[k] = acc[k];
 
     #undef vec_set_32
