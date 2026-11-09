@@ -343,6 +343,22 @@ sf_always_inline Tile apply([[maybe_unused]] IndexType j, Tile acc, const i16* d
     return acc;
 }
 
+// The tile loops below walk all changed weight rows together, one tile at a time,
+// and the hardware prefetcher doesn't keep up with that many rows. Prefetch the
+// next tile of a row while its current tile is being added. On a row's last tile
+// this hits the next row, which is harmless since prefetches never fault. Rows of
+// only two tiles (AVX-512) get no lead time from this and are faster without it,
+// and so are AMD Zen 1/2, which only get builds without pext.
+    #if defined(USE_PEXT)
+sf_always_inline void prefetch_next_tile(const i8* data) {
+    if constexpr (Dimensions / Tiling::TileHeight > 2)
+        for (IndexType k = 0; k < Tiling::TileHeight; k += CacheLineSize)
+            prefetch(data + Tiling::TileHeight + k);
+}
+    #else
+[[maybe_unused]] void prefetch_next_tile(const i8*) {}
+    #endif
+
 template<int sign>
 sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile acc, const i8* data) {
     static_assert(sign == +1 || sign == -1);
@@ -379,6 +395,7 @@ sf_always_inline Tile apply_feature_single([[maybe_unused]] IndexType j, Tile ac
     }
     #elif defined(USE_PAIRED_WIDENING_ADD)
     static_assert(Tiling::NumRegs % 2 == 0);
+    prefetch_next_tile(data);
     const vec_t zero = vec_zero();
     UNROLLED_FOR (IndexType k = 0; k < Tiling::NumRegs; k += 2)
     {
@@ -412,6 +429,8 @@ template<int sign>
 sf_always_inline Tile apply_feature_pair(Tile acc, const i8* data0, const i8* data1) {
     static_assert(sign == +1 || sign == -1);
     static_assert(Tiling::NumRegs % 2 == 0);
+    prefetch_next_tile(data0);
+    prefetch_next_tile(data1);
     const vec_t ones = vec_set_8(1);
     UNROLLED_FOR (IndexType k = 0; k < Tiling::NumRegs; k += 2)
     {
@@ -437,6 +456,8 @@ sf_always_inline Tile apply_feature_pair(Tile acc, const i8* data0, const i8* da
 // operand is valid; the bias cancels and |add - sub| <= 255 can't saturate.
 sf_always_inline Tile apply_feature_diff(Tile acc, const i8* add, const i8* sub) {
     static_assert(Tiling::NumRegs % 2 == 0);
+    prefetch_next_tile(add);
+    prefetch_next_tile(sub);
     const vec_t bias  = vec_set_8(-128);
     const vec_t signs = vec_set_16(-255);  // i8 pairs (+1, -1)
         #if defined(__clang__)
