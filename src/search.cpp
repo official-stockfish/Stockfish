@@ -1198,149 +1198,144 @@ moves_loop:  // When in check, search starts here
         if (ss->ttPv)
             r += 929;
 
-        if (!rootNode)
+        // Step 15. Pruning at shallow depths.
+        // Depth conditions are important for mate finding.
+        if (!rootNode && pos.non_pawn_material(us) && !is_loss(bestValue))
         {
-            // Step 15. Pruning at shallow depths.
-            // Depth conditions are important for mate finding.
-            if (pos.non_pawn_material(us) && !is_loss(bestValue))
+            // Skip quiet moves if movecount exceeds our threshold
+            if (moveCount >= (3 + depth * depth) / (2 - improving))
+                mp.skip_quiet_moves();
+
+            // Reduced depth of the next LMR search
+            int lmrDepth = newDepth - r / 1024;
+
+            if (capture || givesCheck)
             {
-                // Skip quiet moves if movecount exceeds our threshold
-                if (moveCount >= (3 + depth * depth) / (2 - improving))
-                    mp.skip_quiet_moves();
+                Piece capturedPiece = pos.piece_on(move.to_sq());
+                int   captHist = captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)];
 
-                // Reduced depth of the next LMR search
-                int lmrDepth = newDepth - r / 1024;
-
-                if (capture || givesCheck)
+                // Futility pruning for captures
+                if (!givesCheck && lmrDepth < 8)
                 {
-                    Piece capturedPiece = pos.piece_on(move.to_sq());
-                    int captHist = captureHistory[movedPiece][move.to_sq()][type_of(capturedPiece)];
+                    Value futilityValue = ss->staticEval + 234 + 247 * lmrDepth
+                                        + PieceValue[capturedPiece] + 134 * captHist / 1024;
 
-                    // Futility pruning for captures
-                    if (!givesCheck && lmrDepth < 8)
-                    {
-                        Value futilityValue = ss->staticEval + 234 + 247 * lmrDepth
-                                            + PieceValue[capturedPiece] + 134 * captHist / 1024;
-
-                        if (futilityValue <= alpha)
-                            continue;
-                    }
-
-                    // SEE based pruning for captures and checks.
-                    // Avoid pruning sacrifices of our last piece for stalemate.
-                    int margin = 177 * depth + captHist * 34 / 1024;
-                    if ((alpha >= VALUE_DRAW || pos.non_pawn_material(us) != PieceValue[movedPiece])
-                        && !pos.see_ge(move, -margin))
+                    if (futilityValue <= alpha)
                         continue;
                 }
-                else if (!ss->followPV || !PvNode)
+
+                // SEE based pruning for captures and checks.
+                // Avoid pruning sacrifices of our last piece for stalemate.
+                int margin = 177 * depth + captHist * 34 / 1024;
+                if ((alpha >= VALUE_DRAW || pos.non_pawn_material(us) != PieceValue[movedPiece])
+                    && !pos.see_ge(move, -margin))
+                    continue;
+            }
+            else if (!ss->followPV || !PvNode)
+            {
+                int history = (*contHist[0])[movedPiece][move.to_sq()]
+                            + (*contHist[1])[movedPiece][move.to_sq()]
+                            + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
+
+                // Continuation history based pruning
+                if (history < -4136 * depth)
+                    continue;
+
+                history += 69 * mainHistory[us][move.raw()] / 32;
+
+                // (*Scaler): Generally, lower divisors scale well
+                lmrDepth += history / lmr_divisor(depth);
+
+                Value futilityValue =
+                  ss->staticEval + 119 * lmrDepth + 90 * (ss->staticEval > alpha) + 164;
+
+                // Futility pruning: parent node
+                // (*Scaler): Generally, more frequent futility pruning scales well
+                if (!ss->inCheck && lmrDepth < 12 && futilityValue <= alpha)
                 {
-                    int history = (*contHist[0])[movedPiece][move.to_sq()]
-                                + (*contHist[1])[movedPiece][move.to_sq()]
-                                + sharedHistory.pawn_entry(pos)[movedPiece][move.to_sq()];
-
-                    // Continuation history based pruning
-                    if (history < -4136 * depth)
-                        continue;
-
-                    history += 69 * mainHistory[us][move.raw()] / 32;
-
-                    // (*Scaler): Generally, lower divisors scale well
-                    lmrDepth += history / lmr_divisor(depth);
-
-                    Value futilityValue =
-                      ss->staticEval + 119 * lmrDepth + 90 * (ss->staticEval > alpha) + 164;
-
-                    // Futility pruning: parent node
-                    // (*Scaler): Generally, more frequent futility pruning scales well
-                    if (!ss->inCheck && lmrDepth < 12 && futilityValue <= alpha)
-                    {
-                        if (bestValue <= futilityValue && !is_decisive(bestValue)
-                            && !is_win(futilityValue))
-                            bestValue = futilityValue;
-                        continue;
-                    }
-
-                    lmrDepth = std::max(lmrDepth, 0);
-
-                    // Prune moves with negative SEE
-                    if (!pos.see_ge(move, -23 * lmrDepth * lmrDepth))
-                        continue;
+                    if (bestValue <= futilityValue && !is_decisive(bestValue)
+                        && !is_win(futilityValue))
+                        bestValue = futilityValue;
+                    continue;
                 }
+
+                lmrDepth = std::max(lmrDepth, 0);
+
+                // Prune moves with negative SEE
+                if (!pos.see_ge(move, -23 * lmrDepth * lmrDepth))
+                    continue;
+            }
+        }
+
+        // Step 16. Singular Extensions
+        //
+        // We check for "only moves": if one move fails high on (alpha, beta) but all
+        // others fail low on (alpha-s, beta-s), then that move is singular. Singular
+        // moves are extended to better estimate the result of the (putatively)
+        // forced line. If it's non-singular, we may do some pruning or reduction.
+        //
+        // Recursive excluded search is avoided. The `excludedMove` mechanism
+        // was historically a hack and remains a bit fragile.
+        //
+        // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
+        // and lower extension margins scale well.
+        if (!rootNode && move == ttData.move && !excludedMove && depth >= 6 + ss->ttPv
+            && is_valid(ttData.value) && !is_decisive(ttData.value) && (ttData.bound & BOUND_LOWER)
+            && ttData.depth >= depth - 3 && !is_shuffling(move, ss, pos) && !seekMate)
+        {
+            Value singularBeta  = ttData.value - (59 + 66 * (ss->ttPv && !PvNode)) * depth / 63;
+            Depth singularDepth = newDepth / 2;
+
+            ss->excludedMove = move;
+            value = search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
+            ss->excludedMove = Move::none();
+
+            if (value < singularBeta)
+            {
+                int corrValAdj   = std::abs(correctionValue) / 198368;
+                int doubleMargin = -2 + 204 * PvNode - 152 * !ttCapture - corrValAdj
+                                 - 1175 * ttMoveHistory / 114178 - (ss->ply > rootDepth) * 38;
+                int tripleMargin = 70 + 279 * PvNode - 188 * !ttCapture + 81 * ss->ttPv - corrValAdj
+                                 - (ss->ply > rootDepth) * 43;
+
+                extension =
+                  1 + (value < singularBeta - doubleMargin) + (value < singularBeta - tripleMargin);
+
+                depth++;
             }
 
-            // Step 16. Singular Extensions
-            //
-            // We check for "only moves": if one move fails high on (alpha, beta) but all
-            // others fail low on (alpha-s, beta-s), then that move is singular. Singular
-            // moves are extended to better estimate the result of the (putatively)
-            // forced line. If it's non-singular, we may do some pruning or reduction.
-            //
-            // Recursive excluded search is avoided. The `excludedMove` mechanism
-            // was historically a hack and remains a bit fragile.
-            //
-            // (*Scaler) Generally, higher singularBeta (i.e closer to ttValue)
-            // and lower extension margins scale well.
-            if (move == ttData.move && !excludedMove && depth >= 6 + ss->ttPv
-                && is_valid(ttData.value) && !is_decisive(ttData.value)
-                && (ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 3
-                && !is_shuffling(move, ss, pos) && !seekMate)
+            // Multi-cut pruning
+            // Our ttMove is assumed to fail high based on the bound of the TT entry,
+            // and if after excluding the ttMove with a reduced search we fail high
+            // over the original beta, we assume this expected cut-node is not
+            // singular (multiple moves fail high), and we can prune the whole
+            // subtree by returning a softbound.
+            else if (value >= beta && !is_decisive(value))
             {
-                Value singularBeta  = ttData.value - (59 + 66 * (ss->ttPv && !PvNode)) * depth / 63;
-                Depth singularDepth = newDepth / 2;
+                ttMoveHistory << -421 - 110 * depth;
 
-                ss->excludedMove = move;
-                value =
-                  search<NonPV>(pos, ss, singularBeta - 1, singularBeta, singularDepth, cutNode);
-                ss->excludedMove = Move::none();
-
-                if (value < singularBeta)
+                if (!ss->inCheck && value > ss->staticEval)
                 {
-                    int corrValAdj   = std::abs(correctionValue) / 198368;
-                    int doubleMargin = -2 + 204 * PvNode - 152 * !ttCapture - corrValAdj
-                                     - 1175 * ttMoveHistory / 114178 - (ss->ply > rootDepth) * 38;
-                    int tripleMargin = 70 + 279 * PvNode - 188 * !ttCapture + 81 * ss->ttPv
-                                     - corrValAdj - (ss->ply > rootDepth) * 43;
-
-                    extension = 1 + (value < singularBeta - doubleMargin)
-                              + (value < singularBeta - tripleMargin);
-
-                    depth++;
+                    const int bonus =
+                      std::clamp(int(value - ss->staticEval) * 664 / 1024,
+                                 -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
+                    update_correction_history(pos, ss, *this, bonus);
                 }
 
-                // Multi-cut pruning
-                // Our ttMove is assumed to fail high based on the bound of the TT entry,
-                // and if after excluding the ttMove with a reduced search we fail high
-                // over the original beta, we assume this expected cut-node is not
-                // singular (multiple moves fail high), and we can prune the whole
-                // subtree by returning a softbound.
-                else if (value >= beta && !is_decisive(value))
-                {
-                    ttMoveHistory << -421 - 110 * depth;
-
-                    if (!ss->inCheck && value > ss->staticEval)
-                    {
-                        const int bonus =
-                          std::clamp(int(value - ss->staticEval) * 664 / 1024,
-                                     -CORRECTION_HISTORY_LIMIT / 4, CORRECTION_HISTORY_LIMIT / 4);
-                        update_correction_history(pos, ss, *this, bonus);
-                    }
-
-                    return value;
-                }
-
-                // Negative extensions
-                // If other moves failed high over (ttValue - margin) without the
-                // ttMove on a reduced search, but we cannot do multi-cut because
-                // (ttValue - margin) is lower than the original beta, we do not know
-                // if the ttMove is singular or can do a multi-cut, so we reduce the
-                // ttMove in favor of other moves based on some conditions:
-
-                // If the ttMove is assumed to fail high over current beta or
-                // if we are on a cutNode
-                else if (ttData.value >= beta || cutNode)
-                    extension = -3;
+                return value;
             }
+
+            // Negative extensions
+            // If other moves failed high over (ttValue - margin) without the
+            // ttMove on a reduced search, but we cannot do multi-cut because
+            // (ttValue - margin) is lower than the original beta, we do not know
+            // if the ttMove is singular or can do a multi-cut, so we reduce the
+            // ttMove in favor of other moves based on some conditions:
+
+            // If the ttMove is assumed to fail high over current beta or
+            // if we are on a cutNode
+            else if (ttData.value >= beta || cutNode)
+                extension = -3;
         }
 
         u64 nodeCount = rootNode ? u64(nodes) : 0;
