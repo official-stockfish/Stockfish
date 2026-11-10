@@ -334,6 +334,7 @@ bool Search::Worker::iterative_deepening() {
 
     int  searchAgainCounter = 0;
     int  failHighRecovery   = 0;
+    u64  totalEffort        = 0;
     bool uciPvSent          = false;
 
     lowPlyHistory.fill(102);
@@ -519,6 +520,9 @@ bool Search::Worker::iterative_deepening() {
                 uciPvSent = (pvIdx + 1 == multiPV);
             }
 
+            if (mainThread && !pvIdx)
+                totalEffort = u64(nodes);
+
             if (threads.stop)
                 break;
         }
@@ -582,11 +586,12 @@ bool Search::Worker::iterative_deepening() {
         // Do we have time for the next iteration? Can we stop searching now?
         if (limits.use_time_management() && !threads.stop && !mainThread->stopOnPonderhit)
         {
-            u64 nodesEffort = rootMoves[0].effort * 100000 / std::max(u64(1), u64(nodes));
+            u64 nodesEffort = rootMoves[0].effort * 100000 / std::max(u64(1), totalEffort);
 
-            double fallingEval = (11.48 + 2.30 * (mainThread->bestPreviousAverageScore - bestValue)
-                                  + 1.1 * (mainThread->iterValue[iterIdx] - bestValue))
-                               / 100.0;
+            double fallingEval =
+              (11.48 + 2.30 * (mainThread->bestPreviousAverageScore - rootMoves[0].score)
+               + 1.1 * (mainThread->iterValue[iterIdx] - rootMoves[0].score))
+              / 100.0;
             fallingEval = std::clamp(fallingEval, 0.576, 1.728);
 
             // If the bestMove is stable over several iterations, reduce time accordingly
