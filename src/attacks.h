@@ -328,11 +328,6 @@ inline std::pair<Bitboard, Bitboard> both_attacks_bb(Square s, Bitboard occupied
 #endif
 }
 
-inline Bitboard attacks_bb(Piece pc, Square s, Bitboard occupied) {
-    return type_of(pc) == PAWN ? PseudoAttacks[color_of(pc)][s]
-                               : attacks_bb(type_of(pc), s, occupied);
-}
-
 }  // namespace Stockfish::Attacks
 
 #endif  // #ifndef ATTACKS_H_INCLUDED
