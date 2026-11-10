@@ -658,11 +658,6 @@ bool Search::Worker::iterative_deepening() {
     return uciPvSent;
 }
 
-
-void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stack* const ss) {
-    do_move(pos, move, st, pos.gives_check(move), pos.capture_stage(move), ss);
-}
-
 void Search::Worker::do_move(Position&    pos,
                              const Move   move,
                              StateInfo&   st,
