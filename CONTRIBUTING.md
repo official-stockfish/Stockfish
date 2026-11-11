@@ -11,6 +11,7 @@ making contributions to Stockfish.
   - [Reporting Issues](#reporting-issues)
   - [Submitting Pull Requests](#submitting-pull-requests)
 - [Code Style](#code-style)
+- [Navigate](#navigate)
 - [Community and Communication](#community-and-communication)
 - [License](#license)
 
