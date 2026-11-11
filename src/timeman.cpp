@@ -119,8 +119,15 @@ void TimeManagement::init(Search::LimitsType& limits,
     if (limits.movestogo == 0)
     {
         // Extra time according to timeLeft
+        // If the calibration formula yields a non-positive value (possible for
+        // very small timeLeft), defer calibration to the next move instead of
+        // freezing a degenerate value for the rest of the game.
         if (originalTimeAdjust < 0)
-            originalTimeAdjust = 0.3272 * std::log10(timeLeft) - 0.4141;
+        {
+            const double timeAdjust = 0.3272 * std::log10(timeLeft) - 0.4141;
+            if (timeAdjust > 0)
+                originalTimeAdjust = timeAdjust;
+        }
 
         // Calculate time constants based on current time left.
         double logTimeInSec = std::log10(scaledTime / 1000.0);
