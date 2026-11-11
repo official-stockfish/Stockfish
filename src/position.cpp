@@ -29,7 +29,6 @@
 #include <iostream>
 #include <sstream>
 #include <string_view>
-#include <utility>
 
 #include "bitboard.h"
 #include "history.h"
@@ -46,10 +45,71 @@ using namespace Attacks;
 
 namespace Zobrist {
 
-Key psq[PIECE_NB][SQUARE_NB];
-Key enpassant[FILE_NB];
-Key castling[CASTLING_RIGHT_NB];
-Key side, noPawns;
+// constexpr-generated Zobrist constants
+struct Keys {
+    Key psq[PIECE_NB][SQUARE_NB];
+    Key enpassant[FILE_NB];
+    Key castling[CASTLING_RIGHT_NB];
+    Key side, noPawns;
+};
+
+constexpr Keys generate_keys() {
+    Keys k{};
+    u64  s    = 1070372;
+    auto next = [&s] {
+        s ^= s >> 12;
+        s ^= (s << 25) & 0xFFFFFFFFFFFFFFFFULL;
+        s ^= s >> 27;
+        return Key((s * 2685821657736338717ULL) & 0xFFFFFFFFFFFFFFFFULL);
+    };
+    for (Piece pc : {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, B_PAWN, B_KNIGHT,
+                     B_BISHOP, B_ROOK, B_QUEEN, B_KING})
+        for (Square sq = SQ_A1; sq <= SQ_H8; ++sq)
+            k.psq[pc][sq] = next();
+    // Pawns on these squares will promote: keep the impossible placements zero
+    for (Square sq = SQ_A8; sq <= SQ_H8; ++sq)
+        k.psq[W_PAWN][sq] = Key(0);
+    for (Square sq = SQ_A1; sq <= SQ_H1; ++sq)
+        k.psq[B_PAWN][sq] = Key(0);
+    for (auto& e : k.enpassant)
+        e = next();
+    for (auto& c : k.castling)
+        c = next();
+    k.side    = next();
+    k.noPawns = next();
+    return k;
+}
+
+constexpr Keys keys = generate_keys();
+
+constexpr auto& psq       = keys.psq;
+constexpr auto& enpassant = keys.enpassant;
+constexpr auto& castling  = keys.castling;
+constexpr auto& side      = keys.side;
+constexpr auto& noPawns   = keys.noPawns;
+
+// No combination of ep, castling and stm key components may cancel, so that a
+// matching piecePlacement and Zobrist key guarantee a unique position.
+static_assert(
+  [] {
+      for (int a = 0; a < CASTLING_RIGHT_NB; ++a)
+          for (int b = 0; b < CASTLING_RIGHT_NB; ++b)
+              for (int f1 = 0; f1 <= FILE_NB; ++f1)      // 0 means no ep component
+                  for (int f2 = 0; f2 <= FILE_NB; ++f2)  // 0 means no ep component
+                      for (int stm = 0; stm < 2; ++stm)
+                      {
+                          Key cr   = castling[a] ^ castling[b];
+                          Key ep   = (f1 ? enpassant[f1 - 1] : 0) ^ (f2 ? enpassant[f2 - 1] : 0);
+                          Key stmd = stm ? side : 0;
+                          if (cr == 0 && ep == 0 && stmd == 0)
+                              continue;  // identical components
+                          if ((cr ^ ep ^ stmd) == 0)
+                              return false;  // a cancellation exists
+                      }
+      return true;
+  }(),
+  "Zobrist ep/castling/stm keys must not cancel: matching piecePlacement "
+  "and key guarantee a unique position");
 
 }
 
@@ -59,6 +119,29 @@ constexpr std::string_view PieceToChar(" PNBRQK  pnbrqk");
 
 static constexpr Piece Pieces[] = {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
                                    B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING};
+
+// Pack pieces into nibbles: lower half of the board to even nibbles, upper half to odd nibbles
+inline std::array<u8, 32> pack_pieces(const std::array<Piece, SQUARE_NB>& arr) {
+    std::array<u8, 32> p;
+    for (int k = 0; k < 32; k += 8)
+    {
+        u64 a, b;
+        memcpy(&a, &arr[k], 8);
+        memcpy(&b, &arr[k + 32], 8);
+        a |= b << 4;
+        memcpy(&p[k], &a, 8);
+    }
+    return p;
+}
+
+inline void swap_nibble(std::array<u8, 32>& p, Square s1, Square s2) {
+    int i1 = int(s1) & 31, sh1 = (int(s1) & 0x20) >> 3;
+    int i2 = int(s2) & 31, sh2 = (int(s2) & 0x20) >> 3;
+    int swap = ((p[i1] >> sh1) ^ (p[i2] >> sh2)) & 0xF;
+    p[i1] ^= swap << sh1;
+    p[i2] ^= swap << sh2;
+}
+
 }  // namespace
 
 
@@ -108,59 +191,50 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 // http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
 
 // First and second hash functions for indexing the cuckoo tables
-inline int H1(Key h) { return h & 0x1fff; }
-inline int H2(Key h) { return (h >> 16) & 0x1fff; }
+constexpr int H1(Key h) { return h & 0x1fff; }
+constexpr int H2(Key h) { return (h >> 16) & 0x1fff; }
 
-// Cuckoo tables with Zobrist hashes of valid reversible moves, and the moves themselves
-static std::array<Key, 8192>  cuckoo;
-static std::array<Move, 8192> cuckooMove;
+// constexpr-generated cuckoo tables with Zobrist hashes of valid reversible
+// moves, and the moves themselves.
+struct CuckooTables {
+    std::array<Key, 8192>  keys;
+    std::array<Move, 8192> moves;
+    int                    count;
+};
 
-// Initializes at startup the various arrays used to compute hash keys
-void Position::init() {
-
-    PRNG rng(1070372);
-
-    for (Piece pc : Pieces)
-        for (Square s = SQ_A1; s <= SQ_H8; ++s)
-            Zobrist::psq[pc][s] = rng.rand<Key>();
-    // pawns on these squares will promote
-    std::fill_n(Zobrist::psq[W_PAWN] + SQ_A8, 8, 0);
-    std::fill_n(Zobrist::psq[B_PAWN], 8, 0);
-
-    for (File f = FILE_A; f <= FILE_H; ++f)
-        Zobrist::enpassant[f] = rng.rand<Key>();
-
-    for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
-        Zobrist::castling[cr] = rng.rand<Key>();
-
-    Zobrist::side    = rng.rand<Key>();
-    Zobrist::noPawns = rng.rand<Key>();
-
-    // Prepare the cuckoo tables
-    cuckoo.fill(0);
-    cuckooMove.fill(Move::none());
-    [[maybe_unused]] int count = 0;
+constexpr CuckooTables generate_cuckoo() {
+    std::array<Key, 8192>  c{};
+    std::array<Move, 8192> m{};
+    int                    count = 0;
     for (Piece pc : Pieces)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
             for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
-                if ((type_of(pc) != PAWN) && (attacks_bb(type_of(pc), s1, 0) & s2))
+                // only non-pawn moves are reversible relocations; note that
+                // PseudoAttacks puns slots 0-1 for the pawn-by-color attacks
+                if (type_of(pc) != PAWN && (PseudoAttacks[type_of(pc)][s1] & s2))
                 {
                     Move move = Move(s1, s2);
                     Key  key  = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
                     int  i    = H1(key);
                     while (true)
                     {
-                        std::swap(cuckoo[i], key);
-                        std::swap(cuckooMove[i], move);
+                        swap_constexpr(c[i], key);
+                        swap_constexpr(m[i], move);
                         if (move == Move::none())  // Arrived at empty slot?
                             break;
                         i = (i == H1(key)) ? H2(key) : H1(key);  // Push victim to alternative slot
                     }
                     count++;
                 }
-    assert(count == 3668);
+    return {c, m, count};
 }
 
+constexpr CuckooTables cuckooTables = generate_cuckoo();
+
+static_assert(cuckooTables.count == 3668, "cuckoo table insertion count must be stable");
+
+constexpr auto& cuckoo     = cuckooTables.keys;
+constexpr auto& cuckooMove = cuckooTables.moves;
 
 // Initializes the position object with the given FEN string.
 // The FEN string is strictly validated; if it is invalid or inconsistent,
@@ -534,6 +608,8 @@ void Position::set_state() const {
 
     st->key ^= Zobrist::castling[st->castlingRights];
     st->materialKey = compute_material_key();
+
+    st->piecePlacement = pack_pieces(board);
 }
 
 Key Position::compute_material_key() const {
@@ -1006,6 +1082,8 @@ void Position::do_move(
     // Update king attacks used for fast check detection
     set_extra_bitboards();
 
+    st->piecePlacement = pack_pieces(board);
+
     // Calculate the repetition info. It is the ply distance from the previous
     // occurrence of the same position, negative in the 3-fold case, or zero
     // if the position was not repeated.
@@ -1017,7 +1095,9 @@ void Position::do_move(
         for (int i = 4; i <= end; i += 2)
         {
             stp = stp->previous->previous;
-            if (stp->key == st->key)
+            // The piecePlacement, in addition to the Zobrist key, provides accurate
+            // repetition detection.
+            if (stp->key == st->key && stp->piecePlacement == st->piecePlacement)
             {
                 st->repetition = stp->repetition ? -i : i;
                 break;
@@ -1304,6 +1384,7 @@ void Position::do_null_move(StateInfo& newSt) {
 
     // Remaining fields are recomputed, invalidated or overwritten below.
     std::memcpy(&newSt, st, offsetof(StateInfo, blockersForKing));
+    newSt.piecePlacement = st->piecePlacement;
 
     newSt.previous = st;
     st             = &newSt;
@@ -1509,10 +1590,19 @@ bool Position::upcoming_repetition(int ply) const {
             Square s1   = move.from_sq();
             Square s2   = move.to_sq();
 
-            // For nodes before or at the root, check that the move is a
-            // repetition rather than a move to the current position.
-            if (!((between_bb(s1, s2) ^ s2) & pieces()) && (ply > i || stp->repetition))
-                return true;
+            if (!((between_bb(s1, s2) ^ s2) & pieces()))
+            {
+                auto b = st->piecePlacement;
+                swap_nibble(b, s1, s2);
+
+                if (b == stp->piecePlacement)
+                {
+                    // For nodes before or at the root, check that the move is a
+                    // repetition rather than a move to the current position.
+                    if (ply > i || stp->repetition)
+                        return true;
+                }
+            }
         }
     }
     return false;

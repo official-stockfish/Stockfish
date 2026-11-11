@@ -197,6 +197,15 @@ static inline const u16  Le             = 1;
 static inline const bool IsLittleEndian = *reinterpret_cast<const char*>(&Le) == 1;
 
 
+// std::swap is not constexpr until C++20
+template<typename T>
+constexpr void swap_constexpr(T& a, T& b) {
+    T tmp = a;
+    a     = b;
+    b     = tmp;
+}
+
+
 template<typename T, usize MaxSize>
 class ValueList {
 
