@@ -580,6 +580,7 @@ void move_to_front(std::vector<T>& vec, Predicate pred) {
 #endif
 
 void set_console_utf8();
+void disable_power_throttling();
 
 }  // namespace Stockfish
 

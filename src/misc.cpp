@@ -634,4 +634,36 @@ void set_console_utf8() {
 #endif
 }
 
+// On Windows, opt the process out of execution speed throttling (EcoQoS). Otherwise
+// Windows may schedule the threads of an engine with a minimized console window on
+// the efficiency cores of a hybrid CPU whenever the performance cores are busy.
+// SetProcessInformation exists since Windows 8, so it is looked up at runtime and
+// the call is skipped where it is missing.
+void disable_power_throttling() {
+#ifdef _WIN32
+    // Mirrors PROCESS_POWER_THROTTLING_STATE, which older SDK headers do not declare
+    struct PowerThrottlingState {
+        ULONG Version;
+        ULONG ControlMask;
+        ULONG StateMask;
+    };
+    using SetProcessInformation_t = BOOL(WINAPI*)(HANDLE, int, LPVOID, DWORD);
+
+    constexpr int   PowerThrottlingInfoClass      = 4;
+    constexpr ULONG PowerThrottlingCurrentVersion = 1;
+    constexpr ULONG PowerThrottlingExecutionSpeed = 0x1;
+
+    HMODULE k32 = GetModuleHandle(TEXT("Kernel32.dll"));
+    auto    SetProcessInformation_f =
+      SetProcessInformation_t((void (*)()) GetProcAddress(k32, "SetProcessInformation"));
+
+    if (SetProcessInformation_f == nullptr)
+        return;
+
+    // Take control of the execution speed bit and keep it cleared: never throttle
+    PowerThrottlingState state{PowerThrottlingCurrentVersion, PowerThrottlingExecutionSpeed, 0};
+    SetProcessInformation_f(GetCurrentProcess(), PowerThrottlingInfoClass, &state, sizeof(state));
+#endif
+}
+
 }  // namespace Stockfish
