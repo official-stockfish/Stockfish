@@ -640,7 +640,7 @@ bool Search::Worker::iterative_deepening() {
                 threads.increaseDepth = mainThread->ponder || elapsedTime <= totalTime * 0.50;
         }
 
-        mainThread->iterValue[iterIdx] = bestValue;
+        mainThread->iterValue[iterIdx] = rootMoves[0].score;
         iterIdx                        = (iterIdx + 1) & 3;
     }
 
