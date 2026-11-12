@@ -49,7 +49,7 @@ class UCIEngine {
     static std::string move(Move m, bool chess960 = false);
     static std::string wdl(Value v, const Position& pos);
     static std::string to_lower(std::string str);
-    static Move        to_move(const Position& pos, std::string str);
+    static Move        to_move(Position& pos, std::string str);
 
     Search::LimitsType parse_limits(std::istream& is);
 

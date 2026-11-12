@@ -429,10 +429,9 @@ template<>
 TBTable<WDL>::TBTable(const std::string& code) :
     TBTable() {
 
-    StateInfo st;
-    Position  pos;
+    Position pos;
 
-    auto err = pos.set(code, WHITE, &st);
+    auto err = pos.set(code, WHITE);
     // IMPORTANT: We cannot assert here because it WILL produce validation errors
     // on some TB7 and higher positions due to the black king being attacked
     // while white is to move. This is not fixable without significant changes.
@@ -459,7 +458,7 @@ TBTable<WDL>::TBTable(const std::string& code) :
     pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
     pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
 
-    err = pos.set(code, BLACK, &st);
+    err = pos.set(code, BLACK);
     // IMPORTANT: We cannot assert here because it WILL produce validation errors
     // on some TB7 and higher positions due to the black king being attacked
     // while white is to move. This is not fixable without significant changes.
@@ -1455,8 +1454,7 @@ Ret probe_table(const Position& pos, ProbeState* result, WDLScore wdl = WDLDraw)
 template<bool CheckZeroingMoves>
 WDLScore search(Position& pos, ProbeState* result) {
 
-    WDLScore  value, bestValue = WDLLoss;
-    StateInfo st;
+    WDLScore value, bestValue = WDLLoss;
 
     auto  moveList   = MoveList<ALL>(pos);
     usize totalCount = moveList.size(), moveCount = 0;
@@ -1468,7 +1466,7 @@ WDLScore search(Position& pos, ProbeState* result) {
 
         moveCount++;
 
-        pos.do_move(move, st);
+        pos.do_move(move);
         value = -search<false>(pos, result);
         pos.undo_move(move);
 
@@ -1745,14 +1743,13 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 
     // DTZ stores results for the other side, so we need to do a 1-ply search and
     // find the winning move that minimizes DTZ.
-    StateInfo st;
-    int       minDTZ = 0xFFFF;
+    int minDTZ = 0xFFFF;
 
     for (const Move move : MoveList<ALL>(pos))
     {
         bool zeroing = pos.capture(move) || type_of(pos.moved_piece(move)) == PAWN;
 
-        pos.do_move(move, st);
+        pos.do_move(move);
 
         // For zeroing moves we want the dtz of the move _before_ doing it,
         // otherwise we will get the dtz of the next move sequence. Search the
@@ -1794,7 +1791,6 @@ bool Tablebases::root_probe(Position&                    pos,
                             const std::function<bool()>& time_abort) {
 
     ProbeState result = OK;
-    StateInfo  st;
 
     // Obtain 50-move counter for the root position
     int cnt50 = pos.rule50_count();
@@ -1807,7 +1803,7 @@ bool Tablebases::root_probe(Position&                    pos,
     // Probe and rank each move
     for (auto& m : rootMoves)
     {
-        pos.do_move(m.pv[0], st);
+        pos.do_move(m.pv[0]);
 
         // Calculate dtz for the current move counting from the root position
         if (pos.rule50_count() == 0)
@@ -1872,14 +1868,13 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
     static const int WDL_to_rank[] = {-MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ};
 
     ProbeState result = OK;
-    StateInfo  st;
     WDLScore   wdl;
 
 
     // Probe and rank each move
     for (auto& m : rootMoves)
     {
-        pos.do_move(m.pv[0], st);
+        pos.do_move(m.pv[0]);
 
         if (pos.is_draw(1))
             wdl = WDLDraw;

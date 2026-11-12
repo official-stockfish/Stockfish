@@ -111,6 +111,8 @@ using Bitboard = u64;
 
 constexpr int MAX_MOVES = 256;
 constexpr int MAX_PLY   = 246;
+constexpr int MAX_HIST  = 512;                         // must be power of two
+static_assert(MAX_HIST >= MAX_PLY + 10 + 50 * 2 + 1);  // search depth + 50 move rule hist
 
 enum Color : u8 {
     WHITE,

@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
-#include <deque>
 #include <iosfwd>
 #include <memory>
 #include <ostream>
@@ -33,7 +32,6 @@
 #include "evaluate.h"
 #include "misc.h"
 #include "nnue/network.h"
-#include "nnue/nnue_common.h"
 #include "numa.h"
 #include "perft.h"
 #include "position.h"
@@ -59,12 +57,11 @@ constexpr NumaAutoPolicy DefaultNumaPolicy = BundledL3Policy{32};
 Engine::Engine(std::optional<std::filesystem::path> path) :
     binaryDirectory(path ? CommandLine::get_binary_directory(*path) : std::filesystem::path{}),
     numaContext(NumaConfig::from_system(DefaultNumaPolicy)),
-    states(new std::deque<StateInfo>(1)),
     threads(),
     networkFile{std::nullopt, ""},
     network(numaContext, get_default_network()) {
 
-    pos.set(StartFEN, false, &states->back());
+    pos.set(StartFEN, false);
 
     options.add(  //
       "Debug Log File", Option("", [](const Option& o) {
@@ -154,7 +151,7 @@ void Engine::go(Search::LimitsType& limits) {
     assert(limits.perft == 0);
     verify_network();
 
-    threads.start_thinking(options, pos, states, limits);
+    threads.start_thinking(options, pos, limits);
 }
 void Engine::stop() { threads.stop = true; }
 
@@ -194,9 +191,7 @@ void Engine::wait_for_search_finished() { threads.main_thread()->wait_for_search
 
 std::optional<PositionSetError> Engine::set_position(const std::string&              fen,
                                                      const std::vector<std::string>& moves) {
-    // Drop the old state and create a new one
-    states   = StateListPtr(new std::deque<StateInfo>(1));
-    auto err = pos.set(fen, options["UCI_Chess960"], &states->back());
+    auto err = pos.set(fen, options["UCI_Chess960"]);
     if (err.has_value())
         return err;
 
@@ -207,8 +202,7 @@ std::optional<PositionSetError> Engine::set_position(const std::string&         
         if (m == Move::none())
             return PositionSetError("Illegal move: " + move);
 
-        states->emplace_back();
-        pos.do_move(m, states->back());
+        pos.do_move(m);
     }
 
     return std::nullopt;
@@ -306,9 +300,8 @@ void Engine::save_network(const std::optional<std::filesystem::path>& file) {
 // utility functions
 
 void Engine::trace_eval() const {
-    StateListPtr trace_states(new std::deque<StateInfo>(1));
-    Position     p;
-    p.set(pos.fen(), options["UCI_Chess960"], &trace_states->back());
+    Position p;
+    p.set(pos.fen(), options["UCI_Chess960"]);
 
     verify_network();
 
