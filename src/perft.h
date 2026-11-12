@@ -34,7 +34,6 @@ namespace Stockfish::Benchmark {
 template<bool Root>
 u64 perft(Position& pos, Depth depth) {
 
-    StateInfo st;
 
     u64        cnt, nodes = 0;
     const bool leaf = (depth == 2);
@@ -45,7 +44,7 @@ u64 perft(Position& pos, Depth depth) {
             cnt = 1, nodes++;
         else
         {
-            pos.do_move(m, st);
+            pos.do_move(m);
             cnt = leaf ? MoveList<ALL>(pos).size() : perft<false>(pos, depth - 1);
             nodes += cnt;
             pos.undo_move(m);
@@ -58,10 +57,9 @@ u64 perft(Position& pos, Depth depth) {
 
 inline std::variant<u64, PositionSetError>
 perft(const std::string& fen, Depth depth, bool isChess960) {
-    StateInfo st;
-    Position  p;
+    Position p;
 
-    if (auto err = p.set(fen, isChess960, &st))
+    if (auto err = p.set(fen, isChess960))
         return {*err};
 
     return perft<true>(p, depth);

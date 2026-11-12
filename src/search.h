@@ -341,13 +341,9 @@ class Worker {
    private:
     bool iterative_deepening();
 
-    void do_move(Position&    pos,
-                 const Move   move,
-                 StateInfo&   st,
-                 const bool   givesCheck,
-                 const bool   capture,
-                 Stack* const ss);
-    void do_null_move(Position& pos, StateInfo& st, Stack* const ss);
+    void do_move(
+      Position& pos, const Move move, const bool givesCheck, const bool capture, Stack* const ss);
+    void do_null_move(Position& pos, Stack* const ss);
     void undo_move(Position& pos, const Move move);
     void undo_null_move(Position& pos);
 
@@ -382,7 +378,6 @@ class Worker {
     Value optimism[COLOR_NB];
 
     Position  rootPos;
-    StateInfo rootState;
     RootMoves rootMoves;
     Depth     rootDepth;
     bool      seekMate = false;

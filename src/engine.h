@@ -122,8 +122,7 @@ class Engine {
 
     NumaReplicationContext numaContext;
 
-    Position     pos;
-    StateListPtr states;
+    Position pos;
 
     OptionsMap                                        options;
     ThreadPool                                        threads;
