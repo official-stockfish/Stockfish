@@ -685,7 +685,7 @@ ifeq ($(COMP),gcc)
 		CXXFLAGS += -fconstexpr-steps=500000000
 	else
 		gccmajorv := $(shell $(CXX) -dumpversion 2>/dev/null | cut -f1 -d.)
-		CXXFLAGS += -Wstack-usage=128000 -fno-ipa-cp-clone -fconstexpr-ops-limit=500000000
+		CXXFLAGS += -Wstack-usage=132000 -fno-ipa-cp-clone -fconstexpr-ops-limit=500000000
 	endif
 else ifeq ($(COMP),mingw)
 	CXXFLAGS += -fno-ipa-cp-clone

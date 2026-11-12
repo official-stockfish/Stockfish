@@ -627,7 +627,7 @@ std::string UCIEngine::to_lower(std::string str) {
     return str;
 }
 
-Move UCIEngine::to_move(const Position& pos, std::string str) {
+Move UCIEngine::to_move(Position& pos, std::string str) {
     str = to_lower(str);
 
     for (const auto& m : MoveList<ALL>(pos))

@@ -41,7 +41,7 @@ class MovePicker {
    public:
     MovePicker(const MovePicker&)            = delete;
     MovePicker& operator=(const MovePicker&) = delete;
-    MovePicker(const Position&,
+    MovePicker(Position&,
                Move,
                Depth,
                const ButterflyHistory*,
@@ -50,7 +50,7 @@ class MovePicker {
                const PieceToHistory**,
                const SharedHistories*,
                int);
-    MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
+    MovePicker(Position&, Move, int, const CapturePieceToHistory*);
     Move next_move();
     void skip_quiet_moves();
 
@@ -60,7 +60,7 @@ class MovePicker {
     template<GenType T>
     ExtMove* generate_and_score();
 
-    const Position&              pos;
+    Position&                    pos;
     const ButterflyHistory*      mainHistory;
     const LowPlyHistory*         lowPlyHistory;
     const CapturePieceToHistory* captureHistory;

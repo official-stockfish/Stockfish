@@ -233,7 +233,7 @@ Move* generate_moves(const Position& pos, Move* moveList, Bitboard target, Color
 //
 // Returns a pointer to the end of the move list.
 template<GenType Type>
-Move* generate(const Position& pos, Move* moveList) {
+Move* generate(Position& pos, Move* moveList) {
 
     static_assert(Type != ALL, "Unsupported type in generate()");
     assert((Type == EVASIONS) == bool(pos.checkers()));
@@ -285,14 +285,14 @@ Move* generate(const Position& pos, Move* moveList) {
 }
 
 // Explicit template instantiations
-template Move* generate<CAPTURES>(const Position&, Move*);
-template Move* generate<QUIETS>(const Position&, Move*);
-template Move* generate<EVASIONS>(const Position&, Move*);
+template Move* generate<CAPTURES>(Position&, Move*);
+template Move* generate<QUIETS>(Position&, Move*);
+template Move* generate<EVASIONS>(Position&, Move*);
 
 // generate<ALL> generates all the legal moves in the given position
 
 template<>
-Move* generate<ALL>(const Position& pos, Move* moveList) {
+Move* generate<ALL>(Position& pos, Move* moveList) {
     return pos.checkers() ? generate<EVASIONS>(pos, moveList)
                           : generate<QUIETS>(pos, generate<CAPTURES>(pos, moveList));
 }
