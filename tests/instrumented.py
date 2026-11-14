@@ -275,13 +275,19 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.send_command("go depth 9")
 
         depth = 1
+        repeated = False
 
         def callback(output):
-            nonlocal depth
+            nonlocal depth, repeated
 
             regex = rf"info depth {depth} seldepth \d+ multipv \d+ score cp -?\d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
 
             if output.startswith("info depth"):
+                # The final depth may see a second PV printed, if a ponder move
+                # was extracted from the TT.
+                if (depth == 10 and not repeated and re.search(r"^info depth 9 .* pv \S+ \S+$", output)):                
+                    repeated = True
+                    return False
                 if not re.match(regex, output):
                     assert False
                 depth += 1
