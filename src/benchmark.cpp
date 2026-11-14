@@ -424,7 +424,7 @@ std::vector<std::string> setup_bench(const std::string& currentFen, std::istream
         }
 
         while (getline(file, fen))
-            if (!fen.empty())
+            if (!is_whitespace(fen))
                 fens.push_back(fen);
     }
 
