@@ -19,25 +19,33 @@ cat << EOF > repeat.exp
  set timeout 10
  spawn ./stockfish
  lassign \$argv nodes
+ expect_after {
+   timeout { puts stderr "Timed out waiting for Stockfish"; exit 1 }
+   eof { puts stderr "Stockfish exited unexpectedly"; exit 1 }
+ }
 
  send "uci\n"
  expect "uciok"
 
  send "ucinewgame\n"
  send "position startpos\n"
+ puts "search 1"
  send "go nodes \$nodes\n"
  expect "bestmove"
 
  send "position startpos moves e2e4 e7e6\n"
+ puts "search 2"
  send "go nodes \$nodes\n"
  expect "bestmove"
 
  send "ucinewgame\n"
  send "position startpos\n"
+ puts "search 3"
  send "go nodes \$nodes\n"
  expect "bestmove"
 
  send "position startpos moves e2e4 e7e6\n"
+ puts "search 4"
  send "go nodes \$nodes\n"
  expect "bestmove"
 
@@ -53,8 +61,17 @@ do
   nodes=$((100*3**i/2**i))
   echo "reprosearch testing with $nodes nodes"
 
-  # each line should appear exactly an even number of times
-  expect repeat.exp $nodes 2>&1 | grep '^info ' | grep -o "nodes [0-9]*" | sort | uniq -c | awk '{if ($1%2!=0) exit(1)}'
+  # Compare the ordered node counts from each position with its repeat.
+  expect repeat.exp "$nodes" | awk '
+    /^search [1-4]/ { search = $2 }
+    /^info / && match($0, /nodes [0-9]+/) {
+      counts[search] = counts[search] " " substr($0, RSTART, RLENGTH)
+    }
+    END {
+      if (search != 4 || !counts[1] || !counts[2] ||
+          counts[1] != counts[3] || counts[2] != counts[4])
+        exit 1
+    }'
 
 done
 
