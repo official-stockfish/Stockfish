@@ -31,6 +31,7 @@
 
 #include "attacks.h"
 #include "bitboard.h"
+#include "misc.h"
 #include "types.h"
 
 namespace Stockfish {
@@ -55,15 +56,16 @@ struct StateInfo {
     Square epSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
-    Key        key;
-    Bitboard   checkersBB;
-    StateInfo* previous;
-    Bitboard   blockersForKing[COLOR_NB];
-    Bitboard   pinners[COLOR_NB];
-    Bitboard   checkSquares[PIECE_TYPE_NB];
-    Bitboard   threats[PIECE_TYPE_NB];
-    Piece      capturedPiece;
-    int        repetition;
+    Key                key;
+    Bitboard           checkersBB;
+    StateInfo*         previous;
+    Bitboard           blockersForKing[COLOR_NB];
+    Bitboard           pinners[COLOR_NB];
+    Bitboard           checkSquares[PIECE_TYPE_NB];
+    Bitboard           threats[PIECE_TYPE_NB];
+    Piece              capturedPiece;
+    int                repetition;
+    std::array<u8, 32> piecePlacement;
 };
 
 
@@ -85,8 +87,6 @@ struct PositionSetError: std::runtime_error {
 // traversing the search tree.
 class Position {
    public:
-    static void init();
-
     Position()                           = default;
     Position(const Position&)            = delete;
     Position& operator=(const Position&) = delete;
