@@ -74,6 +74,7 @@ constexpr Keys generate_keys() {
         e = next() << 1;
     for (auto& c : k.castling)
         c = next() << 1;
+    static_assert((k & 1ULL) == 0);
     return k;
 }
 
@@ -82,9 +83,9 @@ constexpr Keys keys = generate_keys();
 constexpr auto& psq       = keys.psq;
 constexpr auto& enpassant = keys.enpassant;
 constexpr auto& castling  = keys.castling;
-constexpr Key side      = 1ULL;
+constexpr Key side        = 1ULL;
 
-// No combination of ep, castling and stm key components may cancel, so that a
+// No combination of ep and castling key components may cancel, so that a
 // matching piecePlacement and Zobrist key guarantee a unique position.
 static_assert(
   [] {
@@ -102,7 +103,7 @@ static_assert(
                   }
       return true;
   }(),
-  "Zobrist ep/castling/stm keys must not cancel: matching piecePlacement "
+  "Zobrist ep/castling keys must not cancel: matching piecePlacement "
   "and key guarantee a unique position");
 
 }
