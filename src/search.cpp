@@ -649,7 +649,10 @@ bool Search::Worker::iterative_deepening() {
         Move pick = skill.best ? skill.best : skill.pick_best(rootMoves, multiPV);
         if (pick != rootMoves[0].pv[0])
         {
+            const auto bestScore = rootMoves[0].score;
             std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(), pick));
+            if (is_loss(rootMoves[0].score) && rootMoves[0].score < bestScore)
+                rootMoves[0].inexactLower = true;
             uciPvSent = false;
         }
     }
