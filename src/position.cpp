@@ -74,7 +74,6 @@ constexpr Keys generate_keys() {
         e = next() << 1;
     for (auto& c : k.castling)
         c = next() << 1;
-    static_assert((k & 1ULL) == 0);
     return k;
 }
 
@@ -83,6 +82,8 @@ constexpr Keys keys = generate_keys();
 constexpr auto& psq       = keys.psq;
 constexpr auto& enpassant = keys.enpassant;
 constexpr auto& castling  = keys.castling;
+// The least significant bit of keys is used to store the side to move.
+// The psq, enpassant and castling keys should have that bit set to zero.
 constexpr Key side        = 1ULL;
 
 // No combination of ep and castling key components may cancel, so that a
@@ -106,6 +107,20 @@ static_assert(
   "Zobrist ep/castling keys must not cancel: matching piecePlacement "
   "and key guarantee a unique position");
 
+// the least significant bit is reserved for the side to move
+static_assert(
+  [] {
+      bool any = false;
+      for (auto& row : psq)
+          for (Key e : row)
+              any |= (e & 1ULL);
+      for (Key e : castling)
+          any |= (e & 1ULL);
+      for (Key e : enpassant)
+          any |= (e & 1ULL);
+      return !any;
+  }(),
+  "Least significant bit of psq, castling and ep keys must be zero");
 }
 
 namespace {
