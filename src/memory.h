@@ -207,49 +207,6 @@ std::enable_if_t<std::is_array_v<T>, LargePagePtr<T>> make_unique_large_page(usi
     return LargePagePtr<T>(memory);
 }
 
-//
-//
-// aligned unique ptr
-//
-//
-
-template<typename T>
-struct AlignedDeleter {
-    void operator()(T* ptr) const { return memory_deleter<T>(ptr, std_aligned_free); }
-};
-
-template<typename T>
-struct AlignedArrayDeleter {
-    void operator()(T* ptr) const { return memory_deleter_array<T>(ptr, std_aligned_free); }
-};
-
-template<typename T>
-using AlignedPtr =
-  std::conditional_t<std::is_array_v<T>,
-                     std::unique_ptr<T, AlignedArrayDeleter<std::remove_extent_t<T>>>,
-                     std::unique_ptr<T, AlignedDeleter<T>>>;
-
-// make_unique_aligned for single objects
-template<typename T, typename... Args>
-std::enable_if_t<!std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(Args&&... args) {
-    const auto func = [](usize size) { return std_aligned_alloc(alignof(T), size); };
-    T*         obj  = memory_allocator<T>(func, std::forward<Args>(args)...);
-
-    return AlignedPtr<T>(obj);
-}
-
-// make_unique_aligned for arrays of unknown bound
-template<typename T>
-std::enable_if_t<std::is_array_v<T>, AlignedPtr<T>> make_unique_aligned(usize num) {
-    using ElementType = std::remove_extent_t<T>;
-
-    const auto   func   = [](usize size) { return std_aligned_alloc(alignof(ElementType), size); };
-    ElementType* memory = memory_allocator<T>(func, num);
-
-    return AlignedPtr<T>(memory);
-}
-
-
 // Get the first aligned element of an array.
 // ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,
 // where N is the number of elements in the array.
