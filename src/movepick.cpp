@@ -204,6 +204,16 @@ ExtMove* MovePicker::generate_and_score() {
 
     MoveList<Type> ml(pos);  // move generation
 
+    const auto* mainHist = Type != CAPTURES ? &(*mainHistory)[us] : nullptr;
+    const auto* pawnHist = Type == QUIETS ? &sharedHistory->pawn_entry(pos) : nullptr;
+    const auto* ch0      = Type != CAPTURES ? continuationHistory[0] : nullptr;
+    const auto* ch1      = Type == QUIETS ? continuationHistory[1] : nullptr;
+    const auto* ch2      = Type == QUIETS ? continuationHistory[2] : nullptr;
+    const auto* ch3      = Type == QUIETS ? continuationHistory[3] : nullptr;
+    const auto* ch5      = Type == QUIETS ? continuationHistory[5] : nullptr;
+    const auto* lph =
+      Type == QUIETS && ply < LOW_PLY_HISTORY_SIZE ? &(*lowPlyHistory)[ply] : nullptr;
+
     ExtMove* it = cur;
     for (auto move : ml)
     {
@@ -225,25 +235,25 @@ ExtMove* MovePicker::generate_and_score() {
             // Use a local accumulator to eliminate redundant stores to m.value
 
             // histories
-            int value = 2 * (*mainHistory)[us][m.raw()];
-            value += 2 * sharedHistory->pawn_entry(pos)[pc][to];
-            value += (*continuationHistory[0])[pc][to];
-            value += (*continuationHistory[1])[pc][to];
-            value += (*continuationHistory[2])[pc][to];
-            value += (*continuationHistory[3])[pc][to];
-            value += (*continuationHistory[5])[pc][to];
-
-            // bonus for checks
-            value += ((pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
+            int value = 2 * (*mainHist)[m.raw()];
+            value += 2 * (*pawnHist)[pc][to];
+            value += (*ch0)[pc][to];
+            value += (*ch1)[pc][to];
+            value += (*ch2)[pc][to];
+            value += (*ch3)[pc][to];
+            value += (*ch5)[pc][to];
 
             // penalty for moving to a square threatened by a lesser piece
             // or bonus for escaping an attack by a lesser piece.
             int v = 20 * (bool(threatByLesser[pt] & from) - bool(threatByLesser[pt] & to));
             value += PieceValue[pt] * v;
 
+            if (lph)
+                value += 8 * (*lph)[m.raw()] / (1 + ply);
 
-            if (ply < LOW_PLY_HISTORY_SIZE)
-                value += 8 * (*lowPlyHistory)[ply][m.raw()] / (1 + ply);
+            // bonus for checks
+            if ((pos.check_squares(pt) & to) && pos.see_ge(m, -75))
+                value += 16384;
 
             m.value = value;
         }
@@ -253,7 +263,7 @@ ExtMove* MovePicker::generate_and_score() {
             if (pos.capture_stage(m))
                 m.value = PieceValue[capturedPiece] + (1 << 28);
             else
-                m.value = (*mainHistory)[us][m.raw()] + (*continuationHistory[0])[pc][to];
+                m.value = (*mainHist)[m.raw()] + (*ch0)[pc][to];
         }
     }
     return it;
