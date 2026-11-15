@@ -17,6 +17,7 @@
 #   GP_CPUINFO: path to a cpuinfo-like fixture file (defaults to /proc/cpuinfo)
 #   GP_BITS: override getconf LONG_BIT result (32/64)
 #   GP_SYSCTL_FEATURES: override sysctl feature strings on Darwin x86_64
+#   GP_CXX_NATIVE_DEFINES: override the compiler's -march=native macro list on Windows x86_64
 
 cpuinfo_path=${GP_CPUINFO:-/proc/cpuinfo}
 
@@ -172,6 +173,35 @@ has_slow_bmi2() (
 match_not_slow_bmi2_and_flags() {
 	has_slow_bmi2 && return 1
 	match_flags "$@"
+}
+
+# Cygwin's /proc/cpuinfo (also used by MSYS2) prints the CPUID leaf 7 ECX
+# features (VBMI, VBMI2, VNNI, GFNI, ...) only for Intel CPUs, so AMD CPUs
+# that have them (Zen 4 and later) are not detected as x86-64-avx512icl.
+# Add the ones the compiler's -march=native detection reports: it reads CPUID
+# directly, so a feature the CPU or a hypervisor does not offer stays missing.
+# Without a working compiler nothing is added.
+add_cxx_native_flags() {
+	if [ -n "${GP_CXX_NATIVE_DEFINES+x}" ]; then
+		defines=$GP_CXX_NATIVE_DEFINES
+	else
+		defines=''
+		for cxx in "${CXX:-g++}" clang++; do
+			# Intentional splitting: CXX may hold a wrapper such as "ccache g++".
+			# shellcheck disable=SC2086
+			defines=$($cxx -march=native -dM -E -x c++ - </dev/null 2>/dev/null) && break
+			defines=''
+		done
+	fi
+	native=$(
+		printf '%s\n' "$defines" | awk '
+			$1 == "#define" && $2 ~ /^__(AVX512VBMI2?|AVX512VNNI|AVX512BITALG|AVX512VPOPCNTDQ|GFNI|VAES|VPCLMULQDQ)__$/ {
+				gsub(/_/, "", $2)
+				print tolower($2)
+			}
+		'
+	)
+	flags=$(normalize_ws "$flags $native")
 }
 
 match_sse3_popcnt() {
@@ -383,6 +413,7 @@ case $uname_s in
 	CYGWIN*|MINGW*|MSYS*)
 		# Windows x86_64 (MSYS2/Cygwin/MinGW)
 		get_flags
+		add_cxx_native_flags
 		set_arch_x86_64
 		;;
 
