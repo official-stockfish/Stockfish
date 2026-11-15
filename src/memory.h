@@ -109,9 +109,9 @@ void memory_deleter_array(T* ptr, FREE_FUNC free_func) {
         return;
 
 
-    // Move back on the pointer to where the size is allocated
-    const usize array_offset = std::max(sizeof(usize), alignof(T));
-    char*       raw_memory   = reinterpret_cast<char*>(ptr) - array_offset;
+    constexpr usize array_offset =
+      std::is_trivially_destructible_v<T> ? 0 : std::max(sizeof(usize), alignof(T));
+    char* raw_memory = reinterpret_cast<char*>(ptr) - array_offset;
 
     if constexpr (!std::is_trivially_destructible_v<T>)
     {
@@ -142,16 +142,19 @@ inline std::enable_if_t<std::is_array_v<T>, std::remove_extent_t<T>*>
 memory_allocator(ALLOC_FUNC alloc_func, usize num) {
     using ElementType = std::remove_extent_t<T>;
 
-    const usize array_offset = std::max(sizeof(usize), alignof(ElementType));
+    constexpr usize array_offset = std::is_trivially_destructible_v<ElementType>
+                                   ? 0
+                                   : std::max(sizeof(usize), alignof(ElementType));
 
-    // Save the array size in the memory location
-    const usize bytes      = array_offset + num * sizeof(ElementType);
+    // mmap-backed allocators require a nonzero size even for empty arrays.
+    const usize bytes = std::max(array_offset + num * sizeof(ElementType), alignof(ElementType));
     char*       raw_memory = reinterpret_cast<char*>(alloc_func(bytes));
     if (raw_memory == nullptr)
         report_failed_allocation(bytes);
     ASSERT_ALIGNED(raw_memory, alignof(T));
 
-    new (raw_memory) usize(num);
+    if constexpr (!std::is_trivially_destructible_v<ElementType>)
+        new (raw_memory) usize(num);
 
     for (usize i = 0; i < num; ++i)
         new (raw_memory + array_offset + i * sizeof(ElementType)) ElementType();
