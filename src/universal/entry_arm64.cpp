@@ -27,6 +27,18 @@
     #endif
 #endif
 
+#ifdef DUMP_SELECTED_BUILD
+
+    #include <stdio.h>
+
+    #define DEFINE_BUILD(x) \
+        int entry_##x(int, char**) { \
+            puts(#x); \
+            return 0; \
+        }
+
+#else
+
 #define DEFINE_BUILD(x) \
     namespace Stockfish_##x { \
         extern int main(int argc, char* argv[]); \
@@ -39,6 +51,7 @@
             __start_##x##_init[i](); \
         return Stockfish_##x::main(argc, argv); \
     }
+#endif  // !defined(DUMP_SELECTED_BUILD)
 
 DEFINE_BUILD(armv8)
 DEFINE_BUILD(armv8_dotprod)

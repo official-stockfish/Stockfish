@@ -19,6 +19,21 @@
 #include <cpuid.h>
 #include <stdint.h>
 
+#ifdef DUMP_SELECTED_BUILD
+
+    #include <stdio.h>
+    #ifdef __APPLE__
+        #include <sys/sysctl.h>
+    #endif
+
+    #define DEFINE_BUILD(x) \
+        int entry_##x(int, char**) { \
+            puts(#x); \
+            return 0; \
+        }
+
+#else
+
 #ifdef __APPLE__
     // We locate each arch's initializer pointer array at runtime via getsectiondata().
     // Example name is "_i_sse41_popcnt", baseline build is just "_i_"
@@ -57,6 +72,7 @@ extern "C" const struct mach_header_64 _mh_execute_header;
             return Stockfish_##x::main(argc, argv); \
         }
 #endif
+#endif  // !defined(DUMP_SELECTED_BUILD)
 
 DEFINE_BUILD(x86_64)
 DEFINE_BUILD(x86_64_sse41_popcnt)
