@@ -16,7 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "tbprobe.h"
+#include "../tbprobe.h"
 
 #include <algorithm>
 #include <atomic>
@@ -59,40 +59,6 @@
     #endif
     #include <windows.h>
 #endif
-
-#ifdef NO_TABLEBASES
-
-// Stubbed out impls
-namespace Stockfish::Tablebases {
-
-int MaxCardinality;
-
-void init(const std::string&) {}
-
-WDLScore probe_wdl(Position&, ProbeState* result) {
-    *result = FAIL;
-    return WDLDraw;
-}
-
-int probe_dtz(Position&, ProbeState* result) {
-    *result = FAIL;
-    return 0;
-}
-
-bool root_probe(Position&, Search::RootMoves&, bool, bool, const std::function<bool()>&) {
-    return false;
-}
-
-bool root_probe_wdl(Position&, Search::RootMoves&, bool) { return false; }
-
-Config rank_root_moves(
-  const OptionsMap&, Position&, Search::RootMoves&, bool, const std::function<bool()>&) {
-    return Config{};
-}
-
-}  // namespace Stockfish::Tablebases
-
-#else
 
 using namespace Stockfish::Tablebases;
 
@@ -265,7 +231,7 @@ class TBFile: public std::ifstream {
         if (is_open())
             close();  // Need to re-open to get native file descriptor
 
-    #ifndef _WIN32
+#ifndef _WIN32
         struct stat statbuf;
         int         fd = ::open(fname.c_str(), O_RDONLY | O_CLOEXEC);
 
@@ -295,10 +261,10 @@ class TBFile: public std::ifstream {
             exit(EXIT_FAILURE);
         }
 
-        #if defined(MADV_RANDOM)
+    #if defined(MADV_RANDOM)
         madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
-        #endif
-    #else
+    #endif
+#else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
         HANDLE fd = CreateFileW(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                 OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
@@ -334,7 +300,7 @@ class TBFile: public std::ifstream {
                       << ", error = " << GetLastError() << std::endl;
             exit(EXIT_FAILURE);
         }
-    #endif
+#endif
         u8* data = (u8*) *baseAddress;
 
         constexpr u8 Magics[][4] = {{0xD7, 0x66, 0x0C, 0xA5}, {0x71, 0xE8, 0x23, 0x5D}};
@@ -350,12 +316,12 @@ class TBFile: public std::ifstream {
 
     static void unmap(void* baseAddress, u64 mapping) {
 
-    #ifndef _WIN32
+#ifndef _WIN32
         munmap(baseAddress, mapping);
-    #else
+#else
         UnmapViewOfFile(baseAddress);
         CloseHandle((HANDLE) mapping);
-    #endif
+#endif
     }
 };
 
@@ -783,12 +749,12 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
     return value + 1;
 }
 
-    // A temporary fix for the compiler bug with vectorization. (#4450)
-    #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
-        #define DISABLE_CLANG_LOOP_VEC _Pragma("clang loop vectorize(disable)")
-    #else
-        #define DISABLE_CLANG_LOOP_VEC
-    #endif
+// A temporary fix for the compiler bug with vectorization. (#4450)
+#if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
+    #define DISABLE_CLANG_LOOP_VEC _Pragma("clang loop vectorize(disable)")
+#else
+    #define DISABLE_CLANG_LOOP_VEC
+#endif
 
 // Compute a unique index out of a position and use it to probe the TB file. To
 // encode k pieces of the same type and color, first sort the pieces by square in
@@ -1526,11 +1492,11 @@ void Tablebases::init(const std::string& paths) {
 
     if (!paths.empty())
     {
-    #ifndef _WIN32
+#ifndef _WIN32
         constexpr char SepChar = ':';
-    #else
+#else
         constexpr char SepChar = ';';
-    #endif
+#endif
 
         std::stringstream ss(paths);
         std::string       path;
@@ -1964,5 +1930,3 @@ Config Tablebases::rank_root_moves(const OptionsMap&            options,
     return config;
 }
 }  // namespace Stockfish
-
-#endif  // NO_TABLEBASES

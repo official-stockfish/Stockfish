@@ -55,12 +55,15 @@ enum WDLScore {
 
 // Possible states after a probing operation
 enum ProbeState {
-    FAIL              = 0,   // Probe failed (missing file table)
-    OK                = 1,   // Probe successful
+    FAIL = 0,  // Probe failed (missing file table)
+    OK   = 1,  // Probe successful
+#ifdef USE_SYZYGY
     CHANGE_STM        = -1,  // DTZ should check the other side
     ZEROING_BEST_MOVE = 2    // Best move zeroes DTZ (capture or pawn move)
+#endif
 };
 
+#ifdef USE_SYZYGY
 extern int MaxCardinality;
 
 
@@ -79,6 +82,37 @@ Config   rank_root_moves(
     Search::RootMoves&           rootMoves,
     bool                         rankDTZ    = false,
     const std::function<bool()>& time_abort = []() { return false; });
+
+#else
+inline int MaxCardinality = 0;
+
+inline void init(const std::string&) {}
+
+inline WDLScore probe_wdl(Position&, ProbeState* result) {
+    *result = FAIL;
+    return WDLDraw;
+}
+
+inline int probe_dtz(Position&, ProbeState* result) {
+    *result = FAIL;
+    return 0;
+}
+
+inline bool root_probe(Position&, Search::RootMoves&, bool, bool, const std::function<bool()>&) {
+    return false;
+}
+
+inline bool root_probe_wdl(Position&, Search::RootMoves&, bool) { return false; }
+
+inline Config rank_root_moves(
+  const OptionsMap&,
+  Position&,
+  Search::RootMoves&,
+  bool                         = false,
+  const std::function<bool()>& = []() { return false; }) {
+    return Config{};
+}
+#endif
 
 }  // namespace Stockfish::Tablebases
 

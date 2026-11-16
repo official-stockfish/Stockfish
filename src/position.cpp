@@ -34,7 +34,7 @@
 #include "history.h"
 #include "misc.h"
 #include "movegen.h"
-#include "syzygy/tbprobe.h"
+#include "tbprobe.h"
 #include "uci.h"
 
 using std::string;

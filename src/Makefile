@@ -90,7 +90,7 @@ HEADERS = attacks.h benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.
 		nnue/features/pp_3wide.h nnue/layers/affine_transform.h nnue/layers/affine_transform_sparse_input.h \
 		nnue/layers/clipped_relu.h nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h \
 		nnue/nnue_architecture.h nnue/nnue_common.h nnue/nnue_feature_transformer.h nnue/simd.h \
-		nnue/nnz_helper.h position.h search.h syzygy/tbprobe.h thread.h thread_native.h timeman.h \
+		nnue/nnz_helper.h position.h search.h tbprobe.h thread.h thread_native.h timeman.h \
 		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h engine.h score.h numa.h memory.h shm.h shm_unix.h
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
@@ -133,7 +133,7 @@ VPATH = syzygy:nnue:nnue/features
 # lsx = yes/no        --- -mlsx              --- Use Loongson SIMD eXtension
 # lasx = yes/no       --- -mlasx             --- Use Loongson Advanced SIMD eXtension
 # relaxedsimd = y/n   --- -mrelaxed-simd     --- Use WebAssembly relaxed SIMD extension
-# syzygy = yes/no     --- -DNO_TABLEBASES    --- Support Syzygy tablebase probing
+# syzygy = yes/no     --- -DUSE_SYZYGY       --- Support Syzygy tablebase probing
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -910,8 +910,10 @@ ifeq ($(pext),yes)
 endif
 
 ### Syzygy tablebases
-ifeq ($(syzygy),no)
-	CXXFLAGS += -DNO_TABLEBASES
+ifeq ($(syzygy),yes)
+	CPPFLAGS += -DUSE_SYZYGY
+else
+	SRCS := $(filter-out syzygy/tbprobe.cpp,$(SRCS))
 endif
 
 ### 3.8.1 Try to include git info for versioning and avoid recompiles if nothing changes

@@ -39,7 +39,7 @@
 #include "position.h"
 #include "search.h"
 #include "shm.h"
-#include "syzygy/tbprobe.h"
+#include "tbprobe.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
