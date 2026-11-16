@@ -255,6 +255,29 @@ void Search::Worker::start_searching() {
     if (!limits.depth && !skill.enabled())
         bestThread = threads.get_best_thread()->worker.get();
 
+    // A root won on DTZ alone (no table mate), where search reports no mate
+    // (a fail-high's raw score may be one, its reported bound not):
+    // search may pick any move that keeps the win, and only the DTZ-best one is
+    // sure to make progress, so play that. Equal DTZ keeps search's order.
+    if (auto& rms = bestThread->rootMoves; bestThread->tbConfig.rootInTB && !skill.enabled()
+                                           && rms[0].tbRank > 0 && !is_mate_or_mated(rms[0].tbScore)
+                                           && !is_mate_or_mated(rms[0].uciScore))
+    {
+        RootMoves ranked;
+        for (const auto& rm : rms)
+            ranked.emplace_back(rm.pv[0]);
+        Tablebases::rank_root_moves(options, rootPos, ranked, true);
+        const auto best = std::find(rms.begin(), rms.end(), ranked[0].pv[0]);
+        if (best != rms.begin() && best != rms.end())
+        {
+            std::rotate(rms.begin(), best, best + 1);
+            rms[0].score = rms[0].uciScore = rms[0].tbScore;
+            rms[0].pv.resize(1);
+            rms[0].inexactLower = rms[0].inexactUpper = false;
+            uciPvSent                                 = false;
+        }
+    }
+
     main_manager()->bestPreviousScore        = bestThread->rootMoves[0].score;
     main_manager()->bestPreviousAverageScore = bestThread->rootMoves[0].averageScore;
 
