@@ -186,15 +186,12 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 
 // Compile-time Robin Hood table of Zobrist hashes on top of Marcel van Kervinck's
-// cuckoo algorithm for reversible moves.
+// upcoming repetition algorithm for reversible moves.
 
 // Robin Hood hashing is a variant of open addressing that reduces the variance of
 // probe sequence lengths by moving keys with shorter probe sequences to make room
 // for keys with longer probe sequences.
-// It is O(1) on average, and O(n) in the worst case (extremely unlikely)
-
-// The repetition table is generated at compile time, and the resulting table is used
-// to detect repetitions in chess positions efficiently.
+// It's O(1) on average, and O(n) in the worst case (extremely unlikely)
 
 // References:
 //   Upcoming repetition: http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
@@ -207,17 +204,17 @@ struct RepetitionTable {
     std::array<Key, REPETITION_TABLE_SIZE>  keys;
     std::array<Move, REPETITION_TABLE_SIZE> moves;
     // Similar to probe sequence length. Zero marks an empty slot; occupied distances are one-based.
-    std::array<u8, REPETITION_TABLE_SIZE>   distances;
-    int                                     count;
-    int                                     maxDistance;
+    std::array<u8, REPETITION_TABLE_SIZE> distances;
+    int                                   count;
+    int                                   maxDistance;
 };
 
 constexpr RepetitionTable generate_repetition_table() {
     std::array<Key, REPETITION_TABLE_SIZE>  keys{};
     std::array<Move, REPETITION_TABLE_SIZE> moves{};
     std::array<u8, REPETITION_TABLE_SIZE>   distances{};
-    int                    count = 0;
-    int                    maxDistance = 0;
+    int                                     count       = 0;
+    int                                     maxDistance = 0;
     for (Piece pc : Pieces)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
             for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
@@ -225,9 +222,9 @@ constexpr RepetitionTable generate_repetition_table() {
                 // PseudoAttacks puns slots 0-1 for the pawn-by-color attacks
                 if (type_of(pc) != PAWN && (PseudoAttacks[type_of(pc)][s1] & s2))
                 {
-                    Move move = Move(s1, s2);
-                    Key  key  = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-                    int  i    = repetition_hash(key);
+                    Move move     = Move(s1, s2);
+                    Key  key      = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
+                    int  i        = repetition_hash(key);
                     int  distance = 1;
                     while (true)
                     {
@@ -279,8 +276,8 @@ constexpr bool repetition_table_is_valid() {
             continue;
 
         ++count;
-        maxDistance = std::max(maxDistance, distance);
-        int j = repetition_hash(repetitionTable.keys[i]);
+        maxDistance       = std::max(maxDistance, distance);
+        int j             = repetition_hash(repetitionTable.keys[i]);
         int probeDistance = 1;
         for (; j != i; ++probeDistance)
         {
@@ -299,7 +296,8 @@ constexpr bool repetition_table_is_valid() {
 
 // Check if the repetition table is valid.
 static_assert(repetitionTable.count == 3668, "repetition table insertion count must be stable");
-static_assert(repetitionTable.maxDistance <= 255, "repetition table displacement must fit in one byte");
+static_assert(repetitionTable.maxDistance <= 255,
+              "repetition table displacement must fit in one byte");
 static_assert(repetition_table_is_valid(), "repetition table lookup invariants must hold");
 
 // Initializes the position object with the given FEN string.
@@ -1663,7 +1661,7 @@ bool Position::upcoming_repetition(int ply) const {
                 Square s1   = move.from_sq();
                 Square s2   = move.to_sq();
 
-                // The path must be clear of pieces to be considered legal and a repetition.
+                // The path must be clear of pieces for a move to be legal.
                 if (!((between_bb(s1, s2) ^ s2) & pieces()))
                 {
                     auto b = st->piecePlacement;
@@ -1671,8 +1669,8 @@ bool Position::upcoming_repetition(int ply) const {
 
                     if (b == stp->piecePlacement)
                     {
-                        // Check if the previous position is a repetition of the current position,
-                        // or if the previous position was already a repetition.
+                        // For nodes before or at the root, check that the move is a
+                        // repetition rather than a move to the current position.
                         if (ply > i || stp->repetition)
                             return true;
                     }
