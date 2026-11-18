@@ -29,7 +29,6 @@
 #include "memory.h"
 #include "misc.h"
 #include "numa.h"
-#include "position.h"
 #include "search.h"
 #include "thread_native.h"
 
@@ -37,6 +36,7 @@ namespace Stockfish {
 
 
 class OptionsMap;
+class Position;
 using Value = int;
 
 // Sometimes we don't want to actually bind the threads, but the recipient still

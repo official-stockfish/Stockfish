@@ -21,9 +21,7 @@
 
 #include <array>
 #include <cassert>
-#include <deque>
 #include <iosfwd>
-#include <memory>
 #include <new>
 #include <optional>
 #include <stdexcept>
