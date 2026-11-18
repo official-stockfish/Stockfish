@@ -181,11 +181,11 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
     if (Tablebases::MaxCardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
     {
-        Position p;
-        p.set(pos.fen(), pos.is_chess960());
+        std::unique_ptr<Position> p = std::make_unique<Position>();
+        p->set(pos.fen(), pos.is_chess960());
         Tablebases::ProbeState s1, s2;
-        Tablebases::WDLScore   wdl = Tablebases::probe_wdl(p, &s1);
-        int                    dtz = Tablebases::probe_dtz(p, &s2);
+        Tablebases::WDLScore   wdl = Tablebases::probe_wdl(*p, &s1);
+        int                    dtz = Tablebases::probe_dtz(*p, &s2);
         os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
            << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
     }

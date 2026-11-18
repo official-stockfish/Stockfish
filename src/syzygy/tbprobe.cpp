@@ -28,6 +28,7 @@
 #include <fstream>
 #include <initializer_list>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <sstream>
@@ -429,9 +430,9 @@ template<>
 TBTable<WDL>::TBTable(const std::string& code) :
     TBTable() {
 
-    Position pos;
+    std::unique_ptr<Position> pos = std::make_unique<Position>();
 
-    auto err = pos.set(code, WHITE);
+    auto err = pos->set(code, WHITE);
     // IMPORTANT: We cannot assert here because it WILL produce validation errors
     // on some TB7 and higher positions due to the black king being attacked
     // while white is to move. This is not fixable without significant changes.
@@ -440,25 +441,25 @@ TBTable<WDL>::TBTable(const std::string& code) :
     // done after the position is fully set up, so it's fine for now.
     // assert(!err.has_value());
     (void) err;
-    key        = pos.material_key();
-    pieceCount = pos.count<ALL_PIECES>();
-    hasPawns   = pos.pieces(PAWN);
+    key        = pos->material_key();
+    pieceCount = pos->count<ALL_PIECES>();
+    hasPawns   = pos->pieces(PAWN);
 
     hasUniquePieces = false;
     for (Color c : {WHITE, BLACK})
         for (PieceType pt = PAWN; pt < KING; ++pt)
-            if (popcount(pos.pieces(c, pt)) == 1)
+            if (popcount(pos->pieces(c, pt)) == 1)
                 hasUniquePieces = true;
 
     // Set the leading color. In case both sides have pawns the leading color
     // is the side with fewer pawns because this leads to better compression.
-    bool c = !pos.count<PAWN>(BLACK)
-          || (pos.count<PAWN>(WHITE) && pos.count<PAWN>(BLACK) >= pos.count<PAWN>(WHITE));
+    bool c = !pos->count<PAWN>(BLACK)
+          || (pos->count<PAWN>(WHITE) && pos->count<PAWN>(BLACK) >= pos->count<PAWN>(WHITE));
 
-    pawnCount[0] = pos.count<PAWN>(c ? WHITE : BLACK);
-    pawnCount[1] = pos.count<PAWN>(c ? BLACK : WHITE);
+    pawnCount[0] = pos->count<PAWN>(c ? WHITE : BLACK);
+    pawnCount[1] = pos->count<PAWN>(c ? BLACK : WHITE);
 
-    err = pos.set(code, BLACK);
+    err = pos->set(code, BLACK);
     // IMPORTANT: We cannot assert here because it WILL produce validation errors
     // on some TB7 and higher positions due to the black king being attacked
     // while white is to move. This is not fixable without significant changes.
@@ -467,7 +468,7 @@ TBTable<WDL>::TBTable(const std::string& code) :
     // done after the position is fully set up, so it's fine for now.
     // assert(!err.has_value());
     (void) err;
-    key2 = pos.material_key();
+    key2 = pos->material_key();
 }
 
 template<>

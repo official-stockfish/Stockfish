@@ -301,12 +301,12 @@ void Engine::save_network(const std::optional<std::filesystem::path>& file) {
 // utility functions
 
 void Engine::trace_eval() const {
-    Position p;
-    p.set(pos.fen(), options["UCI_Chess960"]);
+    std::unique_ptr<Position> p = std::make_unique<Position>();
+    p->set(pos.fen(), options["UCI_Chess960"]);
 
     verify_network();
 
-    sync_cout << "\n" << Eval::trace(p, *network) << sync_endl;
+    sync_cout << "\n" << Eval::trace(*p, *network) << sync_endl;
 }
 
 const OptionsMap& Engine::get_options() const { return options; }
