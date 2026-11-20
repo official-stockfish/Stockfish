@@ -195,27 +195,36 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 }
 
 
-// Implements Marcel van Kervinck's cuckoo algorithm to detect repetition of positions
-// for 3-fold repetition draws. The algorithm uses two hash tables with Zobrist hashes
-// to allow fast detection of recurring positions. For details see:
-// http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+// Compile-time Robin Hood table of Zobrist hashes on top of Marcel van Kervinck's
+// upcoming repetition algorithm for reversible moves.
 
-// First and second hash functions for indexing the cuckoo tables
-constexpr int H1(Key h) { return h & 0x1fff; }
-constexpr int H2(Key h) { return (h >> 16) & 0x1fff; }
+// Robin Hood hashing is a variant of open addressing that reduces the variance of
+// probe sequence lengths by moving keys with shorter probe sequences to make room
+// for keys with longer probe sequences.
+// It's O(1) on average, and O(n) in the worst case (extremely unlikely)
 
-// constexpr-generated cuckoo tables with Zobrist hashes of valid reversible
-// moves, and the moves themselves.
-struct CuckooTables {
-    std::array<Key, 8192>  keys;
-    std::array<Move, 8192> moves;
-    int                    count;
+// References:
+//   Upcoming repetition: http://web.archive.org/web/20201107002606/https://marcelk.net/2013-04-06/paper/upcoming-rep-v2.pdf
+//   Robin hood hashing:  https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf
+constexpr int REPETITION_TABLE_SIZE = 8192;
+constexpr int REPETITION_TABLE_MASK = REPETITION_TABLE_SIZE - 1;
+constexpr int repetition_hash(Key key) { return key & REPETITION_TABLE_MASK; }
+
+struct RepetitionTable {
+    std::array<Key, REPETITION_TABLE_SIZE>  keys;
+    std::array<Move, REPETITION_TABLE_SIZE> moves;
+    // Similar to probe sequence length. Zero marks an empty slot; occupied distances are one-based.
+    std::array<u8, REPETITION_TABLE_SIZE> distances;
+    int                                   count;
+    int                                   maxDistance;
 };
 
-constexpr CuckooTables generate_cuckoo() {
-    std::array<Key, 8192>  c{};
-    std::array<Move, 8192> m{};
-    int                    count = 0;
+constexpr RepetitionTable generate_repetition_table() {
+    std::array<Key, REPETITION_TABLE_SIZE>  keys{};
+    std::array<Move, REPETITION_TABLE_SIZE> moves{};
+    std::array<u8, REPETITION_TABLE_SIZE>   distances{};
+    int                                     count       = 0;
+    int                                     maxDistance = 0;
     for (Piece pc : Pieces)
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
             for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
@@ -223,28 +232,83 @@ constexpr CuckooTables generate_cuckoo() {
                 // PseudoAttacks puns slots 0-1 for the pawn-by-color attacks
                 if (type_of(pc) != PAWN && (PseudoAttacks[type_of(pc)][s1] & s2))
                 {
-                    Move move = Move(s1, s2);
-                    Key  key  = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
-                    int  i    = H1(key);
+                    Move move     = Move(s1, s2);
+                    Key  key      = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
+                    int  i        = repetition_hash(key);
+                    int  distance = 1;
                     while (true)
                     {
-                        swap_constexpr(c[i], key);
-                        swap_constexpr(m[i], move);
-                        if (move == Move::none())  // Arrived at empty slot?
+                        // If the distance is too large, return an invalid table
+                        if (distance > 255)
+                            return {keys, moves, distances, -1, distance};
+
+                        // If the slot is empty, insert the key and move
+                        if (distances[i] == 0)
+                        {
+                            keys[i]      = key;
+                            moves[i]     = move;
+                            distances[i] = u8(distance);
+                            maxDistance  = std::max(maxDistance, distance);
                             break;
-                        i = (i == H1(key)) ? H2(key) : H1(key);  // Push victim to alternative slot
+                        }
+
+                        // If the current slot has a smaller distance than the new key, swap the
+                        // smaller ("poorer") key and continue probing with the displaced
+                        // ("richer") key.
+                        if (distances[i] < distance)
+                        {
+                            swap_constexpr(keys[i], key);
+                            swap_constexpr(moves[i], move);
+                            int displacedDistance = distances[i];
+                            distances[i]          = u8(distance);
+                            distance              = displacedDistance;
+                            maxDistance           = std::max(maxDistance, int(distances[i]));
+                        }
+
+                        // Advance to the next slot in the probe sequence
+                        ++distance;
+                        i = (i + 1) & REPETITION_TABLE_MASK;
                     }
                     count++;
                 }
-    return {c, m, count};
+    return {keys, moves, distances, count, maxDistance};
 }
 
-constexpr CuckooTables cuckooTables = generate_cuckoo();
+constexpr RepetitionTable repetitionTable = generate_repetition_table();
 
-static_assert(cuckooTables.count == 3668, "cuckoo table insertion count must be stable");
+constexpr bool repetition_table_is_valid() {
+    int count       = 0;
+    int maxDistance = 0;
+    for (int i = 0; i < REPETITION_TABLE_SIZE; ++i)
+    {
+        int distance = repetitionTable.distances[i];
+        if (!distance)
+            continue;
 
-constexpr auto& cuckoo     = cuckooTables.keys;
-constexpr auto& cuckooMove = cuckooTables.moves;
+        ++count;
+        maxDistance       = std::max(maxDistance, distance);
+        int j             = repetition_hash(repetitionTable.keys[i]);
+        int probeDistance = 1;
+        for (; j != i; ++probeDistance)
+        {
+            if (repetitionTable.distances[j] < probeDistance
+                || repetitionTable.keys[j] == repetitionTable.keys[i])
+                return false;
+            j = (j + 1) & REPETITION_TABLE_MASK;
+        }
+
+        if (distance != probeDistance)
+            return false;
+    }
+
+    return count == repetitionTable.count && maxDistance == repetitionTable.maxDistance;
+}
+
+// Check if the repetition table is valid.
+static_assert(repetitionTable.count == 3668, "repetition table insertion count must be stable");
+static_assert(repetitionTable.maxDistance <= 255,
+              "repetition table displacement must fit in one byte");
+static_assert(repetition_table_is_valid(), "repetition table lookup invariants must hold");
 
 // Initializes the position object with the given FEN string.
 // The FEN string is strictly validated; if it is invalid or inconsistent,
@@ -1591,25 +1655,40 @@ bool Position::upcoming_repetition(int ply) const {
 
         Key moveKey = originalKey ^ stp->key;
 
-        if (int j = H1(moveKey); cuckoo[j] == moveKey || (j = H2(moveKey), cuckoo[j] == moveKey))
+        int j        = repetition_hash(moveKey);
+        int distance = 1;
+
+        // Probe the repetition table for a move with the same key and distance from the current position.
+        while (repetitionTable.distances[j] >= distance)
         {
-            Move   move = cuckooMove[j];
-            Square s1   = move.from_sq();
-            Square s2   = move.to_sq();
-
-            if (!((between_bb(s1, s2) ^ s2) & pieces()))
+            // If the keys match, check if the move is a repetition of the current position.
+            if (repetitionTable.keys[j] == moveKey)
             {
-                auto b = st->piecePlacement;
-                swap_nibble(b, s1, s2);
+                Move   move = repetitionTable.moves[j];
+                Square s1   = move.from_sq();
+                Square s2   = move.to_sq();
 
-                if (b == stp->piecePlacement)
+                // The path must be clear of pieces for a move to be legal.
+                if (!((between_bb(s1, s2) ^ s2) & pieces()))
                 {
-                    // For nodes before or at the root, check that the move is a
-                    // repetition rather than a move to the current position.
-                    if (ply > i || stp->repetition)
-                        return true;
+                    auto b = st->piecePlacement;
+                    swap_nibble(b, s1, s2);
+
+                    if (b == stp->piecePlacement)
+                    {
+                        // For nodes before or at the root, check that the move is a
+                        // repetition rather than a move to the current position.
+                        if (ply > i || stp->repetition)
+                            return true;
+                    }
                 }
+
+                break;
             }
+
+            // Advance to the next slot in the probe sequence
+            ++distance;
+            j = (j + 1) & REPETITION_TABLE_MASK;
         }
     }
     return false;
