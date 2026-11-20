@@ -1253,8 +1253,7 @@ moves_loop:  // When in check, search starts here
                 // (*Scaler): Generally, more frequent futility pruning scales well
                 if (!ss->inCheck && lmrDepth < 12 && futilityValue <= alpha)
                 {
-                    if (bestValue <= futilityValue && !is_decisive(bestValue)
-                        && !is_win(futilityValue))
+                    if (bestValue <= futilityValue && !is_win(futilityValue))
                         bestValue = futilityValue;
                     continue;
                 }
