@@ -60,7 +60,7 @@ class MovePicker {
     template<GenType T>
     ExtMove* generate_and_score();
 
-    const Position&                    pos;
+    const Position&              pos;
     const ButterflyHistory*      mainHistory;
     const LowPlyHistory*         lowPlyHistory;
     const CapturePieceToHistory* captureHistory;
