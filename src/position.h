@@ -118,12 +118,12 @@ class Position {
     // Attacks to/from a given square
     Bitboard attackers_to(Square s) const;
     Bitboard attackers_to(Square s, Bitboard occupied) const;
-    void     update_slider_blockers(Color c);
+    void     update_slider_blockers(Color c) const;
     Bitboard xattacks_by(PieceType pt, Color c, Bitboard occupied) const;
-    Bitboard threats_by(PieceType pt);
+    Bitboard threats_by(PieceType pt) const;
 
     // Properties of moves
-    bool  legal(Move m);
+    bool  legal(Move m) const;
     bool  capture(Move m) const;
     bool  capture_stage(Move m) const;
     bool  gives_check(Move m) const;
@@ -153,7 +153,7 @@ class Position {
     Color side_to_move() const;
     int   game_ply() const;
     bool  is_chess960() const;
-    bool  is_draw(int ply);
+    bool  is_draw(int ply) const;
     bool  is_repetition(int ply) const;
     bool  upcoming_repetition(int ply) const;
     bool  has_repeated() const;
@@ -178,9 +178,9 @@ class Position {
     // Initialization helpers (used while setting up a position)
     void set_castling_right(Color c, Square rfrom);
     Key  compute_material_key() const;
-    void set_state();
-    void set_extra_bitboards();
-    void compute_threats();
+    void set_state() const;
+    void set_extra_bitboards() const;
+    void compute_threats() const;
 
     // Other helpers
     template<bool ComputeRay = true>
@@ -296,7 +296,7 @@ inline Bitboard Position::xattacks_by(PieceType pt, Color c, Bitboard occupied) 
     }
 }
 
-inline Bitboard Position::threats_by(PieceType pt) {
+inline Bitboard Position::threats_by(PieceType pt) const {
     if (!st->threats[ALL_PIECES])
         compute_threats();
     return st->threats[pt];

@@ -604,7 +604,7 @@ void Position::set_castling_right(Color c, Square rfrom) {
 
 // Sets pinners and where stm can give check. Squares threatened by ~stm are
 // computed lazily by compute_threats().
-void Position::set_extra_bitboards() {
+void Position::set_extra_bitboards() const {
 
     update_slider_blockers(WHITE);
     update_slider_blockers(BLACK);
@@ -623,7 +623,7 @@ void Position::set_extra_bitboards() {
 }
 
 
-void Position::compute_threats() {
+void Position::compute_threats() const {
 
     Bitboard occ            = pieces() ^ square<KING>(sideToMove);
     st->threats[ALL_PIECES] = st->threats[PAWN]    = xattacks_by(PAWN, ~sideToMove, occ);
@@ -638,7 +638,7 @@ void Position::compute_threats() {
 // Computes the hash keys of the position, and other
 // data that once computed is updated incrementally as moves are made.
 // The function is only used when a new position is set up
-void Position::set_state() {
+void Position::set_state() const {
 
     st->key               = sideToMove;
     st->minorPieceKey     = 0ULL;
@@ -763,7 +763,7 @@ string Position::fen() const {
 // Calculates st->blockersForKing[c] and st->pinners[~c],
 // which store respectively the pieces preventing king of color c from being in check
 // and the slider pieces of color ~c pinning pieces of color c to the king.
-void Position::update_slider_blockers(Color c) {
+void Position::update_slider_blockers(Color c) const {
 
     Square ksq = square<KING>(c);
 
@@ -805,7 +805,7 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
 // Takes a random move and tests whether the move is legal. It is used to validate moves
 // from TT that can be corrupted due to SMP concurrent access or hash position key aliasing.
-bool Position::legal(Move m) {
+bool Position::legal(Move m) const {
 
     Color  us   = sideToMove;
     Square from = m.from_sq();
@@ -1599,7 +1599,7 @@ bool Position::see_ge(Move m, int threshold) const {
 
 // Tests whether the position is drawn by 50-move rule
 // or by repetition. It does not detect stalemates.
-bool Position::is_draw(int ply) {
+bool Position::is_draw(int ply) const {
 
     if (st->rule50 > 99 && (!checkers() || MoveList<ALL>(*this).size()))
         return true;
