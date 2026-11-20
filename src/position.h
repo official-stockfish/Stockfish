@@ -324,16 +324,16 @@ inline Key Position::key() const { return adjust_key50(st->key); }
 
 template<bool AfterMove>
 inline Key Position::adjust_key50(Key k) const {
-    return st->rule50 < 14 - AfterMove ? k : k ^ make_key((st->rule50 - (14 - AfterMove)) / 8);
+    return st->rule50 < 14 - AfterMove ? k : k ^ make_key((st->rule50 - (14 - AfterMove)) / 8) << 1;
 }
 
-inline Key Position::pawn_key() const { return st->pawnKey; }
+inline Key Position::pawn_key() const { return st->pawnKey ^ sideToMove; }
 
 inline Key Position::material_key() const { return st->materialKey; }
 
-inline Key Position::minor_piece_key() const { return st->minorPieceKey; }
+inline Key Position::minor_piece_key() const { return st->minorPieceKey ^ sideToMove; }
 
-inline Key Position::non_pawn_key(Color c) const { return st->nonPawnKey[c]; }
+inline Key Position::non_pawn_key(Color c) const { return st->nonPawnKey[c] ^ sideToMove; }
 
 inline Value Position::non_pawn_material(Color c) const { return st->nonPawnMaterial[c]; }
 

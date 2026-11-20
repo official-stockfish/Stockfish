@@ -50,7 +50,6 @@ struct Keys {
     Key psq[PIECE_NB][SQUARE_NB];
     Key enpassant[FILE_NB];
     Key castling[CASTLING_RIGHT_NB];
-    Key side, noPawns;
 };
 
 constexpr Keys generate_keys() {
@@ -65,18 +64,16 @@ constexpr Keys generate_keys() {
     for (Piece pc : {W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, B_PAWN, B_KNIGHT,
                      B_BISHOP, B_ROOK, B_QUEEN, B_KING})
         for (Square sq = SQ_A1; sq <= SQ_H8; ++sq)
-            k.psq[pc][sq] = next();
+            k.psq[pc][sq] = next() << 1;
     // Pawns on these squares will promote: keep the impossible placements zero
     for (Square sq = SQ_A8; sq <= SQ_H8; ++sq)
         k.psq[W_PAWN][sq] = Key(0);
     for (Square sq = SQ_A1; sq <= SQ_H1; ++sq)
         k.psq[B_PAWN][sq] = Key(0);
     for (auto& e : k.enpassant)
-        e = next();
+        e = next() << 1;
     for (auto& c : k.castling)
-        c = next();
-    k.side    = next();
-    k.noPawns = next();
+        c = next() << 1;
     return k;
 }
 
@@ -85,10 +82,11 @@ constexpr Keys keys = generate_keys();
 constexpr auto& psq       = keys.psq;
 constexpr auto& enpassant = keys.enpassant;
 constexpr auto& castling  = keys.castling;
-constexpr auto& side      = keys.side;
-constexpr auto& noPawns   = keys.noPawns;
+// The least significant bit of keys is used to store the side to move.
+// The psq, enpassant and castling keys should have that bit set to zero.
+constexpr Key side = 1ULL;
 
-// No combination of ep, castling and stm key components may cancel, so that a
+// No combination of ep and castling key components may cancel, so that a
 // matching piecePlacement and Zobrist key guarantee a unique position.
 static_assert(
   [] {
@@ -96,21 +94,33 @@ static_assert(
           for (int b = 0; b < CASTLING_RIGHT_NB; ++b)
               for (int f1 = 0; f1 <= FILE_NB; ++f1)      // 0 means no ep component
                   for (int f2 = 0; f2 <= FILE_NB; ++f2)  // 0 means no ep component
-                      for (int stm = 0; stm < 2; ++stm)
-                      {
-                          Key cr   = castling[a] ^ castling[b];
-                          Key ep   = (f1 ? enpassant[f1 - 1] : 0) ^ (f2 ? enpassant[f2 - 1] : 0);
-                          Key stmd = stm ? side : 0;
-                          if (cr == 0 && ep == 0 && stmd == 0)
-                              continue;  // identical components
-                          if ((cr ^ ep ^ stmd) == 0)
-                              return false;  // a cancellation exists
-                      }
+                  {
+                      Key cr = castling[a] ^ castling[b];
+                      Key ep = (f1 ? enpassant[f1 - 1] : 0) ^ (f2 ? enpassant[f2 - 1] : 0);
+                      if (cr == 0 && ep == 0)
+                          continue;  // identical components
+                      if ((cr ^ ep) == 0)
+                          return false;  // a cancellation exists
+                  }
       return true;
   }(),
-  "Zobrist ep/castling/stm keys must not cancel: matching piecePlacement "
+  "Zobrist ep/castling keys must not cancel: matching piecePlacement "
   "and key guarantee a unique position");
 
+// the least significant bit is reserved for the side to move
+static_assert(
+  [] {
+      bool any = false;
+      for (auto& row : psq)
+          for (Key e : row)
+              any |= (e & 1ULL);
+      for (Key e : castling)
+          any |= (e & 1ULL);
+      for (Key e : enpassant)
+          any |= (e & 1ULL);
+      return !any;
+  }(),
+  "Least significant bit of psq, castling and ep keys must be zero");
 }
 
 namespace {
@@ -568,10 +578,10 @@ void Position::compute_threats() const {
 // The function is only used when a new position is set up
 void Position::set_state() const {
 
-    st->key               = 0;
-    st->minorPieceKey     = 0;
-    st->nonPawnKey[WHITE] = st->nonPawnKey[BLACK] = 0;
-    st->pawnKey                                   = Zobrist::noPawns;
+    st->key               = sideToMove;
+    st->minorPieceKey     = 0ULL;
+    st->nonPawnKey[WHITE] = st->nonPawnKey[BLACK] = 0ULL;
+    st->pawnKey                                   = 0ULL;
     st->nonPawnMaterial[WHITE] = st->nonPawnMaterial[BLACK] = VALUE_ZERO;
     st->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
@@ -602,9 +612,6 @@ void Position::set_state() const {
 
     if (st->epSquare != SQ_NONE)
         st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
-
-    if (sideToMove == BLACK)
-        st->key ^= Zobrist::side;
 
     st->key ^= Zobrist::castling[st->castlingRights];
     st->materialKey = compute_material_key();
