@@ -28,8 +28,10 @@
 #include "types.h"
 #include "bitboard.h"
 
-#ifdef USE_AVX2
+#if defined(USE_AVX2)
     #include <immintrin.h>
+#elif defined(__wasm_simd128__)
+    #include <wasm_simd128.h>
 #endif
 #ifdef _MSC_VER
     #include <cstdlib>  // _byteswap_uint64()
@@ -97,6 +99,32 @@ struct alignas(32) DualMagic {
         // [bishop, rook]
         return {_mm_extract_epi64(_mm256_castsi256_si128(rookBishop), 1),
                 _mm_cvtsi128_si64(_mm256_castsi256_si128(result)) + rankAttacks};
+#elif defined(__wasm_simd128__)
+        // Byteswap within each 64-bit lane
+        const auto bswap = [](v128_t v) {
+            return wasm_i8x16_shuffle(v, v, 7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+        };
+
+        const v128_t occ = wasm_i64x2_splat(i64(occupied));
+        const v128_t rs  = wasm_i64x2_splat(i64(r));
+        const v128_t rrs = wasm_i64x2_splat(i64(rr));
+
+        // Two lanes of the scalar algorithm below
+        const auto hyperbola2 = [&](v128_t mask) {
+            const v128_t o   = wasm_v128_and(mask, occ);
+            const v128_t fwd = wasm_i64x2_sub(o, rs);
+            const v128_t rev = bswap(wasm_i64x2_sub(bswap(o), rrs));
+            return wasm_v128_and(wasm_v128_xor(fwd, rev), mask);
+        };
+
+        // Bishop: [diagonal, antidiagonal]; rook: [file, none]. A query for one
+        // piece type then computes only one vector.
+        const v128_t diags = hyperbola2(wasm_v128_load(&maskDiag));
+        const v128_t file  = hyperbola2(wasm_v128_load64_zero(&maskFile));
+
+        // [bishop, rook]
+        return {Bitboard(wasm_i64x2_extract_lane(diags, 0) | wasm_i64x2_extract_lane(diags, 1)),
+                Bitboard(wasm_i64x2_extract_lane(file, 0)) + rankAttacks};
 #else
         const auto hyperbola = [&](Bitboard mask) {
             Bitboard o = occupied & mask;
