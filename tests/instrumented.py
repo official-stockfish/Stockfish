@@ -269,31 +269,46 @@ class TestInteractive(metaclass=OrderedClassMembers):
         self.stockfish.check_output(callback)
 
     def test_ucinewgame_and_go_depth_9(self):
+        target_depth = 9
+
         self.stockfish.send_command("ucinewgame")
         self.stockfish.send_command("setoption name UCI_ShowWDL value true")
         self.stockfish.send_command("position startpos")
-        self.stockfish.send_command("go depth 9")
+        self.stockfish.send_command(f"go depth {target_depth}")
 
-        depth = 1
+        depth = 0
+        repeated = False
 
         def callback(output):
-            nonlocal depth
-
-            regex = rf"info depth {depth} seldepth \d+ multipv \d+ score cp -?\d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
+            nonlocal depth, repeated
 
             if output.startswith("info depth"):
-                if not re.match(regex, output):
-                    assert False
-                depth += 1
+                # ignore mid-search updates for deep searches
+                if "currmove" in output or "upperbound" in output or "lowerbound" in output:
+                    return False
+
+                match = re.match(r"info depth (\d+) ", output)
+                assert match, output
+                new_depth = int(match.group(1))
+
+                regex = rf"info depth {new_depth} seldepth \d+ multipv \d+ score cp -?\d+ wdl \d+ \d+ \d+ nodes \d+ nps \d+ hashfull \d+ tbhits \d+ time \d+ pv"
+                assert re.match(regex, output), output
+
+                # The final depth may repeat once, if its PV was extended by
+                # the ponder move that was extracted from the TT.
+                if not repeated and new_depth == depth == target_depth:
+                    repeated = True
+                else:
+                    assert new_depth == depth + 1, output
+                    depth = new_depth
 
             if output.startswith("bestmove"):
-                assert depth == 10
+                assert depth == target_depth
                 return True
 
             return False
 
         self.stockfish.check_output(callback)
-
     def test_go_depth_3_with_mismatched_clock(self):
         self.stockfish.send_command("ucinewgame")
         self.stockfish.send_command("position startpos")
