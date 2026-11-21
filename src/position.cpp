@@ -941,7 +941,7 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
     // in case of a capture or a pawn move.
     ++gamePly;
     ++st->rule50;
-    ++st->pliesFromNull;
+    st->repWindow = std::min(st->repWindow + 1, MAX_HIST - 1);
 
     auto& dpps = dirties.dirtyPawnPairs;
     auto& dts  = dirties.dirtyThreats;
@@ -1019,7 +1019,8 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
           Zobrist::psq[captured][8 + pieceCount[captured] - (m.type_of() != EN_PASSANT)];
 
         // Reset rule 50 counter
-        st->rule50 = 0;
+        st->rule50    = 0;
+        st->repWindow = 0;
     }
     else
         dp.remove_sq = SQ_NONE;
@@ -1097,7 +1098,8 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
         st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
 
         // Reset rule 50 draw counter
-        st->rule50 = 0;
+        st->rule50    = 0;
+        st->repWindow = 0;
     }
 
     else
@@ -1156,17 +1158,13 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
     // occurrence of the same position, negative in the 3-fold case, or zero
     // if the position was not repeated.
     st->repetition = 0;
-    int end        = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
-    if (end >= 4)
+    for (int i = 4; i <= st->repWindow; i += 2)
     {
-        for (int i = 4; i <= end; i += 2)
+        StateInfo* stp = &stateInfos[(stateIdx - i) & (MAX_HIST - 1)];
+        if (stp->key == st->key && stp->piecePlacement == st->piecePlacement)
         {
-            StateInfo* stp = &stateInfos[(stateIdx - i) & (MAX_HIST - 1)];
-            if (stp->key == st->key && stp->piecePlacement == st->piecePlacement)
-            {
-                st->repetition = stp->repetition ? -i : i;
-                break;
-            }
+            st->repetition = stp->repetition ? -i : i;
+            break;
         }
     }
 
@@ -1464,7 +1462,7 @@ void Position::do_null_move() {
 
     st->key ^= Zobrist::side;
 
-    st->pliesFromNull = 0;
+    st->repWindow = 0;
 
     st->capturedPiece = NO_PIECE;
 
@@ -1614,9 +1612,7 @@ bool Position::is_repetition(int ply) const { return st->repetition && st->repet
 // Tests whether there has been at least one repetition
 // of positions since the last capture or pawn move.
 bool Position::has_repeated() const {
-
-    int end = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
-    for (int i = 0; i <= end - 4; ++i)
+    for (int i = 0; i <= st->repWindow - 4; ++i)
     {
         if (stateInfos[(stateIdx - i) & (MAX_HIST - 1)].repetition)
             return true;
@@ -1628,16 +1624,10 @@ bool Position::has_repeated() const {
 // Tests if the position has a move which draws by repetition.
 // This function accurately matches the outcome of is_draw() over all legal moves.
 bool Position::upcoming_repetition(int ply) const {
-
-    int end = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
-
-    if (end < 3)
-        return false;
-
     Key originalKey = st->key;
     Key other       = originalKey ^ stateInfos[(stateIdx - 1) & (MAX_HIST - 1)].key ^ Zobrist::side;
 
-    for (int i = 3; i <= end; i += 2)
+    for (int i = 3; i <= st->repWindow; i += 2)
     {
         const StateInfo* stp0 = &stateInfos[(stateIdx - i + 1) & (MAX_HIST - 1)];
         const StateInfo* stp  = &stateInfos[(stateIdx - i) & (MAX_HIST - 1)];
