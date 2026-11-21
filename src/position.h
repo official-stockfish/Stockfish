@@ -21,9 +21,7 @@
 
 #include <array>
 #include <cassert>
-#include <deque>
 #include <iosfwd>
-#include <memory>
 #include <new>
 #include <optional>
 #include <stdexcept>
@@ -58,7 +56,6 @@ struct StateInfo {
     // Not copied when making a move (will be recomputed anyhow)
     Key                key;
     Bitboard           checkersBB;
-    StateInfo*         previous;
     Bitboard           blockersForKing[COLOR_NB];
     Bitboard           pinners[COLOR_NB];
     Bitboard           checkSquares[PIECE_TYPE_NB];
@@ -67,13 +64,6 @@ struct StateInfo {
     int                repetition;
     std::array<u8, 32> piecePlacement;
 };
-
-
-// A list to keep track of the position states along the setup moves (from the
-// start position to the position just before the search starts). Needed by
-// 'draw by repetition' detection. Use a std::deque because pointers to
-// elements are not invalidated upon list resizing.
-using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
 
 // This error should be used whenever a position is suspected to be unsupported
 // by the engine. In particular positions that may cause hard errors like segmentation fault.
@@ -92,8 +82,8 @@ class Position {
     Position& operator=(const Position&) = delete;
 
     // FEN string input/output
-    std::optional<PositionSetError> set(const std::string& fenStr, bool isChess960, StateInfo* si);
-    std::optional<PositionSetError> set(const std::string& code, Color c, StateInfo* si);
+    std::optional<PositionSetError> set(const std::string& fenStr, bool isChess960);
+    std::optional<PositionSetError> set(const std::string& code, Color c);
     std::string                     fen() const;
 
     // Position representation
@@ -141,14 +131,11 @@ class Position {
     Piece captured_piece() const;
 
     // Doing and undoing moves
-    void do_move(Move m, StateInfo& newSt);
-    void do_move(Move                   m,
-                 StateInfo&             newSt,
-                 bool                   givesCheck,
-                 Dirties&               dirties,
-                 const SharedHistories* worker = nullptr);
+    void do_move(Move m);
+    void
+    do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHistories* worker = nullptr);
     void undo_move(Move m);
-    void do_null_move(StateInfo& newSt);
+    void do_null_move();
     void undo_null_move();
 
     // Static Exchange Evaluation
@@ -173,6 +160,7 @@ class Position {
     int   rule50_count() const;
     Value non_pawn_material(Color c) const;
     Value non_pawn_material() const;
+    int   plies_from_null() const;
     bool  dtz_is_dtm() const;  // Pawnless && (3-men || 4-men-minors-only)
 
     // Position consistency check, for debugging
@@ -180,7 +168,7 @@ class Position {
     bool                            material_key_is_ok() const;
     std::optional<PositionSetError> flip();
 
-    StateInfo* state() const;
+    void copy_state_infos(const Position& other);
 
     void put_piece(Piece pc, Square s, DirtyThreats* const dts = nullptr);
     void remove_piece(Square s, DirtyThreats* const dts = nullptr);
@@ -222,11 +210,13 @@ class Position {
     int        castlingRightsMask[SQUARE_NB];
     Square     castlingRookSquare[CASTLING_RIGHT_NB];
     Bitboard   castlingPath[CASTLING_RIGHT_NB];
-    StateInfo* st;
     int        gamePly;
     Color      sideToMove;
     bool       chess960;
     Dirties    scratchDirties;
+    u16        stateIdx;
+    StateInfo* st;
+    StateInfo  stateInfos[MAX_HIST];
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -337,6 +327,8 @@ inline Key Position::non_pawn_key(Color c) const { return st->nonPawnKey[c] ^ si
 
 inline Value Position::non_pawn_material(Color c) const { return st->nonPawnMaterial[c]; }
 
+inline int Position::plies_from_null() const { return st->pliesFromNull; }
+
 inline Value Position::non_pawn_material() const {
     return non_pawn_material(WHITE) + non_pawn_material(BLACK);
 }
@@ -438,12 +430,10 @@ inline void Position::swap_piece(Square s, Piece pc, DirtyThreats* const dts) {
         update_piece_threats<false>(pc, true, s, dts);
 }
 
-inline void Position::do_move(Move m, StateInfo& newSt) {
+inline void Position::do_move(Move m) {
     new (&scratchDirties.dirtyThreats) DirtyThreats;
-    do_move(m, newSt, gives_check(m), scratchDirties);
+    do_move(m, gives_check(m), scratchDirties);
 }
-
-inline StateInfo* Position::state() const { return st; }
 
 }  // namespace Stockfish
 
