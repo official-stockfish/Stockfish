@@ -24,12 +24,6 @@
 
 namespace Stockfish::Attacks {
 
-Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-Bitboard inverse_RayPassBB[SQUARE_NB][SQUARE_NB];
-Bitboard DiagBB[SQUARE_NB];
-Bitboard AntiDiagBB[SQUARE_NB];
-
 static constexpr Bitboard line_mask(Square sq, Direction d1, Direction d2) {
     Bitboard mask = 0;
     for (Direction d : {d1, d2})
@@ -74,28 +68,46 @@ static constexpr auto make_dual_magics() {
 
 alignas(64) extern constexpr std::array<DualMagic, SQUARE_NB> DualMagics = make_dual_magics();
 
-void init() {
-
+alignas(64) extern constexpr SquarePairBB LineBB = []() {
+    SquarePairBB t{};
     for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
-    {
         for (PieceType pt : {BISHOP, ROOK})
             for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-            {
                 if (PseudoAttacks[pt][s1] & s2)
-                {
-                    LineBB[s1][s2] = (attacks_bb(pt, s1, 0) & attacks_bb(pt, s2, 0)) | s1 | s2;
-                    BetweenBB[s1][s2] =
-                      (attacks_bb(pt, s1, square_bb(s2)) & attacks_bb(pt, s2, square_bb(s1)));
-                    inverse_RayPassBB[s2][s1] =
-                      attacks_bb(pt, s1, 0) & (attacks_bb(pt, s2, square_bb(s1)) | s2);
-                }
-                BetweenBB[s1][s2] |= s2;
-            }
+                    t[s1][s2] = (PseudoAttacks[pt][s1] & PseudoAttacks[pt][s2]) | s1 | s2;
+    return t;
+}();
 
-        DiagBB[s1]     = line_mask(s1, NORTH_EAST, SOUTH_WEST) | s1;
-        AntiDiagBB[s1] = line_mask(s1, NORTH_WEST, SOUTH_EAST) | s1;
-    }
-}
+alignas(64) extern constexpr SquarePairBB BetweenBB = []() {
+    SquarePairBB t{};
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+            t[s1][s2] =
+              (LineBB[s1][s2] & ((~Bitboard(0) << s1) ^ (~Bitboard(0) << s2)) & ~square_bb(s1))
+              | s2;
+    return t;
+}();
 
+alignas(64) extern constexpr SquarePairBB inverse_RayPassBB = []() {
+    SquarePairBB t{};
+    for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+        for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
+            t[s2][s1] = LineBB[s1][s2] & (s2 > s1 ? ~Bitboard(0) << (s1 + 1) : square_bb(s1) - 1);
+    return t;
+}();
+
+alignas(64) extern constexpr SquareBB DiagBB = []() {
+    SquareBB t{};
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+        t[s] = line_mask(s, NORTH_EAST, SOUTH_WEST) | s;
+    return t;
+}();
+
+alignas(64) extern constexpr SquareBB AntiDiagBB = []() {
+    SquareBB t{};
+    for (Square s = SQ_A1; s <= SQ_H8; ++s)
+        t[s] = line_mask(s, NORTH_WEST, SOUTH_EAST) | s;
+    return t;
+}();
 
 }  // namespace Stockfish::Attacks

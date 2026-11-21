@@ -38,7 +38,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <array>
 
 #include "../attacks.h"
 #include "../bitboard.h"
@@ -1571,7 +1570,7 @@ void Tablebases::init(const std::string& paths) {
             if (MapA1D1D4[s1] == idx && (idx || s1 == SQ_B1))  // SQ_B1 is mapped to 0
             {
                 for (Square s2 = SQ_A1; s2 <= SQ_H8; ++s2)
-                    if ((Attacks::PseudoAttacks[KING][s1] | s1) & s2)
+                    if ((Attacks::attacks_bb(KING, s1) | s1) & s2)
                         continue;  // Illegal position
 
                     else if (!off_A1H8(s1) && off_A1H8(s2) > 0)

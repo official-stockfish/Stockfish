@@ -20,7 +20,6 @@
 #include <memory>
 #include <utility>
 
-#include "attacks.h"
 #include "misc.h"
 #include "tune.h"
 #include "uci.h"
@@ -37,8 +36,6 @@ __attribute__((used)) // keep main alive
 
 int main(int argc, char* argv[]) {
     std::cout << engine_info() << std::endl;
-
-    Attacks::init();
 
     auto cli = CommandLine(argc, argv);
     auto uci = std::make_unique<UCIEngine>(std::move(cli));
