@@ -285,8 +285,7 @@ bool Search::Worker::iterative_deepening() {
     Depth       lastBestMoveDepth = 0;
     Value       lastBestMoveScore = -VALUE_INFINITE;
 
-    Value  alpha, beta;
-    Value  bestValue     = -VALUE_INFINITE;
+    Value  alpha, beta, bestValue;
     Color  us            = rootPos.side_to_move();
     double timeReduction = 1, totBestMoveChanges = 0;
     int    delta, iterIdx                        = 0;
