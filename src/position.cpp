@@ -1156,7 +1156,7 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
     // occurrence of the same position, negative in the 3-fold case, or zero
     // if the position was not repeated.
     st->repetition = 0;
-    int end        = std::min(st->rule50, st->pliesFromNull);
+    int end        = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
     if (end >= 4)
     {
         for (int i = 4; i <= end; i += 2)
@@ -1615,7 +1615,7 @@ bool Position::is_repetition(int ply) const { return st->repetition && st->repet
 // of positions since the last capture or pawn move.
 bool Position::has_repeated() const {
 
-    int end = std::min(st->rule50, st->pliesFromNull);
+    int end = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
     for (int i = 0; i <= end - 4; ++i)
     {
         if (stateInfos[(stateIdx - i) & (MAX_HIST - 1)].repetition)
@@ -1629,7 +1629,7 @@ bool Position::has_repeated() const {
 // This function accurately matches the outcome of is_draw() over all legal moves.
 bool Position::upcoming_repetition(int ply) const {
 
-    int end = std::min(st->rule50, st->pliesFromNull);
+    int end = std::min({st->rule50, st->pliesFromNull, MAX_HIST - 1});
 
     if (end < 3)
         return false;
