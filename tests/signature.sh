@@ -22,16 +22,17 @@ EXE=${EXE:-./stockfish}
 eval "$RUN_PREFIX $EXE bench" > "$STDOUT_FILE" 2> "$STDERR_FILE" || error ${LINENO}
 signature=$(grep "Nodes searched  : " "$STDERR_FILE" | awk '{print $4}')
 
+if [ -z "$signature" ]; then
+   echo "No signature obtained from bench." >&2
+   error ${LINENO}
+fi
+
 rm -f "$STDOUT_FILE" "$STDERR_FILE"
 
 if [ $# -gt 0 ]; then
    # compare to given reference
    if [ "$1" != "$signature" ]; then
-      if [ -z "$signature" ]; then
-         echo "No signature obtained from bench. Code crashed or assert triggered ?"
-      else
-         echo "signature mismatch: reference $1 obtained: $signature ."
-      fi
+      echo "signature mismatch: reference $1 obtained: $signature ."
       exit 1
    else
       echo "signature OK: $signature"
