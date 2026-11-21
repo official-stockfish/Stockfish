@@ -447,13 +447,6 @@ class PRNG {
     T rand() {
         return T(rand64());
     }
-
-    // Special generator used to fast init magic numbers.
-    // Output values only have 1/8th of their bits set on average.
-    template<typename T>
-    T sparse_rand() {
-        return T(rand64() & rand64() & rand64());
-    }
 };
 
 inline usize mul_hi64(u64 a, usize b) {
