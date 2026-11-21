@@ -27,18 +27,31 @@
     #endif
 #endif
 
-#define DEFINE_BUILD(x) \
-    namespace Stockfish_##x { \
-        extern int main(int argc, char* argv[]); \
-    } \
-    extern "C" void (*__start_##x##_init[])(void); \
-    extern "C" void (*__stop_##x##_init[])(void); \
-    int entry_##x(int argc, char* argv[]) { \
-        unsigned count = __stop_##x##_init - __start_##x##_init; \
-        for (unsigned i = 0; i < count; i++) \
-            __start_##x##_init[i](); \
-        return Stockfish_##x::main(argc, argv); \
-    }
+#ifdef DUMP_SELECTED_BUILD
+
+    #include <stdio.h>
+
+    #define DEFINE_BUILD(x) \
+        int entry_##x(int, char**) { \
+            puts(#x); \
+            return 0; \
+        }
+
+#else
+
+    #define DEFINE_BUILD(x) \
+        namespace Stockfish_##x { \
+            extern int main(int argc, char* argv[]); \
+        } \
+        extern "C" void (*__start_##x##_init[])(void); \
+        extern "C" void (*__stop_##x##_init[])(void); \
+        int entry_##x(int argc, char* argv[]) { \
+            unsigned count = __stop_##x##_init - __start_##x##_init; \
+            for (unsigned i = 0; i < count; i++) \
+                __start_##x##_init[i](); \
+            return Stockfish_##x::main(argc, argv); \
+        }
+#endif  // !defined(DUMP_SELECTED_BUILD)
 
 DEFINE_BUILD(armv8)
 DEFINE_BUILD(armv8_dotprod)
