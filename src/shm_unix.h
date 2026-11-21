@@ -48,8 +48,6 @@
 #include <unistd.h>
 #include <limits.h>
 
-#define SF_MAX_SEM_NAME_LEN NAME_MAX
-
 #include "memory.h"
 #include "misc.h"
 #include "thread_native.h"
