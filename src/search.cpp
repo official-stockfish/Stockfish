@@ -1575,7 +1575,7 @@ moves_loop:  // When in check, search starts here
             (capture ? capturesSearched : quietsSearched).push_back(move);
     }
 
-    // Step 23. Check for mate and stalemate, otherwise update bestmove/countermove stats
+    // Step 23. Check for mate and stalemate, otherwise update best move and history stats
 
     assert(moveCount || !ss->inCheck || excludedMove || !MoveList<ALL>(pos).size());
 
@@ -1599,7 +1599,7 @@ moves_loop:  // When in check, search starts here
             ttMoveHistory << (bestMove == ttData.move ? 918 : -747);
     }
 
-    // Bonus for prior quiet countermove that caused the fail low
+    // Bonus for the prior quiet move that caused the fail low
     else if (!priorCapture && prevSq != SQ_NONE)
     {
         int bonusScale = -241;
@@ -1624,7 +1624,7 @@ moves_loop:  // When in check, search starts here
             sharedHistory.pawn_entry(pos)[pos.piece_on(prevSq)][prevSq] << scaledBonus * 324 / 8192;
     }
 
-    // Bonus for prior capture countermove that caused the fail low
+    // Bonus for the prior capture that caused the fail low
     else if (prevSq != SQ_NONE)
     {
         assert(priorCapture);
