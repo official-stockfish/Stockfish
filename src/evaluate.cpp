@@ -43,21 +43,20 @@ static int simple_eval(const Position& pos) {
          - pos.non_pawn_material(~c);
 }
 
-Value scale_evaluation(Value nnue, int optimism, const Position& pos);
+Value scale_evaluation(Value nnue, const Position& pos);
 
 Value Eval::evaluate(const Eval::NNUE::Network&     network,
                      const Position&                pos,
                      Eval::NNUE::AccumulatorStack&  accumulators,
-                     Eval::NNUE::AccumulatorCaches& caches,
-                     int                            optimism) {
+                     Eval::NNUE::AccumulatorCaches& caches) {
 
     assert(!pos.checkers());
     Value nnue = network.evaluate(pos, accumulators, caches);
-    return scale_evaluation(nnue, optimism, pos);
+    return scale_evaluation(nnue, pos);
 }
 
-// Applies search-dependent scaling (optimism and rule50) to the raw NNUE eval
-Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
+// Applies material and rule50 scaling to the raw NNUE eval
+Value scale_evaluation(Value nnue, const Position& pos) {
     Value se = simple_eval(pos);
 
     // Normalize the raw evaluations to [-1024, 1024] to measure their correlation.
@@ -69,7 +68,7 @@ Value scale_evaluation(Value nnue, int optimism, const Position& pos) {
     int correl = (se_norm * nnue_norm) / 512;
 
     // When winning, we boost easy positions, and vice versa
-    int v = nnue + (nnue + optimism) * correl / 65536;
+    int v = nnue + nnue * correl / 65536;
 
     // Scale the combined evaluation by total material
     int material = 521 * pos.count<PAWN>() + pos.non_pawn_material();
@@ -103,7 +102,7 @@ std::string Eval::trace(Position& pos, const Eval::NNUE::Network& network) {
     ss << std::showpoint << std::showpos << std::fixed << std::setprecision(2) << std::setw(15);
 
     Value nnue = network.evaluate(pos, *accumulators, *caches);
-    Value s_v  = scale_evaluation(nnue, VALUE_ZERO, pos);  // requires stm perspective
+    Value s_v  = scale_evaluation(nnue, pos);  // requires stm perspective
 
     ss << "NNUE evaluation          " << nnue << " (side to move, internal units)\n";
 
