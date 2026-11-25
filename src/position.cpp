@@ -225,11 +225,16 @@ constexpr RepetitionTable generate_repetition_table() {
     int                                     count       = 0;
     int                                     maxDistance = 0;
     for (Piece pc : Pieces)
+    {
+        // only non-pawn moves are reversible relocations
+        if (type_of(pc) == PAWN)
+            continue;
+
         for (Square s1 = SQ_A1; s1 <= SQ_H8; ++s1)
+        {
+            const Bitboard attacks = attacks_bb(type_of(pc), s1);
             for (Square s2 = Square(s1 + 1); s2 <= SQ_H8; ++s2)
-                // only non-pawn moves are reversible relocations; note that
-                // PseudoAttacks puns slots 0-1 for the pawn-by-color attacks
-                if (type_of(pc) != PAWN && (PseudoAttacks[type_of(pc)][s1] & s2))
+                if (attacks & s2)
                 {
                     Move move     = Move(s1, s2);
                     Key  key      = Zobrist::psq[pc][s1] ^ Zobrist::psq[pc][s2] ^ Zobrist::side;
@@ -270,6 +275,8 @@ constexpr RepetitionTable generate_repetition_table() {
                     }
                     count++;
                 }
+        }
+    }
     return {keys, moves, distances, count, maxDistance};
 }
 
@@ -1344,10 +1351,9 @@ void Position::update_piece_threats(Piece               pc,
     Bitboard       threatened    = (pt == BISHOP  ? bAttacks
                                     : pt == ROOK  ? rAttacks
                                     : pt == QUEEN ? sliderAttacks
-                                    : pt == PAWN  ? PseudoAttacks[color_of(pc)][s]
-                                                  : PseudoAttacks[pt][s])
+                                                  : attacks_bb(pt, s, color_of(pc)))
                         & threatTargets;
-    Bitboard incomingThreats = PseudoAttacks[KNIGHT][s] & pieces(KNIGHT);
+    Bitboard incomingThreats = attacks_bb(KNIGHT, s) & pieces(KNIGHT);
 
     if (pt == KNIGHT || pt == ROOK)
         incomingThreats |= (attacks_bb(PAWN, s, WHITE) & pieces(BLACK, PAWN))

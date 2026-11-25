@@ -39,8 +39,6 @@
 
 namespace Stockfish::Attacks {
 
-void init();
-
 inline Bitboard byteswap_bb(Bitboard b) {
 #if defined(_MSC_VER) && !defined(__clang__)
     return _byteswap_uint64(b);
@@ -140,11 +138,14 @@ struct alignas(32) DualMagic {
 extern const std::array<DualMagic, SQUARE_NB> DualMagics;
 inline const DualMagic&                       dual_magic(Square s) { return DualMagics[s]; }
 
-extern Bitboard LineBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard inverse_RayPassBB[SQUARE_NB][SQUARE_NB];
-extern Bitboard DiagBB[SQUARE_NB];
-extern Bitboard AntiDiagBB[SQUARE_NB];
+using SquareBB     = std::array<Bitboard, SQUARE_NB>;
+using SquarePairBB = std::array<SquareBB, SQUARE_NB>;
+
+extern const SquarePairBB LineBB;
+extern const SquarePairBB BetweenBB;
+extern const SquarePairBB inverse_RayPassBB;
+extern const SquareBB     DiagBB;
+extern const SquareBB     AntiDiagBB;
 
 // horizontal/vertical/diagonal line passing through s1 and s2
 inline Bitboard line_bb(Square s1, Square s2) {
@@ -250,7 +251,7 @@ inline constexpr auto PseudoAttacks = []() constexpr {
 
 // Returns the pseudo attacks of the given piece type
 // assuming an empty board.
-sf_always_inline Bitboard attacks_bb(PieceType pt, Square s, Color c = COLOR_NB) {
+sf_always_inline constexpr Bitboard attacks_bb(PieceType pt, Square s, Color c = COLOR_NB) {
 
     assert((pt != PAWN || c < COLOR_NB) && is_ok(s));
     return pt == PAWN ? PseudoAttacks[c][s] : PseudoAttacks[pt][s];

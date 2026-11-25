@@ -54,19 +54,17 @@ constexpr auto init_threat_luts() {
         u16 offset = 0;
         for (Square from = SQ_A1; from <= SQ_H8; ++from)
         {
-            for (Square to = SQ_A1; to <= SQ_H8; ++to)
-            {
-                Bitboard attacks = (pt != PAWN) ? Attacks::PseudoAttacks[pt][from]
-                                 : (to < from)  ? Attacks::PseudoAttacks[BLACK][from]
-                                                : Attacks::PseudoAttacks[WHITE][from];
-                tables.lut2[pt][from][to] =
-                  offset + constexpr_popcount(((1ULL << to) - 1) & attacks);
-            }
+            // Pawns attack downward for lower targets, upward for higher ones
+            const Bitboard below = Attacks::attacks_bb(pt, from, BLACK);
+            const Bitboard above = Attacks::attacks_bb(pt, from, WHITE);
+            auto&          row   = tables.lut2[pt][from];
 
-            if (pt != PAWN)
-                offset += constexpr_popcount(Attacks::PseudoAttacks[pt][from]);
-            else if (from >= SQ_A2 && from <= SQ_H7)
-                offset += constexpr_popcount(Attacks::PseudoAttacks[WHITE][from]);
+            for (Square to = SQ_A1; to <= SQ_H8; ++to)
+                row[to] =
+                  offset + constexpr_popcount(((1ULL << to) - 1) & (to < from ? below : above));
+
+            if (pt != PAWN || (from >= SQ_A2 && from <= SQ_H7))
+                offset += constexpr_popcount(above);
         }
 
         offsets[pt] = offset;
