@@ -477,52 +477,29 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
         if (++num_castling_rights > 4)
             return PositionSetError("Invalid FEN. Maximum of 4 castling rights can be specified.");
 
-        Square rsq  = SQ_NONE;
-        Square ksq  = SQ_NONE;
-        Color  c    = islower(token) ? BLACK : WHITE;
-        Piece  rook = make_piece(c, ROOK);
-        Piece  king = make_piece(c, KING);
-
-        token = char(toupper(token));
-
-        if (token == 'K' || token == 'Q')
-        {
-            const int dir = token == 'K' ? -1 : 1;
-            Square    sq  = relative_square(c, token == 'K' ? SQ_H1 : SQ_A1);
-            // Look for a rook and a king for the castling. King must come later.
-            // Only the first rook is noted.
-            // If the castling rights are available the king must always be between files 2 and 7 inclusive
-            // so there is no need to check the last square.
-            for (int i = 0; i < 7; ++i, sq = Square(sq + dir))
-            {
-                const Piece pc = piece_on(sq);
-                if (pc == king)
-                {
-                    ksq = sq;
-                    break;
-                }
-                else if (pc == rook && rsq == SQ_NONE)
-                    rsq = sq;
-            }
-        }
-        else if (token >= 'A' && token <= 'H')
-        {
-            const Square rsqCandidate = make_square(File(token - 'A'), relative_rank(c, RANK_1));
-            if (piece_on(rsqCandidate) == rook)
-                rsq = rsqCandidate;
-
-            // If the castling rights are available the king must always be between files 2 and 7 inclusive.
-            Square sq = square<KING>(c);
-            if (relative_rank(c, sq) == RANK_1 && file_of(sq) >= FILE_B && file_of(sq) <= FILE_G)
-                ksq = sq;
-        }
-        else
+        char upper = toupper(token);
+        if (upper != 'K' && upper != 'Q' && (upper < 'A' || upper > 'H'))
             return PositionSetError(std::string("Invalid FEN. Expected castling rights. Got: ")
-                                    + std::string(1, token));
+                                                + std::string(1, token));
 
-        // Only apply castling rights if they can be valid.
-        if (ksq != SQ_NONE && rsq != SQ_NONE)
+        Color  c    = islower(token) ? BLACK : WHITE;
+        Square ksq  = square<KING>(c);
+
+        if (rank_of(ksq) != relative_rank(c, RANK_1) || file_of(ksq) == FILE_A || file_of(ksq) == FILE_H)
+            continue;
+
+        Bitboard rooks = pieces(c, ROOK);
+        if (upper == 'K')
+            rooks &= between_bb(ksq, relative_square(c, SQ_H1));
+        else if (upper == 'Q')
+            rooks &= between_bb(ksq, relative_square(c, SQ_A1));
+        else
+            rooks &= square_bb(make_square(static_cast<File>(upper - 'A'), relative_rank(c, RANK_1)));
+
+        if (rooks) {
+            Square rsq = upper == 'K' ? msb(rooks) : lsb(rooks);
             set_castling_right(c, rsq);
+        }
     }
 
     // 4. En passant square.
