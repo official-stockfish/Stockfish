@@ -95,7 +95,7 @@ HEADERS = attacks.h benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
-VPATH = syzygy:nnue:nnue/features
+SOURCE_DIRS = syzygy nnue nnue/features
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -494,12 +494,10 @@ endif
 ### 3.1 Selecting compiler (default = gcc)
 ifeq ($(MAKELEVEL),0)
        export ENV_CXXFLAGS := $(CXXFLAGS)
-       export ENV_DEPENDFLAGS := $(DEPENDFLAGS)
        export ENV_LDFLAGS := $(LDFLAGS)
 endif
 
 CXXFLAGS = $(ENV_CXXFLAGS) -Wall -Wcast-qual -fno-exceptions -std=c++17 $(EXTRACXXFLAGS)
-DEPENDFLAGS = $(ENV_DEPENDFLAGS) -std=c++17
 LDFLAGS = $(ENV_LDFLAGS) $(EXTRALDFLAGS)
 
 ifeq ($(COMP),)
@@ -648,6 +646,10 @@ ifdef COMPCXX
 	CXX=$(COMPCXX)
 endif
 
+shell_quote = '$(subst ','"'"',$(1))'
+compiler_path := $(realpath $(shell command -v $(call shell_quote,$(firstword $(CXX))) 2>/dev/null))
+compiler_version := $(shell $(CXX) --version 2>/dev/null)
+
 # llvm-profdata must be version compatible with the specified CXX (be it clang, or the gcc alias)
 # make -j profile-build CXX=clang++-20 COMP=clang
 # Locate the version in the same directory as the compiler used,
@@ -677,8 +679,7 @@ endif
 
 ### Sometimes gcc is really clang
 ifeq ($(COMP),gcc)
-	gccversion := $(shell $(CXX) --version 2>/dev/null)
-	gccisclang := $(findstring clang,$(gccversion))
+	gccisclang := $(findstring clang,$(compiler_version))
 	ifneq ($(gccisclang),)
 		profile_make = clang-profile-make
 		profile_use = clang-profile-use
@@ -913,29 +914,11 @@ ifeq ($(syzygy),no)
 	CXXFLAGS += -DNO_TABLEBASES
 endif
 
-### 3.8.1 Try to include git info for versioning and avoid recompiles if nothing changes
-BUILD_SHA_FILE       := .build_sha.txt
-BUILD_DATE_FILE      := .build_date.txt
-BUILD_DIFFINDEX_FILE := .build_diffindex.txt
-GIT_SHA              := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
-GIT_DATE             := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
-GIT_DIFFINDEX        := $(shell git update-index --refresh >/dev/null 2>&1; git -c core.filemode=false -c core.autocrlf=false  diff-index --quiet HEAD -- 2>/dev/null; [ $$? -eq 1 ] && echo 1 || true)
-COMPILER_DATE        := $(shell date +%Y%m%d 2>/dev/null)
-
-BUILD_DATE           := $(if $(GIT_DATE),$(GIT_DATE),$(COMPILER_DATE))
-
-define cache_file_contents
-$(shell \
-	if [ ! -f "$(1)" ] || [ "$$(cat "$(1)" 2>/dev/null)" != "$(2)" ]; then \
-		printf '%s\n' "$(2)" > "$(1)"; \
-	fi)
-endef
-
-ifneq ($(filter $(MAKECMDGOALS),help strip install clean net objclean profileclean format config-sanity),$(MAKECMDGOALS))
-_ := $(call cache_file_contents,$(BUILD_SHA_FILE),$(GIT_SHA))
-_ := $(call cache_file_contents,$(BUILD_DATE_FILE),$(BUILD_DATE))
-_ := $(call cache_file_contents,$(BUILD_DIFFINDEX_FILE),$(BUILD_DIFFINDEX))
-endif
+### 3.8.1 Try to include git info for versioning
+GIT_SHA       := $(shell git rev-parse HEAD 2>/dev/null | cut -c 1-8 || true)
+GIT_DATE      := $(shell git show -s --date=format:%Y%m%d --format=%cd HEAD 2>/dev/null || true)
+GIT_DIFFINDEX := $(shell git update-index --refresh >/dev/null 2>&1; git -c core.filemode=false -c core.autocrlf=false  diff-index --quiet HEAD -- 2>/dev/null; [ $$? -eq 1 ] && echo 1 || true)
+COMPILER_DATE := $(if $(GIT_DATE),,$(shell date +%Y%m%d 2>/dev/null))
 
 ### 3.8.2 Try to include architecture
 ifneq ($(ARCH), )
@@ -1108,7 +1091,7 @@ endif
 	format analyze
 
 analyze: net config-sanity objclean
-	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) $(OBJS)
+	$(MAKE) -k ARCH=$(ARCH) COMP=$(COMP) ANALYZE_ONLY=yes $(OBJS)
 
 ifeq ($(UNIVERSAL_BUILD),false)
 build: net config-sanity
@@ -1162,7 +1145,8 @@ else ifeq ($(comp), clang)
     SAVE_TEMPS := -Wl,--lto-emit-asm  # ld.lld doesn't have a save temps functionality
     use_lto_emit_asm := yes
   else
-    SAVE_TEMPS := -Wl,--save-temps
+    # Both LLD and LLVMgold can write the linked LTO object directly.
+    SAVE_TEMPS := -Wl,-plugin-opt=obj-path=$(basename $(EXE))$(LTO_OBJ_SUFFIX)
   endif
 else
   LTO_OBJ_SUFFIX := .ltrans0.ltrans.o
@@ -1222,7 +1206,9 @@ clean: objclean profileclean universalclean
 
 # clean binaries and objects
 objclean:
-	@rm -f stockfish stockfish.exe *.o ./syzygy/*.o ./nnue/*.o ./nnue/features/*.o $(BUILD_SHA_FILE) $(BUILD_DATE_FILE) $(BUILD_DIFFINDEX_FILE)
+	@rm -f stockfish stockfish.exe \
+	  $(foreach ext,cmd cmd.tmp,$(addsuffix .$(ext),.stockfish .stockfish.exe .stockfish.js)) \
+	  $(foreach dir,. syzygy nnue nnue/features,$(addprefix $(dir)/,*.o .*.o.cmd .*.o.cmd.tmp))
 
 # clean auxiliary profiling files
 profileclean:
@@ -1252,7 +1238,7 @@ format:
 ### Section 5. Private Targets
 ### ==========================================================================
 
-all: $(EXE) .depend
+all: $(EXE)
 
 config-sanity: net
 	@echo ""
@@ -1325,16 +1311,115 @@ config-sanity: net
 	 test "$(comp)" = "clang" || test "$(comp)" = "armv7a-linux-androideabi16-clang" || \
 	 test "$(comp)" = "aarch64-linux-android21-clang")
 
-ifeq ($(UNIVERSAL_BUILD),false)
-$(EXE): $(OBJS)
-	+$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+.DELETE_ON_ERROR:
+
+pound     := \#
+backslash := $(strip \ )
+define newline
+
+
+endef
+
+# A *.cmd file is a small Makefile stub which keeps the (escaped) command that
+# is used to build the target (either *.o or stockfish executable).
+
+escape_cmd = \
+  $(subst $(newline),$$(newline),\
+  $(subst $(pound),$$(pound),\
+  $(subst $(backslash),$$(backslash),\
+  $(subst $$,$$$$,$(1)))))
+
+cmd_file = $(dir $(1)).$(notdir $(1)).cmd
+cmd_record = $(call shell_quote,$(1)) $(call shell_quote,$(compiler_path)) $(call shell_quote,$(compiler_version))$(if $(2), $(call shell_quote,$(2)))
+check_force = $(if $(and $(wildcard $@),$(findstring $(1),$(saved_cmd_$@)),$(findstring $(saved_cmd_$@),$(1))),,FORCE)
+
+make_short_flags = $(filter-out -%,$(firstword $(MAKEFLAGS)))
+make_inspection = $(strip $(foreach mode,n q t,$(findstring $(mode),$(make_short_flags))))
+
+build_and_record = $(if $(findstring s,$(make_short_flags)),,printf '%s\n' $(call shell_quote,$(1)) &&) \
+	record=$(call shell_quote,$(call cmd_file,$@)) && \
+	rm -f "$$record" "$$record.tmp" && \
+	$(1) && \
+	$(if $(3),test -s "$$record.tmp" &&) \
+	printf '\n%s\n' $(call shell_quote,saved_cmd_$@ := $(call escape_cmd,$(call cmd_record,$(1),$(2)))) \
+	  $(if $(3),$(call shell_quote,$(call escape_cmd,$(3)):)) >> "$$record.tmp" && \
+	mv -f "$$record.tmp" "$$record"
+
+# Locate universal outputs before loading their command records.
+TEMP_DIR             := temp_builds
+UNIVERSAL_EXE        := $(EXE)
+
+ifeq ($(UNIVERSAL_BUILD),true)
+  UNIVERSAL_SRC_DIR    := universal
+  NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
+  NET_SENTINEL          = $(TEMP_DIR)/.net-done-$(EMBED_DIR_SUPPORTED)
+
+  ifeq ($(arch),x86_64)
+    UNIVERSAL_ARCHES := x86-64 x86-64-sse41-popcnt x86-64-avx2 x86-64-bmi2 \
+                        x86-64-avxvnni x86-64-avx512 x86-64-vnni512 x86-64-avx512icl
+    UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
+    UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_x86.cpp
+    BASELINE_ARCH := x86-64
+  else ifeq ($(arch),riscv64)
+    UNIVERSAL_ARCHES := riscv64 riscv64-rva23
+    UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_riscv64.o
+    UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_riscv64.cpp
+    BASELINE_ARCH := riscv64
+  else
+    UNIVERSAL_ARCHES := armv8 armv8-dotprod
+    UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_arm64.o
+    UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_arm64.cpp
+    BASELINE_ARCH := armv8
+  endif
+
+# Baseline build must come first in the final link (Windows --allow-multiple-definition
+# uses the first copy of inline duplicates)
+ARCH_OBJS := $(TEMP_DIR)/$(BASELINE_ARCH)/stockfish.o \
+             $(patsubst %,$(TEMP_DIR)/%/stockfish.o,$(filter-out $(BASELINE_ARCH),$(UNIVERSAL_ARCHES)))
 endif
 
-%.o: %.cpp
-	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS)) -c -o $@ $<
+record_goal := $(firstword $(filter-out help strip install net profileclean format config-sanity,$(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))))
+ifneq (,$(filter-out clean objclean,$(record_goal)))
+  ifneq ($(ANALYZE_ONLY),yes)
+    tracked_targets := $(EXE) $(if $(filter true,$(UNIVERSAL_BUILD)),$(NNUE_EMBED_OBJ) $(UNIVERSAL_ENTRY_OBJ) $(ARCH_OBJS),$(OBJS)) $(filter %.o,$(MAKECMDGOALS))
+    -include $(foreach target,$(sort $(tracked_targets)),$(call cmd_file,$(target)))
+  endif
+endif
 
-misc.o: misc.cpp $(BUILD_SHA_FILE) $(BUILD_DATE_FILE) $(BUILD_DIFFINDEX_FILE)
-	$(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(if $(GIT_SHA),-DGIT_SHA=$(GIT_SHA)) $(if $(GIT_DATE),-DGIT_DATE=$(GIT_DATE))) $(if $(GIT_DIFFINDEX),-DGIT_DIFFINDEX=$(GIT_DIFFINDEX)) -c -o $@ $<
+.SECONDEXPANSION:
+
+ifeq ($(UNIVERSAL_BUILD),false)
+  link_cmd = $(CXX) -o $@ $(OBJS) $(LDFLAGS)$(if $(UNIVERSAL_SLICE_LDFLAGS), $(UNIVERSAL_SLICE_LDFLAGS))
+
+$(EXE): $(OBJS) $$(call check_force,$$(call cmd_record,$$(link_cmd)))
+  ifeq (,$(make_inspection))
+	+@$(call build_and_record,$(link_cmd))
+  else
+	@$(call build_and_record,$(link_cmd))
+  endif
+endif
+
+source_file = $(or $(firstword $(wildcard $*.cpp $(addsuffix /$*.cpp,$(SOURCE_DIRS)))),$*.cpp)
+compile_cmd = $(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(git_metadata)) $(1) -c -o $@ $(source_file)
+
+misc.o: git_metadata := $(if $(GIT_SHA),-DGIT_SHA=$(GIT_SHA)) $(if $(GIT_DATE),-DGIT_DATE=$(GIT_DATE)) $(if $(GIT_DIFFINDEX),-DGIT_DIFFINDEX=$(GIT_DIFFINDEX))
+misc.o: compile_date := $(COMPILER_DATE)
+
+ifeq ($(ANALYZE_ONLY),yes)
+%.o: $$(source_file) FORCE
+	$(call compile_cmd)
+else
+  compile_with_deps = $(call compile_cmd,-MMD -MP -MF "$(call cmd_file,$@).tmp" -MQ "$@")
+%.o: $$(source_file) $$(call check_force,$$(call cmd_record,$$(compile_with_deps),$$(compile_date)))
+	@$(call build_and_record,$(compile_with_deps),$(compile_date),$(source_file))
+endif
+
+ifeq ($(UNIVERSAL_BUILD),false)
+  ifneq ($(UNIVERSAL_SLICE),true)
+    network_file = $(if $(filter -DNNUE_EMBEDDING_OFF -DNNUE_EMBEDDING_OFF=%,$(CPPFLAGS) $(CXXFLAGS)),,$(shell sed -n 's/^$(pound)define EvalFileDefaultName "\(nn-[0-9a-f]*\.nnue\)".*/\1/p' evaluate.h))
+network.o nnue/network.o: $$(wildcard $$(network_file))
+  endif
+endif
 
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
@@ -1377,15 +1462,6 @@ icx-profile-use:
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
-.depend: $(SRCS)
-	-@$(CXX) $(DEPENDFLAGS) -MM $(SRCS) > $@ 2> /dev/null
-
-ifeq (, $(filter $(MAKECMDGOALS), help strip install clean net objclean profileclean format config-sanity))
-ifeq ($(UNIVERSAL_BUILD),false)
--include .depend
-endif
-endif
-
 ### ==========================================================================
 ### Section 6. Universal binary driver
 ### ==========================================================================
@@ -1395,40 +1471,10 @@ endif
 #   make -j ARCH=x86-64-universal profile-build  # PGO (use RUN_PREFIX for intel SDE)
 #   make -j ARCH=arm64-universal build
 
-TEMP_DIR             := temp_builds
-UNIVERSAL_EXE        := $(EXE)
-
 ifeq ($(UNIVERSAL_BUILD),true)
-
-UNIVERSAL_SRC_DIR    := universal
-NNUE_EMBED_OBJ       := $(TEMP_DIR)/nnue_embed.o
-NET_SENTINEL         := $(TEMP_DIR)/.net-done
-
-ifeq ($(arch),x86_64)
-  UNIVERSAL_ARCHES := x86-64 x86-64-sse41-popcnt x86-64-avx2 x86-64-bmi2 \
-                      x86-64-avxvnni x86-64-avx512 x86-64-vnni512 x86-64-avx512icl
-  UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_x86.o
-  UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_x86.cpp
-  BASELINE_ARCH := x86-64
-else ifeq ($(arch),riscv64)
-  UNIVERSAL_ARCHES := riscv64 riscv64-rva23
-  UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_riscv64.o
-  UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_riscv64.cpp
-  BASELINE_ARCH := riscv64
-else
-  UNIVERSAL_ARCHES := armv8 armv8-dotprod
-  UNIVERSAL_ENTRY_OBJ  := $(TEMP_DIR)/entry_arm64.o
-  UNIVERSAL_ENTRY_SRC  := $(UNIVERSAL_SRC_DIR)/entry_arm64.cpp
-  BASELINE_ARCH := armv8
-endif
 
 # Top-level tracked items in src/ (directories and files)
 TRACKED_TOP := $(sort $(foreach f,$(SRCS) $(HEADERS) Makefile incbin,$(firstword $(subst /, ,$(f)))))
-
-# Baseline build must come first in the final link (Windows --allow-multiple-definition
-# uses the first copy of inline duplicates)
-ARCH_OBJS := $(TEMP_DIR)/$(BASELINE_ARCH)/stockfish.o \
-             $(patsubst %,$(TEMP_DIR)/%/stockfish.o,$(filter-out $(BASELINE_ARCH),$(UNIVERSAL_ARCHES)))
 
 UNIVERSAL_FINAL_FLAGS := -fno-exceptions -Os \
 			 -Wno-c++26-extensions -Wno-c23-extensions # suppress #embed warnings
@@ -1459,13 +1505,13 @@ arch-mangled    = _ZN$(shell printf %s '$(call arch-namespace,$(1))' | wc -c | t
 arch-mac-section = _i_$(subst -,_,$(patsubst x86-64,,$(patsubst x86-64-%,%,$(1))))
 
 ifeq ($(TARGET_KERNEL),Darwin)
-  arch-defmain = -Wl,-alias,_$(call arch-mangled,$(1)),_main
+  arch-ldflags = -Wl,-alias,_$(call arch-mangled,$(1)),_main
 # lld-link, used on Windows+clang, doesn't accept --defsym, so
 # we define main directly in main.cpp instead and delete it later.
 else ifeq ($(target_windows)+$(COMP),yes+clang)
-  arch-defmain = -DUNIVERSAL_NEEDS_MAIN_SHIM
+  SLICE_MAIN_SHIM := -DUNIVERSAL_NEEDS_MAIN_SHIM
 else
-  arch-defmain = -Wl,--defsym=main=$(call arch-mangled,$(1))
+  arch-ldflags = -Wl,--defsym=main=$(call arch-mangled,$(1))
 endif
 
 EMBED_DIR_SUPPORTED := $(shell echo 'int main(){}' | $(CXX) -x c++ --embed-dir=. -o /dev/null -c - 2>/dev/null && echo 1 || echo 0)
@@ -1482,11 +1528,11 @@ ifeq ($(MACOS_X86_SLICE),1)
 endif
 
 arch-cxxflags   = $(ARCH_EMBED_DIR) -DStockfish=$(call arch-namespace,$(1)) -DUNIVERSAL_BINARY $(SLICE_DEF) \
-                  $(call arch-defmain,$(1)) -Wno-c++26-extensions -Wno-c23-extensions
+                  $(SLICE_MAIN_SHIM) -Wno-c++26-extensions -Wno-c23-extensions
 
 UOBJ_TGT ?= universal-object-pgo
 ifeq ($(COMP),clang)
-	OBJCOPY ?= llvm-objcopy
+	OBJCOPY ?= $(or $(wildcard $(dir $(compiler_path))llvm-objcopy),llvm-objcopy)
 else
 	OBJCOPY ?= objcopy
 endif
@@ -1505,49 +1551,69 @@ $(NET_SENTINEL): | $(TEMP_DIR)
 	@cd "$(CURDIR)" && "$(SHELL)" ../scripts/net.sh $(EMBED_DIR_SUPPORTED)
 	@touch $@
 
-$(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) | $(TEMP_DIR)
-	$(CXX) -O2 -std=c++20 -Wno-c++26-extensions $(SLICE_DEF) $(mac_target_flags) $(EXTRACXXFLAGS) $(EMBED_DIR) -c $< -o $@
+embed_cmd = $(CXX) -O2 -std=c++20 -Wno-c++26-extensions $(SLICE_DEF) $(mac_target_flags) $(EXTRACXXFLAGS) $(EMBED_DIR) -c $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp -o $@
+$(NNUE_EMBED_OBJ): $(UNIVERSAL_SRC_DIR)/nnue_embed.cpp $(NET_SENTINEL) $$(call check_force,$$(call cmd_record,$$(embed_cmd))) | $(TEMP_DIR)
+	@$(call build_and_record,$(embed_cmd))
 
-$(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_ENTRY_SRC) | $(TEMP_DIR)
-	$(CXX) -O2 -std=c++20 $(mac_target_flags) $(EXTRACXXFLAGS) -c $< -o $@
+entry_cmd = $(CXX) -O2 -std=c++20 $(mac_target_flags) $(EXTRACXXFLAGS) -c $(UNIVERSAL_ENTRY_SRC) -o $@
+$(UNIVERSAL_ENTRY_OBJ): $(UNIVERSAL_ENTRY_SRC) $$(call check_force,$$(call cmd_record,$$(entry_cmd))) | $(TEMP_DIR)
+	@$(call build_and_record,$(entry_cmd))
 
 # Symlink tracked top-level items from src/ into temp_builds/<arch>/.
-$(TEMP_DIR)/%/.setup: | $(TEMP_DIR)
-	@rm -rf $(TEMP_DIR)/$*
-	@mkdir -p $(TEMP_DIR)/$*
-	@$(foreach f,$(TRACKED_TOP),ln -s ../../$(f) $(TEMP_DIR)/$*/$(f);)
-	@touch $@
+slice_links = $(addprefix $(@D)/,$(TRACKED_TOP))
+missing_slice_links = $(filter-out $(wildcard $(slice_links)),$(slice_links))
+$(TEMP_DIR)/%/.setup: Makefile $$(if $$(missing_slice_links),FORCE) | $(TEMP_DIR)
+	@if [ -d "$(@D)" ]; then \
+		find "$(@D)" -type l -exec rmdir {} + 2>/dev/null || true; \
+		rm -rf "$(@D)"; \
+	fi
+	@mkdir -p "$(@D)"
+	@set -e; $(foreach f,$(TRACKED_TOP),ln -s "../../$(f)" "$(@D)/$(f)";)
+	@touch "$@"
 
 # Per-arch stockfish.o
 .SECONDARY: $(patsubst %,$(TEMP_DIR)/%/.setup,$(UNIVERSAL_ARCHES))
 
-$(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL)
-	+ENV_CXXFLAGS='$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)' \
-	    $(MAKE) -C "$(TEMP_DIR)/$*" $(UOBJ_TGT) \
-		        ARCH=$* CXX="$(CXX)" COMP=$(COMP) UNIVERSAL_SLICE=true \
-	        NNUE_EMBED_OBJ=../nnue_embed.o
+slice_cmd = ENV_CXXFLAGS=$(call shell_quote,$(ENV_CXXFLAGS) $(call arch-cxxflags,$*)) \
+	$(MAKE) -C "$(TEMP_DIR)/$*" $(UOBJ_TGT) \
+	    ARCH=$* CXX=$(call shell_quote,$(CXX)) COMP=$(COMP) UNIVERSAL_SLICE=true \
+	    NNUE_EMBED_OBJ=../nnue_embed.o \
+	    UNIVERSAL_SLICE_LDFLAGS=$(call shell_quote,$(call arch-ldflags,$*))
+slice_inputs = $(MAKEOVERRIDES) \
+	$(call shell_quote,$(CPPFLAGS)) $(call shell_quote,$(EXTRACXXFLAGS)) \
+	$(call shell_quote,$(ENV_LDFLAGS)) $(call shell_quote,$(EXTRALDFLAGS)) \
+	$(call shell_quote,$(RUN_PREFIX))
+
 ifeq ($(TARGET_KERNEL),Darwin)
 # Rename the initializer section
-	ld -r -rename_section __DATA __mod_init_func __DATA $(call arch-mac-section,$*) $@ -o $@.tmp
-	mv $@.tmp $@
+  slice_postprocess = ld -r -rename_section __DATA __mod_init_func __DATA $(call arch-mac-section,$*) $@ -o $@.tmp && \
+                      mv $@.tmp $@
 else
 # Drop COMDAT groups; clang LTO leaves them around internalized LOCAL
 # template instantiations which causes problems at the final link
-	$(OBJCOPY) -R .group $@
-ifeq ($(use_lto_emit_asm),yes)
+  slice_postprocess = $(OBJCOPY) -R .group $@ && $(slice_fixup_init)
+  ifeq ($(use_lto_emit_asm),yes)
 # Delete per-arch main shim
-	$(OBJCOPY) -N main $@
-else
-# Rename .init_array (Linux) or .ctors (Windows) so we can manually invoke them
-	$(OBJCOPY) --rename-section .init_array=$(call arch-suffix,$*)_init $@
-	$(OBJCOPY) --rename-section .ctors=$(call arch-suffix,$*)_init $@
-# Make the array inert
-	$(OBJCOPY) --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
-endif
+    slice_fixup_init = $(OBJCOPY) -N main $@
+  else
+# Rename .init_array (Linux) or .ctors (Windows) and make the array inert
+    slice_fixup_init = $(OBJCOPY) --rename-section .init_array=$(call arch-suffix,$*)_init $@ && \
+                       $(OBJCOPY) --rename-section .ctors=$(call arch-suffix,$*)_init $@ && \
+                       $(OBJCOPY) --set-section-flags $(call arch-suffix,$*)_init=alloc,data $@
+  endif
 endif
 
-$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS)
-	$(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS) $(UNIVERSAL_FINAL_FLAGS) $(EXTRALDFLAGS)
-	@echo "Universal binary built: $@"
+slice_build = $(slice_cmd) && $(slice_postprocess)
+$(TEMP_DIR)/%/stockfish.o: $(TEMP_DIR)/%/.setup $(NNUE_EMBED_OBJ) $(NET_SENTINEL) Makefile $$(call check_force,$$(call cmd_record,$$(slice_build),$$(slice_inputs)))
+ifeq (,$(make_inspection))
+	+@$(call build_and_record,$(slice_build),$(slice_inputs))
+else
+	+$(slice_cmd)
+	$(slice_postprocess)
+endif
+
+universal_link_cmd = $(CXX) -o $@ $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS) $(UNIVERSAL_FINAL_FLAGS) $(EXTRALDFLAGS)
+$(UNIVERSAL_EXE): $(UNIVERSAL_ENTRY_OBJ) $(NNUE_EMBED_OBJ) $(ARCH_OBJS) $$(call check_force,$$(call cmd_record,$$(universal_link_cmd)))
+	@$(call build_and_record,$(universal_link_cmd)) && echo "Universal binary built: $@"
 
 endif  # UNIVERSAL_BUILD
