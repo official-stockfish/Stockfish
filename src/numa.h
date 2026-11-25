@@ -20,7 +20,6 @@
 #define NUMA_H_INCLUDED
 
 #include <algorithm>
-#include <atomic>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
@@ -31,7 +30,6 @@
 #include <memory>
 #include <mutex>
 #include <set>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
