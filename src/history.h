@@ -155,13 +155,14 @@ enum CorrHistType {
 
 template<typename T, int D>
 struct CorrectionBundle {
-    StatsEntry<T, D, true> pawn;
+    StatsEntry<T, D, true> pawn[2];  // Indexed by queen exists
     StatsEntry<T, D, true> minor;
     StatsEntry<T, D, true> nonPawnWhite;
     StatsEntry<T, D, true> nonPawnBlack;
 
     void fill(T val) {
-        pawn         = val;
+        pawn[0]      = val;
+        pawn[1]      = val;
         minor        = val;
         nonPawnWhite = val;
         nonPawnBlack = val;
