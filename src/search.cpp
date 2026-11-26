@@ -2165,12 +2165,10 @@ void syzygy_extend_pv(const OptionsMap&         options,
     if (time_abort())
         return;
 
-    // Walk the PV on a copy that is never undone: the PV may exceed the
-    // MAX_HIST states a Position keeps.
     std::unique_ptr<Position> walker = std::make_unique<Position>();
     Position&                 pos    = *walker;
     pos.set(root.fen(), root.is_chess960());
-    pos.copy_state_infos(root);
+    pos.copy_history(root);
 
     // Step 0, do the rootMove, no correction allowed, as needed for MultiPV in TB
     pos.do_move(rootMove.pv[0]);

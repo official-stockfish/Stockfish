@@ -523,17 +523,6 @@ class TestSyzygy(metaclass=OrderedClassMembers):
         self.stockfish.send_command("go depth 1")
         self.stockfish.expect("bestmove *")
 
-    # The StateInfo ring buffer keeps MAX_HIST (512) states. With a longer history of
-    # reversible plies the repetition scan used to wrap around and read the state it
-    # was filling in, which left a stale "repeated" flag on every state past ply 512.
-    # A position that merely occurred a second time then looked like a threefold
-    # repetition, so with Syzygy50MoveRule off a tablebase loss was scored as a draw.
-    #
-    # The history below is 528 plies of king and queen moves, with no capture, no pawn
-    # move and no position occurring twice, so every repetition scan runs through the
-    # whole ring. In the final position b3c3 returns to a position that occurred once,
-    # 4 plies earlier. That is a second occurrence, not a draw by threefold repetition,
-    # and Black is lost whatever he plays.
     LONG_REVERSIBLE_FEN = "8/8/8/3k4/8/8/2KQ4/8 b - - 0 1"
     LONG_REVERSIBLE_MOVES = """
         d5c6 c2d3 c6b7 d2d1 b7a6 d1c2 a6b7 c2a4 b7c8 a4a2 c8d8 a2g8
@@ -582,6 +571,7 @@ class TestSyzygy(metaclass=OrderedClassMembers):
         b4c4 g2b7 c4d4 f4f3 d4c4 b7c7 c4d3 c7f4 d3c3 f3f2 c3b3 f2f3
     """.split()
 
+    # ensures repetition info is still correct when the 50 move rule is tured off
     def test_syzygy_long_reversible_history(self):
         assert len(self.LONG_REVERSIBLE_MOVES) > 512
 

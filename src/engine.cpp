@@ -206,6 +206,8 @@ std::optional<PositionSetError> Engine::set_position(const std::string&         
         pos.do_move(m);
     }
 
+    pos.trim_history();
+
     return std::nullopt;
 }
 

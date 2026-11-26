@@ -109,10 +109,16 @@ constexpr bool Is64Bit = false;
 using Key      = u64;
 using Bitboard = u64;
 
-constexpr int MAX_MOVES = 256;
-constexpr int MAX_PLY   = 246;
-constexpr int MAX_HIST  = 512;                         // must be power of two
-static_assert(MAX_HIST >= MAX_PLY + 10 + 50 * 2 + 1);  // search depth + 50 move rule hist
+constexpr int MAX_MOVES  = 256;
+constexpr int MAX_PLY    = 246;
+constexpr int MAX_STATES = 256;  // must be power of two
+static_assert(MAX_STATES >= MAX_PLY + 10);
+
+// The repetition history is a separate vector, see Position::repHist. The search must
+// not make it grow, so SEARCH_REP_RESERVE entries are reserved before it starts: the
+// deepest node, plus the few plies that tablebase probing and the ponder move add.
+// The only hard limit is the type of the repetition window.
+constexpr int SEARCH_REP_RESERVE = MAX_PLY + 10 + 32;
 
 enum Color : u8 {
     WHITE,

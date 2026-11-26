@@ -36,6 +36,7 @@
 #include "misc.h"
 #include "movegen.h"
 #include "syzygy/tbprobe.h"
+#include "types.h"
 #include "uci.h"
 
 using std::string;
@@ -357,7 +358,7 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
 
     unsigned char      token;
     std::istringstream ss(fenStr);
-    std::memset(reinterpret_cast<char*>(this), 0, sizeof(Position));
+    std::memset(reinterpret_cast<char*>(this), 0, offsetof(Position, repHist));
 
     st = &stateInfos[stateIdx];
 
@@ -645,9 +646,9 @@ void Position::compute_threats() const {
 // Computes the hash keys of the position, and other
 // data that once computed is updated incrementally as moves are made.
 // The function is only used when a new position is set up
-void Position::set_state() const {
+void Position::set_state() {
 
-    st->key               = sideToMove;
+    Key key               = sideToMove;
     st->minorPieceKey     = 0ULL;
     st->nonPawnKey[WHITE] = st->nonPawnKey[BLACK] = 0ULL;
     st->pawnKey                                   = 0ULL;
@@ -660,7 +661,7 @@ void Position::set_state() const {
     {
         Square s  = pop_lsb(b);
         Piece  pc = piece_on(s);
-        st->key ^= Zobrist::psq[pc][s];
+        key ^= Zobrist::psq[pc][s];
 
         if (type_of(pc) == PAWN)
             st->pawnKey ^= Zobrist::psq[pc][s];
@@ -680,12 +681,12 @@ void Position::set_state() const {
     }
 
     if (st->epSquare != SQ_NONE)
-        st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
+        key ^= Zobrist::enpassant[file_of(st->epSquare)];
 
-    st->key ^= Zobrist::castling[st->castlingRights];
+    key ^= Zobrist::castling[st->castlingRights];
     st->materialKey = compute_material_key();
 
-    st->piecePlacement = pack_pieces(board);
+    repHist.push_back({key, pack_pieces(board), 0});
 }
 
 Key Position::compute_material_key() const {
@@ -935,20 +936,20 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
     assert(m.is_ok());
 
     StateInfo* previousSt = st;
-    stateIdx              = (stateIdx + 1) & (MAX_HIST - 1);
+    stateIdx              = (stateIdx + 1) & (MAX_STATES - 1);
     st                    = &stateInfos[stateIdx];
 
     // Copy some fields of the old state to our new StateInfo object except the
     // ones which are going to be recalculated from scratch anyway
-    std::memcpy(st, previousSt, offsetof(StateInfo, key));
+    std::memcpy(st, previousSt, offsetof(StateInfo, checkersBB));
 
-    Key k = previousSt->key ^ Zobrist::side;
+    Key k = rep_at(0).key ^ Zobrist::side;
 
     // Increment ply counters. In particular, rule50 will be reset to zero later on
     // in case of a capture or a pawn move.
     ++gamePly;
     ++st->rule50;
-    st->repWindow = std::min(st->repWindow + 1, MAX_HIST - 1);
+    ++st->repWindow;
 
     auto& dpps = dirties.dirtyPawnPairs;
     auto& dts  = dirties.dirtyThreats;
@@ -1117,9 +1118,6 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
             st->minorPieceKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
     }
 
-    // Update the key with the final value
-    st->key = k;
-
     if (history)
     {
         prefetch(&history->pawn_entry(*this)[pc][to]);
@@ -1159,21 +1157,24 @@ void Position::do_move(Move m, bool givesCheck, Dirties& dirties, const SharedHi
     // Update king attacks used for fast check detection
     set_extra_bitboards();
 
-    st->piecePlacement = pack_pieces(board);
+    const auto placement = pack_pieces(board);
 
     // Calculate the repetition info. It is the ply distance from the previous
     // occurrence of the same position, negative in the 3-fold case, or zero
     // if the position was not repeated.
-    st->repetition = 0;
+    repHist.push_back({k, placement, 0});
+
+    int repetition = 0;
     for (int i = 4; i <= st->repWindow; i += 2)
     {
-        StateInfo* stp = &stateInfos[(stateIdx - i) & (MAX_HIST - 1)];
-        if (stp->key == st->key && stp->piecePlacement == st->piecePlacement)
+        const RepEntry& stp = rep_at(i);
+        if (stp.key == k && stp.placement == placement)
         {
-            st->repetition = stp->repetition ? -i : i;
+            repetition = stp.repetition ? -i : i;
             break;
         }
     }
+    rep_at(0).repetition = repetition;
 
     assert(pos_is_ok());
 
@@ -1231,7 +1232,7 @@ void Position::undo_move(Move m) {
                 capsq -= pawn_push(us);
 
                 assert(type_of(pc) == PAWN);
-                assert(to == stateInfos[(stateIdx - 1) & (MAX_HIST - 1)].epSquare);
+                assert(to == stateInfos[(stateIdx - 1) & (MAX_STATES - 1)].epSquare);
                 assert(relative_rank(us, to) == RANK_6);
                 assert(piece_on(capsq) == NO_PIECE);
                 assert(st->capturedPiece == make_piece(~us, PAWN));
@@ -1242,8 +1243,9 @@ void Position::undo_move(Move m) {
     }
 
     // Finally point our state pointer back to the previous state
-    stateIdx = (stateIdx - 1) & (MAX_HIST - 1);
-    st       = &stateInfos[stateIdx];
+    stateIdx = (stateIdx - 1) & (MAX_STATES - 1);
+    repHist.pop_back();
+    st = &stateInfos[stateIdx];
     --gamePly;
 
     assert(pos_is_ok());
@@ -1401,7 +1403,7 @@ Key Position::prefetch_key(Move m) const {
     Square to       = m.to_sq();
     Piece  pc       = piece_on(from);
     Piece  captured = piece_on(to);
-    Key    k        = st->key ^ Zobrist::side;
+    Key    k        = rep_at(0).key ^ Zobrist::side;
 
     k ^= Zobrist::psq[captured][to] ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
 
@@ -1452,21 +1454,21 @@ void Position::do_null_move() {
     assert(!checkers());
 
     StateInfo* previousSt = st;
-    stateIdx              = (stateIdx + 1) & (MAX_HIST - 1);
+    stateIdx              = (stateIdx + 1) & (MAX_STATES - 1);
     st                    = &stateInfos[stateIdx];
 
     // Remaining fields are recomputed, invalidated or overwritten below.
     std::memcpy(st, previousSt, offsetof(StateInfo, blockersForKing));
-    st->piecePlacement = previousSt->piecePlacement;
 
+    Key key = rep_at(0).key;
 
     if (st->epSquare != SQ_NONE)
     {
-        st->key ^= Zobrist::enpassant[file_of(st->epSquare)];
+        key ^= Zobrist::enpassant[file_of(st->epSquare)];
         st->epSquare = SQ_NONE;
     }
 
-    st->key ^= Zobrist::side;
+    key ^= Zobrist::side;
 
     st->repWindow = 0;
 
@@ -1476,7 +1478,7 @@ void Position::do_null_move() {
 
     set_extra_bitboards();
 
-    st->repetition = 0;
+    repHist.push_back({key, rep_at(0).placement, 0});
 
     assert(pos_is_ok());
 }
@@ -1487,7 +1489,8 @@ void Position::undo_null_move() {
 
     assert(!checkers());
 
-    stateIdx   = (stateIdx - 1) & (MAX_HIST - 1);
+    stateIdx = (stateIdx - 1) & (MAX_STATES - 1);
+    repHist.pop_back();
     st         = &stateInfos[stateIdx];
     sideToMove = ~sideToMove;
 }
@@ -1613,14 +1616,17 @@ bool Position::is_draw(int ply) const {
 
 // Return a draw score if a position repeats once earlier but strictly
 // after the root, or repeats twice before or at the root.
-bool Position::is_repetition(int ply) const { return st->repetition && st->repetition < ply; }
+bool Position::is_repetition(int ply) const {
+    const int repetition = rep_at(0).repetition;
+    return repetition && repetition < ply;
+}
 
 // Tests whether there has been at least one repetition
 // of positions since the last capture or pawn move.
 bool Position::has_repeated() const {
     for (int i = 0; i <= st->repWindow - 4; ++i)
     {
-        if (stateInfos[(stateIdx - i) & (MAX_HIST - 1)].repetition)
+        if (rep_at(i).repetition)
             return true;
     }
     return false;
@@ -1630,19 +1636,19 @@ bool Position::has_repeated() const {
 // Tests if the position has a move which draws by repetition.
 // This function accurately matches the outcome of is_draw() over all legal moves.
 bool Position::upcoming_repetition(int ply) const {
-    Key originalKey = st->key;
-    Key other       = originalKey ^ stateInfos[(stateIdx - 1) & (MAX_HIST - 1)].key ^ Zobrist::side;
+    Key originalKey = rep_at(0).key;
+    Key other       = originalKey ^ rep_at(1).key ^ Zobrist::side;
 
     for (int i = 3; i <= st->repWindow; i += 2)
     {
-        const StateInfo* stp0 = &stateInfos[(stateIdx - i + 1) & (MAX_HIST - 1)];
-        const StateInfo* stp  = &stateInfos[(stateIdx - i) & (MAX_HIST - 1)];
-        other ^= stp0->key ^ stp->key ^ Zobrist::side;
+        const RepEntry& stp0 = rep_at(i - 1);
+        const RepEntry& stp  = rep_at(i);
+        other ^= stp0.key ^ stp.key ^ Zobrist::side;
 
         if (other != 0)
             continue;
 
-        Key moveKey = originalKey ^ stp->key;
+        Key moveKey = originalKey ^ stp.key;
 
         int j        = repetition_hash(moveKey);
         int distance = 1;
@@ -1660,14 +1666,14 @@ bool Position::upcoming_repetition(int ply) const {
                 // The path must be clear of pieces for a move to be legal.
                 if (!((between_bb(s1, s2) ^ s2) & pieces()))
                 {
-                    auto b = st->piecePlacement;
+                    auto b = rep_at(0).placement;
                     swap_nibble(b, s1, s2);
 
-                    if (b == stp->piecePlacement)
+                    if (b == stp.placement)
                     {
                         // For nodes before or at the root, check that the move is a
                         // repetition rather than a move to the current position.
-                        if (ply > i || stp->repetition)
+                        if (ply > i || stp.repetition)
                             return true;
                     }
                 }
@@ -1718,12 +1724,23 @@ std::optional<PositionSetError> Position::flip() {
     return set(f, is_chess960());
 }
 
-void Position::copy_state_infos(const Position& other) {
+void Position::copy_history(const Position& other) {
     std::memcpy(stateInfos, other.stateInfos, sizeof(stateInfos));
     stateIdx = other.stateIdx;
     st       = &stateInfos[stateIdx];
+
+    assert(size_t(other.st->repWindow) < other.repHist.size());
+    const usize n = std::min<usize>(other.repHist.size(), other.st->repWindow + 1);
+    repHist.assign(other.repHist.end() - n, other.repHist.end());
 }
 
+void Position::trim_history() {
+    const usize n = std::min<usize>(repHist.size(), st->repWindow + 1);
+    repHist.erase(repHist.begin(), repHist.end() - n);
+    repHist.shrink_to_fit();
+}
+
+void Position::prepare_search() { repHist.reserve(repHist.size() + SEARCH_REP_RESERVE); }
 
 bool Position::material_key_is_ok() const { return compute_material_key() == st->materialKey; }
 

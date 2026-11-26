@@ -26,6 +26,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "attacks.h"
 #include "bitboard.h"
@@ -54,15 +55,21 @@ struct StateInfo {
     Square epSquare;
 
     // Not copied when making a move (will be recomputed anyhow)
+    Bitboard checkersBB;
+    Bitboard blockersForKing[COLOR_NB];
+    Bitboard pinners[COLOR_NB];
+    Bitboard checkSquares[PIECE_TYPE_NB];
+    Bitboard threats[PIECE_TYPE_NB];
+    Piece    capturedPiece;
+};
+
+// What repetition detection needs to know about a past position. These live
+// in their own vector so that looking far back does not require keeping full
+// StateInfos around.
+struct RepEntry {
     Key                key;
-    Bitboard           checkersBB;
-    Bitboard           blockersForKing[COLOR_NB];
-    Bitboard           pinners[COLOR_NB];
-    Bitboard           checkSquares[PIECE_TYPE_NB];
-    Bitboard           threats[PIECE_TYPE_NB];
-    Piece              capturedPiece;
-    int                repetition;
-    std::array<u8, 32> piecePlacement;
+    std::array<u8, 32> placement;
+    int repetition;  // ply distance to the previous occurrence, negative for 3-fold, 0 if none
 };
 
 // This error should be used whenever a position is suspected to be unsupported
@@ -168,17 +175,29 @@ class Position {
     bool                            material_key_is_ok() const;
     std::optional<PositionSetError> flip();
 
-    void copy_state_infos(const Position& other);
+    // Copies the state and the repetition history that can still matter.
+    void copy_history(const Position& other);
+
+    // Drops the repetition entries that are older than the current repetition window.
+    void trim_history();
+
+    // Reserves what a search from this position will need so that do_move() never
+    // has to allocate. Must be called from the thread that will search.
+    void prepare_search();
 
     void put_piece(Piece pc, Square s, DirtyThreats* const dts = nullptr);
     void remove_piece(Square s, DirtyThreats* const dts = nullptr);
     void swap_piece(Square s, Piece pc, DirtyThreats* const dts = nullptr);
 
    private:
+    // Repetition entry of the position i plies before the current one
+    const RepEntry& rep_at(int i) const { return repHist[repHist.size() - 1 - i]; }
+    RepEntry&       rep_at(int i) { return repHist[repHist.size() - 1 - i]; }
+
     // Initialization helpers (used while setting up a position)
     void set_castling_right(Color c, Square rfrom);
     Key  compute_material_key() const;
-    void set_state() const;
+    void set_state();
     void set_extra_bitboards() const;
     void compute_threats() const;
 
@@ -216,7 +235,9 @@ class Position {
     Dirties    scratchDirties;
     u16        stateIdx;
     StateInfo* st;
-    StateInfo  stateInfos[MAX_HIST];
+    StateInfo  stateInfos[MAX_STATES];
+
+    std::vector<RepEntry> repHist;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -310,7 +331,7 @@ inline Bitboard Position::pinners(Color c) const { return st->pinners[c]; }
 
 inline Bitboard Position::check_squares(PieceType pt) const { return st->checkSquares[pt]; }
 
-inline Key Position::key() const { return adjust_key50(st->key); }
+inline Key Position::key() const { return adjust_key50(rep_at(0).key); }
 
 template<bool AfterMove>
 inline Key Position::adjust_key50(Key k) const {

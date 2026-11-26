@@ -325,7 +325,8 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
             th->worker->rootDepth                                                = 0;
             th->worker->rootMoves                                                = rootMoves;
             th->worker->rootPos.set(pos.fen(), pos.is_chess960());
-            th->worker->rootPos.copy_state_infos(pos);
+            th->worker->rootPos.copy_history(pos);
+            th->worker->rootPos.prepare_search();  // allocate here, on the searching thread
             th->worker->tbConfig = tbConfig;
         });
     }
