@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <new>
 #include <type_traits>
@@ -101,6 +102,16 @@ void memory_deleter(T* ptr, FREE_FUNC free_func) {
     free_func(ptr);
 }
 
+// For trivial destructible types we don't need to store the array size,
+// since we don't need to destroy each object individually. However,
+// for non trivial objects we need to call the destructor explictly for each element
+// for which we need to know the size.
+template<typename T, bool = std::is_trivially_destructible_v<T>>
+inline constexpr usize array_header_size = std::max(sizeof(usize), alignof(T));
+
+template<typename T>
+inline constexpr usize array_header_size<T, true> = 0;
+
 // Frees memory which was placed there with placement new.
 // Works for both single objects and arrays of unknown bound.
 template<typename T, typename FREE_FUNC>
@@ -108,18 +119,12 @@ void memory_deleter_array(T* ptr, FREE_FUNC free_func) {
     if (!ptr)
         return;
 
-
-    // Move back on the pointer to where the size is allocated
-    const usize array_offset = std::max(sizeof(usize), alignof(T));
-    char*       raw_memory   = reinterpret_cast<char*>(ptr) - array_offset;
+    char* const raw_memory = reinterpret_cast<char*>(ptr) - array_header_size<T>;
 
     if constexpr (!std::is_trivially_destructible_v<T>)
     {
-        const usize size = *reinterpret_cast<usize*>(raw_memory);
-
-        // Explicitly call the destructor for each element in reverse order
-        for (usize i = size; i-- > 0;)
-            ptr[i].~T();
+        const usize size = *std::launder(reinterpret_cast<usize*>(raw_memory));
+        std::destroy_n(std::reverse_iterator(ptr + size), size);
     }
 
     free_func(raw_memory);
@@ -142,16 +147,17 @@ inline std::enable_if_t<std::is_array_v<T>, std::remove_extent_t<T>*>
 memory_allocator(ALLOC_FUNC alloc_func, usize num) {
     using ElementType = std::remove_extent_t<T>;
 
-    const usize array_offset = std::max(sizeof(usize), alignof(ElementType));
+    constexpr usize array_offset = array_header_size<ElementType>;
 
-    // Save the array size in the memory location
-    const usize bytes      = array_offset + num * sizeof(ElementType);
+    // ensure size is not 0
+    const usize bytes = std::max(array_offset + num * sizeof(ElementType), alignof(ElementType));
     char*       raw_memory = reinterpret_cast<char*>(alloc_func(bytes));
     if (raw_memory == nullptr)
         report_failed_allocation(bytes);
     ASSERT_ALIGNED(raw_memory, alignof(T));
 
-    new (raw_memory) usize(num);
+    if constexpr (!std::is_trivially_destructible_v<ElementType>)
+        new (raw_memory) usize(num);
 
     for (usize i = 0; i < num; ++i)
         new (raw_memory + array_offset + i * sizeof(ElementType)) ElementType();
