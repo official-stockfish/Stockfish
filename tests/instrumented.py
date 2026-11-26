@@ -601,6 +601,80 @@ class TestSyzygy(metaclass=OrderedClassMembers):
         self.stockfish.expect("bestmove *")
         self.stockfish.send_command("setoption name Syzygy50MoveRule value true")
 
+class TestCastlingRightsSanitization(metaclass=OrderedClassMembers):
+    def beforeAll(self):
+        self.stockfish = Stockfish()
+
+    def afterAll(self):
+        self.stockfish.quit()
+        assert self.stockfish.close() == 0
+
+    def afterEach(self):
+        assert postfix_check(self.stockfish.get_output()) == True
+        self.stockfish.clear_output()
+
+    # Invalid white king rank
+    def test_position_1(self):
+        self.stockfish.send_command("position fen 4k3/8/8/8/8/8/4K3/R6R w KQ - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*4k3/8/8/8/8/8/4K3/R6R w - - 0 1")
+
+    # Invalid black king rank
+    def test_position_2(self):
+        self.stockfish.send_command("position fen r6r/4k3/8/8/8/8/8/4K3 w kq - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*r6r/4k3/8/8/8/8/8/4K3 w - - 0 1")
+
+    # Invalid white king file
+    def test_position_3(self):
+        self.stockfish.send_command("position fen 4k3/8/8/8/8/8/8/R6K w Q - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*4k3/8/8/8/8/8/8/R6K w - - 0 1")
+
+    # Invalid black king file
+    def test_position_4(self):
+        self.stockfish.send_command("position fen k6r/8/8/8/8/8/8/4K3 w k - 0 1")
+        self.stockfish.send_command("d");
+
+        self.stockfish.expect_for_line_matching("Fen*", "*k6r/8/8/8/8/8/8/4K3 w - - 0 1")
+
+    # Invalid white rook placement
+    def test_position_5(self):
+        self.stockfish.send_command("position fen 4k3/8/8/8/8/8/7R/4K3 w K - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*4k3/8/8/8/8/8/7R/4K3 w - - 0 1")
+
+    # Invalid black rook placement
+    def test_position_6(self):
+        self.stockfish.send_command("position fen 4k3/r7/8/8/8/8/8/4K3 w q - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*4k3/r7/8/8/8/8/8/4K3 w - - 0 1")
+
+    # Invalid white rook placement chess960
+    def test_position_7(self):
+        self.stockfish.setoption("UCI_Chess960", "true")
+        self.stockfish.send_command("position fen 4k3/8/8/8/8/8/8/4K2R w G - 0 1")
+        self.stockfish.send_command("d")
+
+        self.stockfish.expect_for_line_matching("Fen*", "*4k3/8/8/8/8/8/8/4K2R w - - 0 1")
+
+        self.stockfish.setoption("UCI_Chess960", "false")
+
+    # Invalid black rook placement chess960
+    def test_position_8(self):
+        self.stockfish.setoption("UCI_Chess960", "true")
+        self.stockfish.send_command("position fen r3k3/8/8/8/8/8/8/4K3 w c - 0 1")
+        self.stockfish.send_command("d")
+        
+        self.stockfish.expect_for_line_matching("Fen*", "*r3k3/8/8/8/8/8/8/4K3 w - - 0 1")
+
+        self.stockfish.setoption("UCI_Chess960", "false")
+
 class TestEnPassantSanitization(metaclass=OrderedClassMembers):
     def beforeAll(self):
         self.stockfish = Stockfish()
@@ -717,6 +791,14 @@ class TestInvalidFEN(metaclass=OrderedClassMembers):
 
     def test_invalid_skip_count(self):
         self._expect_critical("9/8/8/8/8/8/8/8 w - - 0 1")
+
+    def test_too_many_castling_rights(self):
+        self._expect_critical("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkqq - 0 1")
+        self._expect_critical("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAAha - 0 1")
+
+    def test_invalid_castling_right(self):
+        self._expect_critical("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkx - 0 1")
+        self._expect_critical("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAh- - 0 1")
 
 
 class TestInvalidOptions(metaclass=OrderedClassMembers):
@@ -836,6 +918,7 @@ if __name__ == "__main__":
             TestCLI,
             TestInteractive,
             TestSyzygy,
+            TestCastlingRightsSanitization,
             TestEnPassantSanitization,
             TestInvalidFEN,
             TestInvalidOptions,
