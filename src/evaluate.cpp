@@ -20,8 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
-#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <memory>
