@@ -1103,8 +1103,8 @@ profile-build: net config-sanity objclean profileclean
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) $(profile_make)
 	@echo ""
 	@echo "Step 2/4. Running benchmark for pgo-build ..."
-	$(PGOBENCH) > PGOBENCH.out 2>&1
-	tail -n 4 PGOBENCH.out
+	$(PGOBENCH) > "$(pgo_prefix)PGOBENCH.out" 2>&1
+	tail -n 4 "$(pgo_prefix)PGOBENCH.out"
 	@echo ""
 	@echo "Step 3/4. Building optimized executable ..."
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) objclean
@@ -1206,13 +1206,14 @@ clean: objclean profileclean universalclean
 
 # clean binaries and objects
 objclean:
+	$(if $(OBJ_CMD_DIR),@rm -rf "$(OBJ_CMD_DIR)")
 	@rm -f stockfish stockfish.exe \
-	  $(foreach ext,cmd cmd.tmp,$(addsuffix .$(ext),.stockfish .stockfish.exe .stockfish.js)) \
+	  $(foreach dir,. $(TEMP_DIR),$(foreach ext,cmd cmd.tmp,$(addprefix $(dir)/,$(addsuffix .$(ext),.stockfish .stockfish.exe .stockfish.js)))) \
 	  $(foreach dir,. syzygy nnue nnue/features,$(addprefix $(dir)/,*.o .*.o.cmd .*.o.cmd.tmp))
 
 # clean auxiliary profiling files
 profileclean:
-	@rm -rf profdir
+	@rm -rf profdir $(if $(PGO_DIR),"$(PGO_DIR)") "$(LTO_DIR)"
 	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
 	@rm -f stockfish.profdata *.profraw
 	@rm -f stockfish.*args*
@@ -1320,8 +1321,7 @@ define newline
 
 endef
 
-# A *.cmd file is a small Makefile stub which keeps the (escaped) command that
-# is used to build the target (either *.o or stockfish executable).
+# Records for targets directly in src are stored under temp_builds.
 
 escape_cmd = \
   $(subst $(newline),$$(newline),\
@@ -1329,7 +1329,8 @@ escape_cmd = \
   $(subst $(backslash),$$(backslash),\
   $(subst $$,$$$$,$(1)))))
 
-cmd_file = $(dir $(1)).$(notdir $(1)).cmd
+cmd_dir = $(if $(and $(src_temp_dir),$(filter ./,$(dir $(1)))),$(if $(filter $(EXE),$(1)),$(src_temp_dir),$(OBJ_CMD_DIR))/,$(dir $(1)))
+cmd_file = $(call cmd_dir,$(1)).$(notdir $(1)).cmd
 cmd_record = $(call shell_quote,$(1)) $(call shell_quote,$(compiler_path)) $(call shell_quote,$(compiler_version))$(if $(2), $(call shell_quote,$(2)))
 check_force = $(if $(and $(wildcard $@),$(findstring $(1),$(saved_cmd_$@)),$(findstring $(saved_cmd_$@),$(1))),,FORCE)
 
@@ -1345,8 +1346,13 @@ build_and_record = $(if $(findstring s,$(make_short_flags)),,printf '%s\n' $(cal
 	  $(if $(3),$(call shell_quote,$(call escape_cmd,$(3)):)) >> "$$record.tmp" && \
 	mv -f "$$record.tmp" "$$record"
 
-# Locate universal outputs before loading their command records.
+# Locate build scratch and universal outputs before loading command records.
 TEMP_DIR             := temp_builds
+LTO_DIR              := $(TEMP_DIR)/lto
+src_temp_dir         := $(if $(filter true,$(UNIVERSAL_SLICE)),,$(TEMP_DIR))
+OBJ_CMD_DIR          := $(addsuffix /cmd,$(src_temp_dir))
+PGO_DIR              := $(addsuffix /pgo,$(src_temp_dir))
+pgo_prefix           := $(addsuffix /,$(PGO_DIR))
 UNIVERSAL_EXE        := $(EXE)
 
 ifeq ($(UNIVERSAL_BUILD),true)
@@ -1391,13 +1397,22 @@ endif
 ifeq ($(UNIVERSAL_BUILD),false)
   link_cmd = $(CXX) -o $@ $(OBJS) $(LDFLAGS)$(if $(UNIVERSAL_SLICE_LDFLAGS), $(UNIVERSAL_SLICE_LDFLAGS))
 
-$(EXE): $(OBJS) $$(call check_force,$$(call cmd_record,$$(link_cmd)))
+$(EXE): $(OBJS) $$(call check_force,$$(call cmd_record,$$(link_cmd))) | $(src_temp_dir)
   ifeq (,$(make_inspection))
 	+@$(call build_and_record,$(link_cmd))
   else
 	@$(call build_and_record,$(link_cmd))
   endif
+  ifeq ($(comp):$(filter true,$(UNIVERSAL_SLICE)),mingw:)
+# Move scratch only after linking; universal slices still consume the saved LTO object.
+	@for artifact in "$(basename $@)".ltrans* "$(basename $@)".lto* "$(basename $@)".wpa* "$(basename $@)".res ./-lstdc++.res; do \
+	  if [ -f "$$artifact" ]; then mkdir -p "$(LTO_DIR)" && mv -f "$$artifact" "$(LTO_DIR)/" || exit 1; fi; \
+	done
+  endif
 endif
+
+$(TEMP_DIR) $(OBJ_CMD_DIR) $(PGO_DIR):
+	@mkdir -p $@
 
 source_file = $(or $(firstword $(wildcard $*.cpp $(addsuffix /$*.cpp,$(SOURCE_DIRS)))),$*.cpp)
 compile_cmd = $(strip $(CXX) $(CPPFLAGS) $(CXXFLAGS) $(git_metadata)) $(1) -c -o $@ $(source_file)
@@ -1410,7 +1425,7 @@ ifeq ($(ANALYZE_ONLY),yes)
 	$(call compile_cmd)
 else
   compile_with_deps = $(call compile_cmd,-MMD -MP -MF "$(call cmd_file,$@).tmp" -MQ "$@")
-%.o: $$(source_file) $$(call check_force,$$(call cmd_record,$$(compile_with_deps),$$(compile_date)))
+%.o: $$(source_file) $$(call check_force,$$(call cmd_record,$$(compile_with_deps),$$(compile_date))) | $$(if $$(filter .,$$(@D)),$$(OBJ_CMD_DIR))
 	@$(call build_and_record,$(compile_with_deps),$(compile_date),$(source_file))
 endif
 
@@ -1421,6 +1436,8 @@ network.o nnue/network.o: $$(wildcard $$(network_file))
   endif
 endif
 
+clang-profile-make gcc-profile-make icx-profile-make clang-profile-use icx-profile-use: | $(PGO_DIR)
+
 clang-profile-make:
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
 	EXTRACXXFLAGS='-fprofile-generate ' \
@@ -1428,9 +1445,9 @@ clang-profile-make:
 	all
 
 clang-profile-use:
-	$(XCRUN) $(LLVM_PROFDATA) merge -output=stockfish.profdata *.profraw
+	$(XCRUN) $(LLVM_PROFDATA) merge -output="$(pgo_prefix)stockfish.profdata" *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-use=stockfish.profdata' \
+	EXTRACXXFLAGS='-fprofile-use=$(pgo_prefix)stockfish.profdata' \
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
@@ -1456,9 +1473,9 @@ icx-profile-make:
 	all
 
 icx-profile-use:
-	$(XCRUN) $(LLVM_PROFDATA) merge -output=stockfish.profdata *.profraw
+	$(XCRUN) $(LLVM_PROFDATA) merge -output="$(pgo_prefix)stockfish.profdata" *.profraw
 	$(MAKE) ARCH=$(ARCH) COMP=$(COMP) \
-	EXTRACXXFLAGS='-fprofile-instr-use=stockfish.profdata' \
+	EXTRACXXFLAGS='-fprofile-instr-use=$(pgo_prefix)stockfish.profdata' \
 	EXTRALDFLAGS='-fprofile-use ' \
 	all
 
@@ -1542,9 +1559,6 @@ build:         UOBJ_TGT := universal-object-nopgo
 build:         $(UNIVERSAL_EXE)
 profile-build: UOBJ_TGT := universal-object-pgo
 profile-build: $(UNIVERSAL_EXE)
-
-$(TEMP_DIR):
-	@mkdir -p $@
 
 # Download nnue files once in src/ (reused by every sub-arch via --embed-dir).
 $(NET_SENTINEL): | $(TEMP_DIR)
