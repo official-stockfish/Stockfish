@@ -61,6 +61,9 @@ class AffineTransformSparseInput {
 
 #if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8))
     static constexpr IndexType ChunkSize = 4;
+#elif defined(USE_SSE2) && !defined(__VSX__)
+    // The PowerPC VSX build also sets USE_SSE2 and uses the dense weight layout.
+    static constexpr IndexType ChunkSize = 2;
 #else
     static constexpr IndexType ChunkSize = 1;
 #endif
@@ -83,7 +86,7 @@ class AffineTransformSparseInput {
 
     static constexpr IndexType get_weight_index(IndexType i) {
 #if (defined(USE_SSSE3) || defined(USE_LSX) || defined(USE_LASX) || (USE_NEON >= 8) \
-     || defined(USE_RVV))
+     || defined(USE_RVV) || (defined(USE_SSE2) && !defined(__VSX__)))
         return get_weight_index_scrambled(i);
 #else
         return i;
@@ -378,6 +381,39 @@ class AffineTransformSparseInput {
     #ifdef vec_add_32
         #undef vec_add_32
     #endif
+#elif defined(USE_SSE2) && !defined(__VSX__)
+        // Both input bytes are at most 127, so packing a pair as a signed word
+        // keeps it positive if either input is nonzero.
+        static_assert(InputDimensions % 32 == 0);
+        const __m128i zero = _mm_setzero_si128();
+        __m128i       acc[OutputDimensions / 4];
+        for (IndexType o = 0; o < OutputDimensions / 4; ++o)
+            acc[o] = _mm_load_si128(reinterpret_cast<const __m128i*>(biases) + o);
+
+        for (IndexType base = 0; base < InputDimensions; base += 32)
+        {
+            const auto* x     = reinterpret_cast<const __m128i*>(input + base);
+            const auto  pairs = _mm_packs_epi16(_mm_load_si128(x), _mm_load_si128(x + 1));
+            u64         bits  = u16(~_mm_movemask_epi8(_mm_cmpeq_epi8(pairs, zero)));
+            while (bits)
+            {
+                const IndexType i    = base + 2 * pop_lsb(bits);
+                const u32       pair = load_as<u16>(input + i);
+                const auto      in   = _mm_set1_epi32((pair & 0xff) | ((pair & 0xff00) << 8));
+                const auto* row = reinterpret_cast<const __m128i*>(&weights[i * OutputDimensions]);
+                UNROLLED_FOR (IndexType o = 0; o < OutputDimensions / 8; ++o)
+                {
+                    const auto w     = _mm_load_si128(row + o);
+                    const auto signs = _mm_cmpgt_epi8(zero, w);
+                    acc[2 * o] =
+                      _mm_add_epi32(acc[2 * o], _mm_madd_epi16(in, _mm_unpacklo_epi8(w, signs)));
+                    acc[2 * o + 1] = _mm_add_epi32(acc[2 * o + 1],
+                                                   _mm_madd_epi16(in, _mm_unpackhi_epi8(w, signs)));
+                }
+            }
+        }
+        for (IndexType o = 0; o < OutputDimensions / 4; ++o)
+            _mm_store_si128(reinterpret_cast<__m128i*>(output) + o, acc[o]);
 #elif defined(USE_RVV)
         // we don't support larger for now
         static_assert(OutputDimensions <= 128 * 8 / 32);
