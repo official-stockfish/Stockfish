@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <filesystem>
 #include <iosfwd>
 #include <memory>
@@ -38,7 +39,7 @@
 #include "position.h"
 #include "search.h"
 #include "shm.h"
-#include "syzygy/tbprobe.h"
+#include "tablebases.h"
 #include "types.h"
 #include "uci.h"
 #include "ucioption.h"
@@ -118,10 +119,10 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
 
     options.add("UCI_ShowWDL", Option(false));
 
+#ifdef USE_SYZYGY
     options.add(  //
-      "SyzygyPath", Option("", [](const Option& o) {
-          Tablebases::init(o);
-          return std::nullopt;
+      "SyzygyPath", Option("", [this](const Option&) {
+          return Tablebases::set_path(options, Tablebases::SYZYGY);
       }));
 
     options.add("SyzygyProbeDepth", Option(1, 1, 100));
@@ -129,6 +130,28 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
     options.add("Syzygy50MoveRule", Option(true));
 
     options.add("SyzygyProbeLimit", Option(7, 0, 7));
+#endif
+
+#ifdef USE_CHESSTB
+    options.add(  //
+      "ChessTBPath", Option("", [this](const Option&) {
+          return Tablebases::set_path(options, Tablebases::CHESSTB);
+      }));
+
+    options.add("ChessTBProbeDepth", Option(1, 1, 100));
+
+    options.add("ChessTBMateProbeDepth", Option(20, 1, 100));
+
+    options.add("ChessTB50MoveRule", Option(true));
+
+    options.add("ChessTBProbeLimit", Option(8, 0, 8));
+
+    options.add("ChessTBCache", Option(64, 1, 1 << 20, [](const Option& o) {
+                    ChessTB::set_cache_size(size_t(int(o)));
+                    return std::nullopt;
+                }));
+    ChessTB::set_cache_size(size_t(int(options["ChessTBCache"])));
+#endif
 
     options.add(  //
       "EvalFile", Option(EvalFileDefaultName, [this](const Option& o) {
@@ -162,8 +185,11 @@ void Engine::search_clear() {
     tt.clear(threads);
     threads.clear();
 
+#ifdef USE_SYZYGY
     // TODO: does not work with multiple instances
-    Tablebases::init(options["SyzygyPath"]);  // Free mapped files
+    if (Tablebases::backend() == Tablebases::SYZYGY)
+        Syzygy::init(options["SyzygyPath"]);  // Free mapped files
+#endif
 }
 
 void Engine::set_on_update_no_moves(std::function<void(const Engine::InfoShort&)>&& f) {

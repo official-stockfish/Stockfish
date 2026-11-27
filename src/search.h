@@ -37,7 +37,7 @@
 #include "numa.h"
 #include "position.h"
 #include "score.h"
-#include "syzygy/tbprobe.h"
+#include "tablebases.h"
 #include "timeman.h"
 #include "types.h"
 

@@ -8,6 +8,7 @@
     { include: [ "<__fwd/streambuf.h>", private, "<iosfwd>", public ] },
     { include: [ "<__fwd/string_view.h>", private, "<string_view>", public ] },
     { include: [ "<__system_error/errc.h>", private, "<system_error>", public ] },
+    { include: [ "<__system_error/error_code.h>", private, "<system_error>", public ] },
 
     # Mappings for includes between public headers
     { include: [ "<ios>", public, "<iostream>", public ] },
