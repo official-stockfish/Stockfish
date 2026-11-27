@@ -81,6 +81,10 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
     options.add(  //
       "Threads", Option(1, 1, MaxThreads, [this](const Option&) {
           resize_threads();
+          // Keep the hash unless the NUMA configuration has several nodes or a custom
+          // affinity, where the thread count may affect its page placement or page size
+          if (numaContext.get_numa_config().requires_memory_replication())
+              set_tt_size(options["Hash"]);
           return thread_allocation_information_as_string();
       }));
 
@@ -139,6 +143,7 @@ Engine::Engine(std::optional<std::filesystem::path> path) :
     threads.clear();
     threads.ensure_network_replicated();
     resize_threads();
+    set_tt_size(options["Hash"]);
 }
 
 std::variant<u64, PositionSetError>
@@ -227,8 +232,9 @@ bool Engine::set_numa_config_from_option(const std::string& o) {
         numaContext.set_numa_config(std::move(*parsed));
     }
 
-    // Force reallocation of threads in case affinities need to change.
+    // Force reallocation of threads and hash in case affinities need to change.
     resize_threads();
+    set_tt_size(options["Hash"]);
     threads.ensure_network_replicated();
     return true;
 }
@@ -237,9 +243,6 @@ void Engine::resize_threads() {
     threads.wait_for_search_finished();
     threads.set(numaContext.get_numa_config(), {options, threads, tt, sharedHists, network},
                 updateContext);
-
-    // Reallocate the hash with the new threadpool size
-    set_tt_size(options["Hash"]);
     threads.ensure_network_replicated();
 }
 
