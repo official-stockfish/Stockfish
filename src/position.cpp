@@ -358,7 +358,8 @@ std::optional<PositionSetError> Position::set(const string& fenStr, bool isChess
 
     unsigned char      token;
     std::istringstream ss(fenStr);
-    std::memset(reinterpret_cast<char*>(this), 0, offsetof(Position, repHist));
+    std::memset(reinterpret_cast<char*>(this), 0,
+                reinterpret_cast<char*>(&repHist) - reinterpret_cast<char*>(this));
 
     st = &stateInfos[stateIdx];
 
