@@ -1434,12 +1434,13 @@ moves_loop:  // When in check, search starts here
             (ss + 1)->pv = &pv;
             (ss + 1)->pv->clear();
 
-            // Extend move from transposition table if we are about to dive
-            // into qsearch. Decisive score handling improves mate finding
-            // and retrograde analysis.
-            if (move == ttData.move
-                && ((is_valid(ttData.value) && is_decisive(ttData.value) && ttData.depth > 0)
-                    || ttData.depth > 1))
+            // Extend 1-move PVs and moves from transposition table if we are
+            // about to dive into qsearch. Decisive score handling improves
+            // mate finding and retrograde analysis.
+            if ((rootNode && rootDepth >= 2)
+                || (move == ttData.move
+                    && ((is_valid(ttData.value) && is_decisive(ttData.value) && ttData.depth > 0)
+                        || ttData.depth > 1)))
                 newDepth = std::max(newDepth, 1);
 
             value = -search<PV>(pos, ss + 1, -beta, -alpha, newDepth, false);
