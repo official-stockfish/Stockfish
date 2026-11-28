@@ -78,7 +78,7 @@ PGOBENCH = $(RUN_PREFIX) ./$(EXE) bench
 ### Source and object files
 SRCS = attacks.cpp benchmark.cpp bitboard.cpp evaluate.cpp main.cpp \
 	misc.cpp movegen.cpp movepick.cpp position.cpp \
-	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp syzygy/tbprobe.cpp \
+	search.cpp thread.cpp timeman.cpp tt.cpp uci.cpp ucioption.cpp tune.cpp tablebases.cpp \
 	nnue/nnue_accumulator.cpp nnue/nnue_misc.cpp nnue/network.cpp \
 	nnue/features/k32h3.cpp nnue/features/full_threats.cpp nnue/features/pp_3wide.cpp \
 	engine.cpp score.cpp memory.cpp
@@ -90,12 +90,12 @@ HEADERS = attacks.h benchmark.h bitboard.h evaluate.h misc.h movegen.h movepick.
 		nnue/features/pp_3wide.h nnue/layers/affine_transform.h nnue/layers/affine_transform_sparse_input.h \
 		nnue/layers/clipped_relu.h nnue/layers/sqr_clipped_relu.h nnue/nnue_accumulator.h \
 		nnue/nnue_architecture.h nnue/nnue_common.h nnue/nnue_feature_transformer.h nnue/simd.h \
-		nnue/nnz_helper.h position.h search.h syzygy/tbprobe.h thread.h thread_native.h timeman.h \
+		nnue/nnz_helper.h position.h search.h tablebases.h thread.h thread_native.h timeman.h \
 		tt.h tune.h types.h uci.h ucioption.h perft.h nnue/network.h engine.h score.h numa.h memory.h shm.h shm_unix.h
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
 
-SOURCE_DIRS = syzygy nnue nnue/features
+SOURCE_DIRS = syzygy chesstb nnue nnue/features
 
 ### ==========================================================================
 ### Section 2. High-level Configuration
@@ -133,7 +133,8 @@ SOURCE_DIRS = syzygy nnue nnue/features
 # lsx = yes/no        --- -mlsx              --- Use Loongson SIMD eXtension
 # lasx = yes/no       --- -mlasx             --- Use Loongson Advanced SIMD eXtension
 # relaxedsimd = y/n   --- -mrelaxed-simd     --- Use WebAssembly relaxed SIMD extension
-# syzygy = yes/no     --- -DNO_TABLEBASES    --- Support Syzygy tablebase probing
+# syzygy = yes/no     --- -DUSE_SYZYGY       --- Support Syzygy tablebase probing
+# chesstb = yes/no    --- -DUSE_CHESSTB      --- Support ChessTB tablebase probing
 #
 # Note that Makefile is space sensitive, so when adding new architectures
 # or modifying existing flags, you have to make sure there are no extra spaces
@@ -200,6 +201,7 @@ lsx = no
 lasx = no
 relaxedsimd = no
 syzygy = yes
+chesstb = yes
 STRIP = strip
 
 ifneq ($(shell which clang-format-20 2> /dev/null),)
@@ -412,6 +414,7 @@ ifeq ($(ARCH),wasm32)
 	ssse3 = yes
 	sse41 = yes
 	syzygy = no
+	chesstb = no
 endif
 
 ifeq ($(ARCH),wasm32-relaxed-simd)
@@ -422,6 +425,7 @@ ifeq ($(ARCH),wasm32-relaxed-simd)
 	sse41 = yes
 	relaxedsimd = yes
 	syzygy = no
+	chesstb = no
 endif
 
 ifeq ($(ARCH),ppc-32)
@@ -909,9 +913,17 @@ ifeq ($(pext),yes)
 	endif
 endif
 
-### Syzygy tablebases
-ifeq ($(syzygy),no)
-	CXXFLAGS += -DNO_TABLEBASES
+### Tablebases
+### CPPFLAGS, not CXXFLAGS: CI's IWYU job sets CXXFLAGS on the make command line,
+### which overrides the Makefile's CXXFLAGS and would drop the backends.
+ifeq ($(chesstb),yes)
+	CPPFLAGS += -DUSE_CHESSTB
+	SRCS += chesstb/probe.cpp chesstb/index.cpp chesstb/filesystem.cpp chesstb/table_files.cpp
+endif
+
+ifeq ($(syzygy),yes)
+	CPPFLAGS += -DUSE_SYZYGY
+	SRCS += syzygy/tbprobe.cpp
 endif
 
 ### 3.8.1 Try to include git info for versioning
@@ -1208,12 +1220,12 @@ clean: objclean profileclean universalclean
 objclean:
 	@rm -f stockfish stockfish.exe \
 	  $(foreach ext,cmd cmd.tmp,$(addsuffix .$(ext),.stockfish .stockfish.exe .stockfish.js)) \
-	  $(foreach dir,. syzygy nnue nnue/features,$(addprefix $(dir)/,*.o .*.o.cmd .*.o.cmd.tmp))
+	  $(foreach dir,. syzygy chesstb nnue nnue/features,$(addprefix $(dir)/,*.o .*.o.cmd .*.o.cmd.tmp))
 
 # clean auxiliary profiling files
 profileclean:
 	@rm -rf profdir
-	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
+	@rm -f bench.txt *.gcda *.gcno ./syzygy/*.gcda ./chesstb/*.gcda ./nnue/*.gcda ./nnue/features/*.gcda *.s PGOBENCH.out
 	@rm -f stockfish.profdata *.profraw
 	@rm -f stockfish.*args*
 	@rm -f stockfish.*lt*
@@ -1271,6 +1283,7 @@ config-sanity: net
 	echo "lsx: '$(lsx)'" && \
 	echo "lasx: '$(lasx)'" && \
 	echo "syzygy: '$(syzygy)'" && \
+	echo "chesstb: '$(chesstb)'" && \
 	echo "target_windows: '$(target_windows)'" && \
 	echo "" && \
 	echo "Flags:" && \
@@ -1307,6 +1320,7 @@ config-sanity: net
 	(test "$(lsx)" = "yes" || test "$(lsx)" = "no") && \
 	(test "$(lasx)" = "yes" || test "$(lasx)" = "no") && \
 	(test "$(syzygy)" = "yes" || test "$(syzygy)" = "no") && \
+	(test "$(chesstb)" = "yes" || test "$(chesstb)" = "no") && \
 	(test "$(comp)" = "gcc" || test "$(comp)" = "icx" || test "$(comp)" = "mingw" || \
 	 test "$(comp)" = "clang" || test "$(comp)" = "armv7a-linux-androideabi16-clang" || \
 	 test "$(comp)" = "aarch64-linux-android21-clang")

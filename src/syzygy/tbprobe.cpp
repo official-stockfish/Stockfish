@@ -16,22 +16,26 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "tbprobe.h"
+#include "../tablebases.h"
 
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <fstream>
+#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <ratio>
 #include <sstream>
+#include <string>
 #include <string_view>
 #include <filesystem>
 #include <sys/stat.h>
@@ -60,43 +64,7 @@
     #include <windows.h>
 #endif
 
-#ifdef NO_TABLEBASES
-
-// Stubbed out impls
-namespace Stockfish::Tablebases {
-
-int MaxCardinality;
-
-void init(const std::string&) {}
-
-WDLScore probe_wdl(Position&, ProbeState* result) {
-    *result = FAIL;
-    return WDLDraw;
-}
-
-int probe_dtz(Position&, ProbeState* result) {
-    *result = FAIL;
-    return 0;
-}
-
-bool root_probe(Position&, Search::RootMoves&, bool, bool, const std::function<bool()>&) {
-    return false;
-}
-
-bool root_probe_wdl(Position&, Search::RootMoves&, bool) { return false; }
-
-Config rank_root_moves(
-  const OptionsMap&, Position&, Search::RootMoves&, bool, const std::function<bool()>&) {
-    return Config{};
-}
-
-}  // namespace Stockfish::Tablebases
-
-#else
-
 using namespace Stockfish::Tablebases;
-
-int Stockfish::Tablebases::MaxCardinality;
 
 namespace Stockfish {
 
@@ -265,7 +233,7 @@ class TBFile: public std::ifstream {
         if (is_open())
             close();  // Need to re-open to get native file descriptor
 
-    #ifndef _WIN32
+#ifndef _WIN32
         struct stat statbuf;
         int         fd = ::open(fname.c_str(), O_RDONLY | O_CLOEXEC);
 
@@ -295,10 +263,10 @@ class TBFile: public std::ifstream {
             exit(EXIT_FAILURE);
         }
 
-        #if defined(MADV_RANDOM)
+    #if defined(MADV_RANDOM)
         madvise(*baseAddress, statbuf.st_size, MADV_RANDOM);
-        #endif
-    #else
+    #endif
+#else
         // Note FILE_FLAG_RANDOM_ACCESS is only a hint to Windows and as such may get ignored.
         HANDLE fd = CreateFileW(fname.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                 OPEN_EXISTING, FILE_FLAG_RANDOM_ACCESS, nullptr);
@@ -334,7 +302,7 @@ class TBFile: public std::ifstream {
                       << ", error = " << GetLastError() << std::endl;
             exit(EXIT_FAILURE);
         }
-    #endif
+#endif
         u8* data = (u8*) *baseAddress;
 
         constexpr u8 Magics[][4] = {{0xD7, 0x66, 0x0C, 0xA5}, {0x71, 0xE8, 0x23, 0x5D}};
@@ -350,12 +318,12 @@ class TBFile: public std::ifstream {
 
     static void unmap(void* baseAddress, u64 mapping) {
 
-    #ifndef _WIN32
+#ifndef _WIN32
         munmap(baseAddress, mapping);
-    #else
+#else
         UnmapViewOfFile(baseAddress);
         CloseHandle((HANDLE) mapping);
-    #endif
+#endif
     }
 };
 
@@ -782,12 +750,12 @@ int map_score(TBTable<DTZ>* entry, File f, int value, WDLScore wdl) {
     return value + 1;
 }
 
-    // A temporary fix for the compiler bug with vectorization. (#4450)
-    #if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
-        #define DISABLE_CLANG_LOOP_VEC _Pragma("clang loop vectorize(disable)")
-    #else
-        #define DISABLE_CLANG_LOOP_VEC
-    #endif
+// A temporary fix for the compiler bug with vectorization. (#4450)
+#if defined(__clang__) && defined(__clang_major__) && __clang_major__ >= 15
+    #define DISABLE_CLANG_LOOP_VEC _Pragma("clang loop vectorize(disable)")
+#else
+    #define DISABLE_CLANG_LOOP_VEC
+#endif
 
 // Compute a unique index out of a position and use it to probe the TB file. To
 // encode k pieces of the same type and color, first sort the pieces by square in
@@ -1512,11 +1480,13 @@ WDLScore search(Position& pos, ProbeState* result) {
 
 }  // namespace
 
+namespace Syzygy {
+
 
 // Called at startup and after every change to
 // "SyzygyPath" UCI option to (re)create the various tables. It is not thread
 // safe, nor it needs to be.
-void Tablebases::init(const std::string& paths) {
+void init(const std::string& paths) {
 
     TBTables.clear();
     MaxCardinality = 0;
@@ -1524,11 +1494,11 @@ void Tablebases::init(const std::string& paths) {
 
     if (!paths.empty())
     {
-    #ifndef _WIN32
+#ifndef _WIN32
         constexpr char SepChar = ':';
-    #else
+#else
         constexpr char SepChar = ';';
-    #endif
+#endif
 
         std::stringstream ss(paths);
         std::string       path;
@@ -1688,7 +1658,7 @@ void Tablebases::init(const std::string& paths) {
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
+WDLScore probe_wdl(Position& pos, ProbeState* result) {
 
     *result = OK;
     return search<false>(pos, result);
@@ -1720,7 +1690,7 @@ WDLScore Tablebases::probe_wdl(Position& pos, ProbeState* result) {
 //
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
-int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
+int probe_dtz(Position& pos, ProbeState* result) {
 
     *result      = OK;
     WDLScore wdl = search<true>(pos, result);
@@ -1784,11 +1754,11 @@ int Tablebases::probe_dtz(Position& pos, ProbeState* result) {
 // Use the DTZ tables to rank root moves.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe(Position&                    pos,
-                            Search::RootMoves&           rootMoves,
-                            bool                         rule50,
-                            bool                         rankDTZ,
-                            const std::function<bool()>& time_abort) {
+static bool root_probe(Position&                    pos,
+                       Search::RootMoves&           rootMoves,
+                       bool                         rule50,
+                       bool                         rankDistance,
+                       const std::function<bool()>& time_abort) {
 
     ProbeState result = OK;
 
@@ -1809,7 +1779,7 @@ bool Tablebases::root_probe(Position&                    pos,
         if (pos.rule50_count() == 0)
         {
             // In case of a zeroing move, dtz is one of -101/-1/0/1/101
-            WDLScore wdl = -probe_wdl(pos, &result);
+            WDLScore wdl = -Syzygy::probe_wdl(pos, &result);
             dtz          = dtz_before_zeroing(wdl);
         }
         else if ((rule50 && pos.is_draw(1)) || pos.is_repetition(1))
@@ -1837,9 +1807,9 @@ bool Tablebases::root_probe(Position&                    pos,
 
         // Better moves are ranked higher. Certain wins are ranked equally.
         // Losing moves are ranked equally unless a 50-move draw is in sight.
-        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ - (rankDTZ ? dtz : 0)
+        int r    = dtz > 0 ? (dtz + cnt50 <= 99 && !rep ? MAX_DTZ - (rankDistance ? dtz : 0)
                                                         : MAX_DTZ / 2 - (dtz + cnt50))
-                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ - (rankDTZ ? dtz : 0)
+                 : dtz < 0 ? (-dtz * 2 + cnt50 < 100 ? -MAX_DTZ - (rankDistance ? dtz : 0)
                                                      : -MAX_DTZ / 2 + (-dtz + cnt50))
                            : 0;
         m.tbRank = r;
@@ -1863,7 +1833,7 @@ bool Tablebases::root_probe(Position&                    pos,
 // This is a fallback for the case that some or all DTZ tables are missing.
 //
 // A return value false indicates that not all probes were successful.
-bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
+static bool root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, bool rule50) {
 
     static const int WDL_to_rank[] = {-MAX_DTZ, -MAX_DTZ + 101, 0, MAX_DTZ - 101, MAX_DTZ};
 
@@ -1879,7 +1849,7 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
         if (pos.is_draw(1))
             wdl = WDLDraw;
         else
-            wdl = -probe_wdl(pos, &result);
+            wdl = -Syzygy::probe_wdl(pos, &result);
 
         pos.undo_move(m.pv[0]);
 
@@ -1896,11 +1866,11 @@ bool Tablebases::root_probe_wdl(Position& pos, Search::RootMoves& rootMoves, boo
     return true;
 }
 
-Config Tablebases::rank_root_moves(const OptionsMap&            options,
-                                   Position&                    pos,
-                                   Search::RootMoves&           rootMoves,
-                                   bool                         rankDTZ,
-                                   const std::function<bool()>& time_abort) {
+Config rank_root_moves(const OptionsMap&            options,
+                       Position&                    pos,
+                       Search::RootMoves&           rootMoves,
+                       bool                         rankDistance,
+                       const std::function<bool()>& time_abort) {
     Config config;
 
     if (rootMoves.empty())
@@ -1924,11 +1894,11 @@ Config Tablebases::rank_root_moves(const OptionsMap&            options,
     if (config.cardinality >= pos.count<ALL_PIECES>() && !pos.can_castle(ANY_CASTLING))
     {
         // Use DTZ to rank the moves if checkmate is the only zeroing move
-        rankDTZ = rankDTZ || pos.dtz_is_dtm();
+        rankDistance = rankDistance || pos.dtz_is_dtm();
 
         // Rank moves using DTZ tables, bail out if time_abort flags zeitnot
         config.rootInTB =
-          root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDTZ, time_abort);
+          root_probe(pos, rootMoves, options["Syzygy50MoveRule"], rankDistance, time_abort);
 
         if (!config.rootInTB && !time_abort())
         {
@@ -1958,6 +1928,145 @@ Config Tablebases::rank_root_moves(const OptionsMap&            options,
 
     return config;
 }
-}  // namespace Stockfish
 
-#endif  // NO_TABLEBASES
+// Used to correct and extend PVs for moves that have a TB (but not a mate) score.
+// Keeps the search based PV for as long as it is verified to maintain the game
+// outcome, truncates afterwards. Finally, extends to mate the PV, providing a
+// possible continuation (but not a proven mating line).
+void extend_pv(const OptionsMap&         options,
+               const Search::LimitsType& limits,
+               Position&                 root,
+               Search::RootMove&         rootMove,
+               Value&                    v,
+               const usize               multiPV) {
+
+    auto t_start      = std::chrono::steady_clock::now();
+    int  moveOverhead = int(options["Move Overhead"]);
+    bool rule50       = bool(options["Syzygy50MoveRule"]);
+
+    // Do not use more than moveOverhead / 2 ms, if time management is active.
+    // Under 'nodestime' the pos.do_move() calls come for free.
+    auto time_abort = [&t_start, &moveOverhead, &limits, &multiPV]() -> bool {
+        auto t_end = std::chrono::steady_clock::now();
+        return !limits.npmsec && limits.use_time_management()
+            && 2 * multiPV * std::chrono::duration<double, std::milli>(t_end - t_start).count()
+                 >= moveOverhead;
+    };
+
+    if (time_abort())
+        return;
+
+    // The line is walked on a copy and never undone: it can outrun the plies
+    // a position keeps states for.
+    const auto walker = std::make_unique<Position>();
+    Position&  pos    = *walker;
+    pos.set(root.fen(), root.is_chess960());
+    pos.copy_state_infos(root);
+
+    // Step 0, do the rootMove, no correction allowed, as needed for MultiPV in TB
+    pos.do_move(rootMove.pv[0]);
+    int ply = 1;
+
+    // Step 1, walk the PV to the last position in TB with correct decisive score
+    while (usize(ply) < rootMove.pv.size())
+    {
+        Move& pvMove = rootMove.pv[ply];
+
+        Search::RootMoves legalMoves;
+        for (const auto& m : MoveList<ALL>(pos))
+            legalMoves.emplace_back(m);
+
+        Config            config = rank_root_moves(options, pos, legalMoves, false, time_abort);
+        Search::RootMove& rm     = *std::find(legalMoves.begin(), legalMoves.end(), pvMove);
+
+        if (legalMoves[0].tbRank != rm.tbRank)
+            break;
+
+        ply++;
+
+        pos.do_move(pvMove);
+
+        // Do not allow for repetitions or drawing moves along the PV in TB regime
+        if (config.rootInTB && ((rule50 && pos.is_draw(ply)) || pos.is_repetition(ply)))
+        {
+            pos.undo_move(pvMove);
+            ply--;
+            break;
+        }
+
+        // Full PV shown will thus be validated and end in TB. If we cannot
+        // validate the full PV in time, we do not show it.
+        if (config.rootInTB && time_abort())
+            break;
+    }
+
+    // Resize the PV to the correct part
+    rootMove.pv.resize(ply);
+
+    // Step 2, now extend the PV to mate, as if the user explored syzygy-tables.info
+    // using top ranked moves (minimal DTZ), which gives optimal mates only for simple
+    // endgames e.g. KRvK.
+    while (!(rule50 && pos.is_draw(0)))
+    {
+        if (time_abort())
+            break;
+
+        Search::RootMoves legalMoves;
+        for (const auto& m : MoveList<ALL>(pos))
+        {
+            auto& rm = legalMoves.emplace_back(m);
+            pos.do_move(m);
+            // Give a score of each move to break DTZ ties restricting opponent
+            // mobility, but not giving the opponent a capture.
+            for (const auto& mOpp : MoveList<ALL>(pos))
+                rm.tbRank -= pos.capture(mOpp) ? 100 : 1;
+            pos.undo_move(m);
+        }
+
+        // Mate found
+        if (legalMoves.empty())
+            break;
+
+        // Sort moves according to their above assigned rank.
+        // This will break ties for moves with equal DTZ in rank_root_moves.
+        std::stable_sort(
+          legalMoves.begin(), legalMoves.end(),
+          [](const Search::RootMove& a, const Search::RootMove& b) { return a.tbRank > b.tbRank; });
+
+        // The winning side tries to minimize DTZ, the losing side maximizes it
+        Config config = rank_root_moves(options, pos, legalMoves, true, time_abort);
+
+        // If DTZ is not available we might not find a mate, so we bail out
+        if (!config.rootInTB || config.cardinality > 0)
+            break;
+
+        ply++;
+
+        Move& pvMove = legalMoves[0].pv[0];
+        rootMove.pv.push_back(pvMove);
+        pos.do_move(pvMove);
+    }
+
+    // Finding a draw in this function is an exceptional case, that cannot happen when rule50 is false or
+    // during engine game play, since we have a winning score, and play correctly
+    // with TB support. However, it can be that a position is draw due to the 50 move
+    // rule if it has been reached on the board with a non-optimal 50 move counter
+    // (e.g. 8/8/6k1/3B4/3K4/4N3/8/8 w - - 54 106 ) which TB with dtz counter rounding
+    // cannot always correctly rank. See also
+    // https://github.com/official-stockfish/Stockfish/issues/5175#issuecomment-2058893495
+    // We adjust the score to match the found PV. Note that a TB loss score can be
+    // displayed if the engine did not find a drawing move yet, but eventually search
+    // will figure it out (e.g. 1kq5/q2r4/5K2/8/8/8/8/7Q w - - 96 1 )
+    if (pos.is_draw(0))
+        v = VALUE_DRAW;
+
+    // Inform if we couldn't get a full extension in time
+    if (time_abort())
+        sync_cout
+          << "info string Syzygy based PV extension requires more time, increase Move Overhead as needed."
+          << sync_endl;
+}
+
+}  // namespace Syzygy
+
+}  // namespace Stockfish

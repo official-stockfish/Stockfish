@@ -27,7 +27,6 @@
 #include <initializer_list>
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <sstream>
 #include <string_view>
 
@@ -35,7 +34,7 @@
 #include "history.h"
 #include "misc.h"
 #include "movegen.h"
-#include "syzygy/tbprobe.h"
+#include "tablebases.h"
 #include "uci.h"
 
 using std::string;
@@ -179,16 +178,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
     for (Bitboard b = pos.checkers(); b;)
         os << UCIEngine::square(pop_lsb(b)) << " ";
 
-    if (Tablebases::MaxCardinality >= popcount(pos.pieces()) && !pos.can_castle(ANY_CASTLING))
-    {
-        std::unique_ptr<Position> p = std::make_unique<Position>();
-        p->set(pos.fen(), pos.is_chess960());
-        Tablebases::ProbeState s1, s2;
-        Tablebases::WDLScore   wdl = Tablebases::probe_wdl(*p, &s1);
-        int                    dtz = Tablebases::probe_dtz(*p, &s2);
-        os << "\nTablebases WDL: " << std::setw(4) << wdl << " (" << s1 << ")"
-           << "\nTablebases DTZ: " << std::setw(4) << dtz << " (" << s2 << ")";
-    }
+    Tablebases::print(os, pos);
 
     return os;
 }

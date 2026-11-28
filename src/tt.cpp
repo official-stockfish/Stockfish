@@ -29,7 +29,7 @@
 #include "bitboard.h"
 #include "memory.h"
 #include "misc.h"
-#include "syzygy/tbprobe.h"
+#include "tablebases.h"
 #include "thread.h"
 
 namespace Stockfish {

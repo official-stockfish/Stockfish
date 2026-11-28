@@ -36,7 +36,7 @@
 #include "movegen.h"
 #include "position.h"
 #include "search.h"
-#include "syzygy/tbprobe.h"
+#include "tablebases.h"
 #include "timeman.h"
 #include "types.h"
 #include "uci.h"

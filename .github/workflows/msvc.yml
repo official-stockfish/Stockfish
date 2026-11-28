@@ -47,8 +47,8 @@ jobs:
         shell: cmd
         run: >-
           cl /nologo /std:c++17 /MT /EHsc /O2 /MP /W3 /WX /permissive-
-          /DUSE_POPCNT /DUSE_SSE2 /DUSE_SSSE3 /DUSE_SSE41 /DUSE_AVX2 ${{ matrix.flags }}
-          /Fe:stockfish.exe *.cpp nnue\*.cpp nnue\features\*.cpp syzygy\*.cpp
+          /DUSE_SYZYGY /DUSE_CHESSTB /DUSE_POPCNT /DUSE_SSE2 /DUSE_SSSE3 /DUSE_SSE41 /DUSE_AVX2 ${{ matrix.flags }}
+          /Fe:stockfish.exe *.cpp nnue\*.cpp nnue\features\*.cpp syzygy\*.cpp chesstb\*.cpp
           /link /STACK:8388608 shell32.lib
 
       - name: Verify bench signature
