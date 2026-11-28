@@ -648,7 +648,7 @@ bool Search::Worker::iterative_deepening() {
         {
             const auto bestScore = rootMoves[0].score;
             std::swap(rootMoves[0], *std::find(rootMoves.begin(), rootMoves.end(), pick));
-            if (is_loss(rootMoves[0].score) && rootMoves[0].score < bestScore)
+            if (rootMoves[0].is_exact_loss() && rootMoves[0].score < bestScore)
                 rootMoves[0].inexactLower = true;
             uciPvSent = false;
         }
